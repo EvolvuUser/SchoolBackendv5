@@ -4131,6 +4131,7 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
     return response()->json(['parent' => $parent, 'success' => true]);
 }
 
+//Changed on 08-10-24 Lija M
 public function updateNewStudentAndParentData(Request $request, $studentId, $parentId)
 {
     try {
@@ -4150,6 +4151,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'stud_id_no' => 'nullable|string|max:25',
             'stu_aadhaar_no' => 'nullable|string|max:14',
             'gender' => 'nullable|string',
+            'blood_group' => 'nullable|string|max:5',
             'mother_tongue' => 'nullable|string|max:20',
             'birth_place' => 'nullable|string|max:50',
             'admission_class' => 'nullable|string|max:255',
@@ -4172,7 +4174,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'pincode' => 'nullable|max:11',
             'image_name' => 'nullable|string',
             'has_specs' => 'nullable|string|max:1',
-        
+                   
             // Parent model fields
             'father_name' => 'nullable|string|max:100',
             'father_occupation' => 'nullable|string|max:100',
@@ -4181,6 +4183,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'f_mobile' => 'nullable|string|max:10',
             'f_email' => 'nullable|string|max:50',
             'f_dob' => 'nullable|date',
+            'f_blood_group' => 'nullable|string|max:5',
             'parent_adhar_no' => 'nullable|string|max:14',
             'mother_name' => 'nullable|string|max:100',
             'mother_occupation' => 'nullable|string|max:100',
@@ -4188,6 +4191,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'm_office_tel' => 'nullable|string|max:11',
             'm_mobile' => 'nullable|string|max:10',
             'm_dob' => 'nullable|date',
+            'm_blood_group' => 'nullable|string|max:5',
             'm_emailid' => 'nullable|string|max:50',
             'm_adhar_no' => 'nullable|string|max:14',
         
@@ -4225,7 +4229,12 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         Log::info("student ID before trim: {$studentId}");
         // Retrieve the token payload
         $payload = getTokenPayload($request);
-        $academicYr = $payload->get('academic_year');
+        if (!$payload) {
+            //return response()->json(['error' => 'Invalid or missing token'], 401);
+        }else{
+            $academicYr = $payload->get('academic_year');
+        }
+        $academicYr ='2023-2024';
 
         Log::info("Academic year: {$academicYr} for student ID: {$studentId}");
 
@@ -4249,9 +4258,13 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         Log::info("Message 1 {$isModified} ");
         // If any of the fields are modified, set 'is_modify' to 'Y'
         if ($isModified) {
-            $validatedData['is_modify'] = 'Y';
+            Log::info("Message 1.5 Inside if ");
+            $validatedData['isModify'] = 'Y';
+        }else{
+            Log::info("Message 1.5 Inside else ");
+            $validatedData['isModify'] = 'N';
         }
-        Log::info("Message 2 {$validatedData['is_modify']} ");
+        //Log::info("Message 2 {$validatedData['isModify']} ");
         // Handle student image if provided
         // if ($request->hasFile('student_image')) {
         //     $image = $request->file('student_image');
@@ -4341,9 +4354,10 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 }
 
                 // If the record doesn't exist, create a new one with parent_id as the id
-                DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+                DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
                     $parentId,                
                     $validatedData['f_mobile'],
+                    $validatedData['m_mobile'],
                     $validatedData['f_email'],
                     $validatedData['m_emailid']  // sms_consent
                 ]);
@@ -4398,16 +4412,17 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     // If the record exists, update the contact details
                     $contactDetails->update([
                         'phone_no' => $phoneNo,
-                        'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
+                        'alternate_phone_no' => $parent->m_mobile, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid // Mother's email
                          // Store consent for SMS
                     ]);
                 } else {
                     // If the record doesn't exist, create a new one with parent_id as the id
-                    DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
-                        $student->parent_id,                
+                    DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+                        $parentId,                
                         $parent->f_mobile,
+                        $parent->m_mobile,
                         $parent->f_email,
                         $parent->m_emailid // sms_consent
                     ]);
