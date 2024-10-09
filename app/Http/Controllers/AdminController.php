@@ -4215,7 +4215,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 $validatedData[$field] = strtoupper(trim($validatedData[$field]));
             }
         }
-
+ 
         // Additional fields for parent model that need to be converted to uppercase
         $parentFieldsToUpper = [
             'father_name', 'mother_name', 'f_blood_group', 'm_blood_group', 'student_blood_group'
@@ -4390,13 +4390,15 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             // Update parent details if provided
             $parent = Parents::find($parentId);
             if ($parent) {
+                Log::info("msggg1");
                 $parent->update($request->only([
                     'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
                     'f_mobile', 'f_email', 'parent_adhar_no', 'mother_name',
                     'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
                     'm_emailid', 'm_adhar_no','m_dob','f_dob'
                 ]));
-
+                
+                Log::info("msggg2");
                 // Determine the phone number based on the 'SetToReceiveSMS' input
                 $phoneNo = null;
                 if ($request->input('SetToReceiveSMS') == 'Father') {
@@ -4404,11 +4406,12 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 } elseif ($request->input('SetToReceiveSMS') == 'Mother') {
                     $phoneNo = $parent->m_mobile;
                 }
-
+                Log::info("msggg3");
                 // Check if a record already exists with parent_id as the id
                 $contactDetails = ContactDetails::find($parentId);
                 $phoneNo1 = $parent->f_mobile;
                 if ($contactDetails) {
+                    Log::info("msggg4");
                     // If the record exists, update the contact details
                     $contactDetails->update([
                         'phone_no' => $phoneNo,
@@ -4418,6 +4421,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                          // Store consent for SMS
                     ]);
                 } else {
+                    Log::info("msggg5");
                     // If the record doesn't exist, create a new one with parent_id as the id
                     DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
                         $parentId,                
