@@ -2326,7 +2326,7 @@ public function toggleActiveStudent($studentId)
                         'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid, // Mother's email
-                        'sms_consent' => 'y', // Store consent for SMS
+                        'sms_consent' => 'Y', // Store consent for SMS
                     ]);
                 } else {
                     // If the record doesn't exist, create a new one with parent_id as the id
@@ -2335,7 +2335,7 @@ public function toggleActiveStudent($studentId)
                         $parent->f_mobile,
                         $parent->f_email,
                         $parent->m_emailid,
-                        'y', // sms_consent
+                        'Y', // sms_consent
                     ]);
                 }
 
@@ -4144,36 +4144,44 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'first_name' => 'nullable|string|max:100',
             'mid_name' => 'nullable|string|max:100',
             'last_name' => 'nullable|string|max:100',
-            'house' => 'nullable|string|max:100',
+            
             'student_name' => 'nullable|string|max:100',
             'dob' => 'nullable|date',
+            'gender' => 'nullable|string',
             'admission_date' => 'nullable|date',
             'stud_id_no' => 'nullable|string|max:25',
-            'stu_aadhaar_no' => 'nullable|string|max:14',
-            'gender' => 'nullable|string',
-            'blood_group' => 'nullable|string|max:5',
             'mother_tongue' => 'nullable|string|max:20',
             'birth_place' => 'nullable|string|max:50',
-            'admission_class' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'roll_no' => 'nullable|max:11',
+            'admission_class' => 'nullable|string|max:7',
+            'roll_no' => 'nullable|max:4',
             'class_id' => 'nullable|integer',
             'section_id' => 'nullable|integer',
-            'religion' => 'nullable|string|max:255',
+            'blood_group' => 'nullable|string|max:5',
+            'religion' => 'nullable|string|max:100',
             'caste' => 'nullable|string|max:100',
-            'subcaste' => 'nullable|string|max:255',
+            'subcaste' => 'nullable|string|max:100',
+            'transport_mode' => 'nullable|string|max:100',
             'vehicle_no' => 'nullable|string|max:13',
             'emergency_name' => 'nullable|string|max:100',
             'emergency_contact' => 'nullable|string|max:11',
             'emergency_add' => 'nullable|string|max:200',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
+            'has_specs' => 'nullable|string|max:1',
             'allergies' => 'nullable|string|max:200',
             'nationality' => 'nullable|string|max:100',
-            'pincode' => 'nullable|max:11',
+            'permant_add' => 'nullable|string|max:200',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'pincode' => 'nullable|max:6',
+            'reg_no' => 'nullable|max:10',
+            'house' => 'nullable|string|max:1',
+            'stu_aadhaar_no' => 'nullable|string|max:14',
+            'category' => 'nullable|string|max:8',
             'image_name' => 'nullable|string',
-            'has_specs' => 'nullable|string|max:1',
+            'udise_pen_no' => 'nullable|string|max:11',
+            
+           
                    
             // Parent model fields
             'father_name' => 'nullable|string|max:100',
@@ -4190,9 +4198,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'm_office_add' => 'nullable|string|max:200',
             'm_office_tel' => 'nullable|string|max:11',
             'm_mobile' => 'nullable|string|max:10',
+            'm_emailid' => 'nullable|string|max:50',
             'm_dob' => 'nullable|date',
             'm_blood_group' => 'nullable|string|max:5',
-            'm_emailid' => 'nullable|string|max:50',
             'm_adhar_no' => 'nullable|string|max:14',
         
             // Preferences for SMS and email as username
@@ -4207,7 +4215,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         $fieldsToUpper = [
             'first_name', 'mid_name', 'last_name', 'house', 'emergency_name', 
             'emergency_contact', 'nationality', 'city', 'state', 'birth_place', 
-            'mother_tongue', 'father_name', 'mother_name', 'vehicle_no', 'caste'
+            'mother_tongue', 'father_name', 'mother_name', 'vehicle_no', 'caste', 'blood_group'
         ];
 
         foreach ($fieldsToUpper as $field) {
@@ -4218,7 +4226,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
  
         // Additional fields for parent model that need to be converted to uppercase
         $parentFieldsToUpper = [
-            'father_name', 'mother_name', 'f_blood_group', 'm_blood_group', 'student_blood_group'
+            'father_name', 'mother_name', 'f_blood_group', 'm_blood_group'
         ];
 
         foreach ($parentFieldsToUpper as $field) {
@@ -4395,8 +4403,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
                     'f_mobile', 'f_email', 'parent_adhar_no', 'mother_name',
                     'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
-                    'm_emailid', 'm_adhar_no','m_dob','f_dob'
+                    'm_emailid', 'm_adhar_no','m_dob','f_dob','f_blood_group','m_blood_group'
                 ]));
+
                 
                 Log::info("msggg2");
                 // Determine the phone number based on the 'SetToReceiveSMS' input
