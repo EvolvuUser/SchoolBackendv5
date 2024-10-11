@@ -200,6 +200,11 @@ Route::get('/getParentInfoOfStudent/{siblingStudentId}', [AdminController::class
 Route::delete('/deleteNewstudent/{studentId}', [AdminController::class, 'deleteNewStudent']); 
 Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 'updateNewStudentAndParentData']);   
 
+//routes for the Allot Class teacher 
+Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
+Route::put('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
+//Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
+
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

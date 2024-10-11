@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
 use App\Models\BankAccountName;
 use Illuminate\Validation\Rule;
 use App\Models\SubjectAllotment;
+use App\Models\Class_teachers;
 use Illuminate\Http\JsonResponse;
 use App\Mail\TeacherBirthdayEmail;
 use Illuminate\Support\Collection;
@@ -4480,6 +4481,67 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
     }
     // return response()->json($request->all());
 
+}
+
+public function getClassteacherList(Request $request)
+{
+    $payload = getTokenPayload($request);  
+    $academicYr = $payload->get('academic_year');
+    //$class_teachers =Class_teachers::where('academic_yr', $academicYr)
+    //                 ->orderBy('section_id')  //order 
+    //                 ->get();
+    //return response()->json($class_teachers);
+
+    $query = Class_teachers::with('getClass', 'getDivision', 'getTeacher')
+            ->where('academic_yr', $academicYr);
+
+    $class_teachers = $query->
+                             orderBy('section_id', 'DESC') // multiple section_id, sm_id
+                             ->get();
+                             
+    return response()->json($class_teachers);
+}
+
+public function saveClassTeacher(Request $request)
+{
+    $payload = getTokenPayload($request);  
+    $academicYr = $payload->get('academic_year');
+    $messages = [
+        'class_id.required' => 'Class field is required.',
+        'section_id.required' => 'Section field is required.',
+        'teacher_id.required' => 'Teacher field is required.',
+     ];
+
+    try {
+        $validatedData = $request->validate([
+            'class_id' => [
+                'required'
+            ],
+            'section_id' => [
+                'required'
+            ],
+            'teacher_id' => [
+                'required'
+            ],
+        ], $messages);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => 422,
+            'errors' => $e->errors(),
+        ], 422);
+    }
+
+    $class_teacher = new Class_teachers();
+    $class_teacher->class_id = $validatedData['class_id'];
+    $class_teacher->section_id = $validatedData['section_id'];
+    $class_teacher->teacher_id = $validatedData['teacher_id'];
+    $class_teacher->academic_yr = $academicYr;
+    $class_teacher->save();
+
+    return response()->json([
+        'status' => 201,
+        'message' => 'Class teacher is alloted successfully',
+    ], 201);
 }
 
 }
