@@ -4117,12 +4117,13 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
             'parent.m_office_add',
             'parent.m_office_tel',
             'parent.m_mobile',
+            'parent.m_emailid',
             'parent.parent_adhar_no',
             'parent.m_adhar_no',
             'parent.f_dob',
             'parent.m_dob',
             'parent.f_blood_group',
-            'parent.m_blood_group',
+            'parent.m_blood_group',	
         ])
         ->join('student as s', 's.parent_id', '=', 'parent.parent_id')
          ->where('s.student_id', $siblingStudentId)
