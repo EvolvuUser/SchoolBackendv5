@@ -4551,9 +4551,72 @@ public function saveClassTeacher(Request $request)
             'message' => 'Class teacher already alloted.',
         ], 404);
     }
-    
+}    
+    public function updateClassTeacher(Request $request, $class_id, $section_id)
+    {
+        $messages = [
+            'class_id.required' => 'Class field is required.',
+            'section_id.required' => 'Section field is required.',
+            'teacher_id.required' => 'Teacher field is required.'
+        ];
 
+        try {
+            $validatedData = $request->validate([
+                'class_id' => [
+                'required'
+            ],
+            'section_id' => [
+                'required'
+            ],
+            'teacher_id' => [
+                'required'
+            ],
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+        $teacher_id= $validatedData['teacher_id'];
+        $class_teacher = Class_teachers::where('class_id', $validatedData['class_id'])->where('section_id', $validatedData['section_id'])->first();
+
+        if (!$class_teacher) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Class teacher data not found',
+            ], 404);
+        }else{
+            $class_teacher_updated =Class_teachers::where(['class_id'=>$validatedData['class_id'],'section_id'=>$validatedData['section_id']])->update(['teacher_id'=>$teacher_id]);
+            //$class_teacher->teacher_id = $validatedData['teacher_id'];
+            //$class_teacher->save();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Class teacher updated successfully',
+            ], 200);
+        }
+    }
+
+public function deleteClassTeacher($class_id, $section_id)
+{
+    $class_teacher = Class_teachers::where('class_id', $class_id)->where('section_id', $section_id)->first();
+
+    if (!$class_teacher) {
+        return response()->json([
+            'status' => 404,
+            'message' => 'Class teacher data not found',
+        ]);
+    }else{
     
+        //$class_teacher->delete();
+        $class_teacher_deleted =Class_teachers::where(['class_id'=>$class_id,'section_id'=>$section_id])->delete();
+            
+        return response()->json([
+            'status' => 200,
+            'message' => 'Class teacher data deleted successfully',
+            'success' => true
+        ]);
+    }
 }
-
 }
