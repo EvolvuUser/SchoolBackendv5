@@ -202,7 +202,7 @@ Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 
 
 //routes for the Allot Class teacher 
 Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
-Route::put('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
+Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
 
