@@ -4536,12 +4536,24 @@ public function saveClassTeacher(Request $request)
     $class_teacher->section_id = $validatedData['section_id'];
     $class_teacher->teacher_id = $validatedData['teacher_id'];
     $class_teacher->academic_yr = $academicYr;
-    $class_teacher->save();
+    // Check if Class teacher exists, if not, create one
+    
+    $existing_classteacher = Class_teachers::where('class_id', $validatedData['class_id'])->where('section_id', $validatedData['section_id'])->first();
+    if (!$existing_classteacher) {
+        $class_teacher->save();
+        return response()->json([
+            'status' => 201,
+            'message' => 'Class teacher is alloted successfully.',
+        ], 201);
+    }else{
+        return response()->json([
+            'error' => 404,
+            'message' => 'Class teacher already alloted.',
+        ], 404);
+    }
+    
 
-    return response()->json([
-        'status' => 201,
-        'message' => 'Class teacher is alloted successfully',
-    ], 201);
+    
 }
 
 }
