@@ -4618,5 +4618,19 @@ public function deleteClassTeacher($class_id, $section_id)
             'success' => true
         ]);
     }
+}public function editClassteacher($class_id,$section_id)
+{
+    $class_teacher =Class_teachers::where('class_id', $class_id)->where('section_id', $section_id)->first();
+          
+    if (!$class_teacher) {
+        return response()->json([
+            'status' => 404,
+            'message' => 'Class teacher data not found',
+        ]);
+    }
+
+    return response()->json($class_teacher);
 }
+
+
 }
