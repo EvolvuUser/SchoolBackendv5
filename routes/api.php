@@ -203,6 +203,7 @@ Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 
 //routes for the Allot Class teacher 
 Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
 Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
+Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'editClassTeacher']);
 Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
 Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
        
