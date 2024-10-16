@@ -6,6 +6,7 @@
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\LoginController;
+    use App\Http\Controllers\AssessmentController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -207,6 +208,13 @@ Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'ed
 Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
 Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
        
+//routes for the Marks headings
+Route::get('/get_Markheadingslist', [AssessmentController::class, 'getMarksheadingsList']);
+Route::post('/save_Markheadings', [AssessmentController::class, 'saveMarksheadings']);
+Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'editMarkheadings']);
+Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
+Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
+      
 
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
