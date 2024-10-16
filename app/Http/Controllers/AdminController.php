@@ -17,7 +17,7 @@ use App\Models\Division;
 use App\Mail\WelcomeEmail;
 use App\Models\Attendence;
 use App\Models\UserMaster;
-use App\Models\MarkHeading;
+use App\Models\MarksHeadings;
 use App\Models\StaffNotice;
 use Illuminate\Http\Request;
 use App\Models\SubjectMaster;
@@ -3589,7 +3589,7 @@ public function deleteSubjectAllotmentforReportcard($sub_reportcard_id)
     }
 
     // // Check if the subject allotment is associated with any MarkHeading
-    // $isAssociatedWithMarkHeading = MarkHeading::where('sub_reportcard_id', $sub_reportcard_id)->exists();
+    // $isAssociatedWithMarkHeading = MarksHeadings::where('sub_reportcard_id', $sub_reportcard_id)->exists();
 
     // if ($isAssociatedWithMarkHeading) {
     //     return response()->json(['error' => 'Cannot delete: Subject allotment is associated with a Mark Heading'], 400);
@@ -4618,7 +4618,9 @@ public function deleteClassTeacher($class_id, $section_id)
             'success' => true
         ]);
     }
-}public function editClassteacher($class_id,$section_id)
+}
+
+public function editClassteacher($class_id,$section_id)
 {
     $class_teacher =Class_teachers::where('class_id', $class_id)->where('section_id', $section_id)->first();
           
