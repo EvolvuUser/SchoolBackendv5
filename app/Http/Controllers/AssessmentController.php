@@ -195,7 +195,7 @@ class AssessmentController extends Controller
         try {
             $validatedData = $request->validate([
                 'class_id' => [
-                    'required'
+                    'required|array,'
                 ],
                 'subject_type' => [
                     'required'
@@ -220,30 +220,30 @@ class AssessmentController extends Controller
             ], 422);
         }
     
-        $grades = new Grades();
-        $grades->class_id = trim($validatedData['class_id']);
-        $grades->subject_type = $validatedData['subject_type'];
-        $grades->name = $validatedData['name'];
-        $grades->mark_from = trim($validatedData['mark_from']);
-        $grades->mark_upto = $validatedData['mark_upto'];
-        $grades->comment = $validatedData['comment'];
-        $grades->academic_yr = $academicYr;
-
         
-        $existing_grades = Grades::where('name', $validatedData['name'])->where('class_id', $validatedData['class_id'])->where('subject_type', $validatedData['subject_type'])->first();
-        if (!$existing_grades) {
-            $grades->save();
-            return response()->json([
-                'status' => 201,
-                'message' => 'Grade is saved successfully.',
-            ], 201);
-        }else{
-            return response()->json([
-                'error' => 404,
-                'message' => 'Grade already exists.',
-            ], 404);
+        $class_id_list = $request->input('class_id');
+        foreach ($class_id_list as $class_id) {
+            $grades = new Grades();
+            $grades->class_id = $class_id;
+            $grades->subject_type = $validatedData['subject_type'];
+            $grades->name = $validatedData['name'];
+            $grades->mark_from = $validatedData['mark_from'];
+            $grades->mark_upto = $validatedData['mark_upto'];
+            $grades->comment = $validatedData['comment'];
+            $grades->academic_yr = $academicYr;
+
+            
+            $existing_grades = Grades::where('name', $validatedData['name'])->where('class_id', $validatedData['class_id'])->where('subject_type', $validatedData['subject_type'])->first();
+            if (!$existing_grades) {
+                $grades->save();
+                return response()->json([
+                    'status' => 201,
+                    'message' => 'Grade is saved successfully.',
+                ], 201);
+            }
         }
     }    
+    
     public function updateGrades(Request $request, $grade_id)
     {
         $payload = getTokenPayload($request);  
