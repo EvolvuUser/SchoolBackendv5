@@ -1943,7 +1943,28 @@ public function getStudentListBySection(Request $request)
             // Set a default image if no image is available
             $student->image_name = asset('storage/uploads/student_image/default.png');
         }
+
+        $contactDetails = ContactDetails::find($student->parent_id);
+        //echo $student->parent_id."<br/>";
+        if ($contactDetails===null) {
+            $student->SetToReceiveSMS='';
+        }else{
+            
+            $student->SetToReceiveSMS=$contactDetails->phone_no;
+
+        }
+       
+        if ($student->user_master===null) {
+            $student->SetEmailIDAsUsername='';
+        }else{
+            
+            $student->SetEmailIDAsUsername=$student->user_master->user_id;
+
+        }
+        
     });
+
+    
 
     return response()->json([
         'students' => $students,
@@ -2327,7 +2348,7 @@ public function toggleActiveStudent($studentId)
                         'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid, // Mother's email
-                        'sms_consent' => 'Y', // Store consent for SMS
+                        'sms_consent' => 'N', // Store consent for SMS
                     ]);
                 } else {
                     // If the record doesn't exist, create a new one with parent_id as the id
@@ -2336,7 +2357,7 @@ public function toggleActiveStudent($studentId)
                         $parent->f_mobile,
                         $parent->f_email,
                         $parent->m_emailid,
-                        'Y', // sms_consent
+                        'N', // sms_consent
                     ]);
                 }
 
