@@ -215,6 +215,13 @@ Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'e
 Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
 Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
       
+//routes for the Marks headings
+Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
+Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
+Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
+Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
+Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);     
+      
 
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
