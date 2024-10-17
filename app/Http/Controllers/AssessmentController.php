@@ -14,6 +14,7 @@ use App\Models\Teacher;
 use App\Models\Division;
 use App\Models\MarksHeadings;
 use App\Models\SubjectForReportCard;
+use App\Models\Grades;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -171,5 +172,174 @@ class AssessmentController extends Controller
         return response()->json($marks_headings);
     }
 
+    public function getGradesList(Request $request)
+    {
+         
+        $grades = Grades::orderBy('grade_id')->get();
+        
+        return response()->json($grades);
+    }
+    
+    public function saveGrades(Request $request)
+    {
+        $payload = getTokenPayload($request);  
+        $academicYr = $payload->get('academic_year');
+        $messages = [
+            'class_id.required' => 'Class field is required.',
+            'subject_type.required' => 'Subject type is required.',
+            'name.required' => 'Name is required.',
+            'mark_from.required' => 'Marks from is required.',
+            'mark_upto.required' => 'Marks upto is required.'
+           ];
+    
+        try {
+            $validatedData = $request->validate([
+                'class_id' => [
+                    'required'
+                ],
+                'subject_type' => [
+                    'required'
+                ],
+                'name' => [
+                    'required'
+                ],
+                'mark_from' => [
+                    'required'
+                ],
+                'mark_upto' => [
+                    'required'
+                ],
+                'comment' => [
+                    'nullable'
+                ],
+            ], $messages);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+    
+        $grades = new Grades();
+        $grades->class_id = trim($validatedData['class_id']);
+        $grades->subject_type = $validatedData['subject_type'];
+        $grades->name = $validatedData['name'];
+        $grades->mark_from = trim($validatedData['mark_from']);
+        $grades->mark_upto = $validatedData['mark_upto'];
+        $grades->comment = $validatedData['comment'];
+        $grades->academic_yr = $academicYr;
+
+        
+        $existing_grades = Grades::where('name', $validatedData['name'])->where('class_id', $validatedData['class_id'])->where('subject_type', $validatedData['subject_type'])->first();
+        if (!$existing_grades) {
+            $grades->save();
+            return response()->json([
+                'status' => 201,
+                'message' => 'Grade is saved successfully.',
+            ], 201);
+        }else{
+            return response()->json([
+                'error' => 404,
+                'message' => 'Grade already exists.',
+            ], 404);
+        }
+    }    
+    public function updateGrades(Request $request, $grade_id)
+    {
+        $payload = getTokenPayload($request);  
+        $academicYr = $payload->get('academic_year');
+        $messages = [
+            'class_id.required' => 'Class field is required.',
+            'subject_type.required' => 'Subject type is required.',
+            'name.required' => 'Name is required.',
+            'mark_from.required' => 'Marks from is required.',
+            'mark_upto.required' => 'Marks upto is required.'
+        ];
+
+        try {
+            $validatedData = $request->validate([
+                'class_id' => [
+                'required'
+            ],
+            'subject_type' => [
+                'required'
+            ],
+            'name' => [
+                'required'
+            ],
+            'mark_from' => [
+                'required'
+            ],
+            'mark_upto' => [
+                'required'
+            ],
+            'comment' => [
+                'nullable'
+            ],
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $grades = Grades::find($grade_id);
+        if (!$grades) {
+            return response()->json(['message' => 'Grade not found', 'success' => false], 404);
+        }
+        
+        // Update the Marksheading
+        $grades->class_id = trim($validatedData['class_id']);
+        $grades->subject_type = $validatedData['subject_type'];
+        $grades->name = $validatedData['name'];
+        $grades->mark_from = trim($validatedData['mark_from']);
+        $grades->mark_upto = $validatedData['mark_upto'];
+        $grades->comment = $validatedData['comment'];
+        $grades->academic_yr = $academicYr;
+        $grades->save();
+    
+        // Return success response
+        return response()->json([
+            'status' => 200,
+            'message' => 'Grade updated successfully',
+        ]);
+
+    }
+    
+    public function deleteGrades($grade_id)
+    {
+        $grades = Grades::find($grade_id);
+    
+        if (!$grades) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Grade not found',
+            ]);
+        }else{
+        
+            $grades->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Grade data deleted successfully',
+                'success' => true
+            ]);
+        }
+    }
+    
+    public function editGrades($grade_id)
+    {
+        $grades = Grades::find($grade_id);
+              
+        if (!$grades) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Grade data not found',
+            ]);
+        }
+    
+        return response()->json($grades);
+    }
 
 }
