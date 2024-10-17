@@ -182,6 +182,7 @@ class AssessmentController extends Controller
     
     public function saveGrades(Request $request)
     {
+        $status_msg="";
         $payload = getTokenPayload($request);  
         $academicYr = $payload->get('academic_year');
         $messages = [
@@ -191,11 +192,34 @@ class AssessmentController extends Controller
             'mark_from.required' => 'Marks from is required.',
             'mark_upto.required' => 'Marks upto is required.'
            ];
-    
+
+        // Validate the request parameters
+        $request->validate([
+            'subject_type'     => 'required|string',
+            'class_id'      => 'array',
+            'class_id.*'    => 'integer',
+            'name'     => 'required|string',
+            'mark_from'     => 'required|integer',
+            'mark_upto'     => 'required|integer',
+            'comment'     => 'nullable|string',
+        ]);
+
+        // Log the incoming request
+        Log::info('Received request to create/update subject allotment', [
+            'class_id' => $request->input('class_id'),
+            'subject_type' => $request->input('subject_type'),
+            'name' => $request->input('name'),
+            'mark_upto' => $request->input('mark_upto'),
+            'mark_from' => $request->input('mark_from'),
+            'comment' => $request->input('comment'),
+        ]);
+
+
+    /*
         try {
             $validatedData = $request->validate([
                 'class_id' => [
-                    'required|array,'
+                    'array,'
                 ],
                 'subject_type' => [
                     'required'
@@ -219,31 +243,33 @@ class AssessmentController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         }
-    
+    */
         
         $class_id_list = $request->input('class_id');
         foreach ($class_id_list as $class_id) {
             $grades = new Grades();
             $grades->class_id = $class_id;
-            $grades->subject_type = $validatedData['subject_type'];
-            $grades->name = $validatedData['name'];
-            $grades->mark_from = $validatedData['mark_from'];
-            $grades->mark_upto = $validatedData['mark_upto'];
-            $grades->comment = $validatedData['comment'];
+            $grades->subject_type = $request->input('subject_type'); //$validatedData['subject_type'];
+            $grades->name = $request->input('name');//$validatedData['name'];
+            $grades->mark_from = $request->input('mark_from');//$validatedData['mark_from'];
+            $grades->mark_upto = $request->input('mark_upto');//$validatedData['mark_upto'];
+            $grades->comment = $request->input('comment');//$validatedData['comment'];
             $grades->academic_yr = $academicYr;
 
-            
-            $existing_grades = Grades::where('name', $validatedData['name'])->where('class_id', $validatedData['class_id'])->where('subject_type', $validatedData['subject_type'])->first();
+            $existing_grades = Grades::where('name', $request->input('name'))->where('class_id', $class_id)->where('subject_type', $request->input('subject_type'))->first();
             if (!$existing_grades) {
                 $grades->save();
-                return response()->json([
-                    'status' => 201,
-                    'message' => 'Grade is saved successfully.',
-                ], 201);
+                $status_msg="Grade is saved successfully.";
+                
             }
+
         }
+        return response()->json([
+            'status' => 201,
+            'message' => $status_msg,
+        ], 201);
     }    
-    
+
     public function updateGrades(Request $request, $grade_id)
     {
         $payload = getTokenPayload($request);  
