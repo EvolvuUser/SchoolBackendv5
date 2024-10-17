@@ -199,8 +199,8 @@ class AssessmentController extends Controller
             'class_id'      => 'array',
             'class_id.*'    => 'integer',
             'name'     => 'required|string',
-            'mark_from'     => 'required|integer',
-            'mark_upto'     => 'required|integer',
+            'mark_from'     => 'required',
+            'mark_upto'     => 'required',
             'comment'     => 'nullable|string',
         ]);
 
