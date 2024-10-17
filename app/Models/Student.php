@@ -93,7 +93,7 @@ class Student extends Model
         return $this->belongsTo(Parents::class, 'parent_id');
     }
     public function userMaster(){
-        return $this->belongsTo(UserMaster::class,'parent_id','reg_id');
+        return $this->belongsTo(UserMaster::class,'parent_id','reg_id')->where('role_id','=', 'P');
     }
     
     // public function userMaster(){
