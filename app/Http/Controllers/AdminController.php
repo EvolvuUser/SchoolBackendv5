@@ -2454,20 +2454,23 @@ public function checkUserId($studentId, $userId)
         }
 
         $savedUserId = $parentUser->user_id;
+        //if current user id and the user id in the database are different then check for duplicate
         if($userId<>$savedUserId){
-            $userExists = UserMaster::where('reg_id',$parentId)
-            ->where('user_id', $userId)
-            ->where('role_id','P');
+            $userExists = UserMaster::where('user_id',$userId)
+            ->where('role_id','P')->first();
 
             if ($userExists) {
-                Log::info("User ID exists . DUplicate User id {$studentId}");
+                //echo "User ID exists . Duplicate User id {$userId}".$parentId;
+                Log::info("User ID exists . DUplicate User id {$userId}");
                 return response()->json(['exists' => true], 200);
             } else {
-                Log::info("User ID does not exist: {$studentId}");
+                //echo "User ID does not exist: {$userId}".$parentId;
+                Log::info("User ID does not exist: {$userId}");
                 return response()->json(['exists' => false], 200);
             }
         } else {
-            Log::info("User ID does not exist: {$studentId}");
+            //echo "Else User ID does not exist: {$userId}".$parentId;
+            Log::info("Else User ID does not exist: {$userId}");
             return response()->json(['exists' => false], 200);
         }
     } catch (\Exception $e) {

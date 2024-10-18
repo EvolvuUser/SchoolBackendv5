@@ -175,8 +175,12 @@ class AssessmentController extends Controller
     public function getGradesList(Request $request)
     {
          
-        $grades = Grades::orderBy('grade_id')->get();
+        //$grades = Grades::orderBy('grade_id')->get();
         
+        $query = Grades::with('Class');
+        $grades = $query->orderBy('grade_id', 'DESC') 
+                             ->get();
+ 
         return response()->json($grades);
     }
     
