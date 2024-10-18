@@ -1954,11 +1954,14 @@ public function getStudentListBySection(Request $request)
 
         }
        
-        if ($student->user_master===null) {
+
+        $userMaster = UserMaster::where('role_id','P')
+                                    ->where('reg_id', $student->parent_id)->first();
+        if ($userMaster===null) {
             $student->SetEmailIDAsUsername='';
         }else{
             
-            $student->SetEmailIDAsUsername=$student->user_master->user_id;
+            $student->SetEmailIDAsUsername=$userMaster->user_id;
 
         }
         
