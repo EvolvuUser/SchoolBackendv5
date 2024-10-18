@@ -15,6 +15,7 @@ use App\Models\Division;
 use App\Models\MarksHeadings;
 use App\Models\SubjectForReportCard;
 use App\Models\Grades;
+use App\Models\Exams;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -370,6 +371,170 @@ class AssessmentController extends Controller
         }
     
         return response()->json($grades);
+    }
+
+    public function getExamsList(Request $request)
+    {
+        $payload = getTokenPayload($request);  
+        $academicYr = $payload->get('academic_year');
+
+        $exams = Exams::where('academic_yr', $academicYr)->orderBy('name', 'asc')->get();
+       
+        return response()->json($exams);
+    }
+    
+    public function saveExams(Request $request)
+    {
+        $payload = getTokenPayload($request);  
+        $academicYr = $payload->get('academic_year');
+        $messages = [
+            'name.required' => 'Name field is required.',
+            'term_id.required' => 'Term is required.',
+            'start_date.required' => 'Start date is required.',
+            'end_date.required' => 'End date is required.',
+            'open_day.required' => 'Open day date is required.'
+          ];
+    
+        try {
+            $validatedData = $request->validate([
+                'name' => [
+                    'required'
+                ],
+                'term_id' => [
+                    'required'
+                ],
+                'start_date' => [
+                    'required'
+                ],
+                'end_date' => [
+                    'required'
+                ],
+                'open_day' => [
+                    'required'
+                ],
+                'comment' => [
+                    'string'
+                ],
+            ], $messages);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+    
+        $exams = new Exams();
+        $exams->name = trim($validatedData['name']);
+        $exams->term_id = $validatedData['term_id'];
+        $exams->start_date = $validatedData['start_date'];
+        $exams->end_date = $validatedData['end_date'];
+        $exams->open_day = $validatedData['open_day'];
+        $exams->comment = $validatedData['comment'];
+        $exams->academic_yr = $academicYr;
+
+        $exams->save();
+        return response()->json([
+                'status' => 201,
+                'message' => 'Exam is saved successfully.',
+            ], 201);
+        
+    }    
+    public function updateExam(Request $request, $exam_id)
+    {
+        $payload = getTokenPayload($request);  
+        $academicYr = $payload->get('academic_year');
+        $messages = [
+            'name.required' => 'Name field is required.',
+            'term_id.required' => 'Term is required.',
+            'start_date.required' => 'Start date is required.',
+            'end_date.required' => 'End date is required.',
+            'open_day.required' => 'Open day date is required.'
+        ];
+
+        try {
+            $validatedData = $request->validate([
+                'name' => [
+                    'required'
+                ],
+                'term_id' => [
+                    'required'
+                ],
+                'start_date' => [
+                    'required'
+                ],
+                'end_date' => [
+                    'required'
+                ],
+                'open_day' => [
+                    'required'
+                ],
+                'comment' => [
+                    'string'
+                ],
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $exams = Exams::find($exam_id);
+        if (!$exams) {
+            return response()->json(['message' => 'Exam not found', 'success' => false], 404);
+        }
+        
+        // Update the Exam
+        $exams->name = trim($validatedData['name']);
+        $exams->term_id = $validatedData['term_id'];
+        $exams->start_date = $validatedData['start_date'];
+        $exams->end_date = $validatedData['end_date'];
+        $exams->open_day = $validatedData['open_day'];
+        $exams->comment = $validatedData['comment'];
+        $exams->academic_yr = $academicYr;
+        $exams->save();
+    
+        // Return success response
+        return response()->json([
+            'status' => 200,
+            'message' => 'Exam updated successfully',
+        ]);
+
+    }
+    
+    public function deleteExam($exam_id)
+    {
+        $exams = Exams::find($exam_id);
+    
+        if (!$exams) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Exam not found',
+            ]);
+        }else{
+        
+            $exams->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Exam data deleted successfully',
+                'success' => true
+            ]);
+        }
+    }
+    
+    public function editExam($exam_id)
+    {
+        $exams = Exams::find($exam_id);
+              
+        if (!$exams) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Exam data not found',
+            ]);
+        }
+    
+        return response()->json($exams);
     }
 
 }

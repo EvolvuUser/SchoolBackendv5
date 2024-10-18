@@ -220,7 +220,14 @@ Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
 Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
 Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
 Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
-Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);     
+Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
+
+//routes for the Exams
+Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
+Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
+Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
+Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
+Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
       
 
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
