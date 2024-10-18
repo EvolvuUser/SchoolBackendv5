@@ -2454,7 +2454,7 @@ public function checkUserId($studentId, $userId)
         }
 
         $savedUserId = $parentUser->user_id;
-        if(userId<>$savedUserId){
+        if($userId<>$savedUserId){
             $userExists = UserMaster::where('reg_id',$parentId)
             ->where('user_id', $userId)
             ->where('role_id','P');
