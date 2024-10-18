@@ -2444,16 +2444,15 @@ public function checkUserId($studentId, $userId)
             ->where('reg_id', $parentId)
             ->first();
 
-          
-
-            // return response()->json($parentUser);
-
+        // return response()->json($parentUser);
+        
         if (!$parentUser) {
-            Log::error("User not found for parent_id: {$parentId}");
-            return response()->json(['error' => 'User not found for the given parent ID'], 404);
+            //Log::error("User not found for parent_id: {$parentId}");
+            //return response()->json(['error' => 'User not found for the given parent ID'], 404);
+            $savedUserId ="";
+        }else{
+            $savedUserId = $parentUser->user_id;
         }
-
-        $savedUserId = $parentUser->user_id;
         //if current user id and the user id in the database are different then check for duplicate
         if($userId<>$savedUserId){
             $userExists = UserMaster::where('user_id',$userId)
