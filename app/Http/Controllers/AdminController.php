@@ -2460,12 +2460,15 @@ public function checkUserId($studentId, $userId)
             ->where('role_id','P');
 
             if ($userExists) {
-                Log::info("User ID exists and is not excluded for student ID: {$studentId}");
+                Log::info("User ID exists . DUplicate User id {$studentId}");
                 return response()->json(['exists' => true], 200);
             } else {
-                Log::info("User ID does not exist or is excluded for student ID: {$studentId}");
+                Log::info("User ID does not exist: {$studentId}");
                 return response()->json(['exists' => false], 200);
             }
+        } else {
+            Log::info("User ID does not exist: {$studentId}");
+            return response()->json(['exists' => false], 200);
         }
     } catch (\Exception $e) {
         Log::error("Error checking user ID: " . $e->getMessage());
