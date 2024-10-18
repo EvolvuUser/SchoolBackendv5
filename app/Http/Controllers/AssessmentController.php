@@ -320,10 +320,10 @@ class AssessmentController extends Controller
         }
         
         // Update the Marksheading
-        $grades->class_id = trim($validatedData['class_id']);
+        $grades->class_id = $validatedData['class_id'];
         $grades->subject_type = $validatedData['subject_type'];
         $grades->name = $validatedData['name'];
-        $grades->mark_from = trim($validatedData['mark_from']);
+        $grades->mark_from = $validatedData['mark_from'];
         $grades->mark_upto = $validatedData['mark_upto'];
         $grades->comment = $validatedData['comment'];
         $grades->academic_yr = $academicYr;
