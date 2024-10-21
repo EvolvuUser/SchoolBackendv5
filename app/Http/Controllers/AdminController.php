@@ -2283,7 +2283,7 @@ public function toggleActiveStudent($studentId)
             // }
 
             //echo "msg7";
-            /*if ($request->has('image_name')) {
+            if ($request->has('image_name')) {
                 $newImageData = $request->input('image_name');
             
                 if (!empty($newImageData)) {
@@ -2315,7 +2315,7 @@ public function toggleActiveStudent($studentId)
                     }
                 }
             }
-            */
+            
             //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
