@@ -223,6 +223,7 @@ Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGra
 Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
 
 //routes for the Exams
+Route::get('/get_Term', [AssessmentController::class, 'getTerm']);
 Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
 Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
 Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
