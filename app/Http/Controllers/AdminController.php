@@ -2149,7 +2149,8 @@ public function toggleActiveStudent($studentId)
         try {
             // Log the start of the request
             Log::info("Starting updateStudentAndParent for student ID: {$studentId}");
-
+            //echo "Starting updateStudentAndParent for student ID: {$studentId}";
+            DB::enableQueryLog();
             // Validate the incoming request for all fields
             $validatedData = $request->validate([
                 // Student model fields
@@ -2211,7 +2212,7 @@ public function toggleActiveStudent($studentId)
 
             Log::info("Validation passed for student ID: {$studentId}");
             Log::info("Validation passed for student ID: {$request->SetEmailIDAsUsername}");
-
+            //echo "Validation passed for student ID: {$studentId}";
             // Convert relevant fields to uppercase
             $fieldsToUpper = [
                 'first_name', 'mid_name', 'last_name', 'house', 'emergency_name', 
@@ -2224,31 +2225,31 @@ public function toggleActiveStudent($studentId)
                     $validatedData[$field] = strtoupper(trim($validatedData[$field]));
                 }
             }
-
+            //echo "msg1";
             // Additional fields for parent model that need to be converted to uppercase
             $parentFieldsToUpper = [
                 'father_name', 'mother_name', 'f_blood_group', 'm_blood_group', 'student_blood_group'
             ];
-
+            //echo "msg2";
             foreach ($parentFieldsToUpper as $field) {
                 if (isset($validatedData[$field])) {
                     $validatedData[$field] = strtoupper(trim($validatedData[$field]));
                 }
             }
-
+            //echo "msg3";
             // Retrieve the token payload
             $payload = getTokenPayload($request);
             $academicYr = $payload->get('academic_year');
 
             Log::info("Academic year: {$academicYr} for student ID: {$studentId}");
-
+            //echo "msg4";
             // Find the student by ID
             $student = Student::find($studentId);
             if (!$student) {
                 Log::error("Student not found: ID {$studentId}");
                 return response()->json(['error' => 'Student not found'], 404);
             }
-
+            //echo "msg5";
             // Check if specified fields have changed
             $fieldsToCheck = ['first_name', 'mid_name', 'last_name', 'class_id', 'section_id', 'roll_no'];
             $isModified = false;
@@ -2259,7 +2260,7 @@ public function toggleActiveStudent($studentId)
                     break;
                 }
             }
-
+            //echo "msg6";
             // If any of the fields are modified, set 'is_modify' to 'Y'
             if ($isModified) {
                 $validatedData['is_modify'] = 'Y';
@@ -2281,8 +2282,8 @@ public function toggleActiveStudent($studentId)
             //     Log::info("Image uploaded for student ID: {$studentId}");
             // }
 
-
-            if ($request->has('image_name')) {
+            //echo "msg7";
+            /*if ($request->has('image_name')) {
                 $newImageData = $request->input('image_name');
             
                 if (!empty($newImageData)) {
@@ -2314,17 +2315,19 @@ public function toggleActiveStudent($studentId)
                     }
                 }
             }
-            
-    
+            */
+            //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
-
+            
             // Update student information
             $student->update($validatedData);
+            //echo $student->toSql();
             Log::info("Student information updated for student ID: {$studentId}");
-
+            //echo "msg9";
             // Handle parent details if provided
             $parent = Parents::find($student->parent_id);
+            //echo "msg10";
             if ($parent) {
                 $parent->update($request->only([
                     'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
@@ -2332,7 +2335,7 @@ public function toggleActiveStudent($studentId)
                     'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
                     'm_emailid', 'm_adhar_no','m_dob','f_dob'
                 ]));
-
+                //echo "msg11";
                 // Determine the phone number based on the 'SetToReceiveSMS' input
                 $phoneNo = null;
                 if ($request->input('SetToReceiveSMS') == 'Father') {
@@ -2340,7 +2343,7 @@ public function toggleActiveStudent($studentId)
                 } elseif ($request->input('SetToReceiveSMS') == 'Mother') {
                     $phoneNo = $parent->m_mobile;
                 }
-
+                //echo "msg12";
                 // Check if a record already exists with parent_id as the id
                 $contactDetails = ContactDetails::find($student->parent_id);
                 $phoneNo1 = $parent->f_mobile;
@@ -2351,8 +2354,9 @@ public function toggleActiveStudent($studentId)
                         'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid, // Mother's email
-                        'sms_consent' => 'N', // Store consent for SMS
+                        'sms_consent' => 'N' // Store consent for SMS
                     ]);
+                    //echo "msg13";
                 } else {
                     // If the record doesn't exist, create a new one with parent_id as the id
                     DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid, sms_consent) VALUES (?, ?, ?, ?, ?)', [
@@ -2360,8 +2364,9 @@ public function toggleActiveStudent($studentId)
                         $parent->f_mobile,
                         $parent->f_email,
                         $parent->m_emailid,
-                        'N', // sms_consent
+                        'N' // sms_consent
                     ]);
+                    //echo "msg14";
                 }
 
                 // Update email ID as username preference
