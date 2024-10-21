@@ -16,6 +16,7 @@ use App\Models\MarksHeadings;
 use App\Models\SubjectForReportCard;
 use App\Models\Grades;
 use App\Models\Exams;
+use App\Models\Term;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -371,6 +372,13 @@ class AssessmentController extends Controller
         }
     
         return response()->json($grades);
+    }
+
+    public function getTerm(Request $request)
+    {
+        $term = Term::orderBy('term_id')->get();
+       
+        return response()->json($term);
     }
 
     public function getExamsList(Request $request)

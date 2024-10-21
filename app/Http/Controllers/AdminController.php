@@ -2281,7 +2281,7 @@ public function toggleActiveStudent($studentId)
             //     $validatedData['image_name'] = $imageName;
             //     Log::info("Image uploaded for student ID: {$studentId}");
             // }
-
+            /*
             //echo "msg7";
             if ($request->has('image_name')) {
                 $newImageData = $request->input('image_name');
@@ -2315,7 +2315,7 @@ public function toggleActiveStudent($studentId)
                     }
                 }
             }
-            
+            */
             //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
