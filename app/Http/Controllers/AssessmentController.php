@@ -648,7 +648,8 @@ class AssessmentController extends Controller
     
     public function editAllotMarkheadings($allot_markheadings_id)
     {
-        $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
+        $allot_mark_heading = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('allot_markheadings_id', $allot_markheadings_id)->get();
+        
               
         if (!$allot_mark_heading) {
             return response()->json([
