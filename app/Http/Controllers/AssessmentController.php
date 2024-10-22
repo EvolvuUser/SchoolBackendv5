@@ -17,6 +17,7 @@ use App\Models\SubjectForReportCard;
 use App\Models\Grades;
 use App\Models\Exams;
 use App\Models\Term;
+use App\Models\Allot_mark_headings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -545,4 +546,153 @@ class AssessmentController extends Controller
         return response()->json($exams);
     }
 
+    public function getAllotMarkheadingsList(Request $request)
+    {
+        $payload = getTokenPayload($request);
+        if (!$payload) {
+            return response()->json(['error' => 'Invalid or missing token'], 401);
+        }
+        $academicYr = $payload->get('academic_year');
+                
+        $allot_mark_headings = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('academic_yr', $academicYr)->get();
+        
+        return response()->json($allot_mark_headings);
+    }
+    
+    public function saveAllotMarkheadings(Request $request)
+    {
+        $payload = getTokenPayload($request);
+        if (!$payload) {
+            return response()->json(['error' => 'Invalid or missing token'], 401);
+        }
+        $academicYr = $payload->get('academic_year');
+
+        $messages = [
+            'class_id.required' => 'Class is required.',
+            'subject_id.required' => 'Subject is required.',
+            'exam_id.required' => 'Exam is required.'
+         ];
+    
+        try {
+            $validatedData = $request->validate([
+                'class_id' => [
+                    'required'
+                ],
+                'subject_id' => [
+                    'required'
+                ],
+                'exam_id' => [
+                    'required'
+                ],
+            ], $messages);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
+        }
+        //Check if allot mark heading exist for selected class_id, sm_id and exam_id
+        $existingMarkheadingsAllotments = Allot_mark_headings::where('class_id',  $request->input('class_id'))
+                                    ->where('sm_id', $request->input('subject_id'))
+                                    ->where('exam_id', $request->input('exam_id'))
+                                    ->where('academic_yr', $academicYr) 
+                                    ->get();
+
+        foreach ($existingMarkheadingsAllotments as $result) {
+            $allot_mark_heading = Allot_mark_headings::find($result->allot_markheadings_id);
+            $allot_mark_heading->delete();
+            
+        }  
+        
+        $highest_marks_allocation_list = $request->input('highest_marks_allocation');
+        
+        foreach ($highest_marks_allocation_list as $highest_marks_allocation) {
+            
+            $allot_mark_heading = new Allot_mark_headings();
+            $allot_mark_heading->class_id = $request->input('class_id');
+            $allot_mark_heading->sm_id = $request->input('subject_id');
+            $allot_mark_heading->exam_id = $request->input('exam_id');
+            $allot_mark_heading->marks_headings_id = $highest_marks_allocation['marks_heading_id'];
+            $allot_mark_heading->highest_marks = $highest_marks_allocation['highest_marks'];
+            $allot_mark_heading->academic_yr = $academicYr;
+            $allot_mark_heading->save();
+            $status_msg="Marks heading is allocated successfully.";
+        }
+        return response()->json([
+            'status' => 201,
+            'message' => $status_msg,
+        ], 201);
+    
+    }   
+    
+    public function deleteAllotMarkheading($allot_markheadings_id)
+    {
+        $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
+    
+        if (!$allot_mark_heading) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Allot markheading not found',
+            ]);
+        }else{
+        
+            $allot_mark_heading->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Allot markheading data deleted successfully',
+                'success' => true
+            ]);
+        }
+    }
+    
+    public function editAllotMarkheadings($allot_markheadings_id)
+    {
+        $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
+              
+        if (!$allot_mark_heading) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Allot markheading data not found',
+            ]);
+        }
+    
+        return response()->json($allot_mark_heading);
+    }
+
+    public function updateAllotMarkheadings(Request $request, $allot_markheadings_id)
+        {
+            $messages = [
+                'highest_marks.required' => 'Highest marks is required.'
+            ];
+    
+            try {
+                $validatedData = $request->validate([
+                    'highest_marks' => [
+                    'required'
+                ]
+                ], $messages);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json([
+                    'status' => 422,
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
+            if (!$allot_mark_heading) {
+                return response()->json(['message' => 'Allot markheading not found', 'success' => false], 404);
+            }
+            
+            // Update the Marksheading
+            $allot_mark_heading->highest_marks = $request->input('highest_marks');
+            $allot_mark_heading->save();
+        
+            // Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Allot markheading data updated successfully',
+            ]);
+
+    }
 }
