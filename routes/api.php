@@ -7,6 +7,7 @@
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\LoginController;
     use App\Http\Controllers\AssessmentController;
+    use App\Http\Controllers\NewController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -94,6 +95,13 @@
         Route::put('/teachers/{id}', [AdminController::class, 'updateStaff']);
         Route::delete('/teachers/{id}', [AdminController::class, 'deleteStaff']);
 
+        //Caretaker Module API
+        Route::get('/caretaker_list',[NewController::class,'getCaretakerList']);
+        Route::post('/store_caretaker',[NewController::class,'storeCaretaker']);
+        Route::get('/care_taker/{id}',[NewController::class,'editCaretaker']);
+        Route::post('/care_taker/{id}',[NewController::class,'updateCaretaker']);
+        Route::delete('/care_taker/{id}', [NewController::class, 'deleteCaretaker']);
+        
         // Roles Routes 
         Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
