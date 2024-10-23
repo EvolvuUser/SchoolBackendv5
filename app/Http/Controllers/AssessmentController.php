@@ -546,7 +546,7 @@ class AssessmentController extends Controller
         return response()->json($exams);
     }
 
-    public function getAllotMarkheadingsList(Request $request)
+    public function getAllotMarkheadingsList(Request $request, $class_id)
     {
         $payload = getTokenPayload($request);
         if (!$payload) {
@@ -554,7 +554,7 @@ class AssessmentController extends Controller
         }
         $academicYr = $payload->get('academic_year');
                 
-        $allot_mark_headings = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('academic_yr', $academicYr)->get();
+        $allot_mark_headings = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('class_id', $class_id)->where('academic_yr', $academicYr)->get();
         
         return response()->json($allot_mark_headings);
     }
