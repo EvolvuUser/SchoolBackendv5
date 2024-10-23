@@ -231,7 +231,7 @@ Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam'
 Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
       
 //routes for the Allot Marks headings
-Route::get('/get_AllotMarkheadingslist', [AssessmentController::class, 'getAllotMarkheadingsList']);
+Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
 Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
 Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
 Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
