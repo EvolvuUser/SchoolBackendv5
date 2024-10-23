@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Teacher;
+use Illuminate\Support\Facades\Validator;
 
 class NewController extends Controller
 {
