@@ -95,13 +95,6 @@
         Route::put('/teachers/{id}', [AdminController::class, 'updateStaff']);
         Route::delete('/teachers/{id}', [AdminController::class, 'deleteStaff']);
 
-        //Caretaker Module API
-        Route::get('/caretaker_list',[NewController::class,'getCaretakerList']);
-        Route::post('/store_caretaker',[NewController::class,'storeCaretaker']);
-        Route::get('/care_taker/{id}',[NewController::class,'editCaretaker']);
-        Route::post('/care_taker/{id}',[NewController::class,'updateCaretaker']);
-        Route::delete('/care_taker/{id}', [NewController::class, 'deleteCaretaker']);
-        
         // Roles Routes 
         Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
@@ -198,6 +191,13 @@
         Route::get('/get_sub_report_allotted/{class_id}/{subject_type}', [AdminController::class, 'editSubjectAllotmentforReportCard']);
         // Route::put('/get_sub_report_allotted/{class_id}', [AdminController::class, 'createOrUpdateSubjectAllotment']);
         Route::post('/subject-allotments-reportcard/{class_id}', [AdminController::class, 'createOrUpdateSubjectAllotment']);
+
+        //Caretaker Module API
+        Route::get('/get_caretaker',[NewController::class,'getCaretakerList']);
+        Route::post('/save_caretaker',[NewController::class,'storeCaretaker']);
+        Route::get('/edit_caretaker/{id}',[NewController::class,'editCaretaker']);
+        Route::post('/update_caretaker/{id}',[NewController::class,'updateCaretaker']);
+        Route::delete('/delete_caretaker/{id}', [NewController::class, 'deleteCaretaker']);
 });
 
 //  API for the New Student list Buulk upload 

@@ -10,7 +10,6 @@ class NewController extends Controller
 {
     public function getCaretakerList(){
         $caretakerlist = Teacher::where('designation', '=', 'Caretaker')
-        ->where('isDelete','N')
         ->get();
         return response()->json($caretakerlist);
     }
