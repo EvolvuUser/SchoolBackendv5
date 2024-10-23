@@ -196,7 +196,7 @@
         Route::get('/get_caretaker',[NewController::class,'getCaretakerList']);
         Route::post('/save_caretaker',[NewController::class,'storeCaretaker']);
         Route::get('/edit_caretaker/{id}',[NewController::class,'editCaretaker']);
-        Route::post('/update_caretaker/{id}',[NewController::class,'updateCaretaker']);
+        Route::put('/update_caretaker/{id}',[NewController::class,'updateCaretaker']);
         Route::delete('/delete_caretaker/{id}', [NewController::class, 'deleteCaretaker']);
 });
 
