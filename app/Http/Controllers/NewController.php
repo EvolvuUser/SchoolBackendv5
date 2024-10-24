@@ -12,7 +12,12 @@ class NewController extends Controller
     public function getCaretakerList(){
         $caretakerlist = Teacher::where('designation', '=', 'Caretaker')
         ->get();
-        return response()->json($caretakerlist);
+        return response()->json([
+                'status'=> 200,
+                'message'=>'Caretaker List',
+                'data' =>$caretakerlist,
+                'success'=>true
+              ]);
     }
 
     public function storeCaretaker(Request $request){
@@ -55,8 +60,10 @@ class NewController extends Controller
             $caretaker->save();
 
             return response()->json([
-                'message' => 'Caretaker created successfully!',
-                'data' => $caretaker
+                'status'=> 201,
+                'message'=>'Caretaker Added successfully.',
+                'data' =>$caretaker,
+                'success'=>true
             ], 201); // 201 Created
             }
             catch (Exception $e) {
@@ -68,12 +75,14 @@ class NewController extends Controller
     public function editCaretaker($id){
             try{
             $caretaker = Teacher::where('designation', '=', 'Caretaker')
-            ->where('isDelete','N')
             ->where('teacher_id',$id)
             ->get();
 
             return response()->json([
-                'caretaker' => $caretaker,
+                'status'=> 200,
+                'message'=>'Caretaker edit successfully',
+                'data' =>$caretaker,
+                'success'=>true
             ], 200);
 
             }
@@ -128,8 +137,10 @@ class NewController extends Controller
             $caretaker->update();
 
             return response()->json([
-                'message' => 'Caretaker updated successfully!',
-                'data' => $caretaker
+                'status'=> 200,
+                'message'=>'Caretaker updated successfully',
+                'data' =>$caretaker,
+                'success'=>true
             ], 201); // 201 Created
             }
             catch (Exception $e) {
@@ -145,8 +156,11 @@ class NewController extends Controller
             $caretaker->save();
 
             return response()->json([
+                'status'=> 200,
                 'message' => 'Caretaker deleted successfully!',
-            ], 201); // 201 Created
+                'data' =>$caretaker,
+                'success'=>true
+            ]); 
             }
             catch (Exception $e) {
                 \Log::error($e); // Log the exception
