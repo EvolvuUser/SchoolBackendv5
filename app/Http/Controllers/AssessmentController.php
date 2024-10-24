@@ -696,4 +696,19 @@ class AssessmentController extends Controller
             ]);
 
     }
+
+    public function getMarkheadingsForClassSubExam($class_id,$subject_id,$exam_id)
+    {
+        $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks']);
+        
+              
+        if (!$allot_mark_heading) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Allot markheading data not found',
+            ]);
+        }
+    
+        return response()->json($allot_mark_heading);
+    }
 }
