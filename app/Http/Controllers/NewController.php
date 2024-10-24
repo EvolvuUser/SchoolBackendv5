@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\Validator;
+use DB;
 
 class NewController extends Controller
 {
@@ -166,6 +167,23 @@ class NewController extends Controller
                 \Log::error($e); // Log the exception
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
             }
+
+     }
+     public function getTeacherCategory(){
+        try{
+            $teacherCategory = DB::table('teacher_category')->get();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Teacher Category List',
+                'data' =>$teacherCategory,
+                'success'=>true
+              ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
 
      }
 }

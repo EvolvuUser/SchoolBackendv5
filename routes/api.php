@@ -198,6 +198,7 @@
         Route::get('/edit_caretaker/{id}',[NewController::class,'editCaretaker']);
         Route::put('/update_caretaker/{id}',[NewController::class,'updateCaretaker']);
         Route::delete('/delete_caretaker/{id}', [NewController::class, 'deleteCaretaker']);
+        Route::get('/get_teachercategory',[NewController::class,'getTeacherCategory']);
 });
 
 //  API for the New Student list Buulk upload 
