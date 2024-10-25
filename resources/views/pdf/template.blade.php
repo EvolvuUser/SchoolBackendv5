@@ -7,7 +7,7 @@
             margin: 0;
         }
         body {
-            background-image: url('http://103.159.85.174:8500/public/bonafide.jpg');
+            background-image: {{ asset('bonafide.jpg') }};
             background-size: cover;
             background-repeat: no-repeat;
         }
