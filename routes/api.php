@@ -8,6 +8,7 @@
     use App\Http\Controllers\LoginController;
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\NewController;
+    use App\Http\Controllers\CertificateController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -199,6 +200,9 @@
         Route::put('/update_caretaker/{id}',[NewController::class,'updateCaretaker']);
         Route::delete('/delete_caretaker/{id}', [NewController::class, 'deleteCaretaker']);
         Route::get('/get_teachercategory',[NewController::class,'getTeacherCategory']);
+
+        //Bonafide Certificate
+        Route::get('/get_srnobonafide/{id}',[CertificateController::class,'getSrnobonafide']);
 });
 
 //  API for the New Student list Buulk upload 
