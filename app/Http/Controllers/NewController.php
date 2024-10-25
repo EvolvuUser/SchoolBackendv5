@@ -178,7 +178,6 @@ class NewController extends Controller
                 'data' =>$teacherCategory,
                 'success'=>true
               ]);
-
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception

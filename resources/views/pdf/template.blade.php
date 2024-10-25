@@ -1,0 +1,57 @@
+<style>
+@page {
+    size: A4;
+    margin-top:0;
+    margin-bottom:0;
+    margin-left:1;
+    margin-right:1;
+    padding: 0;
+  }
+    body{
+    background-image: ;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+    object-fit: cover;
+    background-repeat:no-repeat;
+
+}
+ tr td{
+	padding-top: 3px; 
+	padding-bottom:3px;
+	word-wrap:break-word;
+	font-size:14px;
+ }
+ 
+ 
+</style>
+<html>
+<div class="pdfdiv"> <!--Ends Here -->
+    <center>
+<!--	<div style="width:100%;height:95%;margin: auto;text-align:center;border-style:groove;border:4px groove grey;">-->
+
+<?php 
+//$stud_image = $this->crud_model->get_student_profile_image($stud_id);
+
+?>
+					
+	<br/><center>
+    <div style="width:95%;margin-top:20%;display: inline-block">
+        	<img src=""  class="image_thumbnail studimg" width="100" height="100" style="padding-left: 70%;"/>
+<center><p style="font-size:20px"><b>BONAFIDE CERTIFICATE</b></p></center>
+<center><p style="font-size:20px"><b>To whomsoever it may concern</b></p></center>
+
+<p style="font-size:15px;"> <span style="margin-left:10px;"><b> Ref. No : 110</b></span></p>
+
+<!--<p style="font-size:15px"> <b></span></b></p>-->
+
+<p style="font-size:15px"><span style="margin-left:20px;">This is to certify that Mst/Miss.<b> </span></p>
+<p style="font-size:15px"><span style="">According to our record her date of birth is manish. </span></p>
+<p style="font-size:15px"><span style=""> </span></p>
+<br>
+<p style="font-size:18px"><span style="">Date : <span style="margin-left:50%"> Fr. Sunil Memezes </span></p>
+
+</div>
+</div>
+</html>
