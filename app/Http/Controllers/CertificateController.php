@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use DB;
 use DateTime;
 use Carbon\Carbon;
+use PDF;
 
 class CertificateController extends Controller
 {
@@ -101,6 +102,30 @@ class CertificateController extends Controller
         $dateInWords = "{$dayInWords}  {$month} {$yearInWords}";
     
         return $dateInWords;
+    }
+
+    public function downloadPdf(Request $request){
+        // Sample dynamic data
+        $data = [
+            'title' => $request->input('title', 'Default PDF Title'),
+            'content' => $request->input('content', 'This is the content of the PDF.'),
+            'date' => now()->format('Y-m-d'),
+        ];
+
+        // Load a view and pass the data to it
+        $pdf = PDF::loadView('pdf.template', $data);
+
+        // Download the generated PDF
+        return response()->stream(
+            function () use ($pdf) {
+                echo $pdf->output();
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="document.pdf"',
+            ]
+        );
     }
 
 }
