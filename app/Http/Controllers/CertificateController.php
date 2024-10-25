@@ -8,12 +8,14 @@ use DB;
 use DateTime;
 use Carbon\Carbon;
 use PDF;
+use Illuminate\Support\Facades\Auth;
+use App\Models\BonafideCertificate;
 
 class CertificateController extends Controller
 {
     public function getSrnobonafide($id){
         try{
-            $srnobonafide = DB::table('bonafide_certificate')->first();
+            $srnobonafide = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation=DB::table('student')->where('student_id',$id)->first();
             $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
             $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
@@ -115,13 +117,28 @@ class CertificateController extends Controller
     public function downloadPdf(Request $request){
         // Sample dynamic data
         $data = [
-            'title' => $request->input('title', 'Default PDF Title'),
-            'content' => $request->input('content', 'This is the content of the PDF.'),
-            'date' => now()->format('Y-m-d'),
-        ];
+            'sr_no'=>$request->sr_no,
+            'stud_name'=>$request->stud_name,
+            'father_name'=>$request->father_name,
+            'class_division'=>$request->class_division,
+            'dob'=>$request->dob,
+            'dob_words'=>$request->dob_words,
+            'purpose' =>$request ->purpose,
+            'stud_id' =>$request ->stud_id,
+            'issue_date_bonafide'=>Carbon::today()->format('Y-m-d'),
+            'academic_yr'=>$request->academic_yr,
+            'IsGenerated'=> 'Y',
+            'IsDeleted'  => 'N',
+            'IsIssued'   => 'N',
+            'generated_by'=>Auth::user()->id,
 
+        ];
+        
+        BonafideCertificate::create($data);
+        
+        $data= DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
         // Load a view and pass the data to it
-        $pdf = PDF::loadView('pdf.template', $data);
+        $pdf = PDF::loadView('pdf.template', compact('data'));
 
         // Download the generated PDF
         return response()->stream(

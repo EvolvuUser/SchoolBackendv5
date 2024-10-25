@@ -7,7 +7,7 @@
             margin: 0;
         }
         body {
-            background-image: {{ asset('bonafide.jpg') }};
+            background-image:;
             background-size: cover;
             background-repeat: no-repeat;
         }
@@ -40,11 +40,12 @@
                 <img src="<?php echo $image_url; ?>" class="image_thumbnail studimg" width="100" height="100" />
                 <center><p style="font-size:20px"><b>BONAFIDE CERTIFICATE</b></p></center>
                 <center><p style="font-size:20px"><b>To whomsoever it may concern</b></p></center>
-                <p style="font-size:15px;"><span style="margin-left:10px;"><b>Ref. No: 110</b></span></p>
-                <p style="font-size:15px"><span style="margin-left:20px;">This is to certify that Mst/Miss <b></b>.</span></p>
-                <p style="font-size:15px"><span style="">According to our record, her date of birth is manish.</span></p>
+                <p style="font-size:15px;"><span style="margin-left:10px;"><b>Ref. No: {{$data->sr_no}}</b></span></p>
+                <p style="font-size:15px"><span style="margin-left:20px;">This is to certify that Mst/Miss.<b>{{$data->stud_name}},</b> son /daughter of <b>Mr.{{$data->father_name}}</b>is/was studying in our school in class- {{$data->class_division}} , for the academic year {{$data->academic_yr}}. </span></p>
+                <p style="font-size:15px"><span style="">According to our record her date of birth is {{$data->dob}} {{$data->dob_words}}. </span></p>
+                <p style="font-size:15px"><span style=""> {{$data->purpose}}.</span></p>
                 <br>
-                <p style="font-size:18px"><span style="">Date: <span style="margin-left:50%">Fr. Sunil Memezes</span></span></p>
+                <p style="font-size:18px"><span style="">Date:{{$data->issue_date_bonafide}} <span style="margin-left:50%">Fr. Sunil Memezes</span></span></p>
             </div>
         </center>
     </div>
