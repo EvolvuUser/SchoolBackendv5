@@ -13,44 +13,52 @@ class CertificateController extends Controller
 {
     public function getSrnobonafide($id){
         try{
-        $srnobonafide = DB::table('bonafide_certificate')->first();
-        $studentinformation=DB::table('student')->where('student_id',$id)->first();
-        if (is_null($srnobonafide)) {
-            $data['sr_no'] = '1';
-            $data['date']  = Carbon::today()->format('Y-m-d');
-            $data['studentinformation'] = $studentinformation; 
-        }
-        else{
-            $data['sr_no'] = $srnobonafide->sr_no + 1 ;
-            $data['date']  = Carbon::today()->format('Y-m-d');
-            $data['studentinformation'] = $studentinformation;
-        }
-        $dob_in_words =  $studentinformation->dob;
-        $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
-    
-        // Check if the date is valid
-        if ($dateTime === false) {
-            return 'Invalid date format';
-        }
+            $srnobonafide = DB::table('bonafide_certificate')->first();
+            $studentinformation=DB::table('student')->where('student_id',$id)->first();
+            $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
+            $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
+            
+            
+            if (is_null($srnobonafide)) {
+                $data['sr_no'] = '1';
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation'] = $studentinformation; 
+                $data['classname']=$classname;
+                $data['sectionname']=$sectionname;
+            }
+            else{
+                $data['sr_no'] = $srnobonafide->sr_no + 1 ;
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation'] = $studentinformation;
+                $data['classname']=$classname;
+                $data['sectionname']=$sectionname;
+            }
+            $dob_in_words =  $studentinformation->dob;
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
         
-        // Format the date as 'Day Month Year'
-        $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
-        
-        $dobinwords = $this->convertDateToWords($dateInWords);
-        $data['dobinwords']= $dobinwords;
-       
-        return response()->json([
-            'status'=> 200,
-            'message'=>'Bonafide Certificate SrNo.',
-            'data' =>$data,
-            'success'=>true
-          ]);
-       }
-       catch (Exception $e) {
-        \Log::error($e); // Log the exception
-        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-       }
-    }
+            // Check if the date is valid
+            if ($dateTime === false) {
+                return 'Invalid date format';
+            }
+            
+            // Format the date as 'Day Month Year'
+            $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+            
+            $dobinwords = $this->convertDateToWords($dateInWords);
+            $data['dobinwords']= $dobinwords;
+           
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Certificate SrNo.',
+                'data' =>$data,
+                'success'=>true
+              ]);
+           }
+           catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+        }
 
 
 
