@@ -11,6 +11,7 @@ use PDF;
 use Illuminate\Support\Facades\Auth;
 use App\Models\BonafideCertificate;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CertificateController extends Controller
 {
@@ -117,6 +118,10 @@ class CertificateController extends Controller
 
     public function downloadPdf(Request $request){
         // Sample dynamic data
+
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+
         $data = [
             'sr_no'=>$request->sr_no,
             'stud_name'=>$request->stud_name,
@@ -127,13 +132,14 @@ class CertificateController extends Controller
             'purpose' =>$request ->purpose,
             'stud_id' =>$request ->stud_id,
             'issue_date_bonafide'=>Carbon::today()->format('Y-m-d'),
-            'academic_yr'=>$request->academic_yr,
+            'academic_yr'=>$customClaims,
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
             'IsIssued'   => 'N',
             'generated_by'=>Auth::user()->id,
 
         ];
+        dd($data);
 
         $validator = Validator::make($data, [
             'sr_no' => 'required|unique:bonafide_certificate',
@@ -160,6 +166,40 @@ class CertificateController extends Controller
                 'Content-Disposition' => 'inline; filename="document.pdf"',
             ]
         );
+    }
+
+    public function bonafideCertificateList(Request $request){
+        $searchTerm = $request->query('q');
+
+        
+        $results = BonafideCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
+                  ->get();
+        
+        if($results->isEmpty()){
+            return response()->json([
+            'status'=> 200,
+            'message'=>'No Student Found for this Class',
+            'data' =>$results,
+            'success'=>true
+            ]);
+        }
+        else{
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Student found for this Class are-',
+            'data' => $results,
+            'success'=>true
+            ]);
+        }
+    }
+
+    private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
     }
 
 }
