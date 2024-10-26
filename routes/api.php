@@ -204,6 +204,7 @@
         //Bonafide Certificate
         Route::get('/get_srnobonafide/{id}',[CertificateController::class,'getSrnobonafide']);
         Route::post('/save_pdfbonafide', [CertificateController::class, 'downloadPdf']);
+        Route::get('/get_bonafidecertificatelist',[CertificateController::class,'bonafideCertificateList']);
 });
 
 //  API for the New Student list Buulk upload 
