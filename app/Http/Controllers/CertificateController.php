@@ -139,7 +139,6 @@ class CertificateController extends Controller
             'generated_by'=>Auth::user()->id,
 
         ];
-        dd($data);
 
         $validator = Validator::make($data, [
             'sr_no' => 'required|unique:bonafide_certificate',
