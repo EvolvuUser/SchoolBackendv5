@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use PDF;
 use Illuminate\Support\Facades\Auth;
 use App\Models\BonafideCertificate;
+use Illuminate\Support\Facades\Validator;
 
 class CertificateController extends Controller
 {
@@ -133,6 +134,14 @@ class CertificateController extends Controller
             'generated_by'=>Auth::user()->id,
 
         ];
+
+        $validator = Validator::make($data, [
+            'sr_no' => 'required|unique:bonafide_certificate',
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
         
         BonafideCertificate::create($data);
         
