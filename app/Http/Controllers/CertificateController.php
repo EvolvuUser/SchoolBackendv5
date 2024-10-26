@@ -21,7 +21,7 @@ class CertificateController extends Controller
             $studentinformation=DB::table('student')->where('student_id',$id)->first();
             $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
             $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
-            
+            $parentinformation=DB::table('parent')->where('parent_id',$studentinformation->parent_id)->first();
             
             if (is_null($srnobonafide)) {
                 $data['sr_no'] = '1';
@@ -29,6 +29,7 @@ class CertificateController extends Controller
                 $data['studentinformation'] = $studentinformation; 
                 $data['classname']=$classname;
                 $data['sectionname']=$sectionname;
+                $data['parentinformation']=$parentinformation;
             }
             else{
                 $data['sr_no'] = $srnobonafide->sr_no + 1 ;
@@ -36,6 +37,7 @@ class CertificateController extends Controller
                 $data['studentinformation'] = $studentinformation;
                 $data['classname']=$classname;
                 $data['sectionname']=$sectionname;
+                $data['parentinformation']=$parentinformation;
             }
             $dob_in_words =  $studentinformation->dob;
             $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
