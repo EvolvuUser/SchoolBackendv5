@@ -125,7 +125,6 @@ class CertificateController extends Controller
         $customClaims = JWTAuth::getPayload()->get('academic_yr');
 
         $data = [
-            'sr_no'=>$request->sr_no,
             'stud_name'=>$request->stud_name,
             'father_name'=>$request->father_name,
             'class_division'=>$request->class_division,
@@ -133,7 +132,8 @@ class CertificateController extends Controller
             'dob_words'=>$request->dob_words,
             'purpose' =>$request ->purpose,
             'stud_id' =>$request ->stud_id,
-            'issue_date_bonafide'=>Carbon::today()->format('Y-m-d'),
+            'issue_date_bonafide'=>$request->date,
+            'section_id'=>$request->section_id,
             'academic_yr'=>$customClaims,
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
@@ -141,14 +141,6 @@ class CertificateController extends Controller
             'generated_by'=>Auth::user()->id,
 
         ];
-
-        $validator = Validator::make($data, [
-            'sr_no' => 'required|unique:bonafide_certificate',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
         
         BonafideCertificate::create($data);
         
@@ -201,6 +193,53 @@ class CertificateController extends Controller
         } catch (JWTException $e) {
             return null;
         }
+    }
+
+    public function updateisIssued(Request $request,$sr_no){
+        try{
+        $bondafidecertificateinfo = BonafideCertificate::find($sr_no);
+        $bondafidecertificateinfo->isGenerated = 'N';
+        $bondafidecertificateinfo->isIssued    = 'Y';
+        $bondafidecertificateinfo->isDeleted   = 'N';
+        $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
+        $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+        $bondafidecertificateinfo->update();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Bonafide Certificate Issued Successfully',
+            'data' => $bondafidecertificateinfo,
+            'success'=>true
+            ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function updateisDeleted(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = BonafideCertificate::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'N';
+            $bondafidecertificateinfo->isDeleted   = 'Y';
+            $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Certificate Deleted Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+
     }
 
 }
