@@ -165,7 +165,7 @@ class CertificateController extends Controller
         $searchTerm = $request->query('q');
 
         
-        $results = BonafideCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
+        $results = BonafideCertificate::where('section_id', 'LIKE', "%{$searchTerm}%")
                   ->get();
         
         if($results->isEmpty()){
