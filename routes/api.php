@@ -205,6 +205,8 @@
         Route::get('/get_srnobonafide/{id}',[CertificateController::class,'getSrnobonafide']);
         Route::post('/save_pdfbonafide', [CertificateController::class, 'downloadPdf']);
         Route::get('/get_bonafidecertificatelist',[CertificateController::class,'bonafideCertificateList']);
+        Route::put('/update_isIssued/{sr_no}',[CertificateController::class,'updateisIssued']);
+        Route::put('/update_isDeleted/{sr_no}',[CertificateController::class,'updateisDeleted']);
 });
 
 //  API for the New Student list Buulk upload 
