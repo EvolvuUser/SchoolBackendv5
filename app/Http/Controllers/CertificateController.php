@@ -336,6 +336,85 @@ class CertificateController extends Controller
          }
     }
 
+    public function simplebonafideCertificateList(Request $request){
+        $searchTerm = $request->query('q');
+        try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        
+        $results = SimpleBonafide::where('class_division', 'LIKE', "%{$searchTerm}%")
+                                       ->where('academic_yr','LIKE',"%{$customClaims}%")
+                                       ->get();
+        
+        if($results->isEmpty()){
+            return response()->json([
+            'status'=> 200,
+            'message'=>'No Student Found for this Class',
+            'data' =>$results,
+            'success'=>true
+            ]);
+        }
+        else{
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Student found for this Class are-',
+            'data' => $results,
+            'success'=>true
+            ]);
+          }
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }   
+    }
+
+    public function updatesimpleisIssued(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = SimpleBonafide::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'Y';
+            $bondafidecertificateinfo->isDeleted   = 'N';
+            $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Certificate Issued Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function deletesimpleisDeleted(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = SimpleBonafide::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'N';
+            $bondafidecertificateinfo->isDeleted   = 'Y';
+            $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Certificate Deleted Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
     
 
 }
