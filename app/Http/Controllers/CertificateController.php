@@ -133,7 +133,6 @@ class CertificateController extends Controller
             'purpose' =>$request ->purpose,
             'stud_id' =>$request ->stud_id,
             'issue_date_bonafide'=>$request->date,
-            'section_id'=>$request->section_id,
             'academic_yr'=>$customClaims,
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
@@ -163,10 +162,12 @@ class CertificateController extends Controller
 
     public function bonafideCertificateList(Request $request){
         $searchTerm = $request->query('q');
-
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
         
-        $results = BonafideCertificate::where('section_id', 'LIKE', "%{$searchTerm}%")
-                  ->get();
+        $results = BonafideCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
+                                       ->where('academic_yr','LIKE',"%{$customClaims}%")
+                                       ->get();
         
         if($results->isEmpty()){
             return response()->json([
