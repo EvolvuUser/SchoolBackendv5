@@ -7,7 +7,7 @@
     /*padding: 0;*/
   }
     body{
-    background-image: url('http://103.159.85.174/SchoolBackendv5/public/character_certificate.jpg');
+    background-image: url('http://103.159.85.174/SchoolBackendv5/public/bonafide.jpg');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
