@@ -47,7 +47,7 @@
 <p style="font-size:15px"><span style="">According to our record her date of birth is {{$data->dob}} {{$data->dob_words}}. </span></p>
 <p style="font-size:15px"><span style=""> {{$data->purpose}}.</span></p>
 <br>
-<p style="font-size:18px"><span style="">Date : {{$data->issue_date_bonafide}}<span style="margin-left:50%"> Fr. Sunil Memezes </span></p>
+<p style="font-size:18px"><span style="">Date : {{\Carbon\Carbon::parse($data->issue_date_bonafide)->format('F j, Y')}}<span style="margin-left:50%"> Fr. Sunil Memezes </span></p>
 
 </div>
 </div>
