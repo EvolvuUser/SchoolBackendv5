@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\BonafideCertificate;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Models\SimpleBonafide;
 
 class CertificateController extends Controller
 {
@@ -155,7 +156,7 @@ class CertificateController extends Controller
             200,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="document.pdf"',
+                'Content-Disposition' => 'inline; filename="Bonafide_Certificate.pdf"',
             ]
         );
     }
@@ -250,7 +251,7 @@ class CertificateController extends Controller
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
             ->join('section', 'section.section_id', '=', 'student.section_id')
             ->join('class', 'class.class_id', '=', 'student.class_id')
-            ->select('class.*', 'section.*', 'parent.*', 'student.*') // Adjust select as needed
+            ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
             ->first();
 
             if (is_null($srnosimplebonafide)) {
@@ -283,6 +284,51 @@ class CertificateController extends Controller
             'data' =>$data,
             'success'=>true
          ]);      
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function downloadsimplePdf(Request $request){
+        try{
+
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        $data = [
+            'stud_name'=>$request->stud_name,
+            'father_name'=>$request->father_name,
+            'class_division'=>$request->class_division,
+            'dob'=>$request->dob,
+            'dob_words'=>$request->dob_words,
+            'stud_id' =>$request ->stud_id,
+            'issue_date_bonafide'=>$request->date,
+            'academic_yr'=>$customClaims,
+            'IsGenerated'=> 'Y',
+            'IsDeleted'  => 'N',
+            'IsIssued'   => 'N',
+            'generated_by'=>Auth::user()->id,
+
+        ];
+        
+        SimpleBonafide::create($data);
+        
+        $data= DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+        // Load a view and pass the data to it
+        $pdf = PDF::loadView('pdf.simplebonafide', compact('data'));
+        // Download the generated PDF
+        return response()->stream(
+            function () use ($pdf) {
+                echo $pdf->output();
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="Bonafide_Certificate.pdf"',
+            ]
+        );
+
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception

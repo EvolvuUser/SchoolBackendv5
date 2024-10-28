@@ -210,6 +210,10 @@
 
         //Simple Bonafide Certificate
         Route::get('/get_srnosimplebonafide/{id}',[CertificateController::class,'getSrnosimplebonafide']);
+        Route::post('/save_pdfsimplebonafide', [CertificateController::class, 'downloadsimplePdf']);
+        Route::get('/get_simplebonafidecertificatelist',[CertificateController::class,'simplebonafideCertificateList']);
+        Route::put('/update_simpleisIssued/{sr_no}',[CertificateController::class,'updatesimpleisIssued']);
+        Route::delete('/delete_simpleisDeleted/{sr_no}',[CertificateController::class,'deletesimpleisDeleted']);
         
 });
 
