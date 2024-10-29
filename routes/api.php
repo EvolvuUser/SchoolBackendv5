@@ -217,7 +217,11 @@
         
         //Bonafide Caste Certificate
         Route::get('/get_srnocastebonafide/{id}',[CertificateController::class,'getSrnocastebonafide']);
-});
+        Route::post('/save_pdfcastebonafide',[CertificateController::class,'downloadcastePDF']);
+        Route::get('/get_castebonafidecertificatelist',[CertificateController::class,'castebonafideCertificateList']);
+        Route::put('/update_casteisIssued/{sr_no}',[CertificateController::class,'updatecasteisIssued']);
+        Route::delete('/delete_casteisDeleted/{sr_no}',[CertificateController::class,'deletecasteisDeleted']);
+    });
 
 //  API for the New Student list Buulk upload 
 Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
