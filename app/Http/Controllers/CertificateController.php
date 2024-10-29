@@ -636,4 +636,5 @@ class CertificateController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
              }
     }
+
 }
