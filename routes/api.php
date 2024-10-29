@@ -215,6 +215,8 @@
         Route::put('/update_simpleisIssued/{sr_no}',[CertificateController::class,'updatesimpleisIssued']);
         Route::delete('/delete_simpleisDeleted/{sr_no}',[CertificateController::class,'deletesimpleisDeleted']);
         
+        //Bonafide Caste Certificate
+        Route::get('/get_srnocastebonafide/{id}',[CertificateController::class,'getSrnocastebonafide']);
 });
 
 //  API for the New Student list Buulk upload 
