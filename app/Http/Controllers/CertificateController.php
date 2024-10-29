@@ -20,6 +20,14 @@ class CertificateController extends Controller
         try{
             $srnobonafide = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation=DB::table('student')->where('student_id',$id)->first();
+            if(is_null($studentinformation)){
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student information is not there',
+                    'data' =>$studentinformation,
+                    'success'=>true
+                 ]);
+              }
             $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
             $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
             $parentinformation=DB::table('parent')->where('parent_id',$studentinformation->parent_id)->first();
@@ -251,8 +259,18 @@ class CertificateController extends Controller
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
             ->join('section', 'section.section_id', '=', 'student.section_id')
             ->join('class', 'class.class_id', '=', 'student.class_id')
+            ->where('student_id',$id)
             ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
             ->first();
+
+            if(is_null($studentinformation)){
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student information is not there',
+                    'data' =>$studentinformation,
+                    'success'=>true
+                 ]);
+              }
 
             if (is_null($srnosimplebonafide)) {
                 $data['sr_no'] = '1';
@@ -415,6 +433,60 @@ class CertificateController extends Controller
              }
     }
 
+    public function getSrnocastebonafide($id){
+        try{
+            $srnosimplebonafide = DB::table('bonafide_caste_certificate')->orderBy('sr_no', 'desc')->first();
+            $studentinformation = DB::table('student')
+            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+            ->join('section', 'section.section_id', '=', 'student.section_id')
+            ->join('class', 'class.class_id', '=', 'student.class_id')
+            ->where('student_id',$id)
+            ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+            ->first();
+            if(is_null($studentinformation)){
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student information is not there',
+                    'data' =>$studentinformation,
+                    'success'=>true
+                 ]);
+              }
+
+            if (is_null($srnosimplebonafide)) {
+                $data['sr_no'] = '1';
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+            }
+            else{
+                $data['sr_no'] = $srnosimplebonafide->sr_no + 1 ;
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+            }
+            $dob_in_words =  $studentinformation->dob;
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
     
+        // Check if the date is valid
+        if ($dateTime === false) {
+            return 'Invalid date format';
+        }
+        
+        // Format the date as 'Day Month Year'
+        $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+        
+        $dobinwords = $this->convertDateToWords($dateInWords);
+        $data['dobinwords']= $dobinwords;
+       
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Bonafide Caste Certificate SrNo.',
+            'data' =>$data,
+            'success'=>true
+         ]);      
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
 
 }
