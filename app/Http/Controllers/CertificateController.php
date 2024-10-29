@@ -13,6 +13,7 @@ use App\Models\BonafideCertificate;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\SimpleBonafide;
+use App\Models\CasteBonafide;
 
 class CertificateController extends Controller
 {
@@ -489,4 +490,150 @@ class CertificateController extends Controller
          }
     }
 
+    public function downloadcastePDF(Request $request){
+        try{
+
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $data = [
+                'reg_no' => $request->reg_no,
+                'stud_name'=>$request->stud_name,
+                'father_name'=>$request->father_name,
+                'class_division'=>$request->class_division,
+                'caste'=> $request->caste,
+                'religion'=>$request->religion,
+                'birth_place'=>$request->birth_place,
+                'dob'=>$request->dob,
+                'dob_words'=>$request->dob_words,
+                'stud_id_no'=>$request->stud_id_no,
+                'stu_aadhaar_no'=>$request->stu_aadhaar_no,
+                'admission_class_when'=>$request->admission_class_when,
+                'nationality'=>$request->nationality,
+                'prev_school_class'=>$request->prev_school_class,
+                'admission_date'=>$request->admission_date,
+                'class_when_learning'=>$request->class_when_learning,
+                'progress'=>$request->progress,
+                'behaviour'=>$request->behaviour,
+                'leaving_reason'=>$request->leaving_reason,
+                'lc_date_n_no' => $request->lc_date_n_no,
+                'subcaste' =>$request->subcaste,
+                'mother_tongue'=>$request->mother_tongue,
+                'stud_id' =>$request ->stud_id,
+                'issue_date_bonafide'=>$request->date,
+                'academic_yr'=>$customClaims,
+                'IsGenerated'=> 'Y',
+                'IsDeleted'  => 'N',
+                'IsIssued'   => 'N',
+                'generated_by'=>Auth::user()->id,
+    
+            ];
+            
+            CasteBonafide::create($data);
+            
+            $data= DB::table('bonafide_caste_certificate')
+                    ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
+                    ->join('parent','parent.parent_id','=','student.parent_id')
+                    ->select('bonafide_caste_certificate.*','parent.mother_name')
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+           // Load a view and pass the data to it
+            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function castebonafideCertificateList(Request $request){
+        $searchTerm = $request->query('q');
+        try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        
+        $results = CasteBonafide::where('class_division', 'LIKE', "%{$searchTerm}%")
+                                       ->where('academic_yr','LIKE',"%{$customClaims}%")
+                                       ->get();
+        
+        if($results->isEmpty()){
+            return response()->json([
+            'status'=> 200,
+            'message'=>'No Student Found for this Class',
+            'data' =>$results,
+            'success'=>true
+            ]);
+        }
+        else{
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Student found for this Class are-',
+            'data' => $results,
+            'success'=>true
+            ]);
+          }
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }   
+    }
+    
+    public function updatecasteisIssued(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = CasteBonafide::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'Y';
+            $bondafidecertificateinfo->isDeleted   = 'N';
+            $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Caste Certificate Issued Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+    }
+
+    public function deletecasteisDeleted(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = CasteBonafide::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'N';
+            $bondafidecertificateinfo->isDeleted   = 'Y';
+            $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Caste Certificate Deleted Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
 }
