@@ -719,7 +719,7 @@ class CertificateController extends Controller
             $data= DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'));
+            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','portrait');
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
