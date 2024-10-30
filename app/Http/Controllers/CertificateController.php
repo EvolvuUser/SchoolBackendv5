@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\SimpleBonafide;
 use App\Models\CasteBonafide;
+use App\Models\CharacterCertificate;
 
 class CertificateController extends Controller
 {
@@ -626,6 +627,186 @@ class CertificateController extends Controller
             return response()->json([
                 'status'=> 200,
                 'message'=>'Bonafide Caste Certificate Deleted Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function getSrnocharacterbonafide($id){
+        try{
+            $srnosimplebonafide = DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
+            $studentinformation = DB::table('student')
+            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+            ->join('section', 'section.section_id', '=', 'student.section_id')
+            ->join('class', 'class.class_id', '=', 'student.class_id')
+            ->where('student_id',$id)
+            ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+            ->first();
+            if(is_null($studentinformation)){
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student information is not there',
+                    'data' =>$studentinformation,
+                    'success'=>true
+                 ]);
+              }
+            if (is_null($srnosimplebonafide)) {
+                $data['sr_no'] = '1';
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+            }
+            else{
+                $data['sr_no'] = $srnosimplebonafide->sr_no + 1 ;
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+            }
+            $dob_in_words =  $studentinformation->dob;
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+    
+        // Check if the date is valid
+        if ($dateTime === false) {
+            return 'Invalid date format';
+        }
+        
+        // Format the date as 'Day Month Year'
+        $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+        
+        $dobinwords = $this->convertDateToWords($dateInWords);
+        $data['dobinwords']= $dobinwords;
+       
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Bonafide Character Certificate SrNo.',
+            'data' =>$data,
+            'success'=>true
+         ]);      
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function downloadcharacterPDF(Request $request){
+        try{
+
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $data = [
+                'stud_name'=>$request->stud_name,
+                'class_division'=>$request->class_division,
+                'dob'=>$request->dob,
+                'dob_words'=>$request->dob_words,
+                'attempt' =>$request->attempt,
+                'stud_id' =>$request ->stud_id,
+                'issue_date_bonafide'=>$request->date,
+                'academic_yr'=>$customClaims,
+                'IsGenerated'=> 'Y',
+                'IsDeleted'  => 'N',
+                'IsIssued'   => 'N',
+                'generated_by'=>Auth::user()->id,
+    
+            ];
+            
+            CharacterCertificate::create($data);
+            
+            $data= DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'));
+            $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function characterbonafideCertificateList(Request $request){
+        $searchTerm = $request->query('q');
+        try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        
+        $results = CharacterCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
+                                       ->where('academic_yr','LIKE',"%{$customClaims}%")
+                                       ->get();
+        
+        if($results->isEmpty()){
+            return response()->json([
+            'status'=> 200,
+            'message'=>'No Student Found for this Class',
+            'data' =>$results,
+            'success'=>true
+            ]);
+        }
+        else{
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Student found for this Class are-',
+            'data' => $results,
+            'success'=>true
+            ]);
+          }
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }   
+    }
+    public function updatecharacterisIssued(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = CharacterCertificate::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'Y';
+            $bondafidecertificateinfo->isDeleted   = 'N';
+            $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Character Certificate Issued Successfully',
+                'data' => $bondafidecertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+    }
+
+    public function deletecharacterisDeleted(Request $request,$sr_no){
+        try{
+            $bondafidecertificateinfo = CharacterCertificate::find($sr_no);
+            $bondafidecertificateinfo->isGenerated = 'N';
+            $bondafidecertificateinfo->isIssued    = 'N';
+            $bondafidecertificateinfo->isDeleted   = 'Y';
+            $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
+            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Character Certificate Deleted Successfully',
                 'data' => $bondafidecertificateinfo,
                 'success'=>true
                 ]);
