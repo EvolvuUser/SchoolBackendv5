@@ -22,21 +22,7 @@ class NewController extends Controller
     }
 
     public function storeCaretaker(Request $request){
-            $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:255',
-                'birthday' => 'required|date',
-                'date_of_joining' => 'required|date',
-                'academic_qual' => 'required|string|max:255',
-                'aadhar_card_no' => 'required|string|unique:teacher,aadhar_card_no',
-                'sex' => 'required|string',
-                'address' => 'required|string',
-                'phone' => 'required|string|unique:teacher,phone',
-                'employee_id' => 'required|string|unique:teacher,employee_id',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
+            
             try{
             $caretaker = new Teacher();
             $caretaker->name=$request->name;
@@ -98,22 +84,6 @@ class NewController extends Controller
 
     public function updateCaretaker(Request $request,$id){
             $caretaker = Teacher::find($id);
-            $validator = Validator::make($request->all(),[
-            
-                'name' => 'sometimes|required|string|max:255',
-                'birthday' => 'sometimes|required|date',
-                'date_of_joining' => 'sometimes|required|date',
-                'academic_qual' => 'sometimes|required|string|max:255',
-                'aadhar_card_no' => 'sometimes|required',
-                'sex' => 'sometimes|required|string',
-                'address' => 'sometimes|required|string',
-                'phone' => 'sometimes|required',
-                'employee_id' => 'sometimes|required',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
             try{
             
             $caretaker->name=$request->name;
