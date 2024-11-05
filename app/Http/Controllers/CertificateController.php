@@ -912,6 +912,7 @@ class CertificateController extends Controller
             'stud_name' => $request->stud_name,
             'class_division' => $request->class_division,
             'percentage' => $request->percentage,
+            'total' => $request->total,
             'stud_id' => $request->stud_id,
             'certi_issue_date' => $request->date,
             'academic_yr'=>$customClaims,
@@ -932,7 +933,24 @@ class CertificateController extends Controller
             }
 
             PercentageMarksCertificate::insert($marksData);
-            return response()->json('data saved successfully');
+            $data= DB::table('percentage_certificate')
+                   ->join('student','student.student_id','=','percentage_certificate.stud_id')
+                   ->select('percentage_certificate.roll_no as rollno','percentage_certificate.*','student.*')
+                   ->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
             }
             catch (Exception $e) {
                 \Log::error($e); // Log the exception
