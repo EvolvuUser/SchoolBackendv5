@@ -228,6 +228,14 @@
         Route::get('/get_characterbonafidecertificatelist',[CertificateController::class,'characterbonafideCertificateList']);
         Route::put('/update_characterisIssued/{sr_no}',[CertificateController::class,'updatecharacterisIssued']);
         Route::delete('/delete_characterisDeleted/{sr_no}',[CertificateController::class,'deletecharacterisDeleted']);
+
+        //Bonafide Percentage Certificate
+        Route::get('get_srnopercentagebonafide/{id}',[CertificateController::class,'getSrnopercentagebonafide']);
+        Route::post('save_pdfpercentagebonafide',[CertificateController::class,'downloadpercentagePDF']);
+        Route::get('/get_percentagebonafidecertificatelist',[CertificateController::class,'percentagebonafideCertificateList']);
+        Route::put('/update_percentageisIssued/{sr_no}',[CertificateController::class,'updatepercentageisIssued']);
+        Route::delete('/delete_percentageisDeleted/{sr_no}',[CertificateController::class,'deletepercentageisDeleted']);
+
     });
 
 //  API for the New Student list Buulk upload 
