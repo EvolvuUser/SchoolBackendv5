@@ -844,7 +844,7 @@ class CertificateController extends Controller
                 $data['studentinformation']=$studentinformation;
                 if($studentinformation->classname == "10"){
                    $class10subjects = DB::table('class10_subject_master')->get();
-                   $data['class10subjects'] = $class10subjects;
+                   $data['classsubject'] = $class10subjects;
                    $count = count($class10subjects);
                    $data['subjectCount'] = $count;
                 }
@@ -858,8 +858,29 @@ class CertificateController extends Controller
                     ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id','shsm.name as subject_name', 'shsm.subject_type','shs_op.name as optional_sub_name','stream.stream_name')
                     ->where('shs.student_id', $id)
                     ->get();
-                    $data['classsubject'] = $result;
-                    $count = count($result);
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'c_sm_id' => $results->sm_hsc_id,
+                            'name' => $results->subject_name,
+                        ];
+                    });
+                    $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                               ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                               ->select('shs.opt_subject_id','shsm.name')
+                               ->where('shs.student_id',$id)
+                               ->get();
+                        $result1 = $result1->map(function ($results1) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'c_sm_id' => $results1->opt_subject_id,
+                            'name' => $results1->name,
+                        ];
+                        });
+                        $mergedResult = $result->merge($result1);
+
+                    $data['classsubject'] = $mergedResult;
+                    $count = count($mergedResult);
                     $data['subjectCount'] = $count;
                     
                 }
@@ -870,7 +891,7 @@ class CertificateController extends Controller
                 $data['studentinformation']=$studentinformation;
                 if($studentinformation->classname == "10"){
                     $class10subjects = DB::table('class10_subject_master')->get();
-                    $data['class10subjects'] = $class10subjects;
+                    $data['classsubject'] = $class10subjects;
                     $count = count($class10subjects);
                     $data['subjectCount'] = $count;
                  }
@@ -884,9 +905,30 @@ class CertificateController extends Controller
                     ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
                     ->where('shs.student_id', $id)
                     ->get();
-                   $data['classsubject'] = $result;
-                   $count = count($result);
-                   $data['subjectCount'] = $count;
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'c_sm_id' => $results->sm_hsc_id,
+                            'name' => $results->subject_name,
+                        ];
+                    });
+                    $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                               ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                               ->select('shs.opt_subject_id','shsm.name')
+                               ->where('shs.student_id',$id)
+                               ->get();
+                        $result1 = $result1->map(function ($results1) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'c_sm_id' => $results1->opt_subject_id,
+                            'name' => $results1->name,
+                        ];
+                        });
+                        $mergedResult = $result->merge($result1);
+
+                    $data['classsubject'] = $mergedResult;
+                    $count = count($mergedResult);
+                    $data['subjectCount'] = $count;
                  }
             }
             return response()->json([
@@ -901,6 +943,7 @@ class CertificateController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
          }
     }
+    
     public function downloadpercentagePDF(Request $request){
         try{
             $user = $this->authenticateUser();
