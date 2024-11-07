@@ -1974,6 +1974,38 @@ public function getStudentListBySection(Request $request)
     ]);
 }
 
+public function getStudentListBySectionData(Request $request){
+    try{
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+        $sectionId = $request->query('section_id');
+        if(!$sectionId){
+            $student = DB::table('student')
+                ->where('academic_yr',$academicYr)
+                ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
+                ->get();
+        }
+        else{
+            $student = DB::table('student')
+                         ->where('academic_yr',$academicYr)
+                         ->where('section_id',$sectionId)
+                         ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
+                         ->get();
+        }
+         
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Student Information',
+            'data' =>$student,
+            'success'=>true
+         ]);
+    }
+    catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+     }
+}
+
 
 //  get the student list by there id  with the parent details 
 // public function getStudentById($studentId)
