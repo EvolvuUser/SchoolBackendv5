@@ -237,6 +237,11 @@
         Route::put('/update_percentageisIssued/{sr_no}',[CertificateController::class,'updatepercentageisIssued']);
         Route::delete('/delete_percentageisDeleted/{sr_no}',[CertificateController::class,'deletepercentageisDeleted']);
 
+        //Generate Leaving Certificate
+        Route::get('get_srnoleavingcertificatedata/{id}',[CertificateController::class,'getSrnoLeavingCertificate']);
+        Route::get('get_srnoleavingcertificateByAcademicyr/{id}/{academic_yr}',[CertificateController::class,'getSrnoLeavingCertificateAcademicYr']);
+        Route::post('save_pdfleavingcertificate',[CertificateController::class,'saveLeavingCertificatePDF']);
+
     });
 
 //  API for the New Student list Buulk upload 
