@@ -168,6 +168,7 @@
         // Student Model Routes.
         Route::get('/getallClassWithStudentCount', [AdminController::class, 'getallSectionsWithStudentCount']);// Done for class dropdown.
         Route::get('/getStudentListBySection', [AdminController::class, 'getStudentListBySection']);// Done for student dropdown.
+        Route::get('/getStudentListBySectionData',[AdminController::class,'getStudentListBySectionData']);
         Route::get('/students/{studentId}', [AdminController::class, 'getStudentById']); // Edit Student , for the view Student. and single student select for the list.
         Route::get('/student_by_reg_no/{reg_no}', [AdminController::class, 'getStudentByGRN']); // Student By GRN .
         Route::delete('/students/{studentId}', [AdminController::class, 'deleteStudent']);
