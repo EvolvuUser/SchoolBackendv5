@@ -158,6 +158,7 @@ class CertificateController extends Controller
         BonafideCertificate::create($data);
         
         $data= DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+        $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
         // Load a view and pass the data to it
         $pdf = PDF::loadView('pdf.template', compact('data'));
 
@@ -169,7 +170,7 @@ class CertificateController extends Controller
             200,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="Bonafide_Certificate.pdf"',
+                'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
             ]
         );
     }
@@ -338,6 +339,7 @@ class CertificateController extends Controller
         SimpleBonafide::create($data);
         
         $data= DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+        $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
         // Load a view and pass the data to it
         $pdf = PDF::loadView('pdf.simplebonafide', compact('data'));
         // Download the generated PDF
@@ -348,7 +350,7 @@ class CertificateController extends Controller
             200,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="Bonafide_Certificate.pdf"',
+                'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
             ]
         );
 
@@ -723,7 +725,7 @@ class CertificateController extends Controller
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','portrait');
-            $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
+            $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
                 function () use ($pdf) {
@@ -1321,7 +1323,7 @@ class CertificateController extends Controller
             }
             return response()->json([
                 'status'=> 200,
-                'message'=>'Bonafide Percentage Certificate SrNo.',
+                'message'=>'Leaving Certificate SrNo.',
                 'data' =>$data,
                 'success'=>true
              ]);
@@ -1584,7 +1586,7 @@ class CertificateController extends Controller
             }
             return response()->json([
                 'status'=> 200,
-                'message'=>'Bonafide Percentage Certificate SrNo.',
+                'message'=>'Leaving Certificate SrNo. By Academic Yr',
                 'data' =>$data,
                 'success'=>true
              ]);
@@ -1604,7 +1606,7 @@ class CertificateController extends Controller
             $leavingCertificate = LeavingCertificate::create([
             'grn_no' => $request->grn_no,
             'issue_date' => $request->issue_date,
-            'student_id_no' => $request->student_id_no,
+            'stud_id_no' => $request->student_id_no,
             'aadhar_no'=>$request->aadhar_no,
             'stud_name'=>$request->first_name,
             'mid_name' =>$request->mid_name,
@@ -1649,7 +1651,7 @@ class CertificateController extends Controller
                     ->where('sr_no',$leavingCertificate->sr_no)  
                     ->orderBy('sr_no','desc')->first();
                     
-            $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
+                    $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
@@ -1670,4 +1672,239 @@ class CertificateController extends Controller
              }
 
     }
+
+    public function getLeavingCertificateList(Request $request){
+        $sr_no = $request->query('sr_no');
+        $class_id = $request->query('class_id');
+        
+       try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        if(is_null($sr_no) && is_null($class_id)){
+            $data['leavingcertificatelist'] = LeavingCertificate::where('academic_yr',$customClaims)
+                                               ->orderBy('sr_no','desc')
+                                               ->get();
+                
+        }
+        if(is_null($sr_no)){
+            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
+                                              ->join('student','leaving_certificate.stud_id','=','student.student_id')
+                                              ->where('student.class_id',$class_id)
+                                              ->where('leaving_certificate.academic_yr',$customClaims)
+                                              ->orderBy('sr_no','desc')
+                                              ->select('leaving_certificate.*')
+                                              ->get();
+        }
+        if(is_null($class_id)){
+            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
+                                              ->where('sr_no',$sr_no)
+                                              ->where('academic_yr',$customClaims)
+                                              ->orderBy('sr_no','desc')
+                                              ->get();
+        }
+        if(isset($sr_no) && isset($class_id)){
+            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
+                                            ->join('student','leaving_certificate.stud_id','=','student.student_id')
+                                            ->where('student.class_id',$class_id)
+                                            ->where('leaving_certificate.sr_no',$sr_no)
+                                            ->where('leaving_certificate.academic_yr',$customClaims)
+                                            ->orderBy('sr_no','desc')
+                                            ->select('leaving_certificate.*')
+                                            ->get();
+            
+        }
+        else{
+            $data['leavingcertificatelist'] = LeavingCertificate::where('academic_yr',$customClaims)
+                                               ->orderBy('sr_no','desc')
+                                               ->get();
+        }
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Leaving Certificate List',
+            'data' =>$data,
+            'success'=>true
+         ]);
+             
+       }
+       catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }  
+    }
+
+    public function leavingCertificateisIssued(Request $request ,$sr_no){
+        try{
+            $leavingcertificateinfo = LeavingCertificate::find($sr_no);
+            $leavingcertificateinfo->isGenerated = 'N';
+            $leavingcertificateinfo->isIssued    = 'Y';
+            $leavingcertificateinfo->isDelete   = 'N';
+            $leavingcertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
+            $leavingcertificateinfo->issued_by   = Auth::user()->id;
+            $leavingcertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leaving Certificate Issued Successfully',
+                'data' => $leavingcertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+    }
+
+    public function leavingCertificateisDeleted(Request $request,$sr_no){
+        try{
+            $leavingcertificateinfo = LeavingCertificate::find($sr_no);
+            $leavingcertificateinfo->isGenerated = 'N';
+            $leavingcertificateinfo->isIssued    = 'N';
+            $leavingcertificateinfo->isDelete   = 'Y';
+            $leavingcertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
+            $leavingcertificateinfo->	deleted_by   = Auth::user()->id;
+            $leavingcertificateinfo->cancel_reason = $request->cancel_reason;
+            $leavingcertificateinfo->update();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leaving Certificate Deleted Successfully',
+                'data' => $leavingcertificateinfo,
+                'success'=>true
+                ]);
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function leavingCertificatePDFDownload(Request $request,$sr_no){      
+        try{
+            $data= DB::table('leaving_certificate')
+                    ->where('sr_no',$sr_no)  
+                    ->orderBy('sr_no','desc')->first();
+            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+     }
+
+     public function getLeavingCertificateDataSingle(Request $request,$sr_no){
+        try{
+            $data['leavingcertificatesingle']= DB::table('leaving_certificate')
+                    ->where('sr_no',$sr_no)  
+                    ->first();
+            
+            $studentinfo = DB::table('leaving_certificate')
+                            ->join('student','student.student_id','=','leaving_certificate.stud_id')
+                            ->where('leaving_certificate.sr_no',$sr_no)
+                            ->first();
+                        
+
+            $academicStudent = DB::table('student')
+                                ->where('parent_id',$studentinfo->parent_id)
+                                ->where('first_name',$studentinfo->first_name)
+                                ->select('academic_yr')
+                                ->get();
+
+            $data['academicStudent'] = $academicStudent;                
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Certificate Deleted Successfully',
+                    'data' => $data,
+                    'success'=>true
+                    ]);
+            
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+     
+    public function updateLeavingCertificateDownload(Request $request,$sr_no){
+        try{
+            $tagsString = implode(',', $request->subjects);
+            $tagsString1 = implode(',', $request->games);
+            $leavingcertificate = LeavingCertificate::find($sr_no);
+            $leavingcertificate->grn_no = $request->grn_no;
+            $leavingcertificate->issue_date = $request->issue_date;
+            $leavingcertificate->stud_id_no = $request->student_id_no;
+            $leavingcertificate->aadhar_no=$request->aadhar_no;
+            $leavingcertificate->stud_name=$request->first_name;
+            $leavingcertificate->mid_name =$request->mid_name;
+            $leavingcertificate->last_name=$request->last_name;
+            $leavingcertificate->father_name=$request->father_name;
+            $leavingcertificate->mother_name=$request->mother_name;
+            $leavingcertificate->nationality=$request->nationality;
+            $leavingcertificate->mother_tongue=$request->mother_tongue;
+            $leavingcertificate->religion = $request->religion;
+            $leavingcertificate->caste = $request->caste;
+            $leavingcertificate->subcaste = $request->subcaste;
+            $leavingcertificate->birth_place=$request->birth_place;
+            $leavingcertificate->dob = $request->dob;
+            $leavingcertificate->dob_words = $request->dob_words;
+            $leavingcertificate->dob_proof = $request->dob_proof;
+            $leavingcertificate->last_school_attended_standard = $request->previous_school_attended;
+            $leavingcertificate->date_of_admission = $request->date_of_admission;
+            $leavingcertificate->admission_class = $request->admission_class;
+            $leavingcertificate->leaving_date = $request->leaving_date;
+            $leavingcertificate->standard_studying = $request->standard_studying;
+            $leavingcertificate->last_exam = $request->last_exam;
+            $leavingcertificate->subjects_studied = $tagsString;
+            $leavingcertificate->promoted_to = $request->promoted_to;
+            $leavingcertificate->attendance  = $request->attendance;
+            $leavingcertificate->fee_month = $request->fee_month;
+            $leavingcertificate->part_of =  $request->part_of;
+            $leavingcertificate->games = $tagsString1;
+            $leavingcertificate->application_date = $request->application_date;
+            $leavingcertificate->conduct = $request->conduct;
+            $leavingcertificate->reason_leaving = $request->reason_leaving;
+            $leavingcertificate->remark = $request->remark;
+            $leavingcertificate->academic_yr = $request->academic_yr;
+            $leavingcertificate->stud_id = $request->stud_id;
+            $leavingcertificate->udise_pen_no= $request->udise_pen_no;
+            $leavingcertificate->update();
+   
+            $data= DB::table('leaving_certificate')
+                    ->where('sr_no',$leavingcertificate->sr_no)  
+                    ->orderBy('sr_no','desc')->first();
+                    
+            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
 }
