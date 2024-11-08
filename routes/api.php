@@ -242,6 +242,13 @@
         Route::get('get_srnoleavingcertificateByAcademicyr/{id}/{academic_yr}',[CertificateController::class,'getSrnoLeavingCertificateAcademicYr']);
         Route::post('save_pdfleavingcertificate',[CertificateController::class,'saveLeavingCertificatePDF']);
 
+        //Manage Leaving Certificate
+        Route::get('get_leavingcertificatelist',[CertificateController::class,'getLeavingCertificateList']);
+        Route::put('update_leavingcertificateisIssued/{sr_no}',[CertificateController::class,'leavingCertificateisIssued']);
+        Route::delete('delete_leavingcertificateisDeleted/{sr_no}',[CertificateController::class,'leavingCertificateisDeleted']);
+        Route::get('get_pdfleavingcertificate/{sr_no}',[CertificateController::class,'leavingCertificatePDFDownload']);
+        Route::get('get_getleavingcertificatedata/{sr_no}',[CertificateController::class,'getLeavingCertificateDataSingle']);
+        Route::put('update_leavingcertificate/{sr_no}',[CertificateController::class,'updateLeavingCertificateDownload']);
     });
 
 //  API for the New Student list Buulk upload 
