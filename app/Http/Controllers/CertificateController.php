@@ -1650,8 +1650,17 @@ class CertificateController extends Controller
             $data= DB::table('leaving_certificate')
                     ->where('sr_no',$leavingCertificate->sr_no)  
                     ->orderBy('sr_no','desc')->first();
+
+                    DB::table('student')
+                        ->where('student_id', $data->stud_id)
+                        ->update([
+                            'last_date' => $data->leaving_date,
+                            'slc_no' => $data->sr_no,
+                            'slc_issue_date' => $data->issue_date,
+                            'leaving_remark' =>$data->remark,
+                        ]);
                     
-                    $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
@@ -1906,5 +1915,170 @@ class CertificateController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
          }
     }
+    
+    public function getLeavingCertificateStudent(Request $request){
+        $class_id = $request->query('class_id');
+        $section_id = $request->query('section_id');
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        try{
+            if(isset($class_id) && isset($section_id)){
+                $students = DB::table('student as a')
+                    ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                    ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                    ->where(function($query) {
+                        $query->where('slc_no', '!=', '')
+                            ->orWhere('slc_no', '!=', 0);
+                    })
+                    ->where('a.class_id', '=', $class_id)
+                    ->where('a.section_id', '=', $section_id)
+                    ->where('a.academic_yr', '=', $customClaims)
+                    ->orderByDesc('a.slc_no')
+                    ->get();
+                $students->each(function ($student) {
+                    if (!empty($student->image_name)) {
+                        // Generate the full URL for the student image based on their unique image_name
+                        $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                    } else {
+                        
+                        $student->image_name = asset('storage/uploads/student_image/default.png');
+                    }
+                }); 
+            }
+            else{
+                $students = DB::table('student as a')
+                    ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                    ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                    ->where(function($query) {
+                        $query->where('slc_no', '!=', '')
+                            ->where('slc_no', '!=', 0);
+                    })
+                    ->where('a.academic_yr', '=', $customClaims)
+                    ->orderByDesc('a.slc_no')
+                    ->get();
+                
+                    $students->each(function ($student) {
+                        if (!empty($student->image_name)) {
+                            // Generate the full URL for the student image based on their unique image_name
+                            $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                        } else {
+                            
+                            $student->image_name = asset('storage/uploads/student_image/default.png');
+                        }
+                    }); 
+                    
+            }
+            
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leaving Certificate Student List',
+                'data' => $students,
+                'success'=>true
+                ]);
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
 
+    public function getLeavingCertificateDetailStudent(Request $request,$student_id){
+        try{
+            
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $leavingdetails = DB::table('student')
+                                  ->where('student_id',$student_id)
+                                  ->where('academic_yr',$customClaims)
+                                  ->select('last_date','slc_no','slc_issue_date','leaving_remark')
+                                  ->get();
+                return response()->json([
+                'status'=> 200,
+                'message'=>'Leaving Certificate Student List',
+                'data' => $leavingdetails,
+                'success'=>true
+                ]);       
+            
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function getStudentInformationleaving(Request $request,$student_id){
+           try{
+                  $studentinfo = DB::table('student')
+                                    ->join('class','class.class_id','=','student.class_id')
+                                    ->join('section','section.section_id','=','student.section_id')
+                                    ->join('parent','parent.parent_id','=','student.parent_id')
+                                    ->join('user_master','user_master.reg_id','parent.parent_id')
+                                    ->where('student.student_id',$student_id)
+                                    ->select('student.*','class.name as classname','parent.*','section.name as sectionname','user_master.user_id as UserId')
+                                    ->get();
+               
+                    if (!empty($studentinfo->image_name)) {
+                        // Generate the full URL for the student image based on their unique image_name
+                        $studentinfo->image_name = asset('storage/uploads/student_image/' . $students->image_name);
+                    } else {
+                        
+                        $studentinfo->image_name = asset('storage/uploads/student_image/default.png');
+                    }
+                    $data['studentinformation'] = $studentinfo;
+                    $data['studentimage'] = $studentinfo->image_name;
+
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Leaving Certificate Student Information All Details',
+                        'data' => $data,
+                        'success'=>true
+                        ]); 
+           }
+           catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             }
+    }
+
+    public function getDeletedStudentList(Request $request){
+        $class_id = $request->query('class_id');
+        $section_id = $request->query('section_id');
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        try{
+            if(isset($class_id) && isset($section_id)){
+                $students = DB::table('student as a')
+                ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                ->where('a.IsDelete', '=', 'Y')
+                ->where('a.class_id', '=', $class_id)
+                ->where('a.section_id', '=', $section_id)
+                ->where('a.academic_yr', '=', $customClaims)
+                ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
+                ->get();
+            }
+            else
+            {
+                $students = DB::table('student as a')
+                        ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                        ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                        ->where('a.IsDelete', '=', 'Y')
+                        ->where('a.academic_yr', '=', $customClaims)
+                        ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
+                        ->get();
+            }
+            
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Deleted Student List',
+                'data' => $students,
+                'success'=>true
+                ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
 }
