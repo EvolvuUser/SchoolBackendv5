@@ -249,6 +249,15 @@
         Route::get('get_pdfleavingcertificate/{sr_no}',[CertificateController::class,'leavingCertificatePDFDownload']);
         Route::get('get_getleavingcertificatedata/{sr_no}',[CertificateController::class,'getLeavingCertificateDataSingle']);
         Route::put('update_leavingcertificate/{sr_no}',[CertificateController::class,'updateLeavingCertificateDownload']);
+
+        //LC Student List
+        Route::get('get_leavingcertificatestudentlist',[CertificateController::class,'getLeavingCertificateStudent']);
+        Route::get('get_leavingcertificatedetailstudent/{student_id}',[CertificateController::class,'getLeavingCertificateDetailStudent']);
+        Route::get('get_leavingcertificatestudentinformation/{student_id}',[CertificateController::class,'getStudentInformationleaving']);
+
+
+        //Deleted Student
+        Route::get('get_deletedstudentlist',[CertificateController::class,'getDeletedStudentList']);
     });
 
 //  API for the New Student list Buulk upload 
