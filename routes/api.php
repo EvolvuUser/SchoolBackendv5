@@ -208,6 +208,9 @@
         Route::get('/get_bonafidecertificatelist',[CertificateController::class,'bonafideCertificateList']);
         Route::put('/update_isIssued/{sr_no}',[CertificateController::class,'updateisIssued']);
         Route::delete('/delete_isDeleted/{sr_no}',[CertificateController::class,'updateisDeleted']);
+        Route::get('/get_bonafidecertificatedownload/{sr_no}',[CertificateController::class,'getPDFdownloadBonafide']);
+        Route::get('get_databonafidestudent/{sr_no}',[CertificateController::class,'DataStudentBonafide']);
+        Route::put('update_bonafidecertificate/{sr_no}',[CertificateController::class,'updateBonafideCertificate']);
 
         //Simple Bonafide Certificate
         Route::get('/get_srnosimplebonafide/{id}',[CertificateController::class,'getSrnosimplebonafide']);
@@ -254,7 +257,7 @@
         Route::get('get_leavingcertificatestudentlist',[CertificateController::class,'getLeavingCertificateStudent']);
         Route::get('get_leavingcertificatedetailstudent/{student_id}',[CertificateController::class,'getLeavingCertificateDetailStudent']);
         Route::get('get_leavingcertificatestudentinformation/{student_id}',[CertificateController::class,'getStudentInformationleaving']);
-
+        Route::delete('delete_deletestudentleaving/{student_id}',[CertificateController::class,'deleteStudentLeaving']);
 
         //Deleted Student
         Route::get('get_deletedstudentlist',[CertificateController::class,'getDeletedStudentList']);
