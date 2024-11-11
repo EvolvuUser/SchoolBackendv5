@@ -18,62 +18,69 @@ use App\Models\CharacterCertificate;
 use App\Models\PercentageCertificate;
 use App\Models\PercentageMarksCertificate;
 use App\Models\LeavingCertificate;
+use App\Models\Student;
+use App\Models\UserMaster;
+use Http;
 
 class CertificateController extends Controller
 {
     public function getSrnobonafide($id){
-        try{
-            $srnobonafide = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
-            $studentinformation=DB::table('student')->where('student_id',$id)->first();
-            if(is_null($studentinformation)){
-                return response()->json([
-                    'status'=> 200,
-                    'message'=>'Student information is not there',
-                    'data' =>$studentinformation,
-                    'success'=>true
-                 ]);
-              }
-            $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
-            $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
-            $parentinformation=DB::table('parent')->where('parent_id',$studentinformation->parent_id)->first();
+            try{
+                $checkstudentbonafide = DB::table('bonafide_certificate')->where('stud_id',$id)->first();
+                if(is_null($checkstudentbonafide)){
+                    $srnobonafide = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+                    $studentinformation=DB::table('student')->where('student_id',$id)->first();
+                    $classname = DB::table('class')->where('class_id',$studentinformation->class_id)->first();
+                    $sectionname = DB::table('section')->where('section_id',$studentinformation->section_id)->first();
+                    $parentinformation=DB::table('parent')->where('parent_id',$studentinformation->parent_id)->first();
+                    
+                    if (is_null($srnobonafide)) {
+                        $data['sr_no'] = '1';
+                        $data['date']  = Carbon::today()->format('Y-m-d');
+                        $data['studentinformation'] = $studentinformation; 
+                        $data['classname']=$classname;
+                        $data['sectionname']=$sectionname;
+                        $data['parentinformation']=$parentinformation;
+                    }
+                    else{
+                        $data['sr_no'] = $srnobonafide->sr_no + 1 ;
+                        $data['date']  = Carbon::today()->format('Y-m-d');
+                        $data['studentinformation'] = $studentinformation;
+                        $data['classname']=$classname;
+                        $data['sectionname']=$sectionname;
+                        $data['parentinformation']=$parentinformation;
+                    }
+                    $dob_in_words =  $studentinformation->dob;
+                    $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+                
+                    // Check if the date is valid
+                    if ($dateTime === false) {
+                        return 'Invalid date format';
+                    }
+                    
+                    // Format the date as 'Day Month Year'
+                    $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+                    
+                    $dobinwords = $this->convertDateToWords($dateInWords);
+                    $data['dobinwords']= $dobinwords;
+                
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Bonafide Certificate SrNo.',
+                        'data' =>$data,
+                        'success'=>true
+                    ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Bonafide Certificate Already Generated',
+                        'data' =>$checkstudentbonafide,
+                        'success'=>true
+                    ]);
+                }            
+        }
             
-            if (is_null($srnobonafide)) {
-                $data['sr_no'] = '1';
-                $data['date']  = Carbon::today()->format('Y-m-d');
-                $data['studentinformation'] = $studentinformation; 
-                $data['classname']=$classname;
-                $data['sectionname']=$sectionname;
-                $data['parentinformation']=$parentinformation;
-            }
-            else{
-                $data['sr_no'] = $srnobonafide->sr_no + 1 ;
-                $data['date']  = Carbon::today()->format('Y-m-d');
-                $data['studentinformation'] = $studentinformation;
-                $data['classname']=$classname;
-                $data['sectionname']=$sectionname;
-                $data['parentinformation']=$parentinformation;
-            }
-            $dob_in_words =  $studentinformation->dob;
-            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
-        
-            // Check if the date is valid
-            if ($dateTime === false) {
-                return 'Invalid date format';
-            }
-            
-            // Format the date as 'Day Month Year'
-            $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
-            
-            $dobinwords = $this->convertDateToWords($dateInWords);
-            $data['dobinwords']= $dobinwords;
-           
-            return response()->json([
-                'status'=> 200,
-                'message'=>'Bonafide Certificate SrNo.',
-                'data' =>$data,
-                'success'=>true
-              ]);
-           }
            catch (Exception $e) {
             \Log::error($e); // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -81,56 +88,76 @@ class CertificateController extends Controller
         }
 
 
+        public function convertDateToWords($dateInWords) {
 
-
-    public function convertDateToWords($dateInWords) {
-
-        function numberToWords($number) {
-            $words = [
-                0 => 'Zero', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four',
-                5 => 'Five', 6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
-                10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen',
-                14 => 'Fourteen', 15 => 'Fifteen', 16 => 'Sixteen', 17 => 'Seventeen',
-                18 => 'Eighteen', 19 => 'Nineteen', 20 => 'Twenty', 
-                30 => 'Thirty', 40 => 'Forty', 50 => 'Fifty', 60 => 'Sixty', 
-                70 => 'Seventy', 80 => 'Eighty', 90 => 'Ninety',
-            ];
-
-            if ($number < 21) {
-                return $words[$number];
-            } elseif ($number < 100) {
-                $tens = floor($number / 10) * 10;
-                $units = $number % 10;
-                return $words[$tens] . ($units ? '-' . $words[$units] : '');
-            } elseif ($number < 3000) {
-                $hundreds = floor($number / 1000);
-                return $words[$hundreds] . ' thousand' . ($number % 100 ? ' and ' . numberToWords($number % 100) : '');
-            } else {
-                return 'number too large';
+            // Helper function to convert number to words (for years, etc.)
+            function numberToWords($number) {
+                $words = [
+                    0 => 'zero', 1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four',
+                    5 => 'five', 6 => 'six', 7 => 'seven', 8 => 'eight', 9 => 'nine',
+                    10 => 'ten', 11 => 'eleven', 12 => 'twelve', 13 => 'thirteen',
+                    14 => 'fourteen', 15 => 'fifteen', 16 => 'sixteen', 17 => 'seventeen',
+                    18 => 'eighteen', 19 => 'nineteen', 20 => 'twenty', 
+                    30 => 'thirty', 40 => 'forty', 50 => 'fifty', 60 => 'sixty', 
+                    70 => 'seventy', 80 => 'eighty', 90 => 'ninety',
+                ];
+        
+                if ($number < 21) {
+                    return $words[$number];
+                } elseif ($number < 100) {
+                    $tens = floor($number / 10) * 10;
+                    $units = $number % 10;
+                    return $words[$tens] . ($units ? '-' . $words[$units] : '');
+                } elseif ($number < 3000) {
+                    $hundreds = floor($number / 1000);
+                    return $words[$hundreds] . ' Thousand' . ($number % 100 ? ' and ' . numberToWords($number % 100) : '');
+                } else {
+                    return 'number too large';
+                }
             }
-        }
-
-        // Create a DateTime object from the input date
-        $dateTime = DateTime::createFromFormat('d F Y', $dateInWords);
         
-        // Check if the date is valid
-        if ($dateTime === false) {
-            return 'Invalid date format';
-        }
+            // Helper function to convert day number to words (like first, second, third, ...)
+            function dayToWords($day) {
+                $days = [
+                    1 => 'First', 2 => 'Second', 3 => 'Third', 4 => 'Fourth', 
+                    5 => 'Fifth', 6 => 'Sixth', 7 => 'Seventh', 8 => 'Eighth', 
+                    9 => 'Ninth', 10 => 'Tenth', 11 => 'Eleventh', 12 => 'Twelfth',
+                    13 => 'Thirteenth', 14 => 'Fourteenth', 15 => 'Fifteenth',
+                    16 => 'Sixteenth', 17 => 'Seventeenth', 18 => 'Eighteenth',
+                    19 => 'Nineteenth', 20 => 'Twentieth', 21 => 'Twenty-First',
+                    22 => 'Twenty-Second', 23 => 'Twenty-Third', 24 => 'Twenty-Fourth',
+                    25 => 'Twenty-Fifth', 26 => 'Twenty-Sixth', 27 => 'Twenty-Seventh',
+                    28 => 'Twenty-Eighth', 29 => 'Twenty-Ninth', 30 => 'Thirtieth', 
+                    31 => 'Thirty-first'
+                ];
+                
+                return isset($days[$day]) ? $days[$day] : $day;
+            }
         
-        // Get the day, month, and year
-        $day = $dateTime->format('j'); // Day without leading zeros
-        $month = $dateTime->format('F'); // Full textual representation of the month
-        $year = $dateTime->format('Y'); // Full year
-        // Convert day and year to words
-        $dayInWords = numberToWords($day);
-        $yearInWords = numberToWords($year);
-    
-        // Construct the output string
-        $dateInWords = "{$dayInWords}  {$month} {$yearInWords}";
-    
-        return $dateInWords;
-    }
+            // Create a DateTime object from the input date
+            $dateTime = DateTime::createFromFormat('d F Y', $dateInWords);
+            
+            // Check if the date is valid
+            if ($dateTime === false) {
+                return 'Invalid date format';
+            }
+            
+            // Get the day, month, and year
+            $day = $dateTime->format('j'); // Day without leading zeros
+            $month = $dateTime->format('F'); // Full textual representation of the month
+            $year = $dateTime->format('Y'); // Full year
+            
+            // Convert day to its word form like 'first', 'second', etc.
+            $dayInWords = dayToWords($day);
+            
+            // Convert year to words using numberToWords
+            $yearInWords = numberToWords($year);
+            
+            // Construct the output string
+            $dateInWords = "{$dayInWords} {$month} {$yearInWords}";
+            
+            return $dateInWords;
+        }
 
     public function downloadPdf(Request $request){
         // Sample dynamic data
@@ -255,6 +282,92 @@ class CertificateController extends Controller
                 \Log::error($e); // Log the exception
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
              }
+
+    }
+
+    public function getPDFdownloadBonafide(Request $request,$sr_no){
+        try{
+            $data= DB::table('bonafide_certificate')
+                    ->where('sr_no',$sr_no)  
+                    ->orderBy('sr_no','desc')->first();
+            
+            
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            
+            $pdf = PDF::loadView('pdf.template', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function DataStudentBonafide(Request $request,$sr_no){
+        try{
+             $bonafidecertificateinfo = BonafideCertificate::find($sr_no);
+             return response()->json([
+                'status'=> 200,
+                'message'=>'Bonafide Certificate Student Data',
+                'data' => $bonafidecertificateinfo,
+                'success'=>true
+                ]);
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+        
+    }
+
+    public function updateBonafideCertificate(Request $request,$sr_no){
+        try{
+            $bonafidecertificate = BonafideCertificate::find($sr_no);
+            $bonafidecertificate->stud_name = $request->stud_name;
+            $bonafidecertificate->father_name = $request->father_name;
+            $bonafidecertificate->class_division = $request->class_division;
+            $bonafidecertificate->dob=$request->dob;
+            $bonafidecertificate->dob_words=$request->dob_words;
+            $bonafidecertificate->purpose =$request->purpose;
+            $bonafidecertificate->stud_id=$request->stud_id;
+            $bonafidecertificate->issue_date_bonafide=$request->date;
+            $bonafidecertificate->update();
+
+            $data= DB::table('bonafide_certificate')
+                    ->where('sr_no',$sr_no)  
+                    ->orderBy('sr_no','desc')->first();
+            
+            
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            
+            $pdf = PDF::loadView('pdf.template', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
 
     }
 
@@ -1835,7 +1948,7 @@ class CertificateController extends Controller
             $data['academicStudent'] = $academicStudent;                
                 return response()->json([
                     'status'=> 200,
-                    'message'=>'Leaving Certificate Deleted Successfully',
+                    'message'=>'Leaving Certificate Data Single Successfully',
                     'data' => $data,
                     'success'=>true
                     ]);
@@ -1930,6 +2043,7 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->orWhere('slc_no', '!=', 0);
                     })
+                    ->where('student.IsDelete','N')
                     ->where('a.class_id', '=', $class_id)
                     ->where('a.section_id', '=', $section_id)
                     ->where('a.academic_yr', '=', $customClaims)
@@ -1953,6 +2067,7 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->where('slc_no', '!=', 0);
                     })
+                    ->where('student.IsDelete','N')
                     ->where('a.academic_yr', '=', $customClaims)
                     ->orderByDesc('a.slc_no')
                     ->get();
@@ -2040,6 +2155,108 @@ class CertificateController extends Controller
              }
     }
 
+    public function deleteStudentLeaving(Request $request,$student_id){
+        try{
+
+              $user = $this->authenticateUser();
+              $customClaims = JWTAuth::getPayload()->get('academic_yr');
+              $studentinfo = Student::find($student_id);
+              $studentinfo->IsDelete = 'Y' ;
+              $studentinfo->isModify = 'Y';
+              $studentinfo->deleted_date = Carbon::today()->format('Y-m-d');
+              $studentinfo->deleted_by = Auth::user()->id;
+              $studentinfo->update();
+
+              $usermasterinfo = DB::table('user_master')->where('reg_id',$student_id)->where('role_id','S')->delete();
+              
+              $getstudentbyparent = DB::table('student')
+                            ->where('parent_id', $studentinfo->parent_id)
+                            ->where('IsDelete', 'Y')
+                            ->where('academic_yr', $customClaims)
+                            ->get();
+
+              if(count($getstudentbyparent) > 0){
+
+
+              } 
+              else{
+                    
+                        DB::table('parent')
+                            ->where('parent_id', $studentinfo->parent_id)
+                            ->update(['IsDelete' => 'Y']);
+                    
+                      
+                        DB::table('user_master')
+                            ->where('reg_id', $studentinfo->parent_id)
+                            ->where('role_id', 'P')
+                            ->update(['IsDelete' => 'Y']);
+
+                        $user_id = DB::table('user_master as a')
+                            ->join('parent as b', 'a.reg_id', '=', 'b.parent_id')
+                            ->where('a.role_id', 'P')
+                            ->where('b.parent_id', $studentinfo->parent_id)
+                            ->value('a.user_id');
+                        
+                            $user_data1 = [
+                                "user_id" => $user_id,
+                                "school_id" => "1"
+                            ];
+                            
+                            // Send POST request to external service using Laravel's HTTP client
+                            $response = Http::withHeaders([
+                                'Content-Type' => 'application/json',
+                            ])->post('http://aceventura.in/demo/evolvuUserService/user_delete_post', $user_data1);
+                            
+                            
+                            if ($response->successful()) {
+                                
+                            } else {
+                                
+                                $error = $response->body();
+                            }
+
+                            $parentdetail = DB::table('contact_details')
+                                                        ->where('id', $studentinfo->parent_id)
+                                                        ->first();
+                                                
+                        $data3 = [
+                            'id' => $studentinfo->parent_id,
+                            // Use null coalescing operator with array or object check
+                            'phone_no' => $parentdetail->phone_no,
+                            'm_emailid' => $parentdetail->m_emailid,
+                            'email_id' => $parentdetail->email_id ,
+                        ];
+                            // Step 6: Check if the contact details exist in the 'deleted_contact_details' table
+                            $existingContact = DB::table('deleted_contact_details')
+                                ->where('id', $studentinfo->parent_id)
+                                ->first();
+                            
+                            if ($existingContact) {
+                                // Update if the contact already exists
+                                DB::table('deleted_contact_details')
+                                    ->where('id', $studentinfo->parent_id)
+                                    ->update($data3);
+                            } else {
+                                // Insert if the contact does not exist
+                                DB::table('deleted_contact_details')->insert($data3);
+                            }
+                            
+                            // Step 7: Delete from the 'contact_details' table
+                            DB::table('contact_details')->where('id', $studentinfo->parent_id)->delete();
+              }
+              return response()->json([
+                'status'=> 200,
+                'message'=>'Student Deleted Successfully',
+                'data' => $studentinfo,
+                'success'=>true
+                ]);           
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+          }
+    }
+
     public function getDeletedStudentList(Request $request){
         $class_id = $request->query('class_id');
         $section_id = $request->query('section_id');
@@ -2056,6 +2273,16 @@ class CertificateController extends Controller
                 ->where('a.academic_yr', '=', $customClaims)
                 ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
                 ->get();
+
+                $students->each(function ($student) {
+                    if (!empty($student->image_name)) {
+                        // Generate the full URL for the student image based on their unique image_name
+                        $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                    } else {
+                        
+                        $student->image_name = asset('storage/uploads/student_image/default.png');
+                    }
+                }); 
             }
             else
             {
@@ -2066,6 +2293,16 @@ class CertificateController extends Controller
                         ->where('a.academic_yr', '=', $customClaims)
                         ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
                         ->get();
+
+                $students->each(function ($student) {
+                    if (!empty($student->image_name)) {
+                        // Generate the full URL for the student image based on their unique image_name
+                        $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                    } else {
+                        
+                        $student->image_name = asset('storage/uploads/student_image/default.png');
+                    }
+                }); 
             }
             
             return response()->json([

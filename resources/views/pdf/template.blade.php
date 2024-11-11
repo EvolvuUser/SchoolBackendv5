@@ -36,6 +36,7 @@
 	<br/><center>
     <div style="width:95%;margin-top:20%;display: inline-block">
         	<img src=""  class="image_thumbnail studimg" width="100" height="100" style="padding-left: 70%;"/>
+            <br><br><br><br><br><br>
 <center><p style="font-size:20px"><b>BONAFIDE CERTIFICATE</b></p></center>
 <center><p style="font-size:20px"><b>To whomsoever it may concern</b></p></center>
 
