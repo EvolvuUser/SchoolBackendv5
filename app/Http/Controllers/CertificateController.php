@@ -26,7 +26,7 @@ class CertificateController extends Controller
 {
     public function getSrnobonafide($id){
             try{
-                $checkstudentbonafide = DB::table('bonafide_certificate')->where('stud_id',$id)->first();
+                $checkstudentbonafide = DB::table('bonafide_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
                 if(is_null($checkstudentbonafide)){
                     $srnobonafide = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
                     $studentinformation=DB::table('student')->where('student_id',$id)->first();
@@ -373,6 +373,8 @@ class CertificateController extends Controller
 
     public function getSrnosimplebonafide($id){
         try{
+            $checkstudentbonafide = DB::table('simple_bonafide_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnosimplebonafide = DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
@@ -417,10 +419,19 @@ class CertificateController extends Controller
        
         return response()->json([
             'status'=> 200,
-            'message'=>'Bonafide Certificate SrNo.',
+            'message'=>'Simple Bonafide Certificate SrNo.',
             'data' =>$data,
             'success'=>true
-         ]);      
+         ]); 
+        }
+        else{
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Simple Bonafide Certificate Already Generated',
+                'data' =>$checkstudentbonafide,
+                'success'=>true
+             ]);
+        }     
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -454,7 +465,7 @@ class CertificateController extends Controller
         $data= DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
         $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
         // Load a view and pass the data to it
-        $pdf = PDF::loadView('pdf.simplebonafide', compact('data'));
+        $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
         // Download the generated PDF
         return response()->stream(
             function () use ($pdf) {
@@ -553,8 +564,88 @@ class CertificateController extends Controller
              }
     }
 
+    public function simpleBonafideDownload(Request $request,$sr_no){
+        try{
+            $data = SimpleBonafide::find($sr_no);
+            $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
+            $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+        // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function DataStudentSimpleBonafide(Request $request,$sr_no){
+        try{
+
+            $simplebonafidecertificateinfo = SimpleBonafide::find($sr_no);
+             return response()->json([
+                'status'=> 200,
+                'message'=>'Simple Bonafide Certificate Student Data',
+                'data' => $simplebonafidecertificateinfo,
+                'success'=>true
+                ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function updateSimpleBonafide(Request $request,$sr_no){
+        try{
+           $bonafidecertificate = SimpleBonafide::find($sr_no);
+           $bonafidecertificate->stud_name = $request->stud_name;
+           $bonafidecertificate->father_name = $request->father_name;
+           $bonafidecertificate->class_division = $request->class_division;
+           $bonafidecertificate->dob=$request->dob;
+           $bonafidecertificate->dob_words=$request->dob_words;
+           $bonafidecertificate->stud_id=$request->stud_id;
+           $bonafidecertificate->issue_date_bonafide=$request->date;
+           $bonafidecertificate->update();
+
+           $data= DB::table('simple_bonafide_certificate')->where('sr_no',$sr_no)->first();
+           $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
+            // Load a view and pass the data to it
+            $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        }
+        catch (Exception $e) {
+           \Log::error($e); // Log the exception
+           return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+   }
+
     public function getSrnocastebonafide($id){
         try{
+            $checkstudentbonafide = DB::table('bonafide_caste_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnosimplebonafide = DB::table('bonafide_caste_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
@@ -601,7 +692,16 @@ class CertificateController extends Controller
             'message'=>'Bonafide Caste Certificate SrNo.',
             'data' =>$data,
             'success'=>true
-         ]);      
+         ]); 
+        }
+        else{
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Caste Bonafide Certificate Already Generated',
+                'data' =>$checkstudentbonafide,
+                'success'=>true
+             ]);
+        }     
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -756,8 +856,126 @@ class CertificateController extends Controller
              }
     }
 
+    public function CasteBonafideDownload(Request $request,$sr_no){
+        try{
+
+            $data= DB::table('bonafide_caste_certificate')
+                    ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
+                    ->join('parent','parent.parent_id','=','student.parent_id')
+                    ->select('bonafide_caste_certificate.*','parent.mother_name')
+                    ->where('sr_no',$sr_no)
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+           // Load a view and pass the data to it
+            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function DataCasteBonafide(Request $request,$sr_no){
+        try{
+            $data= DB::table('bonafide_caste_certificate')
+                        ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
+                        ->join('parent','parent.parent_id','=','student.parent_id')
+                        ->select('bonafide_caste_certificate.*','parent.*','student.*')
+                        ->where('sr_no',$sr_no)
+                        ->first();
+            
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Bonafide Caste Certificate Student Data',
+                        'data' => $data,
+                        'success'=>true
+                        ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function updateCasteBonafide(Request $request,$sr_no){
+        try{
+            $castebonafide = CasteBonafide::find($sr_no);
+            $castebonafide->reg_no = $request->reg_no;
+            $castebonafide->stud_name = $request->stud_name;
+            $castebonafide->father_name = $request->father_name;
+            $castebonafide->class_division = $request->class_division;
+            $castebonafide->caste = $request->caste;
+            $castebonafide->religion = $request->religion;
+            $castebonafide->birth_place = $request->birth_place;
+            $castebonafide->dob = $request->religion;
+            $castebonafide->dob_words = $request->dob_words;
+            $castebonafide->stud_id_no = $request->stud_id_no;
+            $castebonafide->stu_aadhaar_no = $request->stu_aadhaar_no;
+            $castebonafide->admission_class_when = $request->admission_class_when;
+            $castebonafide->nationality = $request->nationality;
+            $castebonafide->prev_school_class = $request->prev_school_class;
+            $castebonafide->admission_date = $request->admission_date;
+            $castebonafide->class_when_learning = $request->class_when_learning;
+            $castebonafide->progress = $request->progress;
+            $castebonafide->behaviour = $request->behaviour;
+            $castebonafide->leaving_reason = $request->leaving_reason;
+            $castebonafide->lc_date_n_no = $request->lc_date_n_no;
+            $castebonafide->subcaste = $request->subcaste;
+            $castebonafide->mother_tongue = $request->mother_tongue;
+            $castebonafide->stud_id = $request->stud_id;
+            $castebonafide->issue_date_bonafide = $request->date;
+            $castebonafide->update();
+
+            $data= DB::table('bonafide_caste_certificate')
+                    ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
+                    ->join('parent','parent.parent_id','=','student.parent_id')
+                    ->select('bonafide_caste_certificate.*','parent.mother_name')
+                    ->where('sr_no',$sr_no)
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+           // Load a view and pass the data to it
+            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
     public function getSrnocharacterbonafide($id){
         try{
+            $checkstudentbonafide = DB::table('bonafide_caste_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnosimplebonafide = DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
@@ -805,6 +1023,16 @@ class CertificateController extends Controller
             'success'=>true
          ]);      
         }
+        else{
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Character Bonafide Certificate Already Generated',
+                'data' =>$checkstudentbonafide,
+                'success'=>true
+             ]);
+           } 
+       }
+    
         catch (Exception $e) {
             \Log::error($e); // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -837,7 +1065,7 @@ class CertificateController extends Controller
             $data= DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','portrait');
+            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -935,6 +1163,86 @@ class CertificateController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
              }
     }
+
+    public function CharacterBonafideDownload(Request $request,$sr_no){
+        try{
+            $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+
+    }
+
+    public function DataCharacterBonafide(Request $request,$sr_no){
+        try{
+             $charactercertificate = CharacterCertificate::find($sr_no);
+             return response()->json([
+                'status'=> 200,
+                'message'=>'Character Certificate Data of Single Student',
+                'data' =>$charactercertificate,
+                'success'=>true
+             ]);
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function updateCharacterBonafide(Request $request,$sr_no){
+        try{
+            $charactercertificate = CharacterCertificate::find($sr_no);
+            $charactercertificate->stud_name = $request->stud_name;
+            $charactercertificate->class_division = $request->class_division;
+            $charactercertificate->dob = $request->dob;
+            $charactercertificate->dob_words = $request->dob_words;
+            $charactercertificate->attempt = $request->attempt;
+            $charactercertificate->stud_id = $request->stud_id;
+            $charactercertificate->issue_date_bonafide = $request->date;
+            $charactercertificate->update();
+           
+            $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
+            // Download the generated PDF
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+            
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
     public function getSrnopercentagebonafide($id){
         try{
             $srnopercentagebonafide = DB::table('percentage_certificate')->orderBy('sr_no', 'desc')->first();
@@ -2176,7 +2484,7 @@ class CertificateController extends Controller
                             ->get();
 
               if(count($getstudentbyparent) > 0){
-
+                    
 
               } 
               else{
