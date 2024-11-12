@@ -218,13 +218,19 @@
         Route::get('/get_simplebonafidecertificatelist',[CertificateController::class,'simplebonafideCertificateList']);
         Route::put('/update_simpleisIssued/{sr_no}',[CertificateController::class,'updatesimpleisIssued']);
         Route::delete('/delete_simpleisDeleted/{sr_no}',[CertificateController::class,'deletesimpleisDeleted']);
-        
+        Route::get('/get_simpleisDownload/{sr_no}',[CertificateController::class,'simpleBonafideDownload']);
+        Route::get('get_datasimplebonafidestudent/{sr_no}',[CertificateController::class,'DataStudentSimpleBonafide']);
+        Route::put('/update_simplebonafidecertificate/{sr_no}',[CertificateController::class,'updateSimpleBonafide']);
+
         //Bonafide Caste Certificate
         Route::get('/get_srnocastebonafide/{id}',[CertificateController::class,'getSrnocastebonafide']);
         Route::post('/save_pdfcastebonafide',[CertificateController::class,'downloadcastePDF']);
         Route::get('/get_castebonafidecertificatelist',[CertificateController::class,'castebonafideCertificateList']);
         Route::put('/update_casteisIssued/{sr_no}',[CertificateController::class,'updatecasteisIssued']);
         Route::delete('/delete_casteisDeleted/{sr_no}',[CertificateController::class,'deletecasteisDeleted']);
+        Route::get('/get_casteisDownload/{sr_no}',[CertificateController::class,'CasteBonafideDownload']);
+        Route::get('get_datacastecertificate/{sr_no}',[CertificateController::class,'DataCasteBonafide']);
+        Route::put('update_castebonafidecertificate/{sr_no}',[CertificateController::class,'updateCasteBonafide']);
 
         //Bonafide Character Certificate
         Route::get('/get_srnocharacterbonafide/{id}',[CertificateController::class,'getSrnocharacterbonafide']);
@@ -232,7 +238,10 @@
         Route::get('/get_characterbonafidecertificatelist',[CertificateController::class,'characterbonafideCertificateList']);
         Route::put('/update_characterisIssued/{sr_no}',[CertificateController::class,'updatecharacterisIssued']);
         Route::delete('/delete_characterisDeleted/{sr_no}',[CertificateController::class,'deletecharacterisDeleted']);
-
+        Route::get('get_characterisDownload/{sr_no}',[CertificateController::class,'CharacterBonafideDownload']);
+        Route::get('get_characterdata/{sr_no}',[CertificateController::class,'DataCharacterBonafide']);
+        Route::put('update_charactercertificate/{sr_no}',[CertificateController::class,'updateCharacterBonafide']);
+        
         //Bonafide Percentage Certificate
         Route::get('get_srnopercentagebonafide/{id}',[CertificateController::class,'getSrnopercentagebonafide']);
         Route::post('save_pdfpercentagebonafide',[CertificateController::class,'downloadpercentagePDF']);
