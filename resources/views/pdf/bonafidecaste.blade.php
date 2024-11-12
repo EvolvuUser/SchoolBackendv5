@@ -36,7 +36,9 @@
 ?> -->
     <center>
 <!--	<div style="width:100%;height:95%;margin: auto;text-align:center;border-style:groove;border:4px groove grey;">-->
-	<br/><center
+	<br/><center>
+		<br>
+		<br>
 	    
     <div style="width:95%;margin-top:20%;;text-align:center;display: inline-block">
 	    	<img src="url('http://103.159.85.174/SchoolBackendv5/public/bonafide.jpg')"  class="image_thumbnail studimg" width="100" height="100" style="padding-left: 70%;"/>

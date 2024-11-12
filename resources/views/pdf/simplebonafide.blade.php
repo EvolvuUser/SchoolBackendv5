@@ -7,7 +7,7 @@
     /*padding: 0;*/
   }
     body{
-    background-image: url('http://103.159.85.174/SchoolBackendv5/public/bonafide.jpg');
+    background-image: url('http://103.159.85.174/SchoolBackendv5/public/character_certificate.jpg');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
@@ -22,7 +22,6 @@
 }
  tr td{
 	padding-top: 3px; 
-	padding-bottom:3px;
 	word-wrap:break-word;
 	font-size:20px;
 	font-family:Arial !important; 
@@ -167,7 +166,7 @@ $image_url	=	m ?>
                 </td>
             </tr>
             <?php $date_new = date_format(date_create($data->issue_date_bonafide) , 'M d, Y');?>
-            <tr style="margin-top:20%;">
+            <tr>
                  <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-style: italic;font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Date: <?php echo $data->issue_date_bonafide?></td>
@@ -182,22 +181,4 @@ $image_url	=	m ?>
     </div>
     <!--Ends Here -->
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
 
