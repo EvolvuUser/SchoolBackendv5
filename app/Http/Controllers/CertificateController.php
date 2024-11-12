@@ -2110,48 +2110,33 @@ class CertificateController extends Controller
        try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_yr');
-        if(is_null($sr_no) && is_null($class_id)){
-            $data['leavingcertificatelist'] = LeavingCertificate::where('academic_yr',$customClaims)
-                                               ->orderBy('sr_no','desc')
-                                               ->get();
-                
-        }
-        if(is_null($sr_no)){
-            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
-                                              ->join('student','leaving_certificate.stud_id','=','student.student_id')
-                                              ->where('student.class_id',$class_id)
-                                              ->where('leaving_certificate.academic_yr',$customClaims)
-                                              ->orderBy('sr_no','desc')
-                                              ->select('leaving_certificate.*')
-                                              ->get();
-        }
-        if(is_null($class_id)){
-            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
-                                              ->where('sr_no',$sr_no)
-                                              ->where('academic_yr',$customClaims)
-                                              ->orderBy('sr_no','desc')
-                                              ->get();
-        }
-        if(isset($sr_no) && isset($class_id)){
-            $data['leavingcertificatelist'] = DB::table('leaving_certificate')
-                                            ->join('student','leaving_certificate.stud_id','=','student.student_id')
-                                            ->where('student.class_id',$class_id)
-                                            ->where('leaving_certificate.sr_no',$sr_no)
-                                            ->where('leaving_certificate.academic_yr',$customClaims)
-                                            ->orderBy('sr_no','desc')
-                                            ->select('leaving_certificate.*')
-                                            ->get();
-            
-        }
-        else{
-            $data['leavingcertificatelist'] = LeavingCertificate::where('academic_yr',$customClaims)
-                                               ->orderBy('sr_no','desc')
-                                               ->get();
-        }
+        $query = DB::table('leaving_certificate')
+                    ->join('student', 'leaving_certificate.stud_id', '=', 'student.student_id')
+                    ->join('section','section.section_id','=','student.section_id')
+                    ->join('class','class.class_id','=','section.class_id')
+                    ->select('section.name as sectionname','section.class_id' , 'class.name as classname','leaving_certificate.*')
+                    ->where('leaving_certificate.academic_yr', $customClaims)
+                    ->orderBy('sr_no', 'desc');
+       
+                // Conditionally add filters
+                if ($class_id && $sr_no) {
+                    // Filter by both class_id and section_id
+                    $query->where('student.class_id', $class_id)
+                        ->where('leaving_certificate.sr_no', $sr_no);
+                } elseif ($class_id) {
+                    // Filter by class_id only
+                    $query->where('student.class_id', $class_id);
+                } elseif ($sr_no) {
+                    // Filter by section_id only
+                    $query->where('leaving_certificate.sr_no', $sr_no);
+                }
+
+                // Execute the query and get the results
+                $leavingCertificates = $query->get();
         return response()->json([
             'status'=> 200,
             'message'=>'Leaving Certificate List',
-            'data' =>$data,
+            'data' =>$leavingCertificates,
             'success'=>true
          ]);
              
