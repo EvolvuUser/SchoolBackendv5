@@ -248,6 +248,9 @@
         Route::get('/get_percentagebonafidecertificatelist',[CertificateController::class,'percentagebonafideCertificateList']);
         Route::put('/update_percentageisIssued/{sr_no}',[CertificateController::class,'updatepercentageisIssued']);
         Route::delete('/delete_percentageisDeleted/{sr_no}',[CertificateController::class,'deletepercentageisDeleted']);
+        Route::get('get_percentageisDownload/{sr_no}',[CertificateController::class,'PercentageDownload']); 
+        Route::get('get_percentageData/{sr_no}',[CertificateController::class,'getPercentageData']);
+        Route::put('update_percentagePDF/{sr_no}',[CertificateController::class,'updatePercentagePDF']);
 
         //Generate Leaving Certificate
         Route::get('get_srnoleavingcertificatedata/{id}',[CertificateController::class,'getSrnoLeavingCertificate']);

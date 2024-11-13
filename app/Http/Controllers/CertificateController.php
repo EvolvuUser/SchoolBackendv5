@@ -1245,6 +1245,8 @@ class CertificateController extends Controller
 
     public function getSrnopercentagebonafide($id){
         try{
+            $checkstudentbonafide = DB::table('percentage_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnopercentagebonafide = DB::table('percentage_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
@@ -1361,6 +1363,15 @@ class CertificateController extends Controller
                 'data' =>$data,
                 'success'=>true
              ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Percentage Bonafide Certificate Already Generated',
+                    'data' =>$checkstudentbonafide,
+                    'success'=>true
+                 ]);
+               } 
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -1503,6 +1514,163 @@ class CertificateController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
              }
     }
+
+    public function PercentageDownload(Request $request,$sr_no){
+        try{
+             
+            $data= DB::table('percentage_certificate')
+                   ->join('student','student.student_id','=','percentage_certificate.stud_id')
+                   ->where('percentage_certificate.sr_no',$sr_no)
+                   ->select('percentage_certificate.roll_no as rollno','percentage_certificate.*','student.*')
+                   ->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
+            // Load a view and pass the data to it
+            
+            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function getPercentageData(Request $request,$sr_no){
+        try{
+              $studentinfo = DB::table('percentage_certificate')->where('sr_no',$sr_no)->first();
+            //   dd($studentinfo);
+              $studentinformation = DB::table('student')
+                                        ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                        ->join('section', 'section.section_id', '=', 'student.section_id')
+                                        ->join('class', 'class.class_id', '=', 'student.class_id')
+                                        ->where('student_id',$studentinfo->stud_id)
+                                        ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                                        ->first();
+              $data['studentinfo'] = $studentinfo;
+              $data['studentinformation'] = $studentinformation;
+              if($studentinformation->classname == "10"){
+                $class10subjects = DB::table('class10_subject_master')
+                                       ->join('percentage_marks_certificate','percentage_marks_certificate.c_sm_id','=','class10_subject_master.c_sm_id')
+                                       ->join('percentage_certificate','percentage_certificate.sr_no','=','percentage_marks_certificate.sr_no')
+                                       ->where('percentage_certificate.sr_no',$sr_no)
+                                       ->select('class10_subject_master.c_sm_id','class10_subject_master.name','percentage_marks_certificate.marks')
+                                       ->get();
+                                $data['classsubject'] = $class10subjects;
+                                $count = count($class10subjects);
+                                $data['subjectCount'] = $count;
+             }
+             else{
+                 $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                 ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                 ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                 ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                 ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                 ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                 ->join('percentage_marks_certificate','percentage_marks_certificate.c_sm_id','=','grpd.sm_hsc_id')
+                 ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id','shsm.name as subject_name', 'shsm.subject_type','shs_op.name as optional_sub_name','stream.stream_name','percentage_marks_certificate.marks')
+                 ->where('percentage_marks_certificate.sr_no',$sr_no)
+                 ->where('shs.student_id', $studentinformation->student_id)
+                 ->get();
+
+                 $result = $result->map(function ($results) {
+                     // Change 'old_key' to 'new_key' 
+                     return [
+                         'c_sm_id' => $results->sm_hsc_id,
+                         'name' => $results->subject_name,
+                         'marks'=> $results->marks,
+                     ];
+                 });
+                 $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                            ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                            ->join('percentage_marks_certificate','percentage_marks_certificate.c_sm_id','=','shs.opt_subject_id')
+                            ->select('shs.opt_subject_id','shsm.name','percentage_marks_certificate.marks')
+                            ->where('percentage_marks_certificate.sr_no',$sr_no)
+                            ->where('shs.student_id',$studentinformation->student_id)
+                            ->get();
+                     $result1 = $result1->map(function ($results1) {
+                     // Change 'old_key' to 'new_key'
+                     return [
+                         'c_sm_id' => $results1->opt_subject_id,
+                         'name' => $results1->name,
+                         'marks' => $results1->marks
+                     ];
+                     });
+                     $mergedResult = $result->merge($result1);
+
+                 $data['classsubject'] = $mergedResult;
+                 $count = count($mergedResult);
+                 $data['subjectCount'] = $count;
+                 
+             }
+             return response()->json([
+                'status'=> 200,
+                'message'=>'Percentage Data',
+                'data' =>$data,
+                'success'=>true
+             ]);
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function updatePercentagePDF(Request $request,$sr_no){
+        try{
+              $percentagecertificateinfo = PercentageCertificate::find($sr_no);
+              $percentagecertificateinfo->roll_no = $request->roll_no;
+              $percentagecertificateinfo->stud_name = $request->stud_name;
+              $percentagecertificateinfo->class_division = $request->class_division;
+              $percentagecertificateinfo->percentage = $request->percentage;
+              $percentagecertificateinfo->stud_id = $request->stud_id;
+              $percentagecertificateinfo->total = $request->total;
+              $percentagecertificateinfo->certi_issue_date = $request->date;
+              $percentagecertificateinfo->update();
+
+              foreach ($request->class as $mark) {
+                PercentageMarksCertificate::where('sr_no', $percentagecertificateinfo->sr_no)
+                    ->where('c_sm_id', $mark['c_sm_id'])  // If there's a second condition to uniquely identify the row
+                    ->update([
+                        'marks' => $mark['marks'],
+                    ]);
+            }
+            $data= DB::table('percentage_certificate')
+                        ->join('student','student.student_id','=','percentage_certificate.stud_id')
+                        ->where('percentage_certificate.sr_no',$sr_no)
+                        ->select('percentage_certificate.roll_no as rollno','percentage_certificate.*','student.*')
+                        ->orderBy('sr_no', 'desc')->first();
+                $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+                return response()->stream(
+                    function () use ($pdf) {
+                        echo $pdf->output();
+                    },
+                    200,
+                    [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                    ]
+                );
+
+              
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+      }
 
     public function getSrnoLeavingCertificate($id){
         try{
