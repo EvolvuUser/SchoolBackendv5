@@ -2588,7 +2588,7 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->orWhere('slc_no', '!=', 0);
                     })
-                    ->where('student.IsDelete','N')
+                    ->where('a.IsDelete','N')
                     ->where('a.class_id', '=', $class_id)
                     ->where('a.section_id', '=', $section_id)
                     ->where('a.academic_yr', '=', $customClaims)
@@ -2612,7 +2612,7 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->where('slc_no', '!=', 0);
                     })
-                    ->where('student.IsDelete','N')
+                    ->where('a.IsDelete','N')
                     ->where('a.academic_yr', '=', $customClaims)
                     ->orderByDesc('a.slc_no')
                     ->get();
@@ -2716,7 +2716,7 @@ class CertificateController extends Controller
               
               $getstudentbyparent = DB::table('student')
                             ->where('parent_id', $studentinfo->parent_id)
-                            ->where('IsDelete', 'Y')
+                            ->where('IsDelete', 'N')
                             ->where('academic_yr', $customClaims)
                             ->get();
 
