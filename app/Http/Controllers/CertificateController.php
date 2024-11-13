@@ -1506,6 +1506,8 @@ class CertificateController extends Controller
 
     public function getSrnoLeavingCertificate($id){
         try{
+            $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
@@ -1748,6 +1750,15 @@ class CertificateController extends Controller
                 'data' =>$data,
                 'success'=>true
              ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Bonafide Certificate Already Generated',
+                    'data' =>$checkstudentbonafide,
+                    'success'=>true
+                 ]);
+            }
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -1768,15 +1779,17 @@ class CertificateController extends Controller
                                    ->where('first_name',$studentinfo->first_name)
                                    ->where('academic_yr',$academic_yr)
                                    ->first();
-
+            
+            $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+            if(is_null($checkstudentbonafide)){
             $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
-            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-            ->join('section', 'section.section_id', '=', 'student.section_id')
-            ->join('class', 'class.class_id', '=', 'student.class_id')
-            ->where('student_id',$studentinfoacademic->student_id)
-            ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
-            ->first();
+                                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                                    ->where('student_id',$studentinfoacademic->student_id)
+                                    ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                                    ->first();
 
             if(is_null($studentinformation)){
                 return response()->json([
@@ -2011,6 +2024,15 @@ class CertificateController extends Controller
                 'data' =>$data,
                 'success'=>true
              ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Bonafide Certificate Already Generated',
+                    'data' =>$checkstudentbonafide,
+                    'success'=>true
+                 ]);
+            }
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -2238,7 +2260,69 @@ class CertificateController extends Controller
                                 ->select('academic_yr')
                                 ->get();
 
-            $data['academicStudent'] = $academicStudent;                
+            $data['academicStudent'] = $academicStudent; 
+            
+            $studentinformation = DB::table('student')
+                                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                                    ->where('student_id',$data['leavingcertificatesingle']->stud_id)
+                                    ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                                    ->first();  
+            
+                if($studentinformation->classname==11 || $studentinformation->classname==12){
+                    $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                    ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                    ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                    ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                    ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                    ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                    ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                    ->where('shs.student_id', $studentinformation->student_id)
+                    ->get();
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->subject_name,
+                        ];
+                    });
+                    $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                ->select('shs.opt_subject_id','shsm.name')
+                                ->where('shs.student_id',$studentinformation->student_id)
+                                ->get();
+                        $result1 = $result1->map(function ($results1) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results1->name,
+                        ];
+                        });
+                        $mergedResult = $result->merge($result1);
+
+                    $data['classsubject'] = $mergedResult;
+                    $count = count($mergedResult);
+                    $data['subjectCount'] = $count;
+                }else{
+                    $result = DB::table('subjects_on_report_card')
+                        ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                        ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                        ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                        ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                        ->orderBy('subjects_on_report_card.class_id', 'asc')
+                        ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                        ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                        ->get();  // Retrieve the results as a collection
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->name,
+                        ];
+                    });
+                    $data['classsubject'] = $result;
+                    $count = count($result);
+                    $data['subjectCount'] = $count;
+
+                }
                 return response()->json([
                     'status'=> 200,
                     'message'=>'Leaving Certificate Data Single Successfully',
