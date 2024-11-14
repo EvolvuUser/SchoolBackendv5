@@ -73,10 +73,9 @@ class CertificateController extends Controller
                 }
                 else{
                     return response()->json([
-                        'status'=> 200,
-                        'message'=>'Bonafide Certificate Already Generated',
-                        'data' =>$checkstudentbonafide,
-                        'success'=>true
+                        'status'=> 403,
+                        'message'=>'Bonafide Certificate Already Generated.Please go to manage to download the Bonafide Certificate',
+                        'success'=>false
                     ]);
                 }            
         }
@@ -428,10 +427,9 @@ class CertificateController extends Controller
         }
         else{
             return response()->json([
-                'status'=> 200,
-                'message'=>'Simple Bonafide Certificate Already Generated',
-                'data' =>$checkstudentbonafide,
-                'success'=>true
+                'status'=> 403,
+                'message'=>'Simple Bonafide Certificate Already Generated.Please go to manage to download the Simple Bonafide Certificate',
+                'success'=>false
              ]);
         }     
         }
@@ -698,10 +696,9 @@ class CertificateController extends Controller
         }
         else{
             return response()->json([
-                'status'=> 200,
-                'message'=>'Caste Bonafide Certificate Already Generated',
-                'data' =>$checkstudentbonafide,
-                'success'=>true
+                'status'=> 403,
+                'message'=>'Caste Bonafide Certificate Already Generated.Please go to manage to download the Caste Bonafide Certificate',
+                'success'=>false
              ]);
         }     
         }
@@ -1027,10 +1024,9 @@ class CertificateController extends Controller
         }
         else{
             return response()->json([
-                'status'=> 200,
-                'message'=>'Character Bonafide Certificate Already Generated',
-                'data' =>$checkstudentbonafide,
-                'success'=>true
+                'status'=> 403,
+                'message'=>'Character Bonafide Certificate Already Generated.Please go to manage to download the Character Bonafide Certificate',
+                'success'=>false
              ]);
            } 
        }
@@ -1368,10 +1364,9 @@ class CertificateController extends Controller
             }
             else{
                 return response()->json([
-                    'status'=> 200,
-                    'message'=>'Percentage Bonafide Certificate Already Generated',
-                    'data' =>$checkstudentbonafide,
-                    'success'=>true
+                    'status'=> 403,
+                    'message'=>'Percentage Bonafide Certificate Already Generated.Please go to manage to download the Percentage Bonafide Certificate',
+                    'success'=>false
                  ]);
                } 
         }
@@ -1923,10 +1918,9 @@ class CertificateController extends Controller
             }
             else{
                 return response()->json([
-                    'status'=> 200,
-                    'message'=>'Leaving Bonafide Certificate Already Generated',
-                    'data' =>$checkstudentbonafide,
-                    'success'=>true
+                    'status'=> 403,
+                    'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                    'success'=>false
                  ]);
             }
         }
@@ -2197,10 +2191,9 @@ class CertificateController extends Controller
             }
             else{
                 return response()->json([
-                    'status'=> 200,
-                    'message'=>'Leaving Bonafide Certificate Already Generated',
-                    'data' =>$checkstudentbonafide,
-                    'success'=>true
+                    'status'=> 403,
+                    'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                    'success'=>false
                  ]);
             }
         }
