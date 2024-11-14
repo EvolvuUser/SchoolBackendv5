@@ -174,6 +174,7 @@ class CertificateController extends Controller
             'purpose' =>$request ->purpose,
             'stud_id' =>$request ->stud_id,
             'issue_date_bonafide'=>$request->date,
+            'nationality' =>$request->nationality,
             'academic_yr'=>$customClaims,
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
@@ -340,6 +341,7 @@ class CertificateController extends Controller
             $bonafidecertificate->dob=$request->dob;
             $bonafidecertificate->dob_words=$request->dob_words;
             $bonafidecertificate->purpose =$request->purpose;
+            $bonafidecertificate->nationality =$request->nationality;
             $bonafidecertificate->stud_id=$request->stud_id;
             $bonafidecertificate->issue_date_bonafide=$request->date;
             $bonafidecertificate->update();
