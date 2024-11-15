@@ -2574,7 +2574,7 @@ class CertificateController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_yr');
         try{
-            if(isset($class_id) && isset($section_id)){
+            if(isset($section_id)){
                 $students = DB::table('student as a')
                     ->join('class as b', 'a.class_id', '=', 'b.class_id')
                     ->join('section as c', 'a.section_id', '=', 'c.section_id')
@@ -2585,6 +2585,7 @@ class CertificateController extends Controller
                     ->where('a.IsDelete','N')
                     ->where('a.section_id', '=', $section_id)
                     ->where('a.academic_yr', '=', $customClaims)
+                    ->select('a.*','b.name as classname','c.name as sectionname')
                     ->orderByDesc('a.slc_no')
                     ->get();
                 $students->each(function ($student) {
@@ -2607,6 +2608,7 @@ class CertificateController extends Controller
                     })
                     ->where('a.IsDelete','N')
                     ->where('a.academic_yr', '=', $customClaims)
+                    ->select('a.*','b.name as classname','c.name as sectionname')
                     ->orderByDesc('a.slc_no')
                     ->get();
                 
