@@ -2570,7 +2570,6 @@ class CertificateController extends Controller
     }
     
     public function getLeavingCertificateStudent(Request $request){
-        $class_id = $request->query('class_id');
         $section_id = $request->query('section_id');
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_yr');
@@ -2584,7 +2583,6 @@ class CertificateController extends Controller
                             ->orWhere('slc_no', '!=', 0);
                     })
                     ->where('a.IsDelete','N')
-                    ->where('a.class_id', '=', $class_id)
                     ->where('a.section_id', '=', $section_id)
                     ->where('a.academic_yr', '=', $customClaims)
                     ->orderByDesc('a.slc_no')
