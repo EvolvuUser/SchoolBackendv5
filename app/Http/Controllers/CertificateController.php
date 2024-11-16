@@ -2798,20 +2798,18 @@ class CertificateController extends Controller
     }
 
     public function getDeletedStudentList(Request $request){
-        $class_id = $request->query('class_id');
         $section_id = $request->query('section_id');
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_yr');
         try{
-            if(isset($class_id) && isset($section_id)){
+            if(isset($section_id)){
                 $students = DB::table('student as a')
                 ->join('class as b', 'a.class_id', '=', 'b.class_id')
                 ->join('section as c', 'a.section_id', '=', 'c.section_id')
                 ->where('a.IsDelete', '=', 'Y')
-                ->where('a.class_id', '=', $class_id)
                 ->where('a.section_id', '=', $section_id)
                 ->where('a.academic_yr', '=', $customClaims)
-                ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
+                ->select('a.*', 'b.name as classname', 'c.name as sectionname')
                 ->get();
 
                 $students->each(function ($student) {
@@ -2831,7 +2829,7 @@ class CertificateController extends Controller
                         ->join('section as c', 'a.section_id', '=', 'c.section_id')
                         ->where('a.IsDelete', '=', 'Y')
                         ->where('a.academic_yr', '=', $customClaims)
-                        ->select('a.*', 'b.name as class_name', 'c.name as sec_name')
+                        ->select('a.*', 'b.name as classname', 'c.name as sectionname')
                         ->get();
 
                 $students->each(function ($student) {
@@ -2852,6 +2850,114 @@ class CertificateController extends Controller
                 'success'=>true
                 ]);
 
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function addDeletedStudent(Request $request,$student_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            Student::where('student_id', $student_id)
+            ->where('academic_yr', $customClaims) 
+            ->update([
+                'IsDelete' => 'N',
+                'IsModify' => 'Y',
+                'deleted_date' => null,  
+                'deleted_by' => null     
+            ]);
+
+            $first_name = DB::table('student')
+                        ->where('student_id', $student_id)
+                        ->value('student_name');
+                $password = 'arnolds';
+                $user_id = 'S' . str_pad($student_id, 4, "0", STR_PAD_LEFT);  // Building the user_id without quotes
+                $first_name = addslashes($first_name);  // Ensure proper escaping if $first_name is a string
+                
+                DB::table('user_master')->insert([
+                    'user_id'   => $user_id,
+                    'name'      => $first_name,
+                    'password'  => $password,
+                    'reg_id'    => $student_id,
+                    'role_id'   => 'S'
+                ]);
+                $parent_id = DB::table('student')
+                                ->where('student_id', $student_id)
+                                ->value('parent_id');
+
+                $students = Student::where([
+                    ['parent_id', '=', $parent_id],
+                    ['IsDelete', '=', 'N'],
+                    ['academic_yr', '=', $customClaims]
+                ])->get();
+                
+                
+                if(count($students) > 1){
+                }
+                else{
+                    DB::table('parent')
+                        ->where('parent_id', $parent_id)
+                        ->update(['IsDelete' => 'N']);
+                    DB::table('user_master')
+                        ->where('reg_id', $parent_id)
+                        ->where('role_id', 'P')
+                        ->update(['IsDelete' => 'N']);
+
+                    $currentUserName = DB::table('user_master as a')
+                                            ->join('parent as b', 'a.reg_id', '=', 'b.parent_id')
+                                            ->where('a.role_id', 'P')
+                                            ->where('b.parent_id', $parent_id)
+                                            ->select('a.user_id as user_id')
+                                            ->first();
+                        $user_data1 = [
+                            "user_id" => $currentUserName,
+                            "school_id" => "1"
+                        ];
+                        $user_data = json_encode($user_data1);
+                        
+                        $response = Http::withHeaders([
+                            'Content-Type' => 'application/json',
+                        ])->post('http://aceventura.in/demo/evolvuUserService/user_create_post', $user_data);
+                        
+                        $token_data = $response->body();
+                        $data = DB::table('deleted_contact_details')
+                                ->where('id', $parent_id)
+                                ->get();
+                        $data3 = [
+                            'id' => $parent_id,
+                            'phone_no' => $data[0]->phone_no ?? '',
+                            'm_emailid' => $data[0]->m_emailid ?? '',
+                            'email_id' => $data[0]->email_id ?? '',
+                        ];
+
+                        $contactExists = DB::table('contact_details')->where('id', $parent_id)->exists();
+
+                        if ($contactExists) {
+                        // Update the existing record
+                        DB::table('contact_details')
+                        ->where('id', $parent_id)
+                        ->update($data3);
+                        } else {
+                        // Insert a new record
+                        DB::table('contact_details')->insert($data3);
+                        }
+
+                        // Delete the record from 'deleted_contact_details'
+                        DB::table('deleted_contact_details')
+                        ->where('id', $parent_id)
+                        ->delete();
+
+                       
+                }
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student Added Successfully ',
+                    'data' => $students,
+                    'success'=>true
+                    ]);
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
