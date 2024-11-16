@@ -9,6 +9,7 @@
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\CertificateController;
+    use App\Http\Controllers\NoticeController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -273,6 +274,16 @@
 
         //Deleted Student
         Route::get('get_deletedstudentlist',[CertificateController::class,'getDeletedStudentList']);
+        Route::put('update_adddeletedstudent/{student_id}',[CertificateController::class,'addDeletedStudent']);
+
+        //Notice/Sms
+        Route::post('save_smsnotice',[NoticeController::class,'saveSmsNotice']);
+        Route::post('save_publish_smsnotice',[NoticeController::class,'SaveAndPublishSms']);
+        Route::get('get_smsnoticelist',[NoticeController::class,'getNoticeSmsList']);
+        Route::get('get_smsnoticedata/{unq_id}',[NoticeController::class,'getNoticeSmsData']);
+        Route::put('update_smsnotice/{unq_id}',[NoticeController::class,'UpdateSMSNotice']);
+        Route::delete('delete_smsnotice/{unq_id}',[NoticeController::class,'DeleteSMSNotice']);
+        Route::put('update_publishsmsnotice/{unq_id}',[NoticeController::class,'publishSMSNotice']);
     });
 
 //  API for the New Student list Buulk upload 
