@@ -284,6 +284,8 @@
         Route::put('update_smsnotice/{unq_id}',[NoticeController::class,'UpdateSMSNotice']);
         Route::delete('delete_smsnotice/{unq_id}',[NoticeController::class,'DeleteSMSNotice']);
         Route::put('update_publishsmsnotice/{unq_id}',[NoticeController::class,'publishSMSNotice']);
+        Route::post('save_noticesmspdf',[NoticeController::class,'saveNotice']);
+        Route::post('save_publishnoticesmspdf',[NoticeController::class,'savePUblishNotice']);
     });
 
 //  API for the New Student list Buulk upload 
