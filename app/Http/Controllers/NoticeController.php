@@ -124,17 +124,30 @@ class NoticeController extends Controller
                     
                             // Send SMS using the send_sms method
                                 $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
-                    
+                                if ($student->phone_no != null) {
+                                    // Prepare the data to be inserted
+                                    $sms_log_data = [
+                                        'sms_status' => $sms_status,
+                                        'stu_teacher_id' => $student->student_id,
+                                        'notice_id' => $notice->notice_id,
+                                        'phone_no' => $student->phone_no,
+                                        'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                                    ];
+                                
+                                    // Insert the data into the 'notice_sms_log' table
+                                    NoticeSmsLog::create($sms_log_data);
+                                }
                         }  
                                                
                }
-            return response()->json([
-                'status'=> 200,
-                'message'=>'New Sms Created And Sended',
-                'data' =>$noticeData,
-                'success'=>true
-                ]);
+           
         }
+        return response()->json([
+            'status'=> 200,
+            'message'=>'New Sms Created And Sended',
+            'data' =>$noticeData,
+            'success'=>true
+            ]);
         
     }
                 
@@ -250,14 +263,19 @@ class NoticeController extends Controller
                                  
                     $imageUrls = []; 
                     foreach($noticeimages as $image){
-                        $imageurl = asset("storage/notice/".$image->image_name);
+                        $imageurl = ("storage/notice/".$image->image_name);
                         $imageUrls[] = $imageurl;
                         
                     }
                     $noticeData['noticedata']= $noticeData1;
                     $noticeData['noticeimages']=$noticeimages;
                     $noticeData['imageurl'] = $imageUrls;
-                    return response()->json(json_decode(json_encode($noticeData), true), 200, [], JSON_UNESCAPED_SLASHES);
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Notice View Edit',
+                        'data' =>$noticeData,
+                        'success'=>true
+                        ]);
                 }
                     
            }
@@ -308,7 +326,80 @@ class NoticeController extends Controller
                     
                 }
                 else{
-                    dd("Hello from Notices");
+                    $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
+                    foreach($updatesmsnotice as $noticeid){
+                        $notice_detail = DB::table('notice_detail')
+                                        ->where('notice_id', $noticeid->notice_id)
+                                        ->get()
+                                        ->toArray();
+                    }
+                    $notice_detail = array_filter($notice_detail, function($value) {
+                        return !empty($value); // Remove empty arrays
+                    });
+                    
+                    $notice_detail = array_values($notice_detail);
+                      // Check if there are any notice details
+                    if ($notice_detail) {
+                        // Loop through each notice detail and delete the files
+                        foreach ($notice_detail as $row) {
+                            $path = storage_path("app/public/notice/{$row->image_name}");
+                            // Check if the file exists and delete it
+                            if (File::exists($path)) {
+                                File::delete($path); // Delete the file
+                            }
+                        }
+                    }
+                    foreach($updatesmsnotice as $noticeid){
+                        $notice_detail = DB::table('notice_detail')
+                                        ->where('notice_id', $noticeid->notice_id)
+                                        ->delete();
+                    }
+                      foreach ($updatesmsnotice as $notice) {
+                        DB::table('notice')
+                            ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
+                            ->update([
+                                'subject' => $request->subject, // Update the subject field (example)
+                                'notice_desc' => $request->notice_desc, // Update the description (example)
+                                'teacher_id' => $user->id,
+                                'notice_date' => now(), 
+                            ]);
+                        }
+
+                    $noticeFolder = storage_path("app/public/notice");
+                    if (!File::exists($noticeFolder)) {
+                        File::makeDirectory($noticeFolder, 0777, true);
+                    }
+                    // Handle file uploads
+                    $uploadedFiles = $request->file('userfile');
+                    if(is_null($uploadedFiles)){
+                        return response()->json([
+                            'status'=> 200,
+                            'message'=>'Notice Updated Successfully.',
+                            'success'=>true
+                            ]);
+                    }
+                    $notice=DB::table('notice')->where('unq_id',$unq_id)->first();
+                    foreach ($uploadedFiles as $file) {
+                        $fileName = $file->getClientOriginalName();
+                        $ImageName = $notice->notice_id.$fileName;
+                        $filePath = $noticeFolder . '/' . $fileName;
+                        
+                        // Save file details in 'notice_detail' table
+                        NoticeDetail::create([
+                            'notice_id' => $notice->notice_id,
+                            'image_name' => $ImageName,
+                            'file_size' => $file->getSize(),
+                        ]);
+
+                        // Move the file to the appropriate folder
+                        $file->move($noticeFolder, $ImageName);
+                        }
+                        return response()->json([
+                            'status'=> 200,
+                            'message'=>'Notice Updated',
+                            'data' =>$updatesmsnotice,
+                            'success'=>true
+                            ]);
                 }
             }
             else{
@@ -377,6 +468,12 @@ class NoticeController extends Controller
                                         ->where('unq_id', $unq_id)
                                         ->delete();
 
+                    foreach($noticeids as $noticeid){
+                        $notice_detail = DB::table('notice_detail')
+                                        ->where('notice_id', $noticeid->notice_id)
+                                        ->delete();
+                    }
+
                     return response()->json([
                         'status'=> 200,
                         'message'=>'Notice Deleted Successfully.',
@@ -427,7 +524,19 @@ class NoticeController extends Controller
                             
                                     // Send SMS using the send_sms method
                                         $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
-                            
+                                        if ($student->phone_no != null) {
+                                            // Prepare the data to be inserted
+                                            $sms_log_data = [
+                                                'sms_status' => $sms_status,
+                                                'stu_teacher_id' => $student->student_id,
+                                                'notice_id' => $notice->notice_id,
+                                                'phone_no' => $student->phone_no,
+                                                'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                                            ];
+                                        
+                                            // Insert the data into the 'notice_sms_log' table
+                                            NoticeSmsLog::create($sms_log_data);
+                                        }
                                 }
                  }
 
