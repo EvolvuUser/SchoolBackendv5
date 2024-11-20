@@ -198,11 +198,26 @@ class NoticeController extends Controller
 
                             // Execute the query
                             ->get();
+                            $unq_ids = DB::table('notice')->select('unq_id')->distinct()->pluck('unq_id');
+                            $counts = [];
+                                foreach ($unq_ids as $unqids) {
+                                    $counts[$unqids] = DB::table('notice_sms_log')
+                                                        ->where('sms_sent', 'N')
+                                                        ->where('phone_no', '<>', '')
+                                                        ->whereIn('notice_id', function($query) use ($unqids) {
+                                                            $query->select('notice_id')
+                                                                ->from('notice')
+                                                                ->where('unq_id', $unqids);
+                                                        })
+                                                        ->count();
+                                }
+
+                            $data['smscount'] = $counts;
 
                             return response()->json([
                                 'status'=> 200,
                                 'message'=>'Sms and Notices Listing',
-                                'data' =>$query,
+                                'data' =>$query,$data,
                                 'success'=>true
                                 ]);
             }
@@ -841,6 +856,51 @@ class NoticeController extends Controller
             \Log::error($e); // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
            }
+    }
+
+    public function SendSMSLeft(Request $request,$unq_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $noticedata = DB::table('notice_sms_log')
+                                    ->join('notice','notice.notice_id','=','notice_sms_log.notice_id')
+                                    ->where('notice.unq_id',$unq_id)
+                                    ->get();
+
+                    foreach($noticedata as $noticedata1){
+                        $message = $noticedata1->notice_desc . ". Login to school application for details - AceVentura";
+                            $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
+                    
+                            // Send SMS using the send_sms method
+                            $sms_status = $this->send_sms($noticedata1->phone_no, $message, $temp_id);
+                            $updatesmsdata = DB::table('notice_sms_log')
+                                                 ->where('notice_sms_log_id',$noticedata1->notice_sms_log_id)
+                                                 ->update(['sms_sent' => 'Y']);
+                    }
+
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Message Sended Successfully',
+                        'success'=>true
+                        ]);
+                    
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Updating of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+                }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
     }
 
     private function authenticateUser()
