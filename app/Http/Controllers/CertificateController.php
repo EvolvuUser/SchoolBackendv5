@@ -22,6 +22,7 @@ use App\Models\Student;
 use App\Models\UserMaster;
 use Http;
 
+
 class CertificateController extends Controller
 {
     public function getSrnobonafide($id){
