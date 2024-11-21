@@ -1084,11 +1084,21 @@ public function destroyClass($id)
     if (!$class) {
         return response()->json(['message' => 'Class not found', 'success' => false], 404);
     }
-    $class->delete();
-    return response()->json([
-        'status' => 200,
-        'message' => 'Class deleted successfully',
-    ]);
+    $sectionCount = DB::table('section')->where('class_id', $id)->count();
+    if ($sectionCount > 0) {       
+        return response()->json([
+            'status' => 400,
+            'message' => 'This class is in use. Delete failed!!!',
+        ]);
+
+    }
+    else{
+        $class->delete();
+        return response()->json([
+            'status' => 200,
+            'message' => 'Class deleted successfully',
+        ]);
+    }
 }
 
 // Methods for the Divisons
@@ -1214,6 +1224,22 @@ public function showDivision($id)
 
 public function destroyDivision($id)
 {
+    $studentCount = DB::table('student')->where('section_id', $id)->count();
+        
+        if ($studentCount > 0) {
+            return response()->json([
+                'error' => 'This division is in use by students. Deletion failed!'
+            ], 400);
+        }
+
+        // Check if section_id exists in the subject table
+        $subjectCount = DB::table('subject')->where('section_id', $id)->count();
+       
+        if ($subjectCount > 0) {
+            return response()->json([
+                'error' => 'This division is in use by subjects. Deletion failed!'
+            ], 400);
+        }
     $division = Division::find($id);
 
     if (is_null($division)) {
@@ -1727,7 +1753,7 @@ public function getSubjects(Request $request)
     return response()->json($subjects);
 }
 
-public function checkSubjectName(Request $request)
+public function checkSubjectName(Request $request,$id)
 {
     // Validate the request data
     $validatedData = $request->validate([
@@ -1740,7 +1766,29 @@ public function checkSubjectName(Request $request)
 
     // Check if the combination of name and subject_type exists
     $exists = SubjectMaster::whereRaw('LOWER(name) = ? AND LOWER(subject_type) = ?', [strtolower($name), strtolower($subjectType)])->exists();
-
+    if($exists == true){
+        $section = Section::find($id);
+        if (!$section) {
+            return response()->json(['message' => 'Section not found', 'success' => false], 404);
+        }
+        $payload = getTokenPayload($request);
+        if (!$payload) {
+            return response()->json(['error' => 'Invalid or missing token'], 401);
+        }
+    
+        $academicYr = $payload->get('academic_year');
+    
+        // Update the section
+        $section->name = $request->name;
+        $section->academic_yr = $academicYr;
+        $section->save();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Section Updated Successfully.',
+            'data' => $section,
+            'success'=>true
+            ]);
+      }
     return response()->json(['exists' => $exists]);
 }
 
@@ -1853,6 +1901,15 @@ public function editSubject($id)
 
 public function deleteSubject($id)
 {
+    $subjectCount = DB::table('subject')->where('sm_id', $id)->count();
+
+        // If subject is in use
+        if ($subjectCount > 0) {
+            return response()->json([
+                'error' => 'This subject is in use. Deletion failed!'
+            ], 400); // Return a 400 Bad Request with an error message
+        }
+        
     $subject = SubjectMaster::find($id);
 
     if (!$subject) {
