@@ -43,7 +43,7 @@
 
         //Master and its sub module routes  Module Routes 
         //Section model Routes 
-        Route::post('/check_section_name', [AdminController::class, 'checkSectionName']);
+        Route::post('/check_section_name/{id}', [AdminController::class, 'checkSectionName']);
         Route::get('/sections', [AdminController::class, 'listSections']);
         Route::post('/sections', [AdminController::class, 'storeSection']);
         Route::get('/sections/{id}/edit', [AdminController::class, 'editSection']);
