@@ -741,13 +741,36 @@ public function listSections(Request $request)
         return response()->json($sections);
   }
 
-  public function checkSectionName(Request $request)
+  public function checkSectionName(Request $request,$id)
   {
       $request->validate([
           'name' => 'required|string|max:30',
       ]);
       $name = $request->input('name');
       $exists = Section::where(DB::raw('LOWER(name)'), strtolower($name))->exists();
+      if($exists == true){
+        $section = Section::find($id);
+        if (!$section) {
+            return response()->json(['message' => 'Section not found', 'success' => false], 404);
+        }
+        $payload = getTokenPayload($request);
+        if (!$payload) {
+            return response()->json(['error' => 'Invalid or missing token'], 401);
+        }
+    
+        $academicYr = $payload->get('academic_year');
+    
+        // Update the section
+        $section->name = $request->name;
+        $section->academic_yr = $academicYr;
+        $section->save();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Section Updated Successfully.',
+            'data' => $section,
+            'success'=>true
+            ]);
+      }
       return response()->json(['exists' =>$exists]);
   }
 
@@ -1753,7 +1776,7 @@ public function getSubjects(Request $request)
     return response()->json($subjects);
 }
 
-public function checkSubjectName(Request $request,$id)
+public function checkSubjectName(Request $request)
 {
     // Validate the request data
     $validatedData = $request->validate([
@@ -1766,29 +1789,7 @@ public function checkSubjectName(Request $request,$id)
 
     // Check if the combination of name and subject_type exists
     $exists = SubjectMaster::whereRaw('LOWER(name) = ? AND LOWER(subject_type) = ?', [strtolower($name), strtolower($subjectType)])->exists();
-    if($exists == true){
-        $section = Section::find($id);
-        if (!$section) {
-            return response()->json(['message' => 'Section not found', 'success' => false], 404);
-        }
-        $payload = getTokenPayload($request);
-        if (!$payload) {
-            return response()->json(['error' => 'Invalid or missing token'], 401);
-        }
     
-        $academicYr = $payload->get('academic_year');
-    
-        // Update the section
-        $section->name = $request->name;
-        $section->academic_yr = $academicYr;
-        $section->save();
-        return response()->json([
-            'status'=> 200,
-            'message'=>'Section Updated Successfully.',
-            'data' => $section,
-            'success'=>true
-            ]);
-      }
     return response()->json(['exists' => $exists]);
 }
 
@@ -1909,7 +1910,7 @@ public function deleteSubject($id)
                 'error' => 'This subject is in use. Deletion failed!'
             ], 400); // Return a 400 Bad Request with an error message
         }
-        
+
     $subject = SubjectMaster::find($id);
 
     if (!$subject) {
