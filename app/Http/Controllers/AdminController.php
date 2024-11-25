@@ -741,14 +741,14 @@ public function listSections(Request $request)
         return response()->json($sections);
   }
 
-  public function checkSectionName(Request $request,$id)
+  public function checkSectionName(Request $request)
   {
       $request->validate([
           'name' => 'required|string|max:30',
       ]);
       $name = $request->input('name');
       $exists = Section::where(DB::raw('LOWER(name)'), strtolower($name))->exists();
-      
+
       return response()->json(['exists' =>$exists]);
   }
 
