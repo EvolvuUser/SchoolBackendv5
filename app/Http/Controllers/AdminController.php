@@ -748,7 +748,37 @@ public function listSections(Request $request)
       ]);
       $name = $request->input('name');
       $exists = Section::where(DB::raw('LOWER(name)'), strtolower($name))->exists();
-      if($exists == true){
+      
+      return response()->json(['exists' =>$exists]);
+  }
+
+public function updateSection(Request $request, $id)
+{
+            $payload = getTokenPayload($request);
+            $academicYr = $payload->get('academic_year');
+            $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:30', 'regex:/^[a-zA-Z]+$/',
+            Rule::unique('department')
+                        ->ignore($id, 'department_id')
+                        ->where(function ($query) use ($academicYr) {
+                            $query->where('academic_yr', $academicYr);
+                        })
+        ],
+        ], 
+        [
+            'name.required' => 'The name field is required.',
+            'name.string' => 'The name field must be a string.',
+            'name.max' => 'The name field must not exceed 255 characters.',
+            'name.regex' => 'The name field must contain only alphabetic characters without spaces.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
         $section = Section::find($id);
         if (!$section) {
             return response()->json(['message' => 'Section not found', 'success' => false], 404);
@@ -757,62 +787,18 @@ public function listSections(Request $request)
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
-    
-        $academicYr = $payload->get('academic_year');
-    
+
+
         // Update the section
         $section->name = $request->name;
         $section->academic_yr = $academicYr;
         $section->save();
+
+        // Return success response
         return response()->json([
-            'status'=> 200,
-            'message'=>'Section Updated Successfully.',
-            'data' => $section,
-            'success'=>true
-            ]);
-      }
-      return response()->json(['exists' =>$exists]);
-  }
-
-public function updateSection(Request $request, $id)
-{
-        $validator = Validator::make($request->all(), [
-        'name' => ['required', 'string', 'max:30', 'regex:/^[a-zA-Z]+$/'],
-    ], [
-        'name.required' => 'The name field is required.',
-        'name.string' => 'The name field must be a string.',
-        'name.max' => 'The name field must not exceed 255 characters.',
-        'name.regex' => 'The name field must contain only alphabetic characters without spaces.',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => 422,
-            'errors' => $validator->errors(),
-        ], 422);
-    }
-
-    $section = Section::find($id);
-    if (!$section) {
-        return response()->json(['message' => 'Section not found', 'success' => false], 404);
-    }
-    $payload = getTokenPayload($request);
-    if (!$payload) {
-        return response()->json(['error' => 'Invalid or missing token'], 401);
-    }
-
-    $academicYr = $payload->get('academic_year');
-
-    // Update the section
-    $section->name = $request->name;
-    $section->academic_yr = $academicYr;
-    $section->save();
-
-    // Return success response
-    return response()->json([
-        'status' => 200,
-        'message' => 'Section updated successfully',
-    ]);
+            'status' => 200,
+            'message' => 'Section updated successfully',
+        ]);
 }
 
 public function storeSection(Request $request)
