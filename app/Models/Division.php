@@ -13,6 +13,7 @@ class Division extends Model
     protected $primaryKey = 'section_id'; 
     public $incrementing = true;     
     protected $table ='section';
+    public $timestamps = false;
     protected $fillable =['section_id','name','class_id','academic_yr'];
 
     public function getClass()

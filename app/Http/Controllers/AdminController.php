@@ -1196,6 +1196,33 @@ public function storeDivision(Request $request)
 public function updateDivision(Request $request, $id)
 {
     $payload = getTokenPayload($request);
+    $academicYr = $payload->get('academic_year');
+    $sectiondata = Division::find($id);
+    $class_id=$sectiondata->class_id;
+    $validator = \Validator::make($request->all(), [
+        'name' => [
+            'required', 
+            'string', 
+            'max:30', 
+            Rule::unique('section')
+                ->ignore($id, 'section_id')
+                ->where(function ($query) use ($academicYr) {
+                    $query->where('academic_yr', $academicYr);
+                })
+                 
+                ->where(function ($query) use ($class_id) {
+                    $query->where('class_id', $class_id);
+                })
+
+        ]
+         ]);
+         if ($validator->fails()) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+    $payload = getTokenPayload($request);
     if (!$payload) {
         return response()->json(['error' => 'Invalid or missing token'], 401);
     }
@@ -1207,11 +1234,10 @@ public function updateDivision(Request $request, $id)
             'message' => 'Division not found',
         ], 404);
     }
-
     $division->name = $request->name;
     $division->class_id = $request->class_id;
     $division->academic_yr = $academicYr;
-    $division->save();
+    $division->update();
 
     return response()->json([
         'status' => 200,
