@@ -13,6 +13,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use App\Models\NoticeDetail;
+use App\Models\ExamTimetable;
+use App\Models\ExamTimetableDetail;
 
 class NoticeController extends Controller
 {
@@ -901,6 +903,377 @@ class NoticeController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
            }
 
+    }
+
+    public function saveExamTimetable(Request $request,$exam_id,$class_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $exam_dates = DB::table('exam')
+                                ->select('start_date', 'end_date')
+                                ->where('exam_id', $exam_id)
+                                ->where('academic_yr', $customClaims)
+                                ->first();
+                $startDate = $exam_dates->start_date;
+                $endDate = $exam_dates->end_date;
+
+                $examTimetableData = [
+                    'description' => $request->input('description'),
+                    'exam_id' => $exam_id,
+                    'class_id' => $class_id,
+                    'publish' => 'N',
+                    'academic_yr' => $customClaims
+                ];
+        
+                $examTimetable = ExamTimetable::create($examTimetableData);
+                $exam_tt_id = $examTimetable->id;
+
+                $dates = [$startDate];
+                $start = $startDate;
+                $i = 1;
+
+                // Generate the dates between the start and end date
+                if (strtotime($startDate) < strtotime($endDate)) {
+                    while (strtotime($start) < strtotime($endDate)) {
+                        $start = date('Y-m-d', strtotime($startDate . ' +' . $i . ' days'));
+                        $dates[] = $start;
+                        $i++;
+                    }
+                }
+
+                $k = 1;
+                    foreach ($dates as $date) {
+                        $subject_ids = '';
+                        $data1 = [
+                            'exam_tt_id' => $exam_tt_id,
+                            'date' => $date,
+                        ];
+
+                        // Determine the option for the current exam date (A, O, Select)
+                        $option = $request->input('option' . $k);
+                        if ($option == 'A' || $option == 'O') {
+                            
+                            for ($i = 1; $i <= 4; $i++) {
+                                $subject_id = $request->input('subject_id' . $i . $k);
+                                
+                                if ($subject_id != '') {
+                                    if ($option == 'A') {
+                                        // For 'A' option, use comma separator
+                                        $subject_ids .= ($i > 1 ? ',' : '') . $subject_id;
+                                    } elseif ($option == 'O') {
+                                        // For 'O' option, use slash separator
+                                        $subject_ids .= ($i > 1 ? '/' : '') . $subject_id;
+                                    }
+                                }
+                            }
+                            $data1['subject_rc_id'] = $subject_ids;
+                        } 
+                        elseif ($option == 'Select') {
+                            $data1['subject_rc_id'] = $request->input('subject_id1' . $k);
+                        }
+
+
+                        if (isset($data1['subject_rc_id'])) {
+                            $subject_rc_id = $data1['subject_rc_id'];  // Extract the value if the key exists
+                        } else {
+                            // Handle the case where the key doesn't exist
+                            $subject_rc_id = '0';  // Assign a default value
+                        }
+                        // Check if study leave is set
+                        $study_leave = $request->input('study_leave' . $k);
+                        $data1['study_leave'] = $study_leave ? 'Y' : ($subject_rc_id ? 'N' : '');
+
+                        // Insert into exam_timetable_details table
+                        ExamTimetableDetail::create($data1);
+
+                        $k++;
+                    }
+
+                    return response()->json([
+                        'status'  => 200,
+                        'message' => 'Exam timetable created successfully!',
+                        'success' =>true
+                    ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Saving of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+                }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+    }
+
+    public function getAllSubjects(Request $request,$class_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+
+            $results = DB::table('subjects_on_report_card as a')
+                            ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
+                            ->distinct()
+                            ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
+                            ->where('a.class_id', '=', $class_id)
+                            ->where('a.academic_yr', '=', $customClaims)
+                            ->orderBy('a.class_id', 'asc')
+                            ->orderBy('b.sequence', 'asc')
+                            ->get();
+                    return response()->json([
+                        'status'  => 200,
+                        'message' => 'List of Subjects',
+                        'data' =>$results,
+                        'success' =>true
+                    ]);
+              }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Saving of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+                }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+    }
+
+    public function getTimetableList(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+              if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                 
+                 $timetablelist = DB::table('exam')
+                                       ->join('exam_timetable','exam_timetable.exam_id','=','exam.exam_id')
+                                       ->join('class','class.class_id','=','exam_timetable.class_id')
+                                       ->get();
+                          
+                                return response()->json([
+                                'status'  => 200,
+                                'message' => 'List of Timetable',
+                                'data' =>$timetablelist,
+                                'success' =>true
+                            ]);
+               
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Saving of Data',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                      ]);
+                  }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+    }
+
+    public function deleteTimetable(Request $request,$exam_tt_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+              if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                DB::table('exam_timetable_details')
+                    ->where('exam_tt_id', $exam_tt_id)
+                    ->delete();
+        
+                // Delete records from 'exam_timetable' table where 'exam_tt_id' matches $param2
+                DB::table('exam_timetable')
+                    ->where('exam_tt_id', $exam_tt_id)
+                    ->delete();
+
+                    return response()->json([
+                        'status'  => 200,
+                        'message' => 'Timetable Deleted Successfully.',
+                        'success' =>true
+                    ]);
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Saving of Data',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                      ]);
+                  }
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+    }
+
+    public function updatePublishTimetable(Request $request,$exam_tt_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+              if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $data = ['publish' => 'Y'];
+
+                DB::table('exam_timetable')
+                    ->where('exam_tt_id', $exam_tt_id)
+                    ->update($data);
+
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'Timetable Published Successfully.',
+                    'success' =>true
+                ]);
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Saving of Data',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                      ]);
+                  }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+    }
+
+    public function updateunPublishTimetable(Request $request,$exam_tt_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+              if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $data = ['publish' => 'N'];
+
+                DB::table('exam_timetable')
+                    ->where('exam_tt_id', $exam_tt_id)
+                    ->update($data);
+
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'Timetable UnPublished Successfully.',
+                    'success' =>true
+                ]);
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Saving of Data',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                      ]);
+                  }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+    }
+
+    public function viewTimetableStudent(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+              if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $exam_id = $request->query('exam_id');
+                if(isset($exam_id)){
+                    $examTimetableDetails = ExamTimetable::join('exam_timetable_details', 'exam_timetable.exam_tt_id', '=', 'exam_timetable_details.exam_tt_id')
+                                ->where('exam_timetable.exam_tt_id', $exam_id)
+                                ->get();
+
+                            $data = [];
+
+                            foreach ($examTimetableDetails as $rw) {
+                                // Process each row of the data
+                                $studyLeave = $rw->study_leave == 'Y' ? 'Study Leave' : null;
+                                
+                                $subjects = [];
+                                if ($rw->study_leave != 'Y') {
+                                    // Check if the subject_rc_id contains multiple subjects
+                                    if (strpos($rw->subject_rc_id, ',') !== false) {
+                                        $subjectIds = explode(",", $rw->subject_rc_id);
+                                        foreach ($subjectIds as $subjectId) {
+                                            $subject = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id',$subjectId)->first();
+                                            if ($subject) {
+                                                $subjects[] = $subject->name;
+                                            }
+                                        }
+                                        $subjectNames = implode(" & ", $subjects);
+                                    } elseif (strpos($rw->subject_rc_id, '/') !== false) {
+                                        $subjectIds = explode("/", $rw->subject_rc_id);
+                                        foreach ($subjectIds as $subjectId) {
+                                            $subject = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id',$subjectId)->first();
+                                            if ($subject) {
+                                                $subjects[] = $subject->name;
+                                            }
+                                        }
+                                        $subjectNames = implode(" / ", $subjects);
+                                    } else {
+                                        $subject = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id',$subjectId)->first();
+                                        $subjectNames = $subject ? $subject->name : null;
+                                    }
+                                } else {
+                                    $subjectNames = null;
+                                }
+
+                                // Prepare the data structure for API response
+                                $data[] = [
+                                    'date' => \Carbon\Carbon::parse($rw->date)->format('d-m-Y'),
+                                    'study_leave' => $studyLeave,
+                                    'subjects' => $subjectNames,
+                                ];
+
+                            }
+                            
+
+                            // Return the data as a JSON response
+                            return response()->json([
+                                'exam_tt_id' => $exam_id,
+                                'exam_timetable_details' => $data,
+                            ]);
+                     
+                }
+                else{
+                    return response()->json([
+                        'status'  => 400,
+                        'message' => 'Timetable Not Found.',
+                        'success' =>false
+                    ]);                  
+                }
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Saving of Data',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                      ]);
+                  }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
     }
 
     private function authenticateUser()
