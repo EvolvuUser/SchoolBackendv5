@@ -287,6 +287,15 @@
         Route::post('save_noticesmspdf',[NoticeController::class,'saveNotice']);
         Route::post('save_publishnoticesmspdf',[NoticeController::class,'savePUblishNotice']);
         Route::post('save_sendsms/{unq_id}',[NoticeController::class,'SendSMSLeft']);
+
+        //Exam TimeTable
+        Route::post('save_timetable/{exam_id}/{class_id}',[NoticeController::class,'saveExamTimetable']);
+        Route::get('get_subjectsofallstudents/{class_id}',[NoticeController::class,'getAllSubjects']);
+        Route::get('get_timetablelist',[NoticeController::class,'getTimetableList']);
+        Route::delete('delete_timetable/{exam_tt_id}',[NoticeController::class,'deleteTimetable']);
+        Route::put('update_publishtimetable/{exam_tt_id}',[NoticeController::class,'updatePublishTimetable']);
+        Route::put('update_unpublishtimetable/{exam_tt_id}',[NoticeController::class,'updateunPublishTimetable']);
+        Route::get('get_viewtimetable',[NoticeController::class,'viewTimetableStudent']);
     });
 
 //  API for the New Student list Buulk upload 
