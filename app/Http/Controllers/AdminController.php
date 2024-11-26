@@ -1198,7 +1198,7 @@ public function updateDivision(Request $request, $id)
     $payload = getTokenPayload($request);
     $academicYr = $payload->get('academic_year');
     $sectiondata = Division::find($id);
-    $class_id=$sectiondata->class_id;
+    $class_id=$request->class_id;
     $validator = \Validator::make($request->all(), [
         'name' => [
             'required', 
