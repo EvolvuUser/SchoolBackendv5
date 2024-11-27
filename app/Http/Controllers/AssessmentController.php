@@ -421,9 +421,6 @@ class AssessmentController extends Controller
                 'open_day' => [
                     'required'
                 ],
-                'comment' => [
-                    'string'
-                ],
             ], $messages);
         } catch (ValidationException $e) {
             return response()->json([
@@ -477,9 +474,6 @@ class AssessmentController extends Controller
                 'open_day' => [
                     'required'
                 ],
-                'comment' => [
-                    'string'
-                ],
             ], $messages);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -513,6 +507,15 @@ class AssessmentController extends Controller
     
     public function deleteExam($exam_id)
     {
+        $examInUse = DB::table('allot_mark_headings')
+                    ->where('exam_id', $exam_id)
+                    ->count();
+
+        if ($examInUse > 0) {
+            return response()->json([
+                'error' => 'This subject is in use. Deletion failed!'
+            ], 400);
+        }
         $exams = Exams::find($exam_id);
     
         if (!$exams) {

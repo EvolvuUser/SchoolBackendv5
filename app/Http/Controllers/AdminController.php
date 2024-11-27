@@ -1849,6 +1849,10 @@ public function storeSubject(Request $request)
 
 public function updateSubject(Request $request, $id)
     {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+        $subjectType = $request->subject_type;
+
         $messages = [
             'name.required' => 'The name field is required.',
             // 'name.unique' => 'The name has already been taken.',
@@ -1862,7 +1866,11 @@ public function updateSubject(Request $request, $id)
                     'required',
                     'string',
                     'max:30',
-                    // Rule::unique('subject_master', 'name')->ignore($id, 'sm_id')
+                    Rule::unique('subject_master')
+                            ->ignore($id, 'sm_id')
+                            ->where(function ($query) use ($subjectType) {
+                                $query->where('subject_type', $subjectType);
+                            })
                 ],
                 'subject_type' => [
                     'required',
