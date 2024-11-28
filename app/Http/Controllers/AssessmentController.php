@@ -142,6 +142,17 @@ class AssessmentController extends Controller
     
     public function deleteMarksheading($marks_headings_id)
     {
+        $heading = DB::table('allot_mark_headings')
+                        ->where('marks_headings_id', $marks_headings_id)
+                        ->first();
+
+        if ($heading) {
+            return response()->json([
+                'error' => 'This markheadings is in use. Deletion failed!'
+            ], 400);
+
+        }
+        
         $marks_headings = MarksHeadings::find($marks_headings_id);
     
         if (!$marks_headings) {
@@ -435,7 +446,7 @@ class AssessmentController extends Controller
         $exams->start_date = $validatedData['start_date'];
         $exams->end_date = $validatedData['end_date'];
         $exams->open_day = $validatedData['open_day'];
-        $exams->comment = $validatedData['comment'];
+        $exams->comment = $request->comment;
         $exams->academic_yr = $academicYr;
 
         $exams->save();
@@ -493,7 +504,7 @@ class AssessmentController extends Controller
         $exams->start_date = $validatedData['start_date'];
         $exams->end_date = $validatedData['end_date'];
         $exams->open_day = $validatedData['open_day'];
-        $exams->comment = $validatedData['comment'];
+        $exams->comment = $request->comment;
         $exams->academic_yr = $academicYr;
         $exams->save();
     
@@ -513,7 +524,7 @@ class AssessmentController extends Controller
 
         if ($examInUse > 0) {
             return response()->json([
-                'error' => 'This subject is in use. Deletion failed!'
+                'error' => 'This Exam is in use. Deletion failed!'
             ], 400);
         }
         $exams = Exams::find($exam_id);
