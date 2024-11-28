@@ -105,13 +105,23 @@ class AssessmentController extends Controller
             try {
                 $validatedData = $request->validate([
                     'name' => [
-                    'required'
+                    'required',
+                    Rule::unique('marks_headings')
+                            ->where(function ($query) {
+                                return $query->where('sequence', request('sequence'));
+                            })
+                            ->ignore($marks_headings_id, 'marks_headings_id')
                 ],
                 'written_exam' => [
                     'required'
                 ],
                 'sequence' => [
-                    'required'
+                    'required',
+                    Rule::unique('marks_headings')
+                    ->ignore($marks_headings_id, 'marks_headings_id')
+                    ->where(function ($query) {
+                        return $query->where('name', request('name'));
+                    })
                 ],
                 ], $messages);
             } catch (\Illuminate\Validation\ValidationException $e) {
@@ -152,7 +162,7 @@ class AssessmentController extends Controller
             ], 400);
 
         }
-        
+
         $marks_headings = MarksHeadings::find($marks_headings_id);
     
         if (!$marks_headings) {
