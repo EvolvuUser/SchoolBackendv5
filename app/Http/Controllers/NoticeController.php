@@ -1061,6 +1061,7 @@ class NoticeController extends Controller
                  $timetablelist = DB::table('exam')
                                        ->join('exam_timetable','exam_timetable.exam_id','=','exam.exam_id')
                                        ->join('class','class.class_id','=','exam_timetable.class_id')
+                                       ->select('exam.name as examname','exam.*','class.*','exam_timetable.*')
                                        ->get();
                           
                                 return response()->json([
