@@ -1201,6 +1201,8 @@ class NoticeController extends Controller
                     $examTimetableDetails = ExamTimetable::join('exam_timetable_details', 'exam_timetable.exam_tt_id', '=', 'exam_timetable_details.exam_tt_id')
                                 ->where('exam_timetable.exam_tt_id', $exam_id)
                                 ->get();
+                    
+                    $description = ExamTimetable::where('exam_timetable.exam_tt_id',$exam_id)->select('description')->first();
 
                             $data = [];
 
@@ -1242,6 +1244,7 @@ class NoticeController extends Controller
                                     'date' => \Carbon\Carbon::parse($rw->date)->format('d-m-Y'),
                                     'study_leave' => $studyLeave,
                                     'subjects' => $subjectNames,
+                                    'description'=>$description,
                                 ];
 
                             }
@@ -1249,8 +1252,10 @@ class NoticeController extends Controller
 
                             // Return the data as a JSON response
                             return response()->json([
+                                'status'=>200,
                                 'exam_tt_id' => $exam_id,
                                 'exam_timetable_details' => $data,
+                                'success'=>true
                             ]);
                      
                 }
