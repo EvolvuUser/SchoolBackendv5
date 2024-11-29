@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\NoticeDetail;
 use App\Models\ExamTimetable;
 use App\Models\ExamTimetableDetail;
+use App\Models\Exams;
 
 class NoticeController extends Controller
 {
@@ -1276,6 +1277,73 @@ class NoticeController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
            }
     }
+
+    public function getExamDateswithnames(Request $request,$exam_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+            $exams = Exams::find($exam_id);
+            $startDate = Carbon::parse($exams->start_date);  // Parse the start date
+            $endDate = Carbon::parse($exams->end_date);      // Parse the end date
+    
+            // Generate an array of all dates between start and end date
+            $dates = [];
+            for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
+                $dates[] = $date->format('Y-m-d'); // or use any format you prefer
+            }
+    
+            $data['dates']= $dates;
+            $response = [];
+            foreach ($dates as $index => $date) {
+                $optionKey = 'option' . ($index + 1); // Dynamically generate option1, option2, etc.
+                $response[] = $optionKey;
+            }
+            $data['option']=$response;
+            $studyleave=[];
+            foreach ($dates as $index => $date) {
+                $optionKey = 'study_leave' . ($index + 1); // Dynamically generate option1, option2, etc.
+                $studyleave[] = $optionKey;
+            }
+            $data['study_leave']=$studyleave;
+            $subjectIds = [];
+            foreach ($dates as $index => $date) {
+                $optionKey = 'subject_id1' . ($index + 1);
+                $optionKey1 = 'subject_id2' . ($index + 1);
+                $optionKey2 = 'subject_id3' . ($index + 1);
+                $optionKey3 = 'subject_id4' . ($index + 1);
+                $subjectIds[] = [
+                     $optionKey,
+                     $optionKey1,
+                     $optionKey2,
+                     $optionKey3
+                ];
+            }
+            $data['subject_ids'] = $subjectIds;
+            $description = 'description';
+            $data['description']=$description;
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Dates with subject Ids',
+                'data' => $data,
+                'success' =>true
+            ]);
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Saving of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                ]);
+            }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+        }
 
     private function authenticateUser()
     {
