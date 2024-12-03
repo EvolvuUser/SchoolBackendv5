@@ -297,6 +297,8 @@
         Route::put('update_publishtimetable/{exam_tt_id}',[NoticeController::class,'updatePublishTimetable']);
         Route::put('update_unpublishtimetable/{exam_tt_id}',[NoticeController::class,'updateunPublishTimetable']);
         Route::get('get_viewtimetable',[NoticeController::class,'viewTimetableStudent']);
+        Route::get('get_examtimetable/{exam_tt_id}',[NoticeController::class,'getExamdataSingle']);
+        Route::put('update_examtimetable/{exam_tt_id}',[NoticeController::class,'updateExamTimetable']);
     });
 
 //  API for the New Student list Buulk upload 

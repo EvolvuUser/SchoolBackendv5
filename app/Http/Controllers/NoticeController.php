@@ -16,6 +16,7 @@ use App\Models\NoticeDetail;
 use App\Models\ExamTimetable;
 use App\Models\ExamTimetableDetail;
 use App\Models\Exams;
+use Log;
 
 class NoticeController extends Controller
 {
@@ -1197,6 +1198,12 @@ class NoticeController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
               if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $exam_id = $request->query('exam_id');
+                $classterm=DB::table('exam_timetable')
+                              ->join('class','class.class_id','=','exam_timetable.class_id')
+                              ->join('exam','exam.exam_id','=','exam_timetable.exam_id')
+                              ->select('exam.name as examname','class.name as classname')
+                              ->first();
+
                 if(isset($exam_id)){
                     $examTimetableDetails = ExamTimetable::join('exam_timetable_details', 'exam_timetable.exam_tt_id', '=', 'exam_timetable_details.exam_tt_id')
                                 ->where('exam_timetable.exam_tt_id', $exam_id)
@@ -1255,6 +1262,7 @@ class NoticeController extends Controller
                                 'status'=>200,
                                 'exam_tt_id' => $exam_id,
                                 'exam_timetable_details' => $data,
+                                'classterm'=>$classterm,
                                 'success'=>true
                             ]);
                      
@@ -1348,6 +1356,174 @@ class NoticeController extends Controller
             \Log::error($e); // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
             }
+        }
+
+        public function getExamdataSingle(Request $request,$exam_tt_id){
+            try{
+                $user = $this->authenticateUser();
+                    $transformedData = JWTAuth::getPayload()->get('academic_year');
+                    if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                          $data=ExamTimetable::join('class','class.class_id','=','exam_timetable.class_id')->join('exam','exam.exam_id','=','exam_timetable.exam_id')->where('exam_tt_id',$exam_tt_id)->select('description','class.name as classname','exam.name as examname')->first();
+                          $main['dates']= ExamTimetableDetail::where('exam_tt_id',$exam_tt_id)->select('date','subject_rc_id','study_leave')->get();
+                          $collection = collect($main['dates']);
+    
+                          // Transform 'subject_rc_id' into an array
+                        //   $transformedData = $collection->map(function ($item) {
+                        //       $item['subject_rc_id'] = explode(',', str_replace('/', ',', $item['subject_rc_id']));  // Replace slashes with commas and explode
+                        //       return $item;
+                        //   });
+                          
+                        // $transformedData = $collection->map(function ($item) {
+                        //     // Convert subject_rc_id to an array (handling both commas and slashes)
+                        //     // dd($item['subject_rc_id']);
+                        //     $item['subject_rc_id'] = explode(',', str_replace('/', ',', $item['subject_rc_id']));
+                        
+                        //     // Check study_leave condition
+                        //     if ($item['study_leave'] === 'N') {
+                        //         $item['study_leave'] = '';  // Set study_leave to empty string if 'N'
+                        //     } elseif ($item['study_leave'] === 'Y') {
+                        //         $item['study_leave'] = 1;  // Set study_leave to 1 if 'Y'
+                        //     }
+                        
+                        //     // Check for the condition on subject_rc_id and add the "option" key
+                        //     $subjectCount = count($item['subject_rc_id']);
+                        //     // dd($item['subject_rc_id']);
+                        //     dd($subjectCount);
+                        //     if ($subjectCount > 1) {
+                        //         // If there is more than 1 subject, check for a slash (for "O") or comma (for "A")
+                        //         $item['option'] = strpos($item['subject_rc_id'][0], '/') !== false ? 'O' : 'A';
+                        //     } elseif ($subjectCount === 1) {
+                        //         // If there is only 1 subject
+                        //         $item['option'] = 'Select';
+                        //     }
+                        //     dd($item['subject_rc_id'][0]);
+                        
+                        //     return $item;
+                        // });
+    
+                        $transformedData = $collection->map(function ($item) {
+                            // Check study_leave condition
+                            if ($item['study_leave'] === 'N') {
+                                $item['study_leave'] = '';  // Set study_leave to empty string if 'N'
+                            } elseif ($item['study_leave'] === 'Y') {
+                                $item['study_leave'] = 1;  // Set study_leave to 1 if 'Y'
+                            }
+                        
+                            // Check for the condition on subject_rc_id and add the "option" key
+                            if (strpos($item['subject_rc_id'], '/') !== false) {
+                                // If subject_rc_id contains a slash, mark it as "O" (e.g., 23/24)
+                                $item['option'] = 'O';
+                            } elseif (strpos($item['subject_rc_id'], ',') !== false) {
+                                // If subject_rc_id contains a comma, mark it as "A" (e.g., 23,24)
+                                $item['option'] = 'A';
+                            } else {
+                                // If it's a single subject
+                                $item['option'] = 'Select';
+                            }
+                        
+                            $item['subject_rc_id'] = explode(',', str_replace('/', ',', $item['subject_rc_id']));
+                            return $item;
+                        });
+    
+                          return response()->json([
+                            'status'  => 200,
+                            'data'=>$transformedData,$data,
+                            'message' => 'Exam timetable data',
+                            'success' =>true
+                        ]);
+                    }
+                    else{
+                        return response()->json([
+                            'status'=> 401,
+                            'message'=>'This User Doesnot have Permission for the Saving of Data',
+                            'data' =>$user->role_id,
+                            'success'=>false
+                            ]);
+                        }
+        
+                }
+                catch (Exception $e) {
+                    \Log::error($e); // Log the exception
+                    return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                   }
+        }
+    
+        public function updateExamTimetable(Request $request,$exam_tt_id){
+            // dd($request->all());
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    //  dd($request->all());
+                    DB::table('exam_timetable')->where('exam_tt_id',$exam_tt_id)->update(['description'=>$request->description]);
+            $data = $request->input('data');
+            
+            foreach ($data as $item) {
+                // Get data from the item
+                $date = $item['date'];
+                $option = $item['option'];
+                $studyLeave = $item['studyLeave'];
+                $subjects = array_filter($item['subjects']);  // Remove any null values from subjects array
+                
+                if ($studyLeave === '1') {
+                    $subjects = ['0'];  // Only store '0' as the subject when studyLeave is "1"
+                }
+                // dd($subjects);
+                if ($studyLeave === '1') {
+                    $studyLeave = 'Y';
+                } else {
+                    $studyLeave = 'N';
+                }
+    
+                if ($option === 'A') {
+                    // If option is 'A', save subjects as a comma-separated string
+                    $subjects = implode(',', $subjects);  // Example: "12,13"
+                } elseif ($option === 'O') {
+                    // If option is 'O', save subjects as a slash-separated string
+                    $subjects = implode('/', $subjects);  // Example: "12/13"
+                } else {
+                    
+                    $subjects = implode(",", $subjects);;  
+                }
+    
+                Log::info('Updating or Creating Record', [
+                    'date' => $date,
+                    'option' => $option,
+                    'studyLeave' => $studyLeave,
+                    'subjects' => $subjects,
+                ]);
+    
+                // Find the schedule by date or create a new one if it doesn't exist
+                $schedule = ExamTimetableDetail::where('exam_tt_id',$exam_tt_id)->where('date',$date)->update( // Find record by date
+                    [
+                        'study_leave' => $studyLeave,
+                        'subject_rc_id' => $subjects,
+                    ]
+                );
+              }
+              return response()->json([
+                'status'  => 200,
+                'data'=>$schedule,
+                'message' => 'Exam timetable data',
+                'success' =>true
+            ]);
+    
+    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Saving of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
         }
 
     private function authenticateUser()
