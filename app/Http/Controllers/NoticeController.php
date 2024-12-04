@@ -957,7 +957,7 @@ class NoticeController extends Controller
                         if ($option == 'A' || $option == 'O') {
                             
                             for ($i = 1; $i <= 4; $i++) {
-                                $subject_id = $request->input('subject_id' . $i . $k);
+                                $subject_id = $request->input('subject_id' . $k . $i);
                                 
                                 if ($subject_id != '') {
                                     if ($option == 'A') {
@@ -972,7 +972,7 @@ class NoticeController extends Controller
                             $data1['subject_rc_id'] = $subject_ids;
                         } 
                         elseif ($option == 'Select') {
-                            $data1['subject_rc_id'] = $request->input('subject_id1' . $k);
+                            $data1['subject_rc_id'] = $request->input('subject_id' . $k.'1');
                         }
 
 
@@ -1504,7 +1504,7 @@ class NoticeController extends Controller
               return response()->json([
                 'status'  => 200,
                 'data'=>$schedule,
-                'message' => 'Exam timetable data',
+                'message' => 'Exam timetable Updated',
                 'success' =>true
             ]);
     
