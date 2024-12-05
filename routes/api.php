@@ -10,6 +10,7 @@
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\NoticeController;
+    use App\Http\Controllers\SubstituteTeacher;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -299,6 +300,15 @@
         Route::get('get_viewtimetable',[NoticeController::class,'viewTimetableStudent']);
         Route::get('get_examtimetable/{exam_tt_id}',[NoticeController::class,'getExamdataSingle']);
         Route::put('update_examtimetable/{exam_tt_id}',[NoticeController::class,'updateExamTimetable']);
+
+        //Substitute Teacher
+        Route::get('get_substituteteacher/{teacher_id}/{day}',[SubstituteTeacher::class,'getSubstituteTeacherDetails']);
+        Route::get('get_substituteteacherclasswise/{class_name}/{day}/{period}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherClasswise']);
+        Route::post('save_substituteteacher',[SubstituteTeacher::class,'saveSubstituteTeacher']);
+        Route::get('get_substituteteacherdata/{teacher_id}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherData']);
+        Route::put('update_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'updateSubstituteTeacher']);
+        Route::delete('delete_subsituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'deleteSubstituteTeacher']);
+
     });
 
 //  API for the New Student list Buulk upload 
