@@ -3490,6 +3490,8 @@ public function storeSubjectForReportCard(Request $request)
     $messages = [
         'name.required' => 'The name field is required.',
         'sequence.required' => 'The sequence field is required.',
+        'name.unique'=> 'The name should be unique.',
+        'sequence.unique'=>'The sequence should be unique',
     ];
 
     try {
@@ -3498,11 +3500,13 @@ public function storeSubjectForReportCard(Request $request)
                 'required',
                 'string',
                 'max:30',
+                'unique:subjects_on_report_card_master,name'
                 
             ],
             'sequence' => [
                 'required',
-                'Integer'
+                'Integer',
+                'unique:subjects_on_report_card_master,sequence'
                
             ],
         ], $messages);
@@ -3578,6 +3582,7 @@ public function updateSubjectForReportCard(Request $request, $sub_rc_master_id)
         'name.required' => 'The name field is required.',
         'sequence.required' => 'The sequence field is required.',
         'sequence.unique' => 'The sequence has already been taken.',
+        'name.unique'=>'The name has already been taken.'
     ];
 
     try {
@@ -3586,6 +3591,7 @@ public function updateSubjectForReportCard(Request $request, $sub_rc_master_id)
                 'required',
                 'string',
                 'max:30',
+                Rule::unique('subjects_on_report_card_master', 'name')->ignore($sub_rc_master_id, 'sub_rc_master_id')
             ],
             'sequence' => [
                 'required',
