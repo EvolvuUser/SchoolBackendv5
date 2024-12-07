@@ -912,6 +912,18 @@ class NoticeController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_yr');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $existTimetable = DB::table('exam_timetable')
+                                     ->where('exam_id',$exam_id)
+                                     ->where('class_id',$class_id)
+                                     ->exists();
+                                    //  dd($existTimetable);
+                if($existTimetable){
+                    return response()->json([
+                        'status'  => 400,
+                        'message' => 'Exam Timetable is already created for this class!!',
+                        'success' =>false
+                    ]);     
+                }
                 $exam_dates = DB::table('exam')
                                 ->select('start_date', 'end_date')
                                 ->where('exam_id', $exam_id)
