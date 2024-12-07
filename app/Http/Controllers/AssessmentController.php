@@ -285,15 +285,20 @@ class AssessmentController extends Controller
             $existing_grades = Grades::where('name', $request->input('name'))->where('class_id', $class_id)->where('subject_type', $request->input('subject_type'))->first();
             if (!$existing_grades) {
                 $grades->save();
+                $status=201;
                 $status_msg="Grade is saved successfully.";
                 
+            }
+            else{
+                $status = 400;
+                $status_msg="Grade already exist for this class.";
             }
 
         }
         return response()->json([
-            'status' => 201,
+            'status' => $status,
             'message' => $status_msg,
-        ], 201);
+        ]);
     }    
 
     public function updateGrades(Request $request, $grade_id)
