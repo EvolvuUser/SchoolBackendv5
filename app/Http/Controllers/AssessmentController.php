@@ -40,7 +40,7 @@ class AssessmentController extends Controller
     public function getMarksheadingsList(Request $request)
     {
          
-        $marks_headings = MarksHeadings::orderBy('marks_headings_id')->get();
+        $marks_headings = MarksHeadings::orderBy('sequence')->get();
         
         return response()->json($marks_headings);
     }
@@ -51,7 +51,8 @@ class AssessmentController extends Controller
         $messages = [
             'name.required' => 'Name field is required.',
             'written_exam.required' => 'Written exam field is required.',
-            'sequence.required' => 'Sequence field is required.'
+            'sequence.required' => 'Sequence field is required.',
+            'sequence.unique'   => 'Sequence field Should be unique.',
          ];
     
         try {
@@ -63,7 +64,7 @@ class AssessmentController extends Controller
                     'required'
                 ],
                 'sequence' => [
-                    'required'
+                    'required','unique:marks_headings,sequence',
                 ],
             ], $messages);
         } catch (ValidationException $e) {
@@ -99,18 +100,16 @@ class AssessmentController extends Controller
             $messages = [
                 'name.required' => 'Name field is required.',
                 'written_exam.required' => 'Written exam field is required.',
-                'sequence.required' => 'Sequence field is required.'
+                'sequence.required' => 'Sequence field is required.',
+                'name.unique' => 'Name field should be unique.',
             ];
     
             try {
                 $validatedData = $request->validate([
                     'name' => [
                     'required',
-                    Rule::unique('marks_headings')
-                            ->where(function ($query) {
-                                return $query->where('sequence', request('sequence'));
-                            })
-                            ->ignore($marks_headings_id, 'marks_headings_id')
+                    Rule::unique('marks_headings') // Ensure uniqueness of name
+                         ->ignore($marks_headings_id, 'marks_headings_id') // Ignore the current record
                 ],
                 'written_exam' => [
                     'required'
