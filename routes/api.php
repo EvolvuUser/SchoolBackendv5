@@ -302,7 +302,7 @@
         Route::put('update_examtimetable/{exam_tt_id}',[NoticeController::class,'updateExamTimetable']);
 
         //Substitute Teacher
-        Route::get('get_substituteteacher/{teacher_id}/{day}',[SubstituteTeacher::class,'getSubstituteTeacherDetails']);
+        Route::get('get_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherDetails']);
         Route::get('get_substituteteacherclasswise/{class_name}/{day}/{period}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherClasswise']);
         Route::post('save_substituteteacher',[SubstituteTeacher::class,'saveSubstituteTeacher']);
         Route::get('get_substituteteacherdata/{teacher_id}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherData']);

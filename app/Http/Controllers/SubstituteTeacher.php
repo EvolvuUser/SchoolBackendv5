@@ -13,12 +13,14 @@ use App\Mail\SubstituteTeacherNotification;
 
 class SubstituteTeacher extends Controller
 {
-    public function getSubstituteTeacherDetails(Request $request,$teacher_id,$day){
+    public function getSubstituteTeacherDetails(Request $request,$teacher_id,$date){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_yr');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 // $day= 'thursday';
+                $carbonDate = Carbon::parse($date);
+                $day = $carbonDate->format('l'); 
                 $query = DB::table('timetable')
                         ->select(
                             'timetable.' . $day . ' as subject',
