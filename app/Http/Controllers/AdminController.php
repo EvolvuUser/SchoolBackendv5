@@ -2782,7 +2782,7 @@ public function getDivisionsAndSubjects(Request $request, $classId)
 
 private function getAllSubjectsOfHsc()
 {
-    return SubjectMaster::whereIn('subject_type', ['Compulsory', 'Optional', 'Co-Scholastic_hsc', 'Social'])->get();
+    return SubjectMaster::whereIn('subject_type', ['Compulsory', 'Optional', 'Co-Scholastic_hsc', 'Social','Scholastic', 'Co-Scholastic'])->get();
 }
 
 private function getAllSubjectsNotHsc()
@@ -3423,21 +3423,21 @@ public function updateOrCreateSubjectAllotments($class_id, $section_id, Request 
 
     // Iterate through the input subjects and update or create records
     foreach ($subjects as $subjectData) {
-        if (isset($subjectData['subject_id'])) {
-            // Update existing record
-            SubjectAllotment::updateOrCreate(
-                [
-                    'subject_id' => $subjectData['subject_id'],
-                    'class_id' => $class_id,
-                    'section_id' => $section_id,
-                    'academic_yr' => $academicYr,
-                ],
-                [
-                    'sm_id' => $subjectData['sm_id'],
-                    'teacher_id' => $subjectData['teacher_id'],
-                ]
-            );
-        } else {
+        // if (isset($subjectData['subject_id'])) {
+        //     // Update existing record
+        //     SubjectAllotment::updateOrCreate(
+        //         [
+        //             'subject_id' => $subjectData['subject_id'],
+        //             'class_id' => $class_id,
+        //             'section_id' => $section_id,
+        //             'academic_yr' => $academicYr,
+        //         ],
+        //         [
+        //             'sm_id' => $subjectData['sm_id'],
+        //             'teacher_id' => $subjectData['teacher_id'],
+        //         ]
+        //     );
+        // } else {
             // Create new record
             SubjectAllotment::updateOrCreate(
                 [
@@ -3450,7 +3450,7 @@ public function updateOrCreateSubjectAllotments($class_id, $section_id, Request 
                     'teacher_id' => $subjectData['teacher_id'],
                 ]
             );
-        }
+        // }
     }
 
     // Handle extra records in the existing allotments that are not in the input
