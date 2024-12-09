@@ -3402,14 +3402,14 @@ public function updateOrCreateSubjectAllotments($class_id, $section_id, Request 
         return response()->json(['error' => 'Invalid or missing token'], 401);
     }
     $academicYr = $payload->get('academic_year');
-    $validatedData = $request->validate([
-        'subjects' => 'required|array',
-        'subjects.*.sm_id' => 'required|integer|exists:subject_master,sm_id',
-        'subjects.*.teacher_id' => 'nullable|integer|exists:teacher,teacher_id',
-        'subjects.*.subject_id' => 'nullable|integer|exists:subject,subject_id',
-    ]);
+    // $validatedData = $request->validate([
+    //     'subjects' => 'required|array',
+    //     'subjects.*.sm_id' => 'required|integer|exists:subject_master,sm_id',
+    //     'subjects.*.teacher_id' => 'nullable|integer|exists:teacher,teacher_id',
+    //     'subjects.*.subject_id' => 'nullable|integer|exists:subject,subject_id',
+    // ]);
 
-    $subjects = $validatedData['subjects'];
+    $subjects = $request->subjects;
     
     // Get existing subject allotments for the class, section, and academic year
     $existingAllotments = SubjectAllotment::where('class_id', $class_id)
@@ -3445,9 +3445,7 @@ public function updateOrCreateSubjectAllotments($class_id, $section_id, Request 
                     'section_id' => $section_id,
                     'sm_id' => $subjectData['sm_id'],
                     'academic_yr' => $academicYr,
-                ],
-                [
-                    'teacher_id' => $subjectData['teacher_id'],
+                    'teacher_id' => $subjectData['teacher_id']
                 ]
             );
         // }
