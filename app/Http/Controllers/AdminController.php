@@ -2002,7 +2002,7 @@ public function getStudentListBySection(Request $request)
     $query = Student::with(['parents', 'userMaster', 'getClass', 'getDivision'])
         ->where('academic_yr', $academicYr)
         ->distinct()
-        ->where('IsDelete', 'N');
+        ->where('student.IsDelete', 'N');
 
     if ($sectionId) {
         $query->where('section_id', $sectionId);
@@ -3645,6 +3645,14 @@ public function editSubjectForReportCard($sub_rc_master_id)
 
 public function deleteSubjectForReportCard($sub_rc_master_id)
 {
+    $subject = SubjectForReportCard::where('sub_rc_master_id', $sub_rc_master_id)->count();
+    // dd($subject);
+    if ($subject > 0) {
+        return response()->json([
+            'error' => 'This subject is in use. Deletion failed!'
+        ], 400); // Return a 400 Bad Request with an error message
+    }
+    
     $subject = SubjectForReportCard::find($sub_rc_master_id);
 
     if (!$subject) {
