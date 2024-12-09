@@ -8,6 +8,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use App\Models\SubstituteTeacher as SubstituteTeacher1;
 use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 use App\Mail\SubstituteTeacherNotification;
 
 class SubstituteTeacher extends Controller
@@ -220,10 +221,14 @@ class SubstituteTeacher extends Controller
                         ->where('substitute_teacher.date', $date)
                         ->orderBy('substitute_teacher.period')
                         ->get();
+
+                        $carbonDate = Carbon::parse($date);
+                        $dayOfWeek = $carbonDate->format('l');
                         return response()->json([
                             'status'=> 200,
                             'message'=>'Get Substitution Data',
                             'data'=>$query,
+                            'day_week'=>$dayOfWeek,
                             'success'=>true
                             ]);
 
