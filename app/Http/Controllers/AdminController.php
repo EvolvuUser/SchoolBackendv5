@@ -1381,7 +1381,7 @@ public function storeStaff(Request $request)
             'blood_group' => 'nullable|string|max:10',
             'address' => 'required|string|max:255',
             'phone' => 'required|string|max:15',
-            'email' => 'required|string|email|max:50|unique:users,email', // Ensure email uniqueness
+            'email' => 'required|string|max:50|unique:user_master,user_id', // Ensure email uniqueness
             'designation' => 'nullable|string|max:255',
             'academic_qual' => 'nullable|array',
             'academic_qual.*' => 'nullable|string|max:255',
@@ -1457,7 +1457,7 @@ public function storeStaff(Request $request)
 
         // Create User record
         $user = User::create([
-            'email' => $validatedData['email'],
+            'user_id' => $validatedData['email'],
             'name' => $validatedData['name'],
             'password' => Hash::make('arnolds'),
             'reg_id' => $teacher->teacher_id,
@@ -1702,7 +1702,7 @@ if ($request->has('teacher_image_name')) {
         $user = User::where('reg_id', $teacher->teacher_id)->first();
         if($user){
             $user->name = $validatedData['name'];
-            $user->email = $validatedData['email'];
+            $user->user_id = $validatedData['email'];
             $user->save();
         }
 
