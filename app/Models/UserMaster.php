@@ -7,8 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class UserMaster extends Model
+class UserMaster extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -21,5 +22,20 @@ class UserMaster extends Model
     public function getTeacher()
     {
         return $this->belongsTo(Teacher::class, 'reg_id');  
+    }
+
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();  // Typically `id` of the user
+    }
+
+    /**
+     * Get the custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims()
+    {
+        return [];  // Add custom claims if necessary, or leave it empty
     }
 }

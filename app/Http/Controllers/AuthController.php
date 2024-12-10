@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use App\Models\UserMaster;
 
 class AuthController extends Controller
 {
@@ -77,19 +78,23 @@ class AuthController extends Controller
 
 public function login(Request $request)
 {
-    $credentials = $request->only('email', 'password');
+    $credentials = $request->only('user_id', 'password');
 
     // Log::info('Login attempt with credentials:', $credentials);
 
     try {
         // Check if the email exists in the database
-        $user = User::where('email', $credentials['email'])->first();
-
+        $user = UserMaster::where('user_id', $credentials['user_id'])->first();
+        // dd($user);
         if (!$user) {
             Log::warning('Username is not valid:', $credentials);
             return response()->json(['error' => 'Username is not valid'], 404);
         }
+        if (!($user instanceof \Tymon\JWTAuth\Contracts\JWTSubject)) {
+            return response()->json(['error' => 'User model does not implement JWTSubject'], 500);
+        }
 
+        // dd(JWTAuth::attempt($credentials));
         // Attempt to authenticate using the password
         if (!$token = JWTAuth::attempt($credentials)) {
             Log::warning('Invalid password for user:', $credentials);
