@@ -151,7 +151,7 @@ public function login(Request $request)
         $newAcademicYear = $request->input('academic_year');
 
         $customClaims = [
-            'user_id' => $user->id,
+            'user_id' => $user->user_id,
             'role_id' => $user->role_id,
             'academic_year' => $newAcademicYear,
         ];
