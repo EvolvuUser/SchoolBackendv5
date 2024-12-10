@@ -1097,7 +1097,7 @@ public function destroyClass($id)
     if ($sectionCount > 0) {       
         return response()->json([
             'status' => 400,
-            'message' => 'This class is in use. Delete failed!!!',
+            'message' => 'This class is in use. Delete failed!',
         ]);
 
     }
