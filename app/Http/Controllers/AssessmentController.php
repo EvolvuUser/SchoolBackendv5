@@ -101,15 +101,16 @@ class AssessmentController extends Controller
                 'name.required' => 'Name field is required.',
                 'written_exam.required' => 'Written exam field is required.',
                 'sequence.required' => 'Sequence field is required.',
-                'name.unique' => 'Name field should be unique.',
+                // 'name.unique' => 'Name field should be unique.',
+                'sequence.unique'   => 'Sequence field should be unique',
             ];
     
             try {
                 $validatedData = $request->validate([
                     'name' => [
                     'required',
-                    Rule::unique('marks_headings') // Ensure uniqueness of name
-                         ->ignore($marks_headings_id, 'marks_headings_id') // Ignore the current record
+                    // Rule::unique('marks_headings') // Ensure uniqueness of name
+                    //      ->ignore($marks_headings_id, 'marks_headings_id') // Ignore the current record
                 ],
                 'written_exam' => [
                     'required'
