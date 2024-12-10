@@ -100,7 +100,9 @@ class User extends Authenticatable implements JWTSubject // Implement JWTSubject
      *
      * @var array
      */
-    protected $fillable = ['email','user_id','name','password','reg_id','role_id','answer_one','answer_two','IsDelete'];
+    protected $table = 'user_master';
+    protected $primaryKey = 'user_id';
+    protected $fillable = ['user_id','name','password','reg_id','role_id','answer_one','answer_two','IsDelete'];
 
         public function getTeacher()
     {
