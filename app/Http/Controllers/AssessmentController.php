@@ -118,9 +118,6 @@ class AssessmentController extends Controller
                     'required',
                     Rule::unique('marks_headings')
                     ->ignore($marks_headings_id, 'marks_headings_id')
-                    ->where(function ($query) {
-                        return $query->where('name', request('name'));
-                    })
                 ],
                 ], $messages);
             } catch (\Illuminate\Validation\ValidationException $e) {
