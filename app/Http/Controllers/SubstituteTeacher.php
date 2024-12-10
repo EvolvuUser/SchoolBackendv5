@@ -48,10 +48,14 @@ class SubstituteTeacher extends Controller
                         ->orderBy('timetable.period_no', 'ASC')
                         ->get();
 
+                        $data['day']=$day;
+                        $data['date']=$date;
+
                         return response()->json([
                             'status'=> 200,
                             'message'=>'Get Substitution Data',
                             'data'=>$query,
+                            'data1'=>$data,
                             'success'=>true
                             ]);
                         // $class_name = $query->get()->c_name;                
@@ -73,7 +77,7 @@ class SubstituteTeacher extends Controller
            }
     }
 
-    public function getSubstituteTeacherClasswise(Request $request,$class_name,$day,$period,$date){
+    public function getSubstituteTeacherClasswise(Request $request,$class_name,$period,$date){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -91,6 +95,8 @@ class SubstituteTeacher extends Controller
                     $teacher_group = null; // You can set this to an appropriate default value if needed
                 }
                 
+                $carbonDate = Carbon::parse($date);                        
+                $day = $carbonDate->format('l'); 
                 
                     $query = DB::table('view_teacher_group')
                         ->select('teacher_id', 'name')
