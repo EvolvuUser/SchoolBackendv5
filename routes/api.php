@@ -303,7 +303,7 @@
 
         //Substitute Teacher
         Route::get('get_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherDetails']);
-        Route::get('get_substituteteacherclasswise/{class_name}/{day}/{period}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherClasswise']);
+        Route::get('get_substituteteacherclasswise/{class_name}/{period}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherClasswise']);
         Route::post('save_substituteteacher',[SubstituteTeacher::class,'saveSubstituteTeacher']);
         Route::get('get_substituteteacherdata/{teacher_id}/{date}',[SubstituteTeacher::class,'getSubstituteTeacherData']);
         Route::put('update_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'updateSubstituteTeacher']);
