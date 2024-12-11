@@ -1030,7 +1030,7 @@ class NoticeController extends Controller
     public function getAllSubjects(Request $request,$class_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
 
             $results = DB::table('subjects_on_report_card as a')
