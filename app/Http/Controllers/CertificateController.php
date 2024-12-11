@@ -179,7 +179,7 @@ class CertificateController extends Controller
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
             'IsIssued'   => 'N',
-            'generated_by'=>Auth::user()->user_id,
+            'generated_by'=>$user->reg_id,
 
         ];
         
@@ -206,7 +206,7 @@ class CertificateController extends Controller
     public function bonafideCertificateList(Request $request){
         $searchTerm = $request->query('q');
         $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
         
         $results = BonafideCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
                                        ->where('academic_yr','LIKE',"%{$customClaims}%")
@@ -241,12 +241,14 @@ class CertificateController extends Controller
 
     public function updateisIssued(Request $request,$sr_no){
         try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
         $bondafidecertificateinfo = BonafideCertificate::find($sr_no);
         $bondafidecertificateinfo->isGenerated = 'N';
         $bondafidecertificateinfo->isIssued    = 'Y';
         $bondafidecertificateinfo->isDeleted   = 'N';
         $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
-        $bondafidecertificateinfo->issued_by   = Auth::user()->user_id;
+        $bondafidecertificateinfo->issued_by   = $user->reg_id;
         $bondafidecertificateinfo->update();
         return response()->json([
             'status'=> 200,
@@ -264,12 +266,14 @@ class CertificateController extends Controller
 
     public function updateisDeleted(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $bondafidecertificateinfo = BonafideCertificate::find($sr_no);
             $bondafidecertificateinfo->isGenerated = 'N';
             $bondafidecertificateinfo->isIssued    = 'N';
             $bondafidecertificateinfo->isDeleted   = 'Y';
             $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
-            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->	deleted_by   = $user->reg_id;
             $bondafidecertificateinfo->update();
             return response()->json([
                 'status'=> 200,
@@ -444,7 +448,7 @@ class CertificateController extends Controller
         try{
 
         $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
         $data = [
             'stud_name'=>$request->stud_name,
             'father_name'=>$request->father_name,
@@ -457,7 +461,7 @@ class CertificateController extends Controller
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
             'IsIssued'   => 'N',
-            'generated_by'=>Auth::user()->id,
+            'generated_by'=>$user->reg_id,
 
         ];
         
@@ -490,7 +494,7 @@ class CertificateController extends Controller
         $searchTerm = $request->query('q');
         try{
         $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
         
         $results = SimpleBonafide::where('class_division', 'LIKE', "%{$searchTerm}%")
                                        ->where('academic_yr','LIKE',"%{$customClaims}%")
@@ -521,12 +525,14 @@ class CertificateController extends Controller
 
     public function updatesimpleisIssued(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $bondafidecertificateinfo = SimpleBonafide::find($sr_no);
             $bondafidecertificateinfo->isGenerated = 'N';
             $bondafidecertificateinfo->isIssued    = 'Y';
             $bondafidecertificateinfo->isDeleted   = 'N';
             $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
-            $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+            $bondafidecertificateinfo->issued_by   = $user->reg_id;
             $bondafidecertificateinfo->update();
             return response()->json([
                 'status'=> 200,
@@ -544,12 +550,14 @@ class CertificateController extends Controller
 
     public function deletesimpleisDeleted(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $bondafidecertificateinfo = SimpleBonafide::find($sr_no);
             $bondafidecertificateinfo->isGenerated = 'N';
             $bondafidecertificateinfo->isIssued    = 'N';
             $bondafidecertificateinfo->isDeleted   = 'Y';
             $bondafidecertificateinfo->deleted_date = Carbon::today()->format('Y-m-d');
-            $bondafidecertificateinfo->	deleted_by   = Auth::user()->id;
+            $bondafidecertificateinfo->	deleted_by   = $user->reg_id;
             $bondafidecertificateinfo->update();
             return response()->json([
                 'status'=> 200,
