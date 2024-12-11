@@ -910,7 +910,7 @@ class NoticeController extends Controller
     public function saveExamTimetable(Request $request,$exam_id,$class_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $existTimetable = DB::table('exam_timetable')
                                      ->where('exam_id',$exam_id)
