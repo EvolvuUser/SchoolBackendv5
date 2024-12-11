@@ -163,7 +163,7 @@ class CertificateController extends Controller
         // Sample dynamic data
 
         $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_yr');
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
 
         $data = [
             'stud_name'=>$request->stud_name,
@@ -179,7 +179,7 @@ class CertificateController extends Controller
             'IsGenerated'=> 'Y',
             'IsDeleted'  => 'N',
             'IsIssued'   => 'N',
-            'generated_by'=>Auth::user()->id,
+            'generated_by'=>Auth::user()->user_id,
 
         ];
         
@@ -246,7 +246,7 @@ class CertificateController extends Controller
         $bondafidecertificateinfo->isIssued    = 'Y';
         $bondafidecertificateinfo->isDeleted   = 'N';
         $bondafidecertificateinfo->issued_date = Carbon::today()->format('Y-m-d');
-        $bondafidecertificateinfo->issued_by   = Auth::user()->id;
+        $bondafidecertificateinfo->issued_by   = Auth::user()->user_id;
         $bondafidecertificateinfo->update();
         return response()->json([
             'status'=> 200,
