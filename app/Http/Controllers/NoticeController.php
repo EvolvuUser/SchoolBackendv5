@@ -1251,7 +1251,7 @@ class NoticeController extends Controller
                                         }
                                         $subjectNames = implode(" / ", $subjects);
                                     } else {
-                                        $subject = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id',$subjectId)->first();
+                                        $subject = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id',$rw->subject_rc_id)->first();
                                         $subjectNames = $subject ? $subject->name : null;
                                     }
                                 } else {
