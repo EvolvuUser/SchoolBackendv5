@@ -26,11 +26,14 @@ class RoleController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'role_id' => 'required|string|max:255|unique:roles,role_id',
-            'rolename' => 'required|string|max:255|unique:roles,rolename',
+            'role_id' => 'required|string|max:255|unique:role_master,role_id',
+            'rolename' => 'required|string|max:255|unique:role_master,name',
         ]);
 
-        $role = Role::create($validatedData);
+        $role = Role::create([
+            'role_id'=>$request->role_id,
+            'rolename'=>$request->rolename
+            ]);
 
         return response()->json([
             'success' => true,
@@ -79,7 +82,10 @@ class RoleController extends Controller
             }
 
             // Update the role
-            $role->update($validatedData);
+            $role->update([
+                'name'=>$request->rolename,
+                'is_active'=>$request->is_active
+                ]);
             return response()->json([
                 'success' => true,
                 'message' => 'Role updated successfully.',

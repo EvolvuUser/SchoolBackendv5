@@ -16,7 +16,7 @@ class SubstituteTeacher extends Controller
     public function getSubstituteTeacherDetails(Request $request,$teacher_id,$date){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 // $day= 'thursday';
                 $carbonDate = Carbon::parse($date);
