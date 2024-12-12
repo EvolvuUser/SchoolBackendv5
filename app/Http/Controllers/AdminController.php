@@ -3645,7 +3645,7 @@ public function editSubjectForReportCard($sub_rc_master_id)
 
 public function deleteSubjectForReportCard($sub_rc_master_id)
 {
-    $subject = SubjectForReportCard::where('sub_rc_master_id', $sub_rc_master_id)->count();
+    $subject = DB::table('subjects_on_report_card')->where('sub_rc_master_id', $sub_rc_master_id)->count();
     // dd($subject);
     if ($subject > 0) {
         return response()->json([
