@@ -23,7 +23,7 @@ class NoticeController extends Controller
     public function saveSmsNotice(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             
     
             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
@@ -37,7 +37,7 @@ class NoticeController extends Controller
             $noticeData = [
                 'subject' => $request->subject,
                 'notice_desc' =>"Dear Parent,".$request->notice_desc,
-                'teacher_id' => $user->id, // Assuming the teacher is authenticated
+                'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
                 'notice_type' => 'SMS',
                 'academic_yr' => $customClaims, // Assuming academic year is stored in Session
                 'publish' => 'N',
@@ -85,7 +85,7 @@ class NoticeController extends Controller
     public function SaveAndPublishSms(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
         
 
         if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
@@ -100,7 +100,7 @@ class NoticeController extends Controller
          $noticeData = [
             'subject' => $request->subject,
             'notice_desc' =>"Dear Parent,".$request->notice_desc,
-            'teacher_id' => $user->id, // Assuming the teacher is authenticated
+            'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
             'notice_type' => 'SMS',
             'academic_yr' => $customClaims, // Assuming academic year is stored in Session
             'publish' => 'Y',
@@ -176,7 +176,7 @@ class NoticeController extends Controller
     public function getNoticeSmsList(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $notice_date = $request->query('notice_date');
             $status = $request->query('status');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
@@ -245,7 +245,7 @@ class NoticeController extends Controller
     public function getNoticeSmsData(Request $request,$unq_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
 
@@ -317,7 +317,7 @@ class NoticeController extends Controller
     public function UpdateSMSNotice(Request $request,$unq_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
                 if($notice_type->notice_type == "SMS"){
@@ -328,7 +328,7 @@ class NoticeController extends Controller
                             ->update([
                                 'subject' => $request->subject, // Update the subject field (example)
                                 'notice_desc' => $request->notice_desc, // Update the description (example)
-                                'teacher_id' => $user->id,
+                                'teacher_id' => $user->reg_id,
                                 'notice_date' => now(), // You can also use dynamic values like current timestamp
                                 // Add other fields to update as needed
                             ]);
@@ -379,7 +379,7 @@ class NoticeController extends Controller
                             ->update([
                                 'subject' => $request->subject, // Update the subject field (example)
                                 'notice_desc' => $request->notice_desc, // Update the description (example)
-                                'teacher_id' => $user->id,
+                                'teacher_id' => $user->reg_id,
                                 'notice_date' => now(), 
                             ]);
                         }
@@ -442,7 +442,7 @@ class NoticeController extends Controller
     public function DeleteSMSNotice(Request $request,$unq_id){
          try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
                 if($notice_type->notice_type == "SMS"){
@@ -522,7 +522,7 @@ class NoticeController extends Controller
     public function publishSMSNotice(Request $request,$unq_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
                 if($notice_type->notice_type == "SMS"){
@@ -645,7 +645,7 @@ class NoticeController extends Controller
     public function saveNotice(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 // Generate a unique ID for the notice
             do {
@@ -656,7 +656,7 @@ class NoticeController extends Controller
             $noticeData = [
                 'subject' => $request->subject,
                 'notice_desc' =>"Dear Parent,".$request->notice_desc,
-                'teacher_id' => $user->id, // Assuming the teacher is authenticated
+                'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
                 'notice_type' => 'NOTICE',
                 'academic_yr' => $customClaims, // Assuming academic year is stored in Session
                 'publish' => 'N',
@@ -733,7 +733,7 @@ class NoticeController extends Controller
     public function savePUblishNotice(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 // Generate a unique ID for the notice
             do {
@@ -744,7 +744,7 @@ class NoticeController extends Controller
             $noticeData = [
                 'subject' => $request->subject,
                 'notice_desc' =>"Dear Parent,".$request->notice_desc,
-                'teacher_id' => $user->id, // Assuming the teacher is authenticated
+                'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
                 'notice_type' => 'NOTICE',
                 'academic_yr' => $customClaims, // Assuming academic year is stored in Session
                 'publish' => 'Y',
@@ -865,7 +865,7 @@ class NoticeController extends Controller
     public function SendSMSLeft(Request $request,$unq_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                     $noticedata = DB::table('notice_sms_log')
                                     ->join('notice','notice.notice_id','=','notice_sms_log.notice_id')
@@ -1069,7 +1069,7 @@ class NoticeController extends Controller
     public function getTimetableList(Request $request){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
               if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                  
                  $timetablelist = DB::table('exam')
@@ -1105,7 +1105,7 @@ class NoticeController extends Controller
     public function deleteTimetable(Request $request,$exam_tt_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
               if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 DB::table('exam_timetable_details')
                     ->where('exam_tt_id', $exam_tt_id)
@@ -1140,7 +1140,7 @@ class NoticeController extends Controller
     public function updatePublishTimetable(Request $request,$exam_tt_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
               if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $data = ['publish' => 'Y'];
 
@@ -1174,7 +1174,7 @@ class NoticeController extends Controller
     public function updateunPublishTimetable(Request $request,$exam_tt_id){
         try{
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_yr');
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
               if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $data = ['publish' => 'N'];
 
