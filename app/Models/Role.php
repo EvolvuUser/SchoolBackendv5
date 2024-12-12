@@ -9,10 +9,10 @@ class Role extends Model
 {  
    
     use HasFactory;
+    protected $table= 'role_master';
     protected $primaryKey = 'role_id'; 
     public $incrementing = false;
-    protected $table ='roles';
-    protected  $fillable = ['role_id','rolename','is_active']; 
+    protected  $fillable = ['role_id','name','is_active']; 
    
 
     public function users()
