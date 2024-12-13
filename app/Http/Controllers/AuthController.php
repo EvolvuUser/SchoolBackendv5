@@ -84,7 +84,10 @@ public function login(Request $request)
 
     try {
         // Check if the email exists in the database
-        $user = UserMaster::where('user_id', $credentials['user_id'])->first();
+        $userrole= UserMaster::where('user_id',$credentials['user_id'])->where('role_id','A')->first();
+        // dd($userrole);
+        if($userrole){
+            $user = UserMaster::where('user_id', $credentials['user_id'])->first();
         // dd($user);
         if (!$user) {
             Log::warning('Username is not valid:', $credentials);
@@ -118,7 +121,15 @@ public function login(Request $request)
 
         return response()->json(['token' => $token
                                ,'user' => $user]);
-
+            
+        }
+        else{
+             return response()->json([
+                'status' => 403,
+                'message' => 'User not allowed',
+                'success'=>false
+            ]);
+        }
     } catch (JWTException $e) {
         Log::error('JWTException occurred:', ['message' => $e->getMessage()]);
         return response()->json(['error' => 'Could not create token'], 500);

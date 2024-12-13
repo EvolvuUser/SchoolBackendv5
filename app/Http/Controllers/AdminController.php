@@ -1369,10 +1369,12 @@ public function storeStaff(Request $request)
             'phone.max' => 'The phone number cannot exceed 15 characters.',
             'aadhar_card_no.unique' => 'The Aadhar card number has already been taken.',
             'role.required' => 'The role field is required.',
+            'employee_id.unique'=>'Employee Id should be unique.',
+            'employee_id.required'=>'Employee Id is required.'
         ];
 
         $validatedData = $request->validate([
-            'employee_id' => 'nullable|string|max:255',
+            'employee_id' => 'required|unique:teacher,employee_id',
             'name' => 'required|string|max:255',
             'birthday' => 'required|date',
             'date_of_joining' => 'required|date',
@@ -2429,9 +2431,12 @@ public function toggleActiveStudent($studentId)
             //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
-            
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
             // Update student information
             $student->update($validatedData);
+            $student->updated_by = $user->reg_id;
+            $student->save();
             //echo $student->toSql();
             Log::info("Student information updated for student ID: {$studentId}");
             //echo "msg9";
