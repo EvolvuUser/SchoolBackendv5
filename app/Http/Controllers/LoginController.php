@@ -287,7 +287,9 @@ public function getSessionData(Request $request)
     public function downloadCsvTemplateWithData(Request $request, $section_id)
     {
         // Extract the academic year from the token payload
-        $academicYear = "2023-2024";
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        
     
         // Fetch only the necessary fields from the Student model where academic year and section_id match
         $students = Student::select(
@@ -706,6 +708,8 @@ public function updateCsvData(Request $request, $section_id)
             }
 
 
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
            
             // Update the student's parent_id and class_id
             $student->parent_id = $parent->parent_id;
@@ -722,6 +726,7 @@ public function updateCsvData(Request $request, $section_id)
             $student->caste = $studentData['caste'];
             $student->subcaste = $studentData['subcaste'];
             $student->IsDelete = 'N';
+            $student->created_by = $user->reg_id;
             $student->save();
 
             // Insert data into user_master table (skip if already exists)
