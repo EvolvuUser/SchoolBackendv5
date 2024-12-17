@@ -290,7 +290,7 @@
         Route::post('save_sendsms/{unq_id}',[NoticeController::class,'SendSMSLeft']);
 
         //Exam TimeTable
-        Route::get('get_examdates/{exam_id}',[NoticeController::class,'getExamDateswithnames']);
+        Route::get('get_examdates/{class_id}/{exam_id}',[NoticeController::class,'getExamDateswithnames']);
         Route::post('save_timetable/{exam_id}/{class_id}',[NoticeController::class,'saveExamTimetable']);
         Route::get('get_subjectsofallstudents/{class_id}',[NoticeController::class,'getAllSubjects']);
         Route::get('get_timetablelist',[NoticeController::class,'getTimetableList']);

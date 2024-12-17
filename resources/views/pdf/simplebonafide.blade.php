@@ -127,7 +127,7 @@ $image_url	=	m ?>
             <tr>
                 <td>
                     <table class="table-responsive" style="width:105%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-style: italic;width:20%;text-align:center;font-size:14.5px;"><div class="statistics_line"><b><?php echo $data->dob." ( ".$data->dob_words.")";?></div></td>
+                        <td style="font-style: italic;width:20%;text-align:center;font-size:14.5px;"><div class="statistics_line"><b>{{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') . ' (' . $data->dob_words . ')' }}</div></td>
                     </table>
                     
                 </td>
@@ -169,7 +169,7 @@ $image_url	=	m ?>
             <tr>
                  <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-style: italic;font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Date: <?php echo $data->issue_date_bonafide?></td>
+                        <td style="font-style: italic;font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Date: {{\Carbon\Carbon::parse($date_new)->format('M j, Y')}}</td>
                         <td style="font-style: italic; width:10%;text-align:center;font-size:15px;"></td>
                         <td style="font-style: italic;font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Principal</td>
                     </table>

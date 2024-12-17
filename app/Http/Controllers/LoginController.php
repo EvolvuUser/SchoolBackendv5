@@ -21,9 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
-
-
-
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 
 class LoginController extends Controller
@@ -662,18 +660,18 @@ public function updateCsvData(Request $request, $section_id)
         }
 
         // Validate and convert DOB and admission_date formats
-        if (!$this->validateDate($studentData['dob'], 'd-m-Y')) {
+        if (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
             $invalidRows[] = array_merge($row, ['error' => 'Invalid DOB format. Expected dd/mm/yyyy.']);
             continue;
         } else {
-            $studentData['dob'] = \Carbon\Carbon::createFromFormat('d-m-Y', $studentData['dob'])->format('Y-m-d');
+            $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
         }
 
-        if (!$this->validateDate($studentData['admission_date'], 'd-m-Y')) {
+        if (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
             $invalidRows[] = array_merge($row, ['error' => 'Invalid admission date format. Expected dd-mm-yyyy.']);
             continue;
         } else {
-            $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d-m-Y', $studentData['admission_date'])->format('Y-m-d');
+            $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
         }
 
         // Start a database transaction
@@ -698,7 +696,7 @@ public function updateCsvData(Request $request, $section_id)
                 'm_mobile' => $studentData['mother_mobile'] ?? null,
                 'm_emailid' => $studentData['mother_email'] ?? null,
                 'parent_adhar_no' => $studentData['Father Aadhaar No.'] ?? null,
-                'm_adhar_no' => $studentData['Mother Aadhaar No.'] ?? null,
+                'm_adhar_no' => $studentData['mother_aadhaar_no'] ?? null,
             ];
 
             // Check if parent exists, if not, create one
@@ -771,6 +769,14 @@ public function updateCsvData(Request $request, $section_id)
     return response()->json(['message' => 'CSV data updated successfully.']);
 }
 
+private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
 // Helper method to validate date format
 private function validateDate($date, $format = 'Y-m-d')
 {
