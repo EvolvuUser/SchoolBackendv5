@@ -24,6 +24,15 @@ class NewController extends Controller
     public function storeCaretaker(Request $request){
             
             try{
+            $validator = Validator::make($request->all(),[
+                'employee_id' => 'required|string|unique:teacher,employee_id',
+                    ]);
+                    if ($validator->fails()) {
+                        return response()->json([
+                            'status' => 422,
+                            'errors' => $validator->errors(),
+                        ], 422);
+                }
             $caretaker = new Teacher();
             $caretaker->name=$request->name;
             $caretaker->birthday=$request->birthday;
@@ -85,7 +94,15 @@ class NewController extends Controller
     public function updateCaretaker(Request $request,$id){
             $caretaker = Teacher::find($id);
             try{
-            
+            $validator = Validator::make($request->all(),[
+                'employee_id' => 'required|string|unique:teacher,employee_id,' . $id . ' ,teacher_id',
+                ]);
+                if ($validator->fails()) {
+                    return response()->json([
+                        'status' => 422,
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
             $caretaker->name=$request->name;
             $caretaker->birthday=$request->birthday;
             $caretaker->date_of_joining=$request->date_of_joining;

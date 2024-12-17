@@ -1303,11 +1303,23 @@ class NoticeController extends Controller
            }
     }
 
-    public function getExamDateswithnames(Request $request,$exam_id){
+    public function getExamDateswithnames(Request $request,$class_id,$exam_id){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $existTimetable = DB::table('exam_timetable')
+                                     ->where('exam_id',$exam_id)
+                                     ->where('class_id',$class_id)
+                                     ->exists();
+                                    //  dd($existTimetable);
+                if($existTimetable){
+                    return response()->json([
+                        'status'  => 400,
+                        'message' => 'Exam Timetable is already created for this class!!',
+                        'success' =>false
+                    ]);     
+                }
             $exams = Exams::find($exam_id);
             $startDate = Carbon::parse($exams->start_date);  // Parse the start date
             $endDate = Carbon::parse($exams->end_date);      // Parse the end date

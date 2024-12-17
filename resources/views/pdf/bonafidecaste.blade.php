@@ -166,7 +166,7 @@
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">Date of Leaving Certificate</td>
 			<!--<td align="center" >: </td>-->
-			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;"><?php echo $data->lc_date_n_no;?></td>
+			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">{{ \Carbon\Carbon::parse($data->lc_date_n_no)->format('d-m-Y') }}</td>
 	    </tr>
     </table>
 
