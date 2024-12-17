@@ -224,7 +224,7 @@ if($per[1] !='00'){
 <br>
 <br>
 <br>
-<p style="font-size:16px"><span style="margin-left:10%;">Date : <?php echo $data->certi_issue_date;?><span style="margin-left:50%"> Principal </span></p>
+<p style="font-size:16px"><span style="margin-left:10%;">Date : <?php echo \Carbon\Carbon::parse($data->certi_issue_date)->format('d-m-Y'); ?><span style="margin-left:50%"> Principal </span></p>
 </div>
 </div>
 </html>
