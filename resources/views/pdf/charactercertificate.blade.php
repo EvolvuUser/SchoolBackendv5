@@ -96,7 +96,7 @@ $image_url	=  m; ?>
             <tr>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-style: italic;width:20%;text-align:center;font-size:15px;"><div class="statistics_line"><?php echo $data->dob." [ ".$data->dob_words."]";?></div></td>
+                        <td style="font-style: italic;width:20%;text-align:center;font-size:15px;"><div class="statistics_line">{{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') . ' [ ' . $data->dob_words . ' ]' }}</div></td>
                     </table>
                     
                 </td>

@@ -986,7 +986,7 @@ class CertificateController extends Controller
 
     public function getSrnocharacterbonafide($id){
         try{
-            $checkstudentbonafide = DB::table('bonafide_caste_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
+            $checkstudentbonafide = DB::table('character_certificate')->where('stud_id',$id)->where('isDeleted','N')->first();
             if(is_null($checkstudentbonafide)){
             $srnosimplebonafide = DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
@@ -1703,6 +1703,20 @@ class CertificateController extends Controller
             ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
             ->first();
 
+            $dob_in_words =  $studentinformation->dob;
+                $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+            
+                // Check if the date is valid
+                if ($dateTime === false) {
+                    return 'Invalid date format';
+                }
+                
+                // Format the date as 'Day Month Year'
+                $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+                
+                $dobinwords = $this->convertDateToWords($dateInWords);
+                $data['dobinwords']= $dobinwords;
+
             if(is_null($studentinformation)){
                 return response()->json([
                     'status'=> 200,
@@ -2233,8 +2247,8 @@ class CertificateController extends Controller
             $leavingCertificate = LeavingCertificate::create([
             'grn_no' => $request->grn_no,
             'issue_date' => $request->issue_date,
-            'stud_id_no' => $request->student_id_no,
-            'aadhar_no'=>$request->aadhar_no,
+            'stud_id_no' => $request->stud_id_no,
+            'aadhar_no'=>$request->stu_aadhaar_no,
             'stud_name'=>$request->first_name,
             'mid_name' =>$request->mid_name,
             'last_name'=>$request->last_name,
@@ -2250,7 +2264,7 @@ class CertificateController extends Controller
             'dob_words'=>$request->dob_words,
             'dob_proof'=>$request->dob_proof,
             'last_school_attended_standard'=>$request->previous_school_attended,
-            'date_of_admission'=>$request->date_of_admission,
+            'date_of_admission'=>$request->admission_date,
             'admission_class'=>$request->admission_class,
             'leaving_date'=>$request->leaving_date,
             'standard_studying'=>$request->standard_studying,

@@ -1292,8 +1292,7 @@ public function destroyDivision($id)
 
 
 public function getStaffList(Request $request) {
-    $stafflist = Teacher::where('designation', '!=', 'Caretaker.')
-        ->where('isDelete','N')
+    $stafflist = Teacher::where('designation', '!=', 'Caretaker')
         ->get()
         ->map(function ($staff) {
             if ($staff->teacher_image_name) {
@@ -1550,10 +1549,12 @@ public function updateStaff(Request $request, $id)
             'aadhar_card_no.unique' => 'The Aadhar card number has already been taken.',
             'teacher_image_name.string' => 'The file must be an image.',
             'role.required' => 'The role field is required.',
+            'employee_id.unique'=>'The Employee Id field should be unique.',
+            'employee_id.required'=>'The Employee Id field is required.'
         ];
 
         $validatedData = $request->validate([
-            'employee_id' => 'nullable|string|max:255',
+            'employee_id' => 'required|integer|unique:teacher,employee_id,' . $id . ' ,teacher_id',
             'name' => 'required|string|max:255',
             'birthday' => 'required|date',
             'date_of_joining' => 'required|date',
@@ -4367,7 +4368,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         
             // Preferences for SMS and email as username
             'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
-            'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
+            // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
         ]);
 
         Log::info("Validation passed for student ID: {$studentId}");
@@ -4615,10 +4616,8 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                         $user->user_id = $parent->f_email; // Father's email
                     } elseif ($request->SetEmailIDAsUsername === 'Mother') {
                         $user->user_id = $parent->m_emailid; // Mother's email
-                    } elseif ($request->SetEmailIDAsUsername === 'FatherMob') {
-                        $user->user_id = $parent->f_mobile; // Father's mobile
-                    } elseif ($request->SetEmailIDAsUsername === 'MotherMob') {
-                        $user->user_id = $parent->m_mobile; // Mother's mobile
+                    } elseif(preg_match('/^[0-9]{10}$/', $request->SetEmailIDAsUsername)) {
+                        $user->user_id = $request->SetEmailIDAsUsername; // Mother's mobile
                     }
 
                     // Save the updated user record
@@ -4656,7 +4655,7 @@ public function getClassteacherList(Request $request)
             ->where('academic_yr', $academicYr);
 
     $class_teachers = $query->
-                             orderBy('section_id', 'DESC') // multiple section_id, sm_id
+                             orderBy('section_id', 'ASC') // multiple section_id, sm_id
                              ->get();
                              
     return response()->json($class_teachers);
@@ -4793,6 +4792,15 @@ public function editClassteacher($class_id,$section_id)
 
     return response()->json($class_teacher);
 }
+
+private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
 
 
 }
