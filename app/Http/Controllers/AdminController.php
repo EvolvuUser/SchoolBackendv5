@@ -1296,7 +1296,7 @@ public function getStaffList(Request $request) {
         ->get()
         ->map(function ($staff) {
             if ($staff->teacher_image_name) {
-                $staff->teacher_image_name = Storage::url('teacher_images/' . $staff->teacher_image_name);
+                $staff->teacher_image_name = $teacher->teacher_image_name;
             } else {
                 $staff->teacher_image_name = null; 
             }
@@ -1313,7 +1313,7 @@ public function editStaff($id)
 
         // Check if the teacher has an image and generate the URL if it exists
         if ($teacher->teacher_image_name) {
-            $teacher->teacher_image_url = Storage::url('teacher_images/' . $teacher->teacher_image_name);
+            $teacher->teacher_image_url = $teacher->teacher_image_name;
         } else {
             $teacher->teacher_image_url = null;
         }
@@ -1457,7 +1457,7 @@ public function storeStaff(Request $request)
         }
 
         // Create User record
-        $user = User::create([
+        $user = UserMaster::create([
             'user_id' => $validatedData['email'],
             'name' => $validatedData['name'],
             'password' => Hash::make('arnolds'),
@@ -1634,7 +1634,7 @@ public function updateStaff(Request $request, $id)
     $staff = Teacher::findOrFail($id);
 
 // Get the existing image URL for comparison
-$existingImageUrl = Storage::url('teacher_images/' . $staff->teacher_image_name);
+    $existingImageUrl = $staff->teacher_image_name;
 
 // Handle base64 image
 if ($request->has('teacher_image_name')) {
@@ -2320,7 +2320,7 @@ public function toggleActiveStudent($studentId)
             
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
-                'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
+                // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
 
             Log::info("Validation passed for student ID: {$studentId}");
@@ -2429,6 +2429,45 @@ public function toggleActiveStudent($studentId)
                 }
             }
             */
+
+            if ($request->has('image_name')) {
+                $imageData=$request->input('image_name');
+                if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+                $imageData = substr($imageData, strpos($imageData, ',') + 1);
+                $type = strtolower($type[1]); // jpg, png, gif
+
+                // Validate image type
+                if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+                    throw new \Exception('Invalid image type');
+                }
+
+                // Base64 decode the image
+                $imageData = base64_decode($imageData);
+                if ($imageData === false) {
+                    throw new \Exception('Base64 decode failed');
+                }
+
+                // Define the filename and path to store the image
+                $filename = 'student_' . time() . '.' . $type;
+                $filePath = storage_path('app/public/student_images/' . $filename);
+
+                // Ensure the directory exists
+                $directory = dirname($filePath);
+                if (!is_dir($directory)) {
+                    mkdir($directory, 0755, true);
+                }
+
+                // Save the image to the file system
+                if (file_put_contents($filePath, $imageData) === false) {
+                    throw new \Exception('Failed to save image file');
+                }
+
+                // Store the filename in validated data
+                $validatedData['image_name'] = $filename;
+            } else {
+                throw new \Exception('Invalid image data');
+            }
+            }
             //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
@@ -2493,14 +2532,26 @@ public function toggleActiveStudent($studentId)
 
                     if ($user) {
                         // Conditional logic for setting email/phone based on SetEmailIDAsUsername
-                        if ($request->SetEmailIDAsUsername === 'Father') {
-                            $user->user_id = $parent->f_email; // Father's email
-                        } elseif ($request->SetEmailIDAsUsername === 'Mother') {
-                            $user->user_id = $parent->m_emailid; // Mother's email
-                        } elseif ($request->SetEmailIDAsUsername === 'FatherMob') {
-                            $user->user_id = $parent->f_mobile; // Father's mobile
-                        } elseif ($request->SetEmailIDAsUsername === 'MotherMob') {
-                            $user->user_id = $parent->m_mobile; // Mother's mobile
+                        switch ($request->SetEmailIDAsUsername) {
+                            case 'Father':
+                                $user->user_id = $parent->f_email; // Father's email
+                                break;
+                        
+                            case 'Mother':
+                                $user->user_id = $parent->m_emailid; // Mother's email
+                                break;
+                        
+                            case 'FatherMob':
+                                $user->user_id = $parent->f_mobile; // Father's mobile
+                                break;
+                        
+                            case 'MotherMob':
+                                $user->user_id = $parent->m_mobile; // Mother's mobile
+                                break;
+                        
+                            default:
+                                $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
+                                break;
                         }
 
                         // Save the updated user record
@@ -3237,7 +3288,7 @@ private function determineSubjectId($academicYr, $smId, $teacherId, $existingTea
 
 // Allot teacher Tab APIs 
 public function getTeacherNames(Request $request){      
-    $teacherList = UserMaster::Where('role_id','T')->get();
+    $teacherList = UserMaster::Where('role_id','T')->where('IsDelete','N')->get();
     return response()->json($teacherList);
 }
 
