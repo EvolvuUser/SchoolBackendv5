@@ -2256,6 +2256,7 @@ class CertificateController extends Controller
             'mother_name'=>$request->mother_name,
             'nationality'=>$request->nationality,
             'mother_tongue'=>$request->mother_tongue,
+            'state'=>$request->state,
             'religion' => $request->religion,
             'caste' => $request->caste,
             'subcaste' => $request->subcaste,
