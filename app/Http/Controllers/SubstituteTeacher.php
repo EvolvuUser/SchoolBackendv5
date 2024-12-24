@@ -371,5 +371,28 @@ class SubstituteTeacher extends Controller
             return null;
         }
     }
+
+    public function sendNotification(Request $request){
+        // dd("Hello");
+        // $token = 'cnMaZq4TRTKG2Sic49524o:APA91bHPc4EJtx4Z7U-Y407B-8JJJUGYHfIIOsytnRJvGsbX88eMolgc9_fynECDlszXfKu7dtPfywa0lbT9GWxV5KkFGe9DPTxgwzAOLq89j7199M3ldqg' ;
+        $load = array();
+        // dd($load);
+        $load['title']  = env('APP_NAME');
+        $load['msg']    = 'Testingg';
+        $load['action'] = 'CONFIRMED';
+        // dd($load);
+        $data = [
+            'token'=>$request->token,
+            'notification'=>[
+                'title'=> config('constant.APP_NAME'),
+                'description'=> $request->message,
+                'mutable_content'=>true,
+                'sound'=>'Tri-tone'
+            ],                    
+            
+        ];
+        // dd($data);
+        sendnotificationusinghttpv1($data);
+    }
     
 }

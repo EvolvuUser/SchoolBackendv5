@@ -309,6 +309,7 @@
         Route::put('update_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'updateSubstituteTeacher']);
         Route::delete('delete_subsituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'deleteSubstituteTeacher']);
 
+        Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
     });
 
 //  API for the New Student list Buulk upload 

@@ -539,6 +539,17 @@ class AssessmentController extends Controller
                 'error' => 'This Exam is in use. Deletion failed!'
             ], 400);
         }
+
+        $examInUsee = DB::table('exam_timetable')
+                    ->where('exam_id', $exam_id)
+                    ->count();
+
+        if ($examInUsee > 0) {
+            return response()->json([
+                'error' => 'This Exam is in use. Deletion failed!'
+            ], 400);
+        }
+        
         $exams = Exams::find($exam_id);
     
         if (!$exams) {
