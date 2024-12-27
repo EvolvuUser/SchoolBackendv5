@@ -1296,9 +1296,9 @@ public function getStaffList(Request $request) {
         ->get()
         ->map(function ($staff) {
             if ($staff->teacher_image_name) {
-                $staff->teacher_image_name = $teacher->teacher_image_name;
+                $staff->teacher_image_name = $staff->teacher_image_name;
             } else {
-                $staff->teacher_image_name = null; 
+                $staff->teacher_image_name = 'default.png'; 
             }
             return $staff;
         });
@@ -1480,7 +1480,7 @@ public function storeStaff(Request $request)
 
         // Call external API
         $response = Http::post('http://aceventura.in/demo/evolvuUserService/create_staff_userid', [
-            'user_id' => $user->email,
+            'user_id' => $user->user_id,
             'role' => $validatedData['role'],
             'short_name' => 'SACS',
         ]);
@@ -2019,10 +2019,10 @@ public function getStudentListBySection(Request $request)
         // Check if the image_name is present and not empty
         if (!empty($student->image_name)) {
             // Generate the full URL for the student image based on their unique image_name
-            $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+            $student->image_name = $student->image_name;
         } else {
             // Set a default image if no image is available
-            $student->image_name = asset('storage/uploads/student_image/default.png');
+            $student->image_name = 'default.png';
         }
 
         $contactDetails = ContactDetails::find($student->parent_id);
@@ -2430,44 +2430,98 @@ public function toggleActiveStudent($studentId)
             }
             */
 
+            $existingImageUrl = $student->image_name;
+
             if ($request->has('image_name')) {
-                $imageData=$request->input('image_name');
-                if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
-                $imageData = substr($imageData, strpos($imageData, ',') + 1);
+    $newImageData = $request->input('image_name');
+
+    
+
+    // Check if the new image data is null
+    if ($newImageData === null || $newImageData === 'null') {
+        // If the new image data is null, keep the existing filename
+        $validatedData['image_name'] = $student->image_name;
+    } elseif (!empty($newImageData)) {
+        // Check if the new image data matches the existing image URL
+        if ($existingImageUrl !== $newImageData) {
+            if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
+                $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
                 $type = strtolower($type[1]); // jpg, png, gif
 
-                // Validate image type
                 if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
                     throw new \Exception('Invalid image type');
                 }
 
-                // Base64 decode the image
-                $imageData = base64_decode($imageData);
-                if ($imageData === false) {
+                $newImageData = base64_decode($newImageData);
+                if ($newImageData === false) {
                     throw new \Exception('Base64 decode failed');
                 }
 
-                // Define the filename and path to store the image
+                // Generate a filename for the new image
                 $filename = 'student_' . time() . '.' . $type;
                 $filePath = storage_path('app/public/student_images/' . $filename);
 
-                // Ensure the directory exists
+                // Ensure directory exists
                 $directory = dirname($filePath);
                 if (!is_dir($directory)) {
                     mkdir($directory, 0755, true);
                 }
 
-                // Save the image to the file system
-                if (file_put_contents($filePath, $imageData) === false) {
+                // Save the new image to file
+                if (file_put_contents($filePath, $newImageData) === false) {
                     throw new \Exception('Failed to save image file');
                 }
 
-                // Store the filename in validated data
+                // Update the validated data with the new filename
                 $validatedData['image_name'] = $filename;
             } else {
                 throw new \Exception('Invalid image data');
             }
+        } else {
+            // If the image is the same, keep the existing filename
+            $validatedData['image_name'] = $student->image_name;
+        }
+    }
             }
+
+            // if ($request->has('image_name')) {
+            //     $imageData=$request->input('image_name');
+            //     if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+            //     $imageData = substr($imageData, strpos($imageData, ',') + 1);
+            //     $type = strtolower($type[1]); // jpg, png, gif
+
+            //     // Validate image type
+            //     if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+            //         throw new \Exception('Invalid image type');
+            //     }
+
+            //     // Base64 decode the image
+            //     $imageData = base64_decode($imageData);
+            //     if ($imageData === false) {
+            //         throw new \Exception('Base64 decode failed');
+            //     }
+
+            //     // Define the filename and path to store the image
+            //     $filename = 'student_' . time() . '.' . $type;
+            //     $filePath = storage_path('app/public/student_images/' . $filename);
+
+            //     // Ensure the directory exists
+            //     $directory = dirname($filePath);
+            //     if (!is_dir($directory)) {
+            //         mkdir($directory, 0755, true);
+            //     }
+
+            //     // Save the image to the file system
+            //     if (file_put_contents($filePath, $imageData) === false) {
+            //         throw new \Exception('Failed to save image file');
+            //     }
+
+            //     // Store the filename in validated data
+            //     $validatedData['image_name'] = $filename;
+            // } else {
+            //     throw new \Exception('Invalid image data');
+            // }
+            // }
             //echo "msg8";
             // Include academic year in the update data
             $validatedData['academic_yr'] = $academicYr;
