@@ -17,6 +17,7 @@ use App\Models\ExamTimetable;
 use App\Models\ExamTimetableDetail;
 use App\Models\Exams;
 use Log;
+use Illuminate\Support\Str;
 
 class NoticeController extends Controller
 {
@@ -282,7 +283,7 @@ class NoticeController extends Controller
                                  
                     $imageUrls = []; 
                     foreach($noticeimages as $image){
-                        $imageurl = ("storage/notice/".$image->image_name);
+                        $imageurl = ("storage/app/public/notice/".$image->image_name);
                         $imageUrls[] = $imageurl;
                         
                     }
@@ -345,10 +346,24 @@ class NoticeController extends Controller
                     
                 }
                 else{
+                    $filePaths = $request->filenottobedeleted ?? [];
+                    $trimmedFilePaths = array_map(function($filePath) {
+                        return Str::replaceFirst('storage/app/public/notice/', '', $filePath);
+                    }, $filePaths);
+                    $filesToExclude = $trimmedFilePaths;  
+
+                    // If $request->filenottobedeleted is a comma-separated string, you may need to explode it into an array
+                    if (is_string($filesToExclude)) {
+                        $filesToExclude = explode(',', $filesToExclude); // Convert string to an array if necessary
+                    }
+                    if (empty($filesToExclude)) {
+                        $filesToExclude = [];
+                    }
                     $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
                     foreach($updatesmsnotice as $noticeid){
                         $notice_detail = DB::table('notice_detail')
                                         ->where('notice_id', $noticeid->notice_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
                                         ->get()
                                         ->toArray();
                     }
@@ -371,6 +386,7 @@ class NoticeController extends Controller
                     foreach($updatesmsnotice as $noticeid){
                         $notice_detail = DB::table('notice_detail')
                                         ->where('notice_id', $noticeid->notice_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
                                         ->delete();
                     }
                       foreach ($updatesmsnotice as $notice) {

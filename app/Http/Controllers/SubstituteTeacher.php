@@ -43,7 +43,7 @@ class SubstituteTeacher extends Controller
                         ->join('class', 'timetable.class_id', '=', 'class.class_id')
                         ->join('section', 'timetable.section_id', '=', 'section.section_id')
                         ->where('subject.teacher_id', $teacher_id)
-                        // ->where('timetable.academic_yr', $customClaims)
+                         ->where('timetable.academic_yr', $customClaims)
                         ->groupBy('timetable.period_no')
                         ->orderBy('timetable.period_no', 'ASC')
                         ->get();
@@ -77,6 +77,7 @@ class SubstituteTeacher extends Controller
            }
     }
 
+
     public function getSubstituteTeacherClasswise(Request $request,$class_name,$period,$date){
         try{
             $user = $this->authenticateUser();
@@ -103,14 +104,14 @@ class SubstituteTeacher extends Controller
                         // Apply COLLATE directly in the where() clause to resolve collation issue
                         ->where('teacher_group', $teacher_group)
                         // ->whereRaw('teacher_group COLLATE utf8mb4_general_ci LIKE ?', ['%' . $teacher_group . '%'])
-                        ->where('academic_yr', '2024-2025')
+                        ->where('academic_yr', $customClaims)
                         ->whereNotIn('teacher_id', function($subquery) use ($day, $period, $teacher_group, $customClaims) {
                             $subquery->select('teacher_id')
                                 ->from('view_periodwise_subject_teacher')
                                 ->whereRaw("teacher_group COLLATE utf8mb4_unicode_ci LIKE ?", [$day])
                                 ->where('period_no', $period)
                                 ->whereRaw("teacher_group COLLATE utf8mb4_unicode_ci LIKE ?", [$teacher_group])
-                                ->where('academic_yr', '2024-2025');
+                                ->where('academic_yr', $customClaims);
                         })
                         ->whereNotIn('teacher_id', function($subquery) use ($date, $period) {
                             $subquery->select('sub_teacher_id')
@@ -155,6 +156,7 @@ class SubstituteTeacher extends Controller
             //    dd($substitutions);
                 // Loop through each substitution record and insert into the database
                 foreach ($substitutions as $data) {
+                    if (!empty($data['substitute_teacher_id'])) {
                     SubstituteTeacher1::create([
                         'class_id' => $data['class_id'],
                         'section_id' => $data['section_id'],
@@ -183,6 +185,7 @@ class SubstituteTeacher extends Controller
                         // dd($teacher_email->email);
                         Mail::to('manishnehwal@gmail.com')->send(new SubstituteTeacherNotification($substitutionData));
                     }
+                  } 
                 }
                 return response()->json([
                     'status'=> 200,
@@ -370,6 +373,16 @@ class SubstituteTeacher extends Controller
         } catch (JWTException $e) {
             return null;
         }
+    }
+
+    public function getTeacherListforSubstitution(){
+        $teacher = DB::table('teacher')->where('isDelete','N')->orderBy('teacher_id','ASC')->get();
+        return response()->json([
+                    'status'=> 201,
+                    'message'=>'Teacher List',
+                    'data' =>$teacher,
+                    'success'=>true
+                ]);
     }
 
     public function sendNotification(Request $request){
