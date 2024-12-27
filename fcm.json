@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "evolvuparentapp",
+  "private_key_id": "75acaf4f57f3564f3383fbf726fd0885e656fa9a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDUQM+5Htv/+fLU\nGwTDIrIe+LFVhM90axQIklY0AFjYTMhf0Q75A391phpdO/bheIufaZwplImPEIif\nvvdXLhxQE/Zx5vjN8G0VGsaiBNQxdqDKnf7lRrvsZ6GOxODhX6yGY1mzERdlZGa0\nPcnMp5EqfVL01sX61CLDsB9H9L97MOnbWTZ8vfEaR5w/uBsze/6TqHXKrkqmw/yY\nmaYvpLYDaXHwYoFoXJkCFYFDWiJmN0A5fZ7ONNLNPwIpy+4PLrGemlZdZVL3fs1z\nAZghbfSA9Q1uLb6m1CZexzYPTYCOkXUxSxJ4FJRpCytihKkkpKaVPyp5KGgaBCp1\nbOUM/7xLAgMBAAECggEAKTuz/t7/VyF76nebO7tURg8DCD2GPbQFjsq641xD5jU4\nYeDPm1FyI+1SRtV81v1fhmbyVuOLu5a3K+1hyHZlOqs+H4+CuyMfVc+/Ub9FZ5yH\njQUXfPv6Sukw6fbWRwIalnrbdJ134ZMZHp+4QcE1wr7Y7EaC7IDkhgaDdSuXPTt/\nIpPZSmoZf//Oo5F9Q/TVw4BpDllz+GL6xjoGPEpJiyneRtkVHrhnGzSMpsR5Mq2u\njK0LlSw4vPFKGxdGo25H79iVh7CL+KVYBjFb+89UZoEvYt0NFza6G3pokvsGlGLf\nwm7uN7OIXWGTiXva6wydrjOkFciXWSo4tL6wgF0grQKBgQDcBV6h+W7bBQ0y2R+Q\nboXLLvJABqCVl9ynNtnnG2nZsNFSDlJ57PbtDSQTjbF/bF4kbAwVho+xPq4k713d\nh8dahRCOT1KlhGO436rbfoK3fuP5+PfBlzmeu/PS+BMg86VO8/OavmM+288II8lu\nfL8Rme6E1adKU7Co3YaCDbQxZwKBgQD29kMM88NPWO8ySc8q8Ae67AW8BOPtYgJn\nudMKWHRfKfA8vkD4xvsvcDMXw2jqk3uQPQyCq426RVftsuMOWmeLQZ9PJHYThaN/\nPFDAVTJazQLU+4ftjXsdg5aXNj3zjwedCgsYkD7zY1oZgwJIBO8bvIrsVBiLRo0O\nic5+cWxbfQKBgQCGTTDKpjsorhi0ZRyDSTOaJvnwYxs6tQwXdb/k9jLSkr/y2pM1\noZPIdzECTod+RGPiz6FAsnabtqsOGJ6vTuY9NuQ4Oes05W8Jtl3QxZR89ZOrTnHN\nVcXyQsA+kvb6Mj9Bxl94oaZrBDmHunCGZNcso02Y/+Gx2QwIx9AHKt5HGQKBgGm7\n9+sktptTTV3vgfY1PGoIQVBFm7x3uOXmBngodPKFhyjKoBCjSMn/tLBY5qOAL2gK\n6z9K6ew1YjcP3uy3Qhu6JdYBm1gyYFTKYxxlnaCIo8zCQGkxqONzAleNTqrnsu/G\nbAfBQmJ8SAgiMijZi/IJIEWcn8GJnDz8PV+fejAVAoGAPU/0bQg+ZDGse/jGz4qg\nxIrxO/3PXpi+EvXPgMgVbJUvzBvcSWmYLt5UsbWHrvyASvmXilIuhkQIIkaPa6Ls\nyrauBsu2wLFbOA01EdskXNQzjD7LBxpTj1TsyOhd2ZxTWdz8x7kWbmT7R963q8Ik\nsbpX6gC38IF4nRnFX6OCr6k=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-3czwc@evolvuparentapp.iam.gserviceaccount.com",
+  "client_id": "103576357116976893032",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-3czwc%40evolvuparentapp.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
