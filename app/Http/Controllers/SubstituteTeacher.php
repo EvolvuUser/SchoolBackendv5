@@ -10,6 +10,7 @@ use App\Models\SubstituteTeacher as SubstituteTeacher1;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use App\Mail\SubstituteTeacherNotification;
+use App\Models\LateTime;
 
 class SubstituteTeacher extends Controller
 {
@@ -363,6 +364,63 @@ class SubstituteTeacher extends Controller
             \Log::error($e); // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
            }
+
+    }
+
+    public function saveLateTime(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $tc_id = $request->input('tc_id');
+
+                // Check if the tc_id already exists
+                $existingTestCase = LateTime::where('tc_id', $tc_id)->first();
+
+                if ($existingTestCase) {
+                    // If tc_id exists, return a response with the message
+                    return response()->json([
+                        'message' => 'Teacher Category already created',
+                        'tc_id' => $tc_id,
+                        'status'=> 400,
+                        'success'=>false
+                    ]);  // 400 means bad request as it's already there
+                }
+
+        // If tc_id does not exist, create a new entry
+        $newTestCase = LateTime::create([
+            'tc_id' => $tc_id,
+            'late_time' => $request->input('latetime'),
+        ]);
+
+        // Return success response with the created data
+        return response()->json([
+            'success' => true,
+            'message' => 'Late Time created successfully',
+            'status' =>201,
+            'data'=>$newTestCase
+        ]);  // 201 means resource created
+
+
+                
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Updating of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+            
 
     }
 

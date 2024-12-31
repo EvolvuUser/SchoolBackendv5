@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\SubjectAllotmentForReportCard;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Response;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -4018,12 +4019,13 @@ public function createOrUpdateSubjectAllotment(Request $request, $class_id)
 }
 
 public function getNewStudentListbysectionforregister(Request $request , $section_id){   
-    $academicYear = "2023-2024";            
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');            
     $studentList = Student::with('getClass', 'getDivision')
                             ->where('section_id',$section_id)
                             ->where('parent_id','0')
                             ->where('IsDelete','N')
-                            ->where('academic_yr',$academicYear)
+                            ->where('academic_yr',$customClaims)
                             ->distinct()
                             ->get();
 
@@ -4045,7 +4047,8 @@ public function getAllNewStudentListForRegister(Request $request){
 public function downloadCsvTemplateWithData(Request $request, $section_id)
 {
     // Extract the academic year from the token payload
-    $academicYear = "2023-2024";
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
 
     // Fetch only the necessary fields from the Student model where academic year and section_id match
     $students = Student::select(
@@ -4084,7 +4087,7 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
     ->leftJoin('section', 'student.section_id', '=', 'section.section_id') // Use correct table name 'sections'
     ->leftJoin('class', 'student.class_id', '=', 'class.class_id') // Use correct table name 'sections'
     ->where('student.parent_id', '=', '0')
-    ->where('student.academic_yr', $academicYear)  // Specify the table name here
+    ->where('student.academic_yr', $customClaims)  // Specify the table name here
     ->where('student.section_id', $section_id) // Specify the table name here
     ->get()
     ->toArray();
@@ -4338,6 +4341,28 @@ if (!empty($invalidRows)) {
 
 // Return a success response
 return response()->json(['message' => 'CSV data updated successfully.']);
+}
+
+public function downloadCsvRejected($id){
+    $filePath = "https://sms.evolvu.in/storage/app/public/csv_rejected/".$id;
+    $file = fopen($filePath, 'r');
+    
+    if ($file) {
+        return Response::stream(function () use ($file) {
+            // Output each line of the remote CSV file
+            while (!feof($file)) {
+                echo fgets($file);
+            }
+            
+            fclose($file); // Close the file after reading
+        }, 200, [
+            'Content-Type' => 'text/csv', // Set the content type as CSV
+            'Content-Disposition' => 'attachment; filename="rejectedrows.csv"', // Set the file name for download
+        ]);
+    } else {
+        return response()->json(['error' => 'File not found'], 404);
+    }
+
 }
 
 // Helper method to validate date format

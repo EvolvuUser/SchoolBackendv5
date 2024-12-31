@@ -593,7 +593,7 @@ public function updateCsvData(Request $request, $section_id)
 
     // Define the CSV to database column mapping
     $columnMap = [
-        'student_id' => 'student_id',
+        '    student_id' => 'student_id',
         '*First Name' => 'first_name',
         'Mid name' => 'mid_name',
         'last name' => 'last_name',
@@ -648,31 +648,36 @@ public function updateCsvData(Request $request, $section_id)
             }
         }
 
-        // Validate required fields
-        if (empty($studentData['student_id'])) {
-            $invalidRows[] = array_merge($row, ['error' => 'Missing student ID']);
-            continue;
-        }
+        $errors = [];
 
-        if (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
-            $invalidRows[] = array_merge($row, ['error' => 'Invalid gender value. Expected M, F, or O.']);
-            continue;
-        }
-
-        // Validate and convert DOB and admission_date formats
-        if (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
-            $invalidRows[] = array_merge($row, ['error' => 'Invalid DOB format. Expected dd/mm/yyyy.']);
-            continue;
-        } else {
-            $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
-        }
-
-        if (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
-            $invalidRows[] = array_merge($row, ['error' => 'Invalid admission date format. Expected dd-mm-yyyy.']);
-            continue;
-        } else {
-            $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
-        }
+            // Validate required fields
+            if (empty($studentData['student_id'])) {
+                $errors[] = 'Missing student ID';
+            }
+        
+            if (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
+                $errors[] = 'Invalid gender value. Expected M, F, or O.';
+            }
+        
+            // Validate and convert DOB format
+            if (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
+                $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
+            } else {
+                $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
+            }
+        
+            // Validate and convert admission_date format
+            if (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
+                $errors[] = 'Invalid admission date format. Expected dd-mm-yyyy.';
+            } else {
+                $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
+            }
+        
+            // If there are any errors for this row, add them to the invalidRows array
+            if (!empty($errors)) {
+                // Add the errors to the row data
+                $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
+            }
 
         // Start a database transaction
         DB::beginTransaction();
@@ -758,10 +763,11 @@ public function updateCsvData(Request $request, $section_id)
         }
         $filePath = 'public/csv_rejected/rejected_rows_' . now()->format('Y_m_d_H_i_s') . '.csv';
         Storage::put($filePath, $csv->toString());
+        $relativePath = str_replace('public/csv_rejected/', '', $filePath);
 
         return response()->json([
             'message' => 'Some rows contained errors.',
-            'invalid_rows' => Storage::url($filePath),
+            'invalid_rows' => $relativePath,
         ], 422);
     }
 
