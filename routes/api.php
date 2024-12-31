@@ -311,6 +311,11 @@
         Route::delete('delete_subsituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'deleteSubstituteTeacher']);
 
         Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
+
+        Route::get('download_csv_rejected/{id}',[AdminController::class,'downloadCsvRejected']);
+
+        //Set Late Time
+        Route::post('save_setlatetime',[SubstituteTeacher::class,'saveLateTime']);
     });
 
 //  API for the New Student list Buulk upload 
