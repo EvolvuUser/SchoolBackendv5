@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use App\Mail\SubstituteTeacherNotification;
 use App\Models\LateTime;
+use Illuminate\Validation\Rule;
 
 class SubstituteTeacher extends Controller
 {
@@ -421,6 +422,155 @@ class SubstituteTeacher extends Controller
            }
 
             
+
+    }
+
+
+    public function LateTimeList(){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $latetimelist = LateTime::join('teacher_category','late_time.tc_id','=','teacher_category.tc_id')->get();
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Late Time List',
+                    'data' =>$latetimelist,
+                    'success'=>true
+                    ]);
+
+            
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Creating of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+    }
+
+
+    public function deleteLateTime($lt_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $latetimedelete=LateTime::find($lt_id);
+                $latetimedelete->delete();
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Late Time Deleted Successfully for this class.',
+                    'data' =>$latetimedelete,
+                    'success'=>false
+                    ]);
+
+
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+    }
+
+
+    public function LateTimeData(Request $request,$lt_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $latetimedata=LateTime::find($lt_id);
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Late Time Data',
+                    'data' =>$latetimedata,
+                    'success'=>false
+                    ]);
+
+
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+           }
+
+    }
+
+    public function updateLateTime(Request $request,$lt_id){
+        $messages = [
+            'tc_id.unique' => 'The teacher category has already been taken.',
+        ];
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                try{
+                $validatedData = $request->validate([
+                    'tc_id' => [
+                        Rule::unique('late_time', 'tc_id')->ignore($lt_id, 'lt_id')
+                    ]
+                ], $messages);
+                $updatelatetime = LateTime::find($lt_id);
+                $updatelatetime->tc_id = $request->tc_id;
+                $updatelatetime->late_time = $request->latetime;
+                $updatelatetime->save();
+
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Late Time Updated for this Class',
+                    'data' =>$updatelatetime,
+                    'success'=>true
+                    ]);
+                
+                
+
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json([
+                    'status' => 422,
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                    ]);
+                }
 
     }
 
