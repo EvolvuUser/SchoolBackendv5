@@ -316,6 +316,10 @@
 
         //Set Late Time
         Route::post('save_setlatetime',[SubstituteTeacher::class,'saveLateTime']);
+        Route::get('get_listlatetime',[SubstituteTeacher::class,'LateTimeList']);
+        Route::get('get_latetimedata/{lt_id}',[SubstituteTeacher::class,'LateTimeData']);
+        Route::put('update_latetime/{lt_id}',[SubstituteTeacher::class,'updateLateTime']);
+        Route::delete('delete_latetime/{lt_id}',[SubstituteTeacher::class,'deleteLateTime']);
     });
 
 //  API for the New Student list Buulk upload 
