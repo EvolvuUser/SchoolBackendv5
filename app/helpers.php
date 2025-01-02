@@ -25,7 +25,7 @@ if (!function_exists('getTokenPayload')) {
 
 
 function googleaccounttoken(){
-    $credentialsFilePath = "https://sms.evolvu.in/fcm.json";
+    $credentialsFilePath = "fcm.json";
     // dd($credentialsFilePath);
     $client = new \Google_Client();
     //  dd($client);

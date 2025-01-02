@@ -11,6 +11,7 @@
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\NoticeController;
     use App\Http\Controllers\SubstituteTeacher;
+    use App\Http\Controllers\StudentController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -320,6 +321,12 @@
         Route::get('get_latetimedata/{lt_id}',[SubstituteTeacher::class,'LateTimeData']);
         Route::put('update_latetime/{lt_id}',[SubstituteTeacher::class,'updateLateTime']);
         Route::delete('delete_latetime/{lt_id}',[SubstituteTeacher::class,'deleteLateTime']);
+
+        //Promote Students
+        Route::get('getstudentlistbyclassdivision/{class_id}/{section_id}',[StudentController::class,'getStudentListClass']);
+        Route::get('nextclassacademicyear',[StudentController::class,'nextClassPromote']);
+        Route::get('nextsectionacademicyear/{class_id}',[StudentController::class,'nextSectionPromote']);
+        Route::post('promotestudents',[StudentController::class,'promoteStudentsUpdate']);
     });
 
 //  API for the New Student list Buulk upload 
