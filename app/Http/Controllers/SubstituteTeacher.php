@@ -470,7 +470,7 @@ class SubstituteTeacher extends Controller
                     'status'=> 200,
                     'message'=>'Late Time Deleted Successfully for this class.',
                     'data' =>$latetimedelete,
-                    'success'=>false
+                    'success'=>true
                     ]);
 
 
@@ -504,7 +504,7 @@ class SubstituteTeacher extends Controller
                     'status'=> 200,
                     'message'=>'Late Time Data',
                     'data' =>$latetimedata,
-                    'success'=>false
+                    'success'=>true
                     ]);
 
 

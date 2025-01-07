@@ -327,6 +327,12 @@
         Route::get('nextclassacademicyear',[StudentController::class,'nextClassPromote']);
         Route::get('nextsectionacademicyear/{class_id}',[StudentController::class,'nextSectionPromote']);
         Route::post('promotestudents',[StudentController::class,'promoteStudentsUpdate']);
+
+        //Leave Allocation
+        Route::get('get_leavetype',[AdminController::class,'getLeavetype']);
+        Route::get('get_allstaff',[AdminController::class,'getAllStaff']);
+        Route::post('save_leaveallocated',[AdminController::class,'saveLeaveAllocated']);
+
     });
 
 //  API for the New Student list Buulk upload 
