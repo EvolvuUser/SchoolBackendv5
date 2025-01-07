@@ -337,6 +337,12 @@
         Route::put('update_leaveallocation/{staff_id}/{leave_type_id}',[AdminController::class,'updateLeaveAllocation']);
         Route::delete('delete_leaveallocation/{staff_id}/{leave_type_id}',[AdminController::class,'deleteLeaveAllocation']);
 
+        //Manage Student
+        Route::get('get_students',[AdminController::class,'getStudentsList']);
+
+        //Leave Allocation for all staff
+        Route::post('save_leaveallocationforallstaff',[AdminController::class,'saveLeaveAllocationforallStaff']);
+        
     });
 
 //  API for the New Student list Buulk upload 
