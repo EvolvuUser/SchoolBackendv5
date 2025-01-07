@@ -71,7 +71,7 @@ function sendnotificationusinghttpv1($data){
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
         $result = curl_exec($ch);
-         dd($result);
+        //  dd($result);
         curl_close($ch);
         return response(["status"=>true,"data"=>$result]);
     }catch(Exception $e){

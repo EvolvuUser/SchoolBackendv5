@@ -332,6 +332,10 @@
         Route::get('get_leavetype',[AdminController::class,'getLeavetype']);
         Route::get('get_allstaff',[AdminController::class,'getAllStaff']);
         Route::post('save_leaveallocated',[AdminController::class,'saveLeaveAllocated']);
+        Route::get('get_leaveallocationall',[AdminController::class,'leaveAllocationall']);
+        Route::get('get_leaveallocationdata/{staff_id}/{leave_type_id}',[AdminController::class,'getLeaveAllocationdata']);
+        Route::put('update_leaveallocation/{staff_id}/{leave_type_id}',[AdminController::class,'updateLeaveAllocation']);
+        Route::delete('delete_leaveallocation/{staff_id}/{leave_type_id}',[AdminController::class,'deleteLeaveAllocation']);
 
     });
 

@@ -4973,7 +4973,7 @@ public function getAllStaff(){
         $staff=DB::table('teacher')->where('isDelete','N')->orderBy('teacher_id','ASC')->get();
         return response()->json([
             'status'=> 200,
-            'message'=>'Leave Type',
+            'message'=>'All Staffs',
             'data' =>$staff,
             'success'=>true
             ]);
@@ -5002,19 +5002,30 @@ public function saveLeaveAllocated(Request $request){
     $customClaims = JWTAuth::getPayload()->get('academic_year');
     try{
     if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-        $leaveallocation = new LeaveAllocation();
-        $leaveallocation->staff_id = $request->staff_id;
-        $leaveallocation->leave_type_id = $request->leave_type_id;
-        $leaveallocation->leaves_allocated = $request->leaves_allocated;
-        $leaveallocation->academic_yr = $customClaims;
-        $leaveallocation->save();
+        $leaveforstaff = DB::table('leave_allocation')->where('staff_id',$request->staff_id)->where('leave_type_id',$request->leave_type_id)->where('academic_yr',$customClaims)->first();
+        if(!$leaveforstaff){
+            $leaveallocation = new LeaveAllocation();
+            $leaveallocation->staff_id = $request->staff_id;
+            $leaveallocation->leave_type_id = $request->leave_type_id;
+            $leaveallocation->leaves_allocated = $request->leaves_allocated;
+            $leaveallocation->academic_yr = $customClaims;
+            $leaveallocation->save();
 
-        return response()->json([
-            'status'=> 200,
-            'message'=>'Leave Type',
-            'data' =>$leaveallocation,
-            'success'=>true
-            ]);
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leave Allocated Successfully.',
+                'data' =>$leaveallocation,
+                'success'=>true
+                ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 400,
+                'message'=>'Leave Allocation for this staff is already done.',
+                'success'=>false
+                ]);
+        }
 
     }
     else{
@@ -5032,6 +5043,179 @@ catch (Exception $e) {
     return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
     }
 
+}
+
+public function leaveAllocationall(){
+    try{
+       $user = $this->authenticateUser();
+       $customClaims = JWTAuth::getPayload()->get('academic_year');
+       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+           $leaveallocationall = DB::table('leave_allocation')
+                                    ->join('teacher','teacher.teacher_id','=','leave_allocation.staff_id')
+                                    ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_allocation.leave_type_id')
+                                    ->select('leave_allocation.*','leave_type_master.name as leavename','teacher.name as teachername',DB::raw('leave_allocation.leaves_allocated - leave_allocation.leaves_availed as balance_leave'))
+                                    ->where('leave_allocation.academic_yr',$customClaims)
+                                    ->distinct()
+                                    ->get();
+
+               return response()->json([
+               'status'=> 200,
+               'message'=>'ALl Leave Allocation',
+               'data' =>$leaveallocationall,
+               'success'=>true
+               ]);
+
+       }
+       else{
+           return response()->json([
+               'status'=> 401,
+               'message'=>'This User Doesnot have Permission for the Deleting of Data',
+               'data' =>$user->role_id,
+               'success'=>false
+                   ]);
+           }
+       
+    }
+    catch (Exception $e) {
+       \Log::error($e); // Log the exception
+       return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+       }
+
+}
+
+public function getLeaveAllocationdata($staff_id,$leave_type_id){
+    try{
+       $user = $this->authenticateUser();
+       $customClaims = JWTAuth::getPayload()->get('academic_year');
+       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+           $leaveallocationall = DB::table('leave_allocation')
+                   ->join('teacher','teacher.teacher_id','=','leave_allocation.staff_id')
+                   ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_allocation.leave_type_id')
+                   ->where('leave_allocation.staff_id','=',$staff_id)
+                   ->where('leave_allocation.leave_type_id','=',$leave_type_id)
+                   ->where('leave_allocation.academic_yr',$customClaims)
+                   ->select('leave_allocation.*','leave_type_master.name as leavename','teacher.name as teachername')
+                   ->get();
+
+               return response()->json([
+               'status'=> 200,
+               'message'=>'Leave Allocation Data',
+               'data' =>$leaveallocationall,
+               'success'=>true
+               ]);
+
+       }
+       else{
+           return response()->json([
+               'status'=> 401,
+               'message'=>'This User Doesnot have Permission for the Deleting of Data',
+               'data' =>$user->role_id,
+               'success'=>false
+                   ]);
+           }
+
+    }
+    catch (Exception $e) {
+       \Log::error($e); // Log the exception
+       return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+       }
+
+}
+
+public function updateLeaveAllocation(Request $request,$staff_id,$leave_type_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $leaveAllocation = LeaveAllocation::where('staff_id', $staff_id)
+                                    ->where('leave_type_id', $leave_type_id)
+                                    ->where('academic_yr', $customClaims)
+                                    ->first();
+
+                if (!$leaveAllocation) {
+                // If no record is found, return an error response
+                return response()->json([
+                'status' => 404,
+                'message' => 'Leave allocation not found!',
+                'success' => false
+                ]);
+                }
+                $leaveAllocation->leaves_allocated = $request->leaves_allocated;
+                $leaveAllocation->save();
+
+
+                return response()->json([
+                'status' => 200,
+                'message' => 'Leave allocation updated successfully!',
+                'data' => $leaveAllocation,
+                'success' => true
+                ]);
+             
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+        
+
+    }
+    catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+}
+
+public function deleteLeaveAllocation($staff_id,$leave_type_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            // dd($staff_id,$leave_type_id);
+            $leaveApplication = DB::table('leave_application')
+                                        ->where('staff_id', $staff_id)
+                                        ->where('leave_type_id', $leave_type_id)
+                                        ->where('academic_yr', $customClaims)
+                                        ->first();
+
+                        if ($leaveApplication) {
+                            return response()->json([
+                                'status' => 400,
+                                'message' => 'This leave allocation is in use. Delete failed!!!',
+                                'success' => false
+                            ]);
+                        }
+            DB::table('leave_allocation')
+               ->where('staff_id',$staff_id)
+               ->where('leave_type_id',$leave_type_id)
+               ->where('academic_yr',$customClaims)
+               ->delete();
+
+               return response()->json([
+                'status'=> 200,
+                'message'=>'Leave Allocation deleted Successfully.',
+                'success'=>true
+                ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+    }
+    catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
 }
 
 
