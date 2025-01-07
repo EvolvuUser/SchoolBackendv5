@@ -45,6 +45,8 @@ use App\Models\SubjectAllotmentForReportCard;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Response;
+use App\Models\LeaveType;
+use App\Models\LeaveAllocation;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -4931,6 +4933,106 @@ private function authenticateUser()
             return null;
         }
     }
+
+    public function getLeavetype(){
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        try{
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $leavetype=LeaveType::all();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leave Type',
+                'data' =>$leavetype,
+                'success'=>true
+                ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                ]);
+        }
+
+    }
+    catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+       }
+            
+} 
+
+public function getAllStaff(){
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
+    try{
+    if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        $staff=DB::table('teacher')->where('isDelete','N')->orderBy('teacher_id','ASC')->get();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Leave Type',
+            'data' =>$staff,
+            'success'=>true
+            ]);
+
+    }
+    else{
+        return response()->json([
+            'status'=> 401,
+            'message'=>'This User Doesnot have Permission for the Deleting of Data',
+            'data' =>$user->role_id,
+            'success'=>false
+            ]);
+    }
+
+}
+catch (Exception $e) {
+    \Log::error($e); // Log the exception
+    return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    }
+
+}
+
+public function saveLeaveAllocated(Request $request){
+
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
+    try{
+    if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        $leaveallocation = new LeaveAllocation();
+        $leaveallocation->staff_id = $request->staff_id;
+        $leaveallocation->leave_type_id = $request->leave_type_id;
+        $leaveallocation->leaves_allocated = $request->leaves_allocated;
+        $leaveallocation->academic_yr = $customClaims;
+        $leaveallocation->save();
+
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Leave Type',
+            'data' =>$leaveallocation,
+            'success'=>true
+            ]);
+
+    }
+    else{
+        return response()->json([
+            'status'=> 401,
+            'message'=>'This User Doesnot have Permission for the Deleting of Data',
+            'data' =>$user->role_id,
+            'success'=>false
+                ]);
+        }
+
+    }
+catch (Exception $e) {
+    \Log::error($e); // Log the exception
+    return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    }
+
+}
 
 
 }
