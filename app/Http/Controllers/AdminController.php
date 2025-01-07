@@ -47,6 +47,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Response;
 use App\Models\LeaveType;
 use App\Models\LeaveAllocation;
+use App\Models\Allot_mark_headings;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -2127,6 +2128,81 @@ public function getStudentById($studentId)
     );
 }
 
+public function getStudentsList(Request $request){
+    $section_id = $request->section_id;
+    $student_id = $request->student_id;
+    $reg_no =$request->reg_no;
+
+    $query = Student::query();
+
+    $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+    if ($section_id && $reg_no) {
+        $query->where('section_id', $section_id)
+            ->where('reg_no', $reg_no);
+    }
+
+    elseif ($student_id && $reg_no) {
+        $query->where('student_id',$student_id)
+            ->where('reg_no', $reg_no);
+    }
+
+    elseif ($section_id && $student_id && $reg_no) {
+        $query->where('section_id', $section_id)
+            ->where('student_id', $student_id)
+            ->where('reg_no', $reg_no);
+    }
+    elseif ($section_id && $student_id) {
+        $query->where('student_id',$student_id)
+              ->where('section_id', $section_id);
+   }
+   elseif ($section_id) {
+       $query->where('section_id', $section_id);
+   }
+   elseif ($student_id) {
+       $query->where('student_id', $student_id);
+   }
+   elseif ($reg_no) {
+       $query->where('reg_no', $reg_no);
+   }
+
+    else {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Please provide at least one search condition.',
+        ], 400);
+    }
+
+    
+    $students = $query->get();
+
+    foreach ($students as $student) {
+        if (!empty($student->image_name)) {
+            // Generate the full URL for the student image based on their unique image_name
+            $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+        } else {
+            // Set a default image if no image is available
+            $student->image_name = asset('storage/uploads/student_image/default.png');
+        }
+    }
+
+    
+    if ($students->isEmpty()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No student found matching the search criteria.',
+        ], 404);
+    }
+
+    
+    return response()->json([
+        'status' => 'success',
+        'students' => $students,
+    ]);
+    
+
+}
+
 
 
 public function getStudentByGRN($reg_no)
@@ -3851,10 +3927,25 @@ public function updateSubjectType(Request $request, $sub_reportcard_id)
 // for delete
 public function deleteSubjectAllotmentforReportcard($sub_reportcard_id)
 {
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
     $subjectAllotment = SubjectAllotmentForReportCard::find($sub_reportcard_id);
-
     if (!$subjectAllotment) {
         return response()->json(['error' => 'Subject Allotment not found'], 404);
+    }
+    $markHeadingsQuery = Allot_mark_headings::where([
+        'sm_id' => $subjectAllotment->sub_rc_master_id,
+        'class_id' => $subjectAllotment->class_id,
+        'academic_yr' => $customClaims
+    ])->first();
+
+    if ($markHeadingsQuery) {
+        // Marks allotment exists, do not allow deletion
+        return response()->json([
+            'status' => '400',
+            'message' => 'This subject allotment is in use. Delete failed!!!',
+            'success'=>false
+        ]);
     }
 
     // // Check if the subject allotment is associated with any MarkHeading
@@ -5217,6 +5308,72 @@ public function deleteLeaveAllocation($staff_id,$leave_type_id){
         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
 }
+
+
+public function saveLeaveAllocationforallStaff(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+
+            $status = false;
+            $staffData = DB::table('teacher')->where('isDelete','N')->orderBy('teacher_id','ASC')->get();
+            
+            foreach ($staffData as $staff) {
+                
+                $data = [
+                    'staff_id' => $staff->teacher_id,
+                    'leave_type_id' => $request->input('leave_type_id'),
+                    'leaves_allocated' => $request->input('leaves_allocated'),
+                    'academic_yr' => $customClaims, 
+                ];
+    
+                
+                $existingLeaveAllocation = LeaveAllocation::where('leave_type_id', $request->input('leave_type_id'))
+                    ->where('staff_id', $staff->teacher_id)
+                    ->where('academic_yr', $customClaims) 
+                    ->first();
+    
+                if (!$existingLeaveAllocation) {
+
+                    LeaveAllocation::create($data);
+                    $status = true;
+                }
+            }
+    
+            if ($status) {
+                return response()->json([
+                    'status' => '200',
+                    'message' => 'Leave allocation successfully done!!!',
+                    'success' =>true
+                ]);
+            } else {
+                return response()->json([
+                    'status' => '400',
+                    'message' => 'Leave allocation is already present!!!',
+                    'success' =>false
+                ]);
+            }
+
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+    }
+    catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+        
+
+   }
 
 
 }
