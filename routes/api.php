@@ -343,6 +343,8 @@
         //Leave Allocation for all staff
         Route::post('save_leaveallocationforallstaff',[AdminController::class,'saveLeaveAllocationforallStaff']);
         
+        //Send user id to password
+        Route::post('send_user_id_toparents',[AdminController::class,'sendUserIdParents']);
     });
 
 //  API for the New Student list Buulk upload 
