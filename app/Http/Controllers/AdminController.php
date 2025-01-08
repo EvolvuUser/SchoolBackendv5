@@ -2139,31 +2139,35 @@ public function getStudentsList(Request $request){
 
     if ($section_id && $reg_no) {
         $query->where('section_id', $section_id)
-            ->where('reg_no', $reg_no);
+            ->where('reg_no', $reg_no)
+            ->where('isDelete','N');
     }
 
     elseif ($student_id && $reg_no) {
         $query->where('student_id',$student_id)
-            ->where('reg_no', $reg_no);
+            ->where('reg_no', $reg_no)
+            ->where('isDelete','N');
     }
 
     elseif ($section_id && $student_id && $reg_no) {
         $query->where('section_id', $section_id)
             ->where('student_id', $student_id)
-            ->where('reg_no', $reg_no);
+            ->where('reg_no', $reg_no)
+            ->where('isDelete','N');
     }
     elseif ($section_id && $student_id) {
         $query->where('student_id',$student_id)
-              ->where('section_id', $section_id);
+              ->where('section_id', $section_id)
+              ->where('isDelete','N');
    }
    elseif ($section_id) {
-       $query->where('section_id', $section_id);
+       $query->where('section_id', $section_id)->where('isDelete','N');
    }
    elseif ($student_id) {
-       $query->where('student_id', $student_id);
+       $query->where('student_id', $student_id)->where('isDelete','N');
    }
    elseif ($reg_no) {
-       $query->where('reg_no', $reg_no);
+       $query->where('reg_no', $reg_no)->where('isDelete','N');
    }
 
     else {
@@ -3943,7 +3947,7 @@ public function deleteSubjectAllotmentforReportcard($sub_reportcard_id)
         // Marks allotment exists, do not allow deletion
         return response()->json([
             'status' => '400',
-            'message' => 'This subject allotment is in use. Delete failed!!!',
+            'message' => 'This subject allotment is in use. Delete failed!',
             'success'=>false
         ]);
     }
@@ -5375,5 +5379,55 @@ public function saveLeaveAllocationforallStaff(Request $request){
 
    }
 
+   public function sendUserIdParents(Request $request){
+    
+    $checkbx = $request->input('studentId');
+    foreach ($checkbx as $parent_id) {
+        $student = DB::table('student')
+                ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
+                ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
+                ->where('student.student_id', $parent_id)
+                ->select('student.isNew','student.first_name','contact_details.email_id','contact_details.m_emailid','user_master.user_id','user_master.password')
+                ->first();
+        // dd($student);
+        $f_emailid = $student->email_id;
+        $m_emailid = $student->m_emailid;
+        $user_id = $student->user_id;
+        $password = $student->password;
+        $isNew = $student->isNew;
+        $first_name = $student->first_name;
+        // $decryptedPassword = Crypt::decrypt($password);
+        // dd($decryptedPassword);
+
+        if($isNew == 'Y'){
+            $subject= "Welcome to St.Arnold's Central School's online application";
+            $textmsg="Dear Parent,<br/><br/>Welcome to St.Arnold's Central School's online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is arnolds.<br/><br/>Regards,<br/>SACS Support";
+
+        }
+        else{
+            $subject="Your login details for St.Arnold's Central School";
+            $textmsg="Dear Parent,<br/><br/>Your user id for St.Arnold's Central School's online application is {$user_id} and password is arnolds.<br/><br/>Regards,<br/>SACS Support";
+        }
+        
+        if ($f_emailid) {
+            Mail::send('emails.parentUserEmail', ['textmsg' => $textmsg,'subject'=>$subject], function ($message) use ($f_emailid,$subject) {
+                $message->to($f_emailid)
+                        ->subject('SACS Login Details');
+            });
+        }
+
+        if ($m_emailid) {
+            Mail::send('emails.parentUserEmail', ['textmsg' => $textmsg], function ($message) use ($m_emailid,$subject) {
+                $message->to($m_emailid)
+                        ->subject('SACS Login Details');
+            });
+        }
+    }
+    return response()->json([
+        'status' => '200',
+        'message' => 'Emails sent to selected parents successfully.',
+        'success'=>true
+    ], 200);
+}
 
 }
