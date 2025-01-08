@@ -5225,7 +5225,9 @@ public function updateLeaveAllocation(Request $request,$staff_id,$leave_type_id)
             $leaveAllocation = LeaveAllocation::where('staff_id', $staff_id)
                                     ->where('leave_type_id', $leave_type_id)
                                     ->where('academic_yr', $customClaims)
-                                    ->first();
+                                    ->update([
+                                        'leaves_allocated' => $request->leaves_allocated,
+                                    ]);
 
                 if (!$leaveAllocation) {
                 // If no record is found, return an error response
@@ -5235,9 +5237,6 @@ public function updateLeaveAllocation(Request $request,$staff_id,$leave_type_id)
                 'success' => false
                 ]);
                 }
-                $leaveAllocation->leaves_allocated = $request->leaves_allocated;
-                $leaveAllocation->save();
-
 
                 return response()->json([
                 'status' => 200,
