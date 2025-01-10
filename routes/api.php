@@ -349,6 +349,10 @@
         //Leave Application
         Route::get('get_leavetypedata/{staff_id}',[AdminController::class,'getLeavetypedata']);
         Route::post('save_leaveapplication',[AdminController::class,'saveLeaveApplication']);
+        Route::get('get_leaveapplicationlist',[AdminController::class,'getLeaveApplicationList']);
+        Route::get('get_leaveapplieddata/{leave_app_id}',[AdminController::class,'getLeaveAppliedData']);
+        Route::put('update_leaveapplication/{leave_app_id}',[AdminController::class,'updateLeaveApplication']);
+        Route::delete('delete_leaveapplication/{leave_app_id}',[AdminController::class,'deleteLeaveApplication']);
     });
 
 //  API for the New Student list Buulk upload 
