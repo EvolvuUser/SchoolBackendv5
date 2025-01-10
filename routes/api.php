@@ -345,6 +345,10 @@
         
         //Send user id to password
         Route::post('send_user_id_toparents',[AdminController::class,'sendUserIdParents']);
+
+        //Leave Application
+        Route::get('get_leavetypedata/{staff_id}',[AdminController::class,'getLeavetypedata']);
+        Route::post('save_leaveapplication',[AdminController::class,'saveLeaveApplication']);
     });
 
 //  API for the New Student list Buulk upload 
