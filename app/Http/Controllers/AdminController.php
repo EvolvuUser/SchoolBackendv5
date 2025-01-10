@@ -5538,7 +5538,7 @@ public function getLeavetypedata(Request $request,$staff_id){
         
             return response()->json([
                 'status'=>200,
-                'message' => 'Leave allocation saved successfully.',
+                'message' => 'Leave Application saved successfully.',
                 'data' => $leaveApplication,
                 'success'=>true
             ]);
@@ -5567,7 +5567,7 @@ public function getLeavetypedata(Request $request,$staff_id){
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-            $leaveapplicationlist = LeaveApplication::where('academic_yr', $customClaims)->get();
+            $leaveapplicationlist = LeaveApplication::where('academic_yr', $customClaims)->where('staff_id',$user->reg_id)->get();
               $leaveapplicationlist->transform(function ($leaveApplication) {
                 
                 if ($leaveApplication->status === 'A') {
