@@ -2180,15 +2180,39 @@ public function getStudentsList(Request $request){
     
     $students = $query->get();
 
-    foreach ($students as $student) {
+    // Append image URLs for each student
+    $students->each(function ($student) {
+        // Check if the image_name is present and not empty
         if (!empty($student->image_name)) {
             // Generate the full URL for the student image based on their unique image_name
-            $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+            $student->image_name = $student->image_name;
         } else {
             // Set a default image if no image is available
-            $student->image_name = asset('storage/uploads/student_image/default.png');
+            $student->image_name = 'default.png';
         }
-    }
+
+        $contactDetails = ContactDetails::find($student->parent_id);
+        //echo $student->parent_id."<br/>";
+        if ($contactDetails===null) {
+            $student->SetToReceiveSMS='';
+        }else{
+            
+            $student->SetToReceiveSMS=$contactDetails->phone_no;
+
+        }
+       
+
+        $userMaster = UserMaster::where('role_id','P')
+                                    ->where('reg_id', $student->parent_id)->first();
+        if ($userMaster===null) {
+            $student->SetEmailIDAsUsername='';
+        }else{
+            
+            $student->SetEmailIDAsUsername=$userMaster->user_id;
+
+        }
+        
+    });
 
     
     if ($students->isEmpty()) {
@@ -2634,6 +2658,9 @@ public function toggleActiveStudent($studentId)
                     $phoneNo = $parent->f_mobile;
                 } elseif ($request->input('SetToReceiveSMS') == 'Mother') {
                     $phoneNo = $parent->m_mobile;
+                }
+                elseif ($request->input('SetToReceiveSMS')) {
+                    $phoneNo = $request->SetToReceiveSMS;
                 }
                 //echo "msg12";
                 // Check if a record already exists with parent_id as the id
