@@ -96,21 +96,36 @@
         <?php 
         if($class->name=='10'){
           $subject = DB::table('class10_subject_master')->get(); 
-            $sub_total = 100*(count($subject));
+            // $sub_total = 100*(count($subject));
+            $sub_total = 0; // Initialize sub_total to 0
+            $subject_count = 0; // Initialize subject count to 0
           foreach($subject as $row):
-        ?>
-	    <tr>
-		    <td width="10%"></td>
-			<td align="left" width="40%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;"><?php echo $row->name;?></td>
-			<?php  $marks = DB::table('percentage_marks_certificate')
-                                    ->where('sr_no', $data->sr_no)
-                                    ->where('c_sm_id', $row->c_sm_id)
-                                    ->value('marks');?>
-			<td align="center" width="7%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;" align="center"><?php echo $marks;?></td>
-				<td align="center" width="7%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;" align="center"><?php echo '100';?></td>
+         $marks = DB::table('percentage_marks_certificate')
+               ->where('sr_no', $data->sr_no)
+               ->where('c_sm_id', $row->c_sm_id)
+               ->value('marks');
+    
+    // Only proceed if marks are found
+    if ($marks !== null) :
+         $subject_count++;
+?>
+        <tr>
+            <td width="10%"></td>
+            <td align="left" width="40%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;">
+                <?php echo $row->name; ?>
+            </td>
+            <td align="center" width="7%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;" align="center">
+                <?php echo $marks; ?>
+            </td>
+            <td align="center" width="7%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;" align="center">
+                <?php echo '100'; ?>
+            </td>
         </tr>
-        <?php endforeach;
-          
+<?php
+    endif; 
+    
+    endforeach;
+          $sub_total = $subject_count * 100;
         }else{
             $subject = DB::table('subjects_higher_secondary_studentwise as shs')
             ->join('subject_group as grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
