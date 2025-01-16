@@ -2134,6 +2134,9 @@ public function getStudentsList(Request $request){
     $student_id = $request->student_id;
     $reg_no =$request->reg_no;
 
+    $payload = getTokenPayload($request);  
+    $academicYr = $payload->get('academic_year');
+
     $query = Student::query();
 
     $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
@@ -2141,34 +2144,34 @@ public function getStudentsList(Request $request){
     if ($section_id && $reg_no) {
         $query->where('section_id', $section_id)
             ->where('reg_no', $reg_no)
-            ->where('isDelete','N');
+            ->where('isDelete','N')->where('academic_yr',$academicYr);
     }
 
     elseif ($student_id && $reg_no) {
         $query->where('student_id',$student_id)
             ->where('reg_no', $reg_no)
-            ->where('isDelete','N');
+            ->where('isDelete','N')->where('academic_yr',$academicYr);
     }
 
     elseif ($section_id && $student_id && $reg_no) {
         $query->where('section_id', $section_id)
             ->where('student_id', $student_id)
             ->where('reg_no', $reg_no)
-            ->where('isDelete','N');
+            ->where('isDelete','N')->where('academic_yr',$academicYr);
     }
     elseif ($section_id && $student_id) {
         $query->where('student_id',$student_id)
               ->where('section_id', $section_id)
-              ->where('isDelete','N');
+              ->where('isDelete','N')->where('academic_yr',$academicYr);
    }
    elseif ($section_id) {
-       $query->where('section_id', $section_id)->where('isDelete','N');
+       $query->where('section_id', $section_id)->where('isDelete','N')->where('academic_yr',$academicYr);
    }
    elseif ($student_id) {
-       $query->where('student_id', $student_id)->where('isDelete','N');
+       $query->where('student_id', $student_id)->where('isDelete','N')->where('academic_yr',$academicYr);
    }
    elseif ($reg_no) {
-       $query->where('reg_no', $reg_no)->where('isDelete','N');
+       $query->where('reg_no', $reg_no)->where('isDelete','N')->where('academic_yr',$academicYr);
    }
 
     else {
@@ -2368,6 +2371,8 @@ public function toggleActiveStudent($studentId)
     public function updateStudentAndParent(Request $request, $studentId)
     {
         try {
+            $payload = getTokenPayload($request);  
+            $academicYr = $payload->get('academic_year');
             // Log the start of the request
             Log::info("Starting updateStudentAndParent for student ID: {$studentId}");
             //echo "Starting updateStudentAndParent for student ID: {$studentId}";
@@ -2407,6 +2412,11 @@ public function toggleActiveStudent($studentId)
                 'pincode' => 'nullable|max:11',
                 'image_name' => 'nullable|string',
                 'has_specs' => 'nullable|string|max:1',
+                'udise_pen_no'=>'nullable|string',
+                'reg_no'=>'nullable|string',
+                'blood_group'=>'nullable|string',
+                'permant_add'=>'nullable|string',
+                'transport_mode'=>'nullable|string',
             
                 // Parent model fields
                 'father_name' => 'nullable|string|max:100',
@@ -2416,6 +2426,7 @@ public function toggleActiveStudent($studentId)
                 'f_mobile' => 'nullable|string|max:10',
                 'f_email' => 'nullable|string|max:50',
                 'f_dob' => 'nullable|date',
+                'f_blood_group' => 'nullable|string',
                 'parent_adhar_no' => 'nullable|string|max:14',
                 'mother_name' => 'nullable|string|max:100',
                 'mother_occupation' => 'nullable|string|max:100',
@@ -2425,11 +2436,28 @@ public function toggleActiveStudent($studentId)
                 'm_dob' => 'nullable|date',
                 'm_emailid' => 'nullable|string|max:50',
                 'm_adhar_no' => 'nullable|string|max:14',
+                'm_blood_group' => 'nullable|string',
+                
             
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+                'SetEmailIDAsUsername' => 'nullable|string',
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
+
+            $validator = Validator::make($request->all(),[
+        
+                'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,'. $studentId . ',student_id,academic_yr,'. $academicYr,
+                'stu_aadhaar_no' => 'nullable|string|max:255|unique:student,stu_aadhaar_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
+                'udise_pen_no' => 'nullable|string|max:255|unique:student,udise_pen_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
+                'reg_no' => 'nullable|string|max:255|unique:student,reg_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
+                ]);
+                if ($validator->fails()) {
+                    return response()->json([
+                        'status' => 422,
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
 
             Log::info("Validation passed for student ID: {$studentId}");
             Log::info("Validation passed for student ID: {$request->SetEmailIDAsUsername}");
@@ -2546,7 +2574,7 @@ public function toggleActiveStudent($studentId)
     
 
     // Check if the new image data is null
-    if ($newImageData === null || $newImageData === 'null') {
+    if ($newImageData === null || $newImageData === 'null' || $newImageData === 'default.png') {
         // If the new image data is null, keep the existing filename
         $validatedData['image_name'] = $student->image_name;
     } elseif (!empty($newImageData)) {
@@ -2648,9 +2676,9 @@ public function toggleActiveStudent($studentId)
             if ($parent) {
                 $parent->update($request->only([
                     'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
-                    'f_mobile', 'f_email', 'parent_adhar_no', 'mother_name',
+                    'f_mobile', 'f_email','f_blood_group', 'parent_adhar_no', 'mother_name',
                     'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
-                    'm_emailid', 'm_adhar_no','m_dob','f_dob'
+                    'm_emailid', 'm_adhar_no','m_dob','f_dob','m_blood_group'
                 ]));
                 //echo "msg11";
                 // Determine the phone number based on the 'SetToReceiveSMS' input
@@ -5567,7 +5595,10 @@ public function getLeavetypedata(Request $request,$staff_id){
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-            $leaveapplicationlist = LeaveApplication::where('academic_yr', $customClaims)->where('staff_id',$user->reg_id)->get();
+            $leaveapplicationlist = LeaveApplication::join('leave_type_master','leave_application.leave_type_id','=','leave_type_master.leave_type_id')
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('staff_id',$user->reg_id)
+                                                    ->get();
               $leaveapplicationlist->transform(function ($leaveApplication) {
                 
                 if ($leaveApplication->status === 'A') {
