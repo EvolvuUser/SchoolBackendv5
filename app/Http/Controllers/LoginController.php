@@ -647,6 +647,7 @@ public function updateCsvData(Request $request, $section_id)
                 $studentData[$dbField] = $row[$index] ?? null;
             }
         }
+        // dd($studentData);
 
         $errors = [];
 
