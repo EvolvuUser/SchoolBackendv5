@@ -1417,14 +1417,17 @@ class CertificateController extends Controller
             
             $marksData = [];
             foreach ($request->class as $mark) {
+              if ($mark['marks'] !== null) { 
                 $marksData[] = [
                     'sr_no' => $percentageCertificate->sr_no,
                     'c_sm_id' => $mark['c_sm_id'],
                     'marks' => $mark['marks'],
                 ];
+             }
             }
-
+            if (!empty($marksData)) {
             PercentageMarksCertificate::insert($marksData);
+            }
             $data= DB::table('percentage_certificate')
                    ->join('student','student.student_id','=','percentage_certificate.stud_id')
                    ->select('percentage_certificate.roll_no as rollno','percentage_certificate.*','student.*')
