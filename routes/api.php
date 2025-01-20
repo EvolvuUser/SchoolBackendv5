@@ -353,6 +353,9 @@
         Route::get('get_leaveapplieddata/{leave_app_id}',[AdminController::class,'getLeaveAppliedData']);
         Route::put('update_leaveapplication/{leave_app_id}',[AdminController::class,'updateLeaveApplication']);
         Route::delete('delete_leaveapplication/{leave_app_id}',[AdminController::class,'deleteLeaveApplication']);
+
+        //Sibling Mapping
+        Route::post('save_siblingmapping',[AdminController::class,'saveSiblingMapping']);
     });
 
 //  API for the New Student list Buulk upload 

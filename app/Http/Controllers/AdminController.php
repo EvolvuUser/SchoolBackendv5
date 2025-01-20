@@ -2323,6 +2323,7 @@ public function deleteStudent( Request $request , $studentId)
 
 
 
+
 public function toggleActiveStudent($studentId)
 {
     $student = Student::find($studentId);     
@@ -5775,6 +5776,144 @@ public function getLeavetypedata(Request $request,$staff_id){
                     'success'=>false
                 ]);
             }
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); // Log the exception
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+   }
+
+   public function saveSiblingMapping(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+
+            $changed_data = false;
+        $operation = $request->input('operation');
+        
+        if ($operation == "create") {
+            $set_parent_id = $request->input('set_as_parent');
+            
+            if ($set_parent_id == '1') {
+                // dd("Hello");
+                $student_id2 = $request->input('student_id2');
+                $parent_id1 = $request->input('parent_id1');
+                $parent_id2 = $request->input('parent_id2');
+                
+                // Update student record
+                $student = Student::where('student_id', $student_id2)
+                    ->where('parent_id', $parent_id2)
+                    ->first();
+
+                if ($student) {
+                    $student->parent_id = $parent_id1;
+                    $student->save();
+                    $changed_data = true;
+                }
+
+                // Check if there are any remaining students with the old parent_id
+                $studentsWithOldParent = Student::where('parent_id', $parent_id2)
+                    ->where('academic_yr', $customClaims)
+                    ->get();
+
+                if ($studentsWithOldParent->isEmpty()) {
+
+                    UserMaster::where('reg_id', $parent_id2)
+                        ->where('role_id', 'P')
+                        ->update(['IsDelete' => 'Y']);
+
+                    Parents::where('parent_id', $parent_id2)
+                        ->update(['IsDelete' => 'Y']);
+
+                    // Handle contact details deletion and insertion into deleted_contact_details
+                    $contact = ContactDetails::where('id', $parent_id2)->first();
+                    if ($contact) {
+                        DB::table('deleted_contact_details')->insert([
+                            'id' => $contact->id,
+                            'phone_no' => $contact->phone_no,
+                            'email_id' => $contact->email_id,
+                            'm_emailid' => $contact->m_emailid,
+                        ]);
+                        $contact->delete();
+                    }
+                }
+            } elseif ($set_parent_id == '2') {
+                // Get data for set_parent_id == 2
+                $student_id1 = $request->input('student_id1');
+                $parent_id1 = $request->input('parent_id1');
+                $parent_id2 = $request->input('parent_id2');
+
+                // Update student record
+                $student = Student::where('student_id', $student_id1)
+                    ->where('parent_id', $parent_id1)
+                    ->first();
+
+                if ($student) {
+                    $student->parent_id = $parent_id2;
+                    $student->save();
+                    $changed_data = true;
+                }
+
+                $studentsWithOldParent = Student::where('parent_id', $parent_id1)
+                    ->where('academic_yr', $customClaims)
+                    ->get();
+                    // dd($studentsWithOldParent);
+
+                if ($studentsWithOldParent->isEmpty()) {
+                    // Set 'IsDelete' to 'Y' for user and parent records
+                    UserMaster::where('reg_id', $parent_id1)
+                        ->where('role_id', 'P')
+                        ->update(['IsDelete' => 'Y']);
+
+                    Parents::where('parent_id', $parent_id1)
+                        ->update(['IsDelete' => 'Y']);
+
+                    $contact = ContactDetails::where('id', $parent_id1)->first();
+                   
+                    if ($contact) {
+                        DB::table('deleted_contact_details')->insert([
+                            'id' => $contact->id,
+                            'phone_no' => $contact->phone_no,
+                            'email_id' => $contact->email_id,
+                            'm_emailid' => $contact->m_emailid,
+                        ]);
+                        $contact->delete();
+                    }
+                }
+            }
+
+            // Get student names to prepare response
+            $stud1 = Student::find($request->input('student_id1'))->first_name ?? '';
+            $stud2 = Student::find($request->input('student_id2'))->first_name ?? '';
+
+            if ($changed_data) {
+                return response()->json([
+                    'status' =>200,
+                    'message' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are mapped.!!!',
+                    'success' =>true
+                ]);
+            } else {
+                return response()->json([
+                    'status'=>400,
+                    'error' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are not mapped.!!!',
+                    'success'=>false
+                ], 400);
+            }
+        }
+
 
         }
         else{
