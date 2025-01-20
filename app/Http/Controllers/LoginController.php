@@ -573,6 +573,209 @@ public function getSessionData(Request $request)
 
 
 
+// public function updateCsvData(Request $request, $section_id)
+// {
+//     // Validate the uploaded CSV file
+//     $request->validate([
+//         'file' => 'required|file|mimes:csv,txt|max:2048',
+//     ]);
+
+//     // Read the uploaded CSV file
+//     $file = $request->file('file');
+//     if (!$file->isValid()) {
+//         return response()->json(['message' => 'Invalid file upload'], 400);
+//     }
+
+//     // Get the contents of the CSV file
+//     $csvData = file_get_contents($file->getRealPath());
+//     $rows = array_map('str_getcsv', explode("\n", $csvData));
+//     $header = array_shift($rows); // Extract the header row
+
+//     // Define the CSV to database column mapping
+//     $columnMap = [
+//         '    student_id' => 'student_id',
+//         '*First Name' => 'first_name',
+//         'Mid name' => 'mid_name',
+//         'last name' => 'last_name',
+//         '*Gender' => 'gender',
+//         '*DOB(in dd/mm/yyyy format)' => 'dob',
+//         'Student Aadhaar No.' => 'stu_aadhaar_no',
+//         'Mother Tongue' => 'mother_tongue',
+//         'Religion' => 'religion',
+//         '*Blood Group' => 'blood_group',
+//         'caste' => 'caste',
+//         'Sub Caste' => 'subcaste',
+//         '*Mother Name' => 'mother_name',
+//         'Mother Occupation' => 'mother_occupation',
+//         '*Mother Mobile No.(Only Indian Numbers)' => 'mother_mobile',
+//         '*Mother Email-Id' => 'mother_email',
+//         '*Father Name' => 'father_name',
+//         'Father Occupation' => 'father_occupation',
+//         '*Father Mobile No.(Only Indian Numbers)' => 'father_mobile',
+//         '*Father Email-Id' => 'father_email',
+//         'Mother Aadhaar No.' => 'mother_aadhaar_no',
+//         'Father Aadhaar No.' => 'father_aadhaar_no',
+//         '*Address' => 'permant_add',
+//         '*City' => 'city',
+//         '*State' => 'state',
+//         '*DOA(in dd/mm/yyyy format)' => 'admission_date',
+//         '*GRN No' => 'reg_no',
+//     ];
+
+//     // Prepare an array to store invalid rows for reporting
+//     $invalidRows = [];
+
+//     // Fetch the class_id using the provided section_id
+//     $division = Division::find($section_id);
+//     if (!$division) {
+//         return response()->json(['message' => 'Invalid section ID'], 400);
+//     }
+//     $class_id = $division->class_id;
+
+//     // Start processing the CSV rows
+//     foreach ($rows as $rowIndex => $row) {
+//         // Skip empty rows
+//         if (empty(array_filter($row))) {
+//             continue;
+//         }
+
+//         // Map CSV columns to database fields
+//         $studentData = [];
+//         foreach ($header as $index => $columnName) {
+//             if (isset($columnMap[$columnName])) {
+//                 $dbField = $columnMap[$columnName];
+//                 $studentData[$dbField] = $row[$index] ?? null;
+//             }
+//         }
+//         // dd($studentData);
+
+//         $errors = [];
+
+//             // Validate required fields
+//             if (empty($studentData['student_id'])) {
+//                 $errors[] = 'Missing student ID';
+//             }
+        
+//             if (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
+//                 $errors[] = 'Invalid gender value. Expected M, F, or O.';
+//             }
+        
+//             // Validate and convert DOB format
+//             if (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
+//                 $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
+//             } else {
+//                 $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
+//             }
+        
+//             // Validate and convert admission_date format
+//             if (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
+//                 $errors[] = 'Invalid admission date format. Expected dd-mm-yyyy.';
+//             } else {
+//                 $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
+//             }
+        
+//             // If there are any errors for this row, add them to the invalidRows array
+//             if (!empty($errors)) {
+//                 // Add the errors to the row data
+//                 $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
+//             }
+
+//         // Start a database transaction
+//         DB::beginTransaction();
+//         try {
+//             // Find the student by `student_id`
+//             $student = Student::where('student_id', $studentData['student_id'])->first();
+//             if (!$student) {
+//                 $invalidRows[] = array_merge($row, ['error' => 'Student not found']);
+//                 DB::rollBack();
+//                 continue;
+//             }
+
+//             // Handle parent creation or update
+//             $parentData = [
+//                 'father_name' => $studentData['father_name'] ?? null,
+//                 'father_occupation' => $studentData['father_occupation'] ?? null,
+//                 'f_mobile' => $studentData['father_mobile'] ?? null,
+//                 'f_email' => $studentData['father_email'] ?? null,
+//                 'mother_name' => $studentData['mother_name'] ?? null,
+//                 'mother_occupation' => $studentData['mother_occupation'] ?? null,
+//                 'm_mobile' => $studentData['mother_mobile'] ?? null,
+//                 'm_emailid' => $studentData['mother_email'] ?? null,
+//                 'parent_adhar_no' => $studentData['Father Aadhaar No.'] ?? null,
+//                 'm_adhar_no' => $studentData['mother_aadhaar_no'] ?? null,
+//             ];
+
+//             // Check if parent exists, if not, create one
+//             $parent = Parents::where('f_mobile', $parentData['f_mobile'])->first();
+//             if (!$parent) {
+//                 $parent = Parents::create($parentData);
+//             }
+
+
+//             $user = $this->authenticateUser();
+//             $academicYear = JWTAuth::getPayload()->get('academic_year');
+           
+//             // Update the student's parent_id and class_id
+//             $student->parent_id = $parent->parent_id;
+//             $student->class_id = $class_id;
+//             $student->gender = $studentData['gender'];
+//             $student->first_name = $studentData['first_name'];
+//             $student->mid_name = $studentData['mid_name'];
+//             $student->last_name = $studentData['last_name'];
+//             $student->dob = $studentData['dob'];
+//             $student->admission_date = $studentData['admission_date'];
+//             $student->stu_aadhaar_no = $studentData['stu_aadhaar_no'];
+//             $student->mother_tongue = $studentData['mother_tongue'];
+//             $student->religion = $studentData['religion'];
+//             $student->caste = $studentData['caste'];
+//             $student->subcaste = $studentData['subcaste'];
+//             $student->IsDelete = 'N';
+//             $student->created_by = $user->reg_id;
+//             $student->save();
+
+//             // Insert data into user_master table (skip if already exists)
+//             DB::table('user_master')->updateOrInsert(
+//                 ['user_id' => $studentData['father_email']],
+//                 [
+//                     'name' => $studentData['father_name'],
+//                     'password' => 'arnolds',
+//                     'reg_id' => $parent->parent_id,
+//                     'role_id' => 'P',
+//                     'IsDelete' => 'N',
+//                 ]
+//             );
+
+//             // Commit the transaction
+//             DB::commit();
+//         } catch (\Exception $e) {
+//             // Rollback the transaction in case of an error
+//             DB::rollBack();
+//             $invalidRows[] = array_merge($row, ['error' => 'Error updating student: ' . $e->getMessage()]);
+//             continue;
+//         }
+//     }
+
+//     // If there are invalid rows, generate a CSV for rejected rows
+//     if (!empty($invalidRows)) {
+//         $csv = Writer::createFromString('');
+//         $csv->insertOne(array_merge($header, ['error']));
+//         foreach ($invalidRows as $invalidRow) {
+//             $csv->insertOne($invalidRow);
+//         }
+//         $filePath = 'public/csv_rejected/rejected_rows_' . now()->format('Y_m_d_H_i_s') . '.csv';
+//         Storage::put($filePath, $csv->toString());
+//         $relativePath = str_replace('public/csv_rejected/', '', $filePath);
+
+//         return response()->json([
+//             'message' => 'Some rows contained errors.',
+//             'invalid_rows' => $relativePath,
+//         ], 422);
+//     }
+
+//     // Return a success response
+//     return response()->json(['message' => 'CSV data updated successfully.']);
+// }
+
 public function updateCsvData(Request $request, $section_id)
 {
     // Validate the uploaded CSV file
@@ -590,7 +793,7 @@ public function updateCsvData(Request $request, $section_id)
     $csvData = file_get_contents($file->getRealPath());
     $rows = array_map('str_getcsv', explode("\n", $csvData));
     $header = array_shift($rows); // Extract the header row
-
+    //dd($header);
     // Define the CSV to database column mapping
     $columnMap = [
         '    student_id' => 'student_id',
@@ -649,47 +852,64 @@ public function updateCsvData(Request $request, $section_id)
         }
         // dd($studentData);
 
-        $errors = [];
-
-            // Validate required fields
-            if (empty($studentData['student_id'])) {
-                $errors[] = 'Missing student ID';
-            }
-        
-            if (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
-                $errors[] = 'Invalid gender value. Expected M, F, or O.';
-            }
-        
-            // Validate and convert DOB format
-            if (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
-                $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
-            } else {
-                $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
-            }
-        
-            // Validate and convert admission_date format
-            if (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
-                $errors[] = 'Invalid admission date format. Expected dd-mm-yyyy.';
-            } else {
-                $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
-            }
-        
-            // If there are any errors for this row, add them to the invalidRows array
-            if (!empty($errors)) {
-                // Add the errors to the row data
-                $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
-            }
-
-        // Start a database transaction
         DB::beginTransaction();
-        try {
-            // Find the student by `student_id`
-            $student = Student::where('student_id', $studentData['student_id'])->first();
-            if (!$student) {
-                $invalidRows[] = array_merge($row, ['error' => 'Student not found']);
-                DB::rollBack();
-                continue;
+        $errors = []; 
+                if (empty($studentData['student_id'])) {
+            $errors[] = 'Missing student ID';
+        }
+        
+        if (empty($studentData['gender'])) {
+            $errors[] = 'Gender is required.';
+        } elseif (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
+            $errors[] = 'Invalid gender value. Expected M, F, or O.';
+        }
+        
+        // Validate and handle DOB format (dd/mm/yyyy)
+        if (empty($studentData['dob'])) {
+            $errors[] = 'DOB is required.';
+        } elseif ($this->validateDate($studentData['dob'], 'd/m/Y')) {
+            $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
+        } else {
+            try {
+                // Convert DOB to the required format (yyyy-mm-dd)
+                $studentData['dob'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['dob'])->format('Y-m-d');
+            } catch (\Exception $e) {
+                $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
             }
+        }
+        
+        // Validate and handle admission_date format (dd/mm/yyyy)
+        if (empty($studentData['admission_date'])) {
+            $errors[] = 'Admission date is required.';
+        } elseif ($this->validateDate($studentData['admission_date'], 'd/m/Y')) {
+            $errors[] = 'Invalid admission date format. Expected dd/mm/yyyy.';
+        } else {
+            try {
+                // Convert admission_date to the required format (yyyy-mm-dd)
+                $studentData['admission_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $studentData['admission_date'])->format('Y-m-d');
+            } catch (\Exception $e) {
+                $errors[] = 'Invalid admission date format. Expected dd/mm/yyyy.';
+            }
+        }
+        
+        // Now, check if the student exists
+        $student = Student::where('student_id', $studentData['student_id'])->first();
+        if (!$student) {
+            $errors[] = 'Student not found';
+        }
+        
+        
+        // If there are any errors, add them to the invalidRows array and skip this row
+        if (!empty($errors)) {
+            // Combine the row with the errors and store in invalidRows
+            $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
+            // Rollback or continue to the next iteration to prevent processing invalid data
+            DB::rollBack();
+            continue; // Skip this row, moving to the next iteration
+        }
+
+
+        try {
 
             // Handle parent creation or update
             $parentData = [
@@ -758,7 +978,35 @@ public function updateCsvData(Request $request, $section_id)
     // If there are invalid rows, generate a CSV for rejected rows
     if (!empty($invalidRows)) {
         $csv = Writer::createFromString('');
-        $csv->insertOne(array_merge($header, ['error']));
+        $csv->insertOne(['student_id', 
+        '*First Name', 
+        'Mid name', 
+        'last name', 
+        '*Gender', 
+        '*DOB(in dd/mm/yyyy format)', 
+        'Student Aadhaar No.', 
+        'Mother Tongue', 
+        'Religion', 
+        '*Blood Group', 
+        'caste', 
+        'Sub Caste', 
+        'Class', 
+        'Division',
+        '*Mother Name', 
+        'Mother Occupation', 
+        '*Mother Mobile No.(Only Indian Numbers)', 
+        '*Mother Email-Id', 
+        '*Father Name', 
+        'Father Occupation', 
+        '*Father Mobile No.(Only Indian Numbers)', 
+        '*Father Email-Id', 
+        'Mother Aadhaar No.', 
+        'Father Aadhaar No.', 
+        '*Address', 
+        '*City', 
+        '*State', 
+        '*DOA(in dd/mm/yyyy format)', 
+        '*GRN No','error']);
         foreach ($invalidRows as $invalidRow) {
             $csv->insertOne($invalidRow);
         }
