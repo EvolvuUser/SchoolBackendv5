@@ -12,6 +12,7 @@
     use App\Http\Controllers\NoticeController;
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\StudentController;
+    use App\Http\Controllers\HscController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -356,6 +357,11 @@
 
         //Sibling Mapping
         Route::post('save_siblingmapping',[AdminController::class,'saveSiblingMapping']);
+
+        //Studentwise Subject Allotment for hsc
+        Route::get('get_subject_group',[HscController::class,'getSubjectGroup']);
+        Route::get('get_optional_subject',[HscController::class,'getOptionalSubject']);
+        Route::get('get_subjecthigherstudentwise/{class_id}/{section_id}',[HscController::class,'getSubjectStudentwise']);
     });
 
 //  API for the New Student list Buulk upload 

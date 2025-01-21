@@ -4652,6 +4652,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         
             // Preferences for SMS and email as username
             'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+            'SetEmailIDAsUsername' => 'nullable|string',
             // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
         ]);
 
@@ -4689,7 +4690,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         }else{
             $academicYr = $payload->get('academic_year');
         }
-        $academicYr ='2023-2024';
+        // $academicYr ='2023-2024';
 
         Log::info("Academic year: {$academicYr} for student ID: {$studentId}");
 
@@ -4719,6 +4720,59 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             Log::info("Message 1.5 Inside else ");
             $validatedData['isModify'] = 'N';
         }
+
+
+        if ($request->has('image_name')) {
+            $newImageData = $request->input('image_name');
+        
+            
+        
+            // Check if the new image data is null
+            if ($newImageData === null || $newImageData === 'null' || $newImageData === 'default.png') {
+                // If the new image data is null, keep the existing filename
+                $validatedData['image_name'] = 'default.png';
+            } elseif (!empty($newImageData)) {
+                // Check if the new image data matches the existing image URL
+                if ($newImageData) {
+                    if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
+                        $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
+                        $type = strtolower($type[1]); // jpg, png, gif
+        
+                        if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+                            throw new \Exception('Invalid image type');
+                        }
+        
+                        $newImageData = base64_decode($newImageData);
+                        if ($newImageData === false) {
+                            throw new \Exception('Base64 decode failed');
+                        }
+        
+                        // Generate a filename for the new image
+                        $filename = 'student_' . time() . '.' . $type;
+                        $filePath = storage_path('app/public/student_images/' . $filename);
+        
+                        // Ensure directory exists
+                        $directory = dirname($filePath);
+                        if (!is_dir($directory)) {
+                            mkdir($directory, 0755, true);
+                        }
+        
+                        // Save the new image to file
+                        if (file_put_contents($filePath, $newImageData) === false) {
+                            throw new \Exception('Failed to save image file');
+                        }
+        
+                        // Update the validated data with the new filename
+                        $validatedData['image_name'] = $filename;
+                    } else {
+                        throw new \Exception('Invalid image data');
+                    }
+                } else {
+                    // If the image is the same, keep the existing filename
+                    $validatedData['image_name'] = $student->image_name;
+                }
+            }
+                    }
         //Log::info("Message 2 {$validatedData['isModify']} ");
         // Handle student image if provided
         // if ($request->hasFile('student_image')) {
@@ -4825,19 +4879,27 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
                 if ($user) {
-                    // Conditional logic for setting email/phone based on SetEmailIDAsUsername
-                    if ($request->SetEmailIDAsUsername === 'Father') {
-                        $user->user_id = $validatedData['f_email']; // Father's email
-                    } elseif ($request->SetEmailIDAsUsername === 'Mother') {
-                        $user->user_id = $validatedData['m_emailid']; // Mother's email
-                    } elseif ($request->SetEmailIDAsUsername === 'FatherMob') {
-                        $user->user_id = $validatedData['f_mobile']; // Father's mobile
-                    } elseif ($request->SetEmailIDAsUsername === 'MotherMob') {
-                        $user->user_id = $validatedData['m_mobile']; // Mother's mobile
+                    switch ($request->SetEmailIDAsUsername) {
+                        case 'Father':
+                            $user->user_id = $parent->f_email; // Father's email
+                            break;
+                    
+                        case 'Mother':
+                            $user->user_id = $parent->m_emailid; // Mother's email
+                            break;
+                    
+                        case 'FatherMob':
+                            $user->user_id = $parent->f_mobile; // Father's mobile
+                            break;
+                    
+                        case 'MotherMob':
+                            $user->user_id = $parent->m_mobile; // Mother's mobile
+                            break;
+                    
+                        default:
+                            $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
+                            break;
                     }
-
-                    // Save the updated user record
-                    $user->save();
                     Log::info("User Data saved in if");
                 }
         }else{
@@ -4895,17 +4957,27 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
                 if ($user) {
-                    // Conditional logic for setting email/phone based on SetEmailIDAsUsername
-                    if ($request->SetEmailIDAsUsername === 'Father') {
-                        $user->user_id = $parent->f_email; // Father's email
-                    } elseif ($request->SetEmailIDAsUsername === 'Mother') {
-                        $user->user_id = $parent->m_emailid; // Mother's email
-                    } elseif(preg_match('/^[0-9]{10}$/', $request->SetEmailIDAsUsername)) {
-                        $user->user_id = $request->SetEmailIDAsUsername; // Mother's mobile
+                    switch ($request->SetEmailIDAsUsername) {
+                        case 'Father':
+                            $user->user_id = $parent->f_email; // Father's email
+                            break;
+                    
+                        case 'Mother':
+                            $user->user_id = $parent->m_emailid; // Mother's email
+                            break;
+                    
+                        case 'FatherMob':
+                            $user->user_id = $parent->f_mobile; // Father's mobile
+                            break;
+                    
+                        case 'MotherMob':
+                            $user->user_id = $parent->m_mobile; // Mother's mobile
+                            break;
+                    
+                        default:
+                            $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
+                            break;
                     }
-
-                    // Save the updated user record
-                    $user->save();
                     Log::info("User saved in else");
                 }
             }

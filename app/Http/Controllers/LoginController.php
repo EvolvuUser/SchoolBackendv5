@@ -857,11 +857,58 @@ public function updateCsvData(Request $request, $section_id)
                 if (empty($studentData['student_id'])) {
             $errors[] = 'Missing student ID';
         }
+
+        if (empty($studentData['first_name'])) {
+            $errors[] = 'Please do not delete the first name.';
+        }
         
         if (empty($studentData['gender'])) {
             $errors[] = 'Gender is required.';
         } elseif (!in_array($studentData['gender'], ['M', 'F', 'O'])) {
             $errors[] = 'Invalid gender value. Expected M, F, or O.';
+        }
+
+        if (empty($studentData['blood_group'])) {
+            $errors[] = 'Blood group is required.';
+        }
+
+        if (empty($studentData['mother_name'])) {
+            $errors[] = 'Mother name is required.';
+        }
+
+        if (empty($studentData['mother_mobile'])) {
+            $errors[] = 'Mother mobile is required.';
+        }
+
+        if (empty($studentData['mother_email'])) {
+            $errors[] = 'Mother Email is required.';
+        }
+
+        if (empty($studentData['father_name'])) {
+            $errors[] = 'Father Name is required.';
+        }
+
+        if (empty($studentData['father_mobile'])) {
+            $errors[] = 'Father Mobile is required.';
+        }
+
+        if (empty($studentData['father_email'])) {
+            $errors[] = 'Father Email is required.';
+        }
+
+        if (empty($studentData['permant_add'])) {
+            $errors[] = 'Address is required.';
+        }
+
+        if (empty($studentData['city'])) {
+            $errors[] = 'City is required.';
+        }
+        if (empty($studentData['state'])) {
+            $errors[] = 'State is required.';
+        }
+
+        if (empty($studentData['reg_no'])) {
+            $errors[] = 'GRN No. is required.';
         }
         
         // Validate and handle DOB format (dd/mm/yyyy)
