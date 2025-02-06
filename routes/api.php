@@ -312,7 +312,7 @@
         Route::put('update_substituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'updateSubstituteTeacher']);
         Route::delete('delete_subsituteteacher/{teacher_id}/{date}',[SubstituteTeacher::class,'deleteSubstituteTeacher']);
 
-        Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
+        
 
         Route::get('download_csv_rejected/{id}',[AdminController::class,'downloadCsvRejected']);
 
@@ -362,6 +362,27 @@
         Route::get('get_subject_group',[HscController::class,'getSubjectGroup']);
         Route::get('get_optional_subject',[HscController::class,'getOptionalSubject']);
         Route::get('get_subjecthigherstudentwise/{class_id}/{section_id}',[HscController::class,'getSubjectStudentwise']);
+        Route::post('save_subjectforhsc',[HscController::class,'saveSubjectforHsc']);
+
+        //Leave type
+        Route::post('save_leavetype',[AdminController::class,'saveLeavetype']);
+        Route::get('get_allleavetype',[AdminController::class,'getallleavetype']);
+        Route::get('get_leavetypesingle/{id}',[AdminController::class,'getLeaveData']);
+        Route::put('update_leavetype/{id}',[AdminController::class,'updateLeavetype']);
+        Route::delete('delete_leavetype/{id}',[AdminController::class,'deleteLeavetype']);
+
+        //Allot GR No.
+        Route::get('get_studentallotgrno/{id}',[AdminController::class,'studentAllotGrno']);
+        Route::put('update_studentallotgrno',[AdminController::class,'updateStudentAllotGrno']);
+
+        //Update Category and Religion
+        Route::get('get_studentcategoryreligion/{class_id}/{section_id}',[AdminController::class,'getStudentCategoryReligion']);
+        Route::put('update_studentcategoryreligion',[AdminController::class,'updateStudentCategoryReligion']);
+
+        //Update Student Id and other details
+        Route::get('get_studentidotherdetails/{class_id}/{section_id}',[AdminController::class,'getStudentOtherDetails']);
+        Route::put('update_studentidotherdetails',[AdminController::class,'updateStudentIdOtherDetails']);
+
     });
 
 //  API for the New Student list Buulk upload 
@@ -402,6 +423,8 @@ Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
 Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
 Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
       
+Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
+
 //routes for the Allot Marks headings
 Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
 Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
@@ -410,8 +433,15 @@ Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentContr
 Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
 Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
       
+
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
+//routes for the Allot Marks headings//Hostinger Done
+Route::get('/get_AllotMarkheadingslist', [AssessmentController::class, 'getAllotMarksheadingsList']);
+Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
+Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarksheadings']);
+Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

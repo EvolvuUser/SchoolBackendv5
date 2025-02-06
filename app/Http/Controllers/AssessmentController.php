@@ -410,7 +410,7 @@ class AssessmentController extends Controller
         $payload = getTokenPayload($request);  
         $academicYr = $payload->get('academic_year');
 
-        $exams = Exams::where('academic_yr', $academicYr)->orderBy('name', 'asc')->get();
+        $exams = Exams::where('academic_yr', $academicYr)->orderBy('exam_id','DESC')->get();
        
         return response()->json($exams);
     }
@@ -664,6 +664,7 @@ class AssessmentController extends Controller
     
     public function deleteAllotMarkheading($allot_markheadings_id)
     {
+
         $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
     
         if (!$allot_mark_heading) {
@@ -748,4 +749,5 @@ class AssessmentController extends Controller
     
         return response()->json($allot_mark_heading);
     }
+
 }

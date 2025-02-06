@@ -22,7 +22,7 @@ class Division extends Model
     }
     public function students()
 {
-    return $this->hasMany(Student::class, 'section_id', 'section_id');
+    return $this->hasMany(Student::class, 'section_id', 'section_id')->where('isDelete', 'N')->where('parent_id','!=','0');
 }
 
 }

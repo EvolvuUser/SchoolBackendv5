@@ -71,11 +71,63 @@ function sendnotificationusinghttpv1($data){
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
         $result = curl_exec($ch);
-        //  dd($result);
         curl_close($ch);
+        if ($result === FALSE) {
+            return [
+                'status' => 500,
+                'message' => 'Failed to send notification. cURL error: ' . curl_error($ch),
+                'success' => false
+            ];
+        }
+
+        // Decode the response from Firebase
+        $response = json_decode($result, true);
+        if (isset($response['error'])) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Failed to send notification. Firebase error: ' . $response['error']['message'],
+                'success' => false
+            ]);
+        }
+
+        // If Firebase response is valid, return the notification ID or other relevant information
+        return response()->json([
+            'status' => 200,
+            'message' => 'Notification sent successfully.',
+            'data' => $response,  // You can modify this to return the relevant part of the response
+            'success' => true
+        ]);
         return response(["status"=>true,"data"=>$result]);
     }catch(Exception $e){
         return response(["status"=>false,"message"=>$e->getMessage()]);
     }
 
+}
+
+
+if (!function_exists('getFullName')) {
+    /**
+     * Join first name, middle name and last name to return full name.
+     *
+     * @param string $firstName
+     * @param string $midName
+     * @param string $lastName
+     * @return string
+     */
+    function getFullName($firstName, $midName = '', $lastName = '')
+    {
+        $fullName = trim($firstName);
+
+        // Add middle name if provided
+        if (!empty($midName)) {
+            $fullName .= ' ' . trim($midName);
+        }
+
+        // Add last name if provided
+        if (!empty($lastName)) {
+            $fullName .= ' ' . trim($lastName);
+        }
+
+        return $fullName;
+    }
 }
