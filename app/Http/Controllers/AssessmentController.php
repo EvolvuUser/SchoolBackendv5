@@ -17,6 +17,7 @@ use App\Models\SubjectForReportCard;
 use App\Models\Grades;
 use App\Models\Exams;
 use App\Models\Term;
+use App\Models\Allot_mark_headings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -663,7 +664,7 @@ class AssessmentController extends Controller
     
     public function deleteAllotMarkheading($allot_markheadings_id)
     {
-        
+
         $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
     
         if (!$allot_mark_heading) {
