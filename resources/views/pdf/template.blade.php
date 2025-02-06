@@ -44,7 +44,7 @@
 
 <!--<p style="font-size:15px"> <b></span></b></p>-->
 
-<p style="font-size:15px"><span style="margin-left:20px;">This is to certify that Mst/Miss.<b>{{$data->stud_name}},</b> son /daughter of <b>Mr.{{$data->father_name}}</b>is/was studying in our school in class- {{$data->class_division}} , for the academic year {{$data->academic_yr}}. </span></p>
+<p style="font-size:15px"><span style="margin-left:20px;">This is to certify that Mst/Miss.<b>{{$data->stud_name}},</b> son /daughter of <b>Mr.{{$data->father_name}}</b> is/was studying in our school in class- {{$data->class_division}} , for the academic year {{$data->academic_yr}}. </span></p>
 <p style="font-size:15px"><span style="">According to our record her date of birth is {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') }} ({{ $data->dob_words }}). </span></p>
 <p style="font-size:15px"><span style=""> {{$data->purpose}}.</span></p>
 <br>

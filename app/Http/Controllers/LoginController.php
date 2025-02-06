@@ -791,8 +791,11 @@ public function updateCsvData(Request $request, $section_id)
 
     // Get the contents of the CSV file
     $csvData = file_get_contents($file->getRealPath());
+    Log::info($csvData);
     $rows = array_map('str_getcsv', explode("\n", $csvData));
+    Log::info($rows);
     $header = array_shift($rows); // Extract the header row
+    // Log::info($header);
     //dd($header);
     // Define the CSV to database column mapping
     $columnMap = [
@@ -824,6 +827,8 @@ public function updateCsvData(Request $request, $section_id)
         '*DOA(in dd/mm/yyyy format)' => 'admission_date',
         '*GRN No' => 'reg_no',
     ];
+    
+    
 
     // Prepare an array to store invalid rows for reporting
     $invalidRows = [];
@@ -848,10 +853,13 @@ public function updateCsvData(Request $request, $section_id)
             if (isset($columnMap[$columnName])) {
                 $dbField = $columnMap[$columnName];
                 $studentData[$dbField] = $row[$index] ?? null;
+                
             }
         }
         // dd($studentData);
-
+        $studentData['father_aadhaar_no'] = preg_replace('/\D/', '', $studentData['father_aadhaar_no']);
+        $studentData['mother_aadhaar_no'] = preg_replace('/\D/', '', $studentData['mother_aadhaar_no']);
+       
         DB::beginTransaction();
         $errors = []; 
                 if (empty($studentData['student_id'])) {
@@ -870,7 +878,14 @@ public function updateCsvData(Request $request, $section_id)
 
         if (empty($studentData['blood_group'])) {
             $errors[] = 'Blood group is required.';
+        }elseif (!in_array($studentData['blood_group'], ['A+', 'B+', 'AB+','O+','A-','B-','AB-','O-'])) {
+            $errors[] = 'Invalid Blood group value. Expected A+,B+,AB+,O+,A-,B-,AB-,O- . ';
         }
+        
+        if (!empty($studentData['religion']) && !in_array($studentData['religion'], ['Christian', 'Hindu', 'Jain','Muslim','Buddhist','Sikh'])) {
+            $errors[] = 'Invalid religion value. Expected Christian,Hindu,Jain,Muslim,Buddhist,Sikh. ';
+        }
+        
 
         if (empty($studentData['mother_name'])) {
             $errors[] = 'Mother name is required.';
@@ -878,6 +893,8 @@ public function updateCsvData(Request $request, $section_id)
 
         if (empty($studentData['mother_mobile'])) {
             $errors[] = 'Mother mobile is required.';
+        }elseif (!is_numeric($studentData['mother_mobile']) || strlen($studentData['mother_mobile']) != 10) {
+            $errors[] = 'Mother mobile must be a 10-digit numeric value.';
         }
 
         if (empty($studentData['mother_email'])) {
@@ -890,6 +907,8 @@ public function updateCsvData(Request $request, $section_id)
 
         if (empty($studentData['father_mobile'])) {
             $errors[] = 'Father Mobile is required.';
+        }elseif (!is_numeric($studentData['father_mobile']) || strlen($studentData['father_mobile']) != 10) {
+            $errors[] = 'Father mobile must be a 10-digit numeric value.';
         }
 
         if (empty($studentData['father_email'])) {
@@ -911,10 +930,30 @@ public function updateCsvData(Request $request, $section_id)
             $errors[] = 'GRN No. is required.';
         }
         
+        if (empty($studentData['father_aadhaar_no'])) {
+            $errors[] = 'Father Aadhar is required.';
+        }
+        elseif (!is_numeric($studentData['father_aadhaar_no']) || strlen($studentData['father_aadhaar_no']) != 12) {
+            $errors[] = 'Father Aadhar must be a 12-digit numeric value.';
+        }else {
+            // Ensure it's stored as an integer
+            $studentData['father_aadhaar_no'] = intval($studentData['father_aadhaar_no']);
+        }
+        
+        if (empty($studentData['mother_aadhaar_no'])) {
+            $errors[] = 'Mother Aadhar is required.';
+        }
+        elseif (!is_numeric((string)$studentData['mother_aadhaar_no']) || strlen($studentData['mother_aadhaar_no']) != 12) {
+            $errors[] = 'Mother Aadhar must be a 12-digit numeric value.';
+        } else {
+            // Ensure it's stored as an integer
+            $studentData['mother_aadhaar_no'] = intval($studentData['mother_aadhaar_no']);
+        }
+        
         // Validate and handle DOB format (dd/mm/yyyy)
         if (empty($studentData['dob'])) {
             $errors[] = 'DOB is required.';
-        } elseif ($this->validateDate($studentData['dob'], 'd/m/Y')) {
+        } elseif (!$this->validateDate($studentData['dob'], 'd/m/Y')) {
             $errors[] = 'Invalid DOB format. Expected dd/mm/yyyy.';
         } else {
             try {
@@ -928,7 +967,7 @@ public function updateCsvData(Request $request, $section_id)
         // Validate and handle admission_date format (dd/mm/yyyy)
         if (empty($studentData['admission_date'])) {
             $errors[] = 'Admission date is required.';
-        } elseif ($this->validateDate($studentData['admission_date'], 'd/m/Y')) {
+        } elseif (!$this->validateDate($studentData['admission_date'], 'd/m/Y')) {
             $errors[] = 'Invalid admission date format. Expected dd/mm/yyyy.';
         } else {
             try {
@@ -968,7 +1007,7 @@ public function updateCsvData(Request $request, $section_id)
                 'mother_occupation' => $studentData['mother_occupation'] ?? null,
                 'm_mobile' => $studentData['mother_mobile'] ?? null,
                 'm_emailid' => $studentData['mother_email'] ?? null,
-                'parent_adhar_no' => $studentData['Father Aadhaar No.'] ?? null,
+                'parent_adhar_no' => $studentData['father_aadhaar_no'] ?? null,
                 'm_adhar_no' => $studentData['mother_aadhaar_no'] ?? null,
             ];
 
@@ -990,15 +1029,28 @@ public function updateCsvData(Request $request, $section_id)
             $student->mid_name = $studentData['mid_name'];
             $student->last_name = $studentData['last_name'];
             $student->dob = $studentData['dob'];
+            $student->blood_group = $studentData['blood_group'];
             $student->admission_date = $studentData['admission_date'];
             $student->stu_aadhaar_no = $studentData['stu_aadhaar_no'];
             $student->mother_tongue = $studentData['mother_tongue'];
             $student->religion = $studentData['religion'];
             $student->caste = $studentData['caste'];
             $student->subcaste = $studentData['subcaste'];
+            $student->reg_no = $studentData['reg_no'];
+            $student->permant_add= $studentData['permant_add'];
+            $student->city = $studentData['city'];
+            $student->state = $studentData['state'];
             $student->IsDelete = 'N';
             $student->created_by = $user->reg_id;
             $student->save();
+            
+             DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+                    $student->parent_id,                
+                    $studentData['father_mobile'],
+                    $studentData['mother_mobile'],
+                    $studentData['father_email'],
+                    $studentData['mother_email']  // sms_consent
+                ]);
 
             // Insert data into user_master table (skip if already exists)
             DB::table('user_master')->updateOrInsert(
