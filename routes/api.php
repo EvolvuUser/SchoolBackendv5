@@ -426,6 +426,12 @@ Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteEx
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
+//routes for the Allot Marks headings//Hostinger Done
+Route::get('/get_AllotMarkheadingslist', [AssessmentController::class, 'getAllotMarksheadingsList']);
+Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
+Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarksheadings']);
+Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);
