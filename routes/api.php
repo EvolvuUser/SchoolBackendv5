@@ -408,7 +408,7 @@ Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'e
 Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
 Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
       
-//routes for the Marks headings
+//routes for the Grades
 Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
 Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
 Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
@@ -424,6 +424,16 @@ Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam'
 Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
       
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
+
+//routes for the Allot Marks headings
+Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
+Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
+Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
+Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
+Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
+      
+
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
 //routes for the Allot Marks headings//Hostinger Done
