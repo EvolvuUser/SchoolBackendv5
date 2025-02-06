@@ -605,7 +605,7 @@ class SubstituteTeacher extends Controller
         $data = [
             'token'=>$request->token,
             'notification'=>[
-                'title'=> config('constant.APP_NAME'),
+                'title'=> $request->title,
                 'description'=> $request->message,
                 'mutable_content'=>true,
                 'sound'=>'Tri-tone'
@@ -613,7 +613,23 @@ class SubstituteTeacher extends Controller
             
         ];
         // dd($data);
-        sendnotificationusinghttpv1($data);
+        $response= sendnotificationusinghttpv1($data);
+        // dd($response);
+         $responseData = $response->getData(); 
+        if ($responseData->status == 200) {
+            return response()->json([
+                "status" => 200,
+                "message" => "Notification sent successfully.",
+                "success" => true,
+                "data" => $responseData->data
+            ]);
+        } else {
+            return response()->json([
+                "status" => 400,
+                "message" => "Failed to send notification.",
+                "success" => false,
+            ]);
+        }
     }
     
 }

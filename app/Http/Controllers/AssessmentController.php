@@ -409,7 +409,7 @@ class AssessmentController extends Controller
         $payload = getTokenPayload($request);  
         $academicYr = $payload->get('academic_year');
 
-        $exams = Exams::where('academic_yr', $academicYr)->orderBy('name', 'asc')->get();
+        $exams = Exams::where('academic_yr', $academicYr)->orderBy('exam_id','DESC')->get();
        
         return response()->json($exams);
     }

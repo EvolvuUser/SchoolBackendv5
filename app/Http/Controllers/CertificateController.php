@@ -1791,7 +1791,7 @@ class CertificateController extends Controller
                     DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
                     DB::raw('COUNT(*) AS total_working_days')
                 )
-                ->where('student_id', '18342')
+                ->where('student_id', $id)
                 ->where('academic_yr', $studentinformation->academic_yr)
                 ->first();  // Get the first (and only) row as we expect a single result
                
@@ -1900,7 +1900,7 @@ class CertificateController extends Controller
                     DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
                     DB::raw('COUNT(*) AS total_working_days')
                 )
-                ->where('student_id', '18342')
+                ->where('student_id', $id)
                 ->where('academic_yr', $studentinformation->academic_yr)
                 ->first();  // Get the first (and only) row as we expect a single result
                
@@ -2063,7 +2063,7 @@ class CertificateController extends Controller
                     DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
                     DB::raw('COUNT(*) AS total_working_days')
                 )
-                ->where('student_id', '18342')
+                ->where('student_id', $studentinformation->student_id)
                 ->where('academic_yr', $studentinformation->academic_yr)
                 ->first();  // Get the first (and only) row as we expect a single result
                
