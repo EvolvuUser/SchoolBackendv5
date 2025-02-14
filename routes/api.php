@@ -442,6 +442,7 @@ Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotM
 Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
 Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarksheadings']);
 Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
+Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

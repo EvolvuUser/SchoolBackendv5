@@ -735,6 +735,76 @@ class AssessmentController extends Controller
 
     }
 
+    public function deleteAllotMarksheadingg(Request $request,$class_id,$subject_id,$exam_id){
+        $allotmarkheading = DB::table('student_marks')->where('class_id',$class_id)->where('subject_id',$subject_id)->where('exam_id',$exam_id)->first();
+        if ($allotmarkheading) {
+            $classname = DB::table('class')->where('class_id',$class_id)->select('name')->first();
+            //  dd($classname);
+            if ($classname) {
+                $className = $classname->name;
+               
+            } else {
+                $className = 'Unknown Class'; // If class not found, provide a default name
+            }
+            $examname = DB::table('exam')->where('exam_id',$exam_id)->select('name')->first();
+            if ($examname) {
+                $examName = $examname->name;
+               
+            } else {
+                $examName = 'Unknown Exam'; // If class not found, provide a default name
+            }
+            
+            $subjectname = DB::table('subject_master')->where('sm_id',$subject_id)->select('name')->first();
+            if ($subjectname) {
+                $subjectName = $subjectname->name;
+               
+            } else {
+                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
+            }
+            
+             return response([
+                   'status'=>400,
+                   'message'=>"This Allot marks heading for class ".$className." , Exam ".$examName." and subject ".$subjectName." is in use. Delete failed!!!",
+                   'success'=>false
+              ]);
+         
+        } 
+        else {
+          DB::table('allot_mark_headings')->where('class_id',$class_id)->where('sm_id',$subject_id)->where('exam_id',$exam_id)->delete();
+          $classname = DB::table('class')->where('class_id',$class_id)->select('name')->first();
+            //  dd($classname);
+            if ($classname) {
+                $className = $classname->name;
+               
+            } else {
+                $className = 'Unknown Class'; // If class not found, provide a default name
+            }
+            $examname = DB::table('exam')->where('exam_id',$exam_id)->select('name')->first();
+            if ($examname) {
+                $examName = $examname->name;
+               
+            } else {
+                $examName = 'Unknown Exam'; // If class not found, provide a default name
+            }
+            
+            $subjectname = DB::table('subject_master')->where('sm_id',$subject_id)->select('name')->first();
+            if ($subjectname) {
+                $subjectName = $subjectname->name;
+               
+            } else {
+                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
+            }
+          return response([
+                   'status'=>200,
+                   'message'=>"Allot Mark Headings for class ".$className." , Exam ".$examName." and subject ".$subjectName." Deleted Successfully.",
+                   'success'=>true
+              
+              ]);
+            
+        }
+        
+    }
+
     public function getMarkheadingsForClassSubExam($class_id,$subject_id,$exam_id)
     {
         $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks']);

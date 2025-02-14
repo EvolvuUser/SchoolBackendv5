@@ -131,3 +131,104 @@ if (!function_exists('getFullName')) {
         return $fullName;
     }
 }
+
+
+function imagesforall(){
+    $cacheKey = 'school_details_cache'; // You can use a custom cache key
+    $cachedResponse = Cache::get($cacheKey);
+
+    if ($cachedResponse) {
+        // If data is cached, return it
+        return $cachedResponse;
+    }
+
+     $url = 'https://aceventura.in/demo/evolvuUserService/get_school_details';
+
+     $response = Http::asMultipart()->post($url, [
+        [
+            'name' => 'short_name',
+            'contents' => 'SACS', 
+        ],
+     ]);
+
+     if ($response->successful()) {
+        Cache::put($cacheKey, $response->json(), now()->addHour()); 
+         return $response->json();
+     } else {
+         return ['error' => 'Unable to fetch school details'];
+     }    
+}
+
+function upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$newImageData){
+    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_student_profile_image_into_folder';
+
+     $response = Http::asMultipart()->post($url, [
+        [
+            'name' => 'short_name',
+            'contents' => 'SACS', 
+        ],
+        [
+            'name'=>'student_id',
+            'contents'=> $studentId ,
+        ],
+        [
+            'name'=>'filename',
+            'contents'=>$filename,
+        ],
+        [
+            'name'=>'doc_type_folder',
+            'contents'=>$doc_type_folder,
+        ],
+        [
+            'name'=>'filedata',
+            'contents'=>$newImageData,
+
+        ],
+     ]);
+
+     if ($response->successful()) {
+         return $response->json();
+     } else {
+         return ['error' => 'Unable to fetch school details'];
+     }
+
+}
+
+function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_teacher_profile_image_into_folder';
+         Log::info('Student ID: ' . $id . ' | Filename: ' . $filename . ' | Doc Type Folder: ' . $doc_type_folder);
+
+
+     $response = Http::asMultipart()->post($url, [
+        [
+            'name' => 'short_name',
+            'contents' => 'SACS', 
+        ],
+        [
+            'name'=>'teacher_id',
+            'contents'=> $id ,
+        ],
+        [
+            'name'=>'filename',
+            'contents'=>$filename,
+        ],
+        [
+            'name'=>'doc_type_folder',
+            'contents'=>$doc_type_folder,
+        ],
+        [
+            'name'=>'filedata',
+            'contents'=>$base64File,
+
+        ],
+     ]);
+
+     if ($response->successful()) {
+         Log::info('Successfully fetched school details:', ['response' => $response->json()]);
+         return $response->json();
+     } else {
+         Log::error('Failed to fetch school details:', ['error' => $response->body()]);
+         return ['error' => 'Unable to fetch school details'];
+     }
+
+}
