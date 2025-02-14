@@ -49,6 +49,7 @@ use App\Models\LeaveType;
 use App\Models\LeaveAllocation;
 use App\Models\Allot_mark_headings;
 use App\Models\LeaveApplication;
+use Illuminate\Support\Facades\App;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -1297,13 +1298,16 @@ public function destroyDivision($id)
 
 
 public function getStaffList(Request $request) {
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
     $stafflist = Teacher::where('designation', '!=', 'Caretaker')
         ->get()
-        ->map(function ($staff) {
+        ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
             if ($staff->teacher_image_name) {
-                $staff->teacher_image_name = $staff->teacher_image_name;
+                $staff->teacher_image_name = $concatprojecturl.""."$staff->teacher_image_name";
             } else {
-                $staff->teacher_image_name = 'default.png'; 
+                $staff->teacher_image_name = null; 
             }
             return $staff;
         });
@@ -1405,6 +1409,9 @@ public function storeStaff(Request $request)
             $validatedData['academic_qual'] = implode(',', $validatedData['academic_qual']);
         }
 
+        $teacherid =DB::table('teacher')->select('teacher_id')->orderBy('teacher_id','DESC')->first();
+        $incrementid = $teacherid->teacher_id + 1;
+
         // Check if teacher_image_name is null or empty and skip image-saving process if true
         if ($request->input('teacher_image_name') === 'null') {
             // Set image field as null if no image is provided
@@ -1428,7 +1435,7 @@ public function storeStaff(Request $request)
                 }
 
                 // Define the filename and path to store the image
-                $filename = 'teacher_' . time() . '.' . $type;
+                $filename = $incrementid . '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
 
                 // Ensure the directory exists
@@ -1499,6 +1506,10 @@ public function storeStaff(Request $request)
 
         if ($response->successful()) {
             DB::commit(); // Commit the transaction
+            $doc_type_folder = 'teacher_images';
+            $fileContent = file_get_contents($filePath);           // Get the file content
+            $base64File = base64_encode($fileContent); 
+            upload_teacher_profile_image_into_folder($incrementid,$filename,$doc_type_folder,$base64File);
             return response()->json([
                 'message' => 'Teacher and user created successfully!',
                 'teacher' => $teacher,
@@ -1666,7 +1677,7 @@ if ($request->has('teacher_image_name')) {
                 }
 
                 // Generate a filename for the new image
-                $filename = 'teacher_' . time() . '.' . $type;
+                $filename = $id. '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
 
                 // Ensure directory exists
@@ -1727,6 +1738,10 @@ if ($request->has('teacher_image_name')) {
         // }
 
         DB::commit(); // Commit the transaction
+        $doc_type_folder = 'teacher_images';
+        $fileContent = file_get_contents($filePath);           // Get the file content
+        $base64File = base64_encode($fileContent); 
+        upload_student_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
         return response()->json([
             'message' => 'Teacher updated successfully!',
             'teacher' => $teacher,
@@ -2130,6 +2145,7 @@ public function getStudentById($studentId)
 }
 
 public function getStudentsList(Request $request){
+    set_time_limit(300);
     $section_id = $request->section_id;
     $student_id = $request->student_id;
     $reg_no =$request->reg_no;
@@ -2183,16 +2199,19 @@ public function getStudentsList(Request $request){
 
     
     $students = $query->get();
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
     // Append image URLs for each student
-    $students->each(function ($student) {
+    $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
         // Check if the image_name is present and not empty
+        $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
         if (!empty($student->image_name)) {
-            // Generate the full URL for the student image based on their unique image_name
-            $student->image_name = $student->image_name;
+            $student->image_name = $concatprojecturl."".$student->image_name;
         } else {
-            // Set a default image if no image is available
-            $student->image_name = 'default.png';
+           
+            $student->image_name = '';
         }
 
         $contactDetails = ContactDetails::find($student->parent_id);
@@ -2790,6 +2809,18 @@ public function toggleActiveStudent($studentId)
             Log::info("Starting updateStudentAndParent for student ID: {$studentId}");
             //echo "Starting updateStudentAndParent for student ID: {$studentId}";
             DB::enableQueryLog();
+            //     $requestData = $request->all();
+            // Log::info('Request Data: ' . json_encode($requestData, JSON_PRETTY_PRINT));
+            //     // Convert '0000-00-00' to null for f_dob and m_dob
+            //     if ($requestData['f_dob'] === '0000-00-00') {
+            //         $requestData['f_dob'] = null;
+            //     }
+            //     if ($requestData['m_dob'] === '0000-00-00') {
+            //         $requestData['m_dob'] = null;
+            //     }
+            //   Log::info("F dob: " . ($requestData['f_dob'] ?? 'Not Set'));
+            //   Log::info("M dob: " . ($requestData['m_dob'] ?? 'Not Set'));
+            //   Log::info('Request Data: ' . json_encode($requestData, JSON_PRETTY_PRINT));
             // Validate the incoming request for all fields
             $validatedData = $request->validate([
                 // Student model fields
@@ -2838,7 +2869,7 @@ public function toggleActiveStudent($studentId)
                 'f_office_tel' => 'nullable|string|max:11',
                 'f_mobile' => 'nullable|string|max:10',
                 'f_email' => 'nullable|string|max:50',
-                'f_dob' => 'nullable|date',
+                'f_dob' => 'nullable',
                 'f_blood_group' => 'nullable|string',
                 'parent_adhar_no' => 'nullable|string|max:14',
                 'mother_name' => 'nullable|string|max:100',
@@ -2846,7 +2877,7 @@ public function toggleActiveStudent($studentId)
                 'm_office_add' => 'nullable|string|max:200',
                 'm_office_tel' => 'nullable|string|max:11',
                 'm_mobile' => 'nullable|string|max:10',
-                'm_dob' => 'nullable|date',
+                'm_dob' => 'nullable',
                 'm_emailid' => 'nullable|string|max:50',
                 'm_adhar_no' => 'nullable|string|max:14',
                 'm_blood_group' => 'nullable|string',
@@ -3007,8 +3038,9 @@ public function toggleActiveStudent($studentId)
                 }
 
                 // Generate a filename for the new image
-                $filename = 'student_' . time() . '.' . $type;
+                $filename = $studentId . '.' . $type;
                 $filePath = storage_path('app/public/student_images/' . $filename);
+                $doc_type_folder = 'student_image';
 
                 // Ensure directory exists
                 $directory = dirname($filePath);
@@ -3179,7 +3211,9 @@ public function toggleActiveStudent($studentId)
                 //     Log::info("Email preference unchanged for student ID: {$studentId}");
                 // }
             }
-
+            $fileContent = file_get_contents($filePath);           // Get the file content
+            $base64File = base64_encode($fileContent); 
+            upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
             return response()->json(['success' => 'Student and parent information updated successfully']);
         } catch (Exception $e) {
             Log::error("Exception occurred for student ID: {$studentId} - " . $e->getMessage());
@@ -5679,9 +5713,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                         }
         
                         // Generate a filename for the new image
-                        $filename = 'student_' . time() . '.' . $type;
+                        $filename = $studentId . '.' . $type;
                         $filePath = storage_path('app/public/student_images/' . $filename);
-        
+                        $doc_type_folder = 'student_image';
                         // Ensure directory exists
                         $directory = dirname($filePath);
                         if (!is_dir($directory)) {
@@ -5949,6 +5983,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         $student->update($validatedData);
         $student->updated_by = $user->reg_id;
         $student->save();
+        $fileContent = file_get_contents($filePath);           // Get the file content
+        $base64File = base64_encode($fileContent); 
+        upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
         Log::info("Finally Student information updated for student ID: {$studentId}");
 
         return response()->json(['success' => 'Student and parent information updated successfully']);

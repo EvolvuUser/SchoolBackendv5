@@ -1235,6 +1235,7 @@ class NoticeController extends Controller
                 if(isset($exam_id)){
                     $examTimetableDetails = ExamTimetable::join('exam_timetable_details', 'exam_timetable.exam_tt_id', '=', 'exam_timetable_details.exam_tt_id')
                                 ->where('exam_timetable.exam_tt_id', $exam_id)
+                                ->whereNotNull('exam_timetable_details.subject_rc_id') // Add this condition
                                 ->get();
                     
                     $description = ExamTimetable::where('exam_timetable.exam_tt_id',$exam_id)->select('description')->first();
