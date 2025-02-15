@@ -596,7 +596,7 @@ class AssessmentController extends Controller
         return response()->json($allot_mark_headings);
     }
     
-    public function saveAllotMarkheadings(Request $request)
+    public function saveAllotMarksheadings(Request $request)
     {
         $payload = getTokenPayload($request);
         if (!$payload) {
