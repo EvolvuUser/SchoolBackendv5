@@ -1304,6 +1304,7 @@ public function getStaffList(Request $request) {
     $stafflist = Teacher::where('designation', '!=', 'Caretaker')
         ->get()
         ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
+            $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
             if ($staff->teacher_image_name) {
                 $staff->teacher_image_name = $concatprojecturl.""."$staff->teacher_image_name";
             } else {
@@ -1313,18 +1314,22 @@ public function getStaffList(Request $request) {
         });
     return response()->json($stafflist);
 }
-
+//Edited by - Manish Kumar sharma 15-02-2025
 public function editStaff($id)
 {
     try {
         // Find the teacher by ID
         $teacher = Teacher::findOrFail($id);
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
 
         // Check if the teacher has an image and generate the URL if it exists
         if ($teacher->teacher_image_name) {
-            $teacher->teacher_image_url = $teacher->teacher_image_name;
+            $teacher->teacher_image_name = $concatprojecturl.""."$teacher->teacher_image_name";
         } else {
-            $teacher->teacher_image_url = null;
+            $teacher->teacher_image_name = null;
         }
 
         // Find the associated user record
@@ -1506,7 +1511,7 @@ public function storeStaff(Request $request)
 
         if ($response->successful()) {
             DB::commit(); // Commit the transaction
-            $doc_type_folder = 'teacher_images';
+            $doc_type_folder = 'teacher_image';
             $fileContent = file_get_contents($filePath);           // Get the file content
             $base64File = base64_encode($fileContent); 
             upload_teacher_profile_image_into_folder($incrementid,$filename,$doc_type_folder,$base64File);
@@ -1738,10 +1743,11 @@ if ($request->has('teacher_image_name')) {
         // }
 
         DB::commit(); // Commit the transaction
-        $doc_type_folder = 'teacher_images';
+        
+        $doc_type_folder = 'teacher_image';
         $fileContent = file_get_contents($filePath);           // Get the file content
         $base64File = base64_encode($fileContent); 
-        upload_student_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
+        upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
         return response()->json([
             'message' => 'Teacher updated successfully!',
             'teacher' => $teacher,
