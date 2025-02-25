@@ -53,6 +53,8 @@ use Illuminate\Support\Facades\App;
 use League\Csv\Writer;
 use ZipArchive;
 use File;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\IdCardExport;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -7962,12 +7964,20 @@ public function getStudentIdCard(Request $request){
                                     'student.permant_add',
                                     'student.blood_group',
                                     'student.dob',
-                                    'student.house',
                                     'student.student_id',
                                     'parent.f_mobile',
                                     'parent.m_mobile',
                                     'class.name as class_name',
-                                    'section.name as sec_name'
+                                    'section.name as sec_name',
+                                    DB::raw("
+                                        CASE
+                                            WHEN student.house = 'E' THEN 'Emerald'
+                                            WHEN student.house = 'R' THEN 'Ruby'
+                                            WHEN student.house = 'S' THEN 'Sapphire'
+                                            WHEN student.house = 'D' THEN 'Diamond'
+                                            ELSE 'Unknown House'
+                                        END as house
+                                    ")
                                 )
                                 ->where('student.section_id', $section_id)
                                 ->where('confirmation_idcard.confirm', 'Y')
@@ -8347,6 +8357,63 @@ public function fieldsForTimetable(Request $request){
         \Log::error($e); 
         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
+
+  }
+
+  public function getStudentexcelIdCard(Request $request){
+            $idcarddetails = DB::table('confirmation_idcard')
+            ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+            ->join('class', 'student.class_id', '=', 'class.class_id')
+            ->join('section', 'student.section_id', '=', 'section.section_id')
+            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+            ->select(
+                'confirmation_idcard.*',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'student.roll_no',
+                'student.image_name',
+                'student.reg_no',
+                'student.permant_add',
+                'student.blood_group',
+                'student.dob',
+                'student.student_id',
+                'parent.f_mobile',
+                'parent.m_mobile',
+                'class.name as class_name',
+                'section.name as sec_name',
+                DB::raw("
+                    CASE
+                        WHEN student.house = 'E' THEN 'Emerald'
+                        WHEN student.house = 'R' THEN 'Ruby'
+                        WHEN student.house = 'S' THEN 'Sapphire'
+                        WHEN student.house = 'D' THEN 'Diamond'
+                        ELSE 'Unknown House'
+                    END as house
+                ")
+            )
+            ->where('student.section_id', '471')
+            ->where('confirmation_idcard.confirm', 'Y')
+            ->where('student.IsDelete', 'N')
+            ->orderBy('student.roll_no')
+            ->get();
+
+        // Append image URLs for each student
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+        $idcarddetails->each(function ($student) use($parent_app_url, $codeigniter_app_url) {
+        $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+        if (!empty($student->image_name)) {
+        $student->image_url = $concatprojecturl . $student->image_name;
+        } else {
+        $student->image_url = '';
+        }
+        });
+
+        // Export to Excel
+        return Excel::download(new IdCardExport($idcarddetails), 'idcarddetails_with_images.xlsx');
 
   }
 
