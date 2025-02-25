@@ -386,6 +386,7 @@
         //Student Id Card Dev Name - Manish Kumar Sharma 25-02-2025
         Route::get('get_studentidcard',[AdminController::class,'getStudentIdCard']);
         Route::get('get_ziparchive',[AdminController::class,'getziparchivestudentimages']);
+        
 
 
         //Timetable Dev Name - Manish Kumar Sharma 18-02-2025
@@ -395,6 +396,7 @@
         Route::get('get_timetableforclass/{class_id}/{section_id}',[AdminController::class,'getTimetableForClass']);
 
     });
+    Route::get('get_excelstudentidcard',[AdminController::class,'getStudentexcelIdCard']);
 
 //  API for the New Student list Buulk upload 
 Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
