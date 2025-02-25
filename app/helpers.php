@@ -134,14 +134,6 @@ if (!function_exists('getFullName')) {
 
 
 function imagesforall(){
-    $cacheKey = 'school_details_cache'; // You can use a custom cache key
-    $cachedResponse = Cache::get($cacheKey);
-
-    if ($cachedResponse) {
-        // If data is cached, return it
-        return $cachedResponse;
-    }
-
      $url = 'https://aceventura.in/demo/evolvuUserService/get_school_details';
 
      $response = Http::asMultipart()->post($url, [
@@ -152,7 +144,6 @@ function imagesforall(){
      ]);
 
      if ($response->successful()) {
-        Cache::put($cacheKey, $response->json(), now()->addHour()); 
          return $response->json();
      } else {
          return ['error' => 'Unable to fetch school details'];
@@ -232,3 +223,66 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
      }
 
 }
+
+function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFolder, $noticeId)
+    {
+        // API URL
+        $url = 'https://sms.arnoldcentralschool.org/SACSv4test/index.php/AdminApi/upload_files_for_laravel';
+
+        // Prepare the data array with dynamic values
+        $data = [
+            'short_name' => 'SACS',
+            'upload_date' => $uploadDate,
+            'doc_type_folder' => $docTypeFolder,
+            'notice_id' => $noticeId,
+            'filename' => $filename,  // Dynamic filenames passed as argument
+            'datafile' => $datafile,  // Dynamic base64 encoded files passed as argument
+        ];
+
+
+        // Send the data to the external API
+        try {
+            $response = Http::post($url, $data); // Send the data to the external API
+
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json(); // Return the response as JSON
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()]; // Handle errors
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that may occur
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    function delete_uploaded_files_for_laravel ($filename,$uploadDate, $docTypeFolder, $noticeId)
+    {
+        // API URL
+        $url = 'https://sms.arnoldcentralschool.org/SACSv4test/index.php/AdminApi/delete_uploaded_files_for_laravel';
+
+        // Prepare the data array with dynamic values
+        $data = [
+            'short_name' => 'SACS',
+            'upload_date' => $uploadDate,
+            'doc_type_folder' => $docTypeFolder,
+            'notice_id' => $noticeId,
+            'filename' => $filename, 
+        ];
+
+
+        // Send the data to the external API
+        try {
+            $response = Http::post($url, $data); // Send the data to the external API
+
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json(); // Return the response as JSON
+            } else {
+                return ['error' => 'Failed to delete files', 'status' => $response->status()]; // Handle errors
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that may occur
+            return ['error' => $e->getMessage()];
+        }
+    }

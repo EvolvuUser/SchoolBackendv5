@@ -18,6 +18,7 @@ use App\Models\ExamTimetableDetail;
 use App\Models\Exams;
 use Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\App;
 
 class NoticeController extends Controller
 {
@@ -247,6 +248,9 @@ class NoticeController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
 
@@ -278,12 +282,13 @@ class NoticeController extends Controller
                     $noticeimages=DB::table('notice')
                                     ->where('unq_id',$unq_id)
                                     ->join('notice_detail','notice_detail.notice_id','=','notice.notice_id')
+                                    ->where('notice.notice_id',$notice_type->notice_id)
                                     ->select('notice_detail.image_name')
                                     ->get();
                                  
                     $imageUrls = []; 
                     foreach($noticeimages as $image){
-                        $imageurl = ("storage/app/public/notice/".$image->image_name);
+                        $imageurl = ($codeigniter_app_url."uploads/notice/".$image->notice_id."/".$image->image_name);
                         $imageUrls[] = $imageurl;
                         
                     }
@@ -315,6 +320,145 @@ class NoticeController extends Controller
            }
     } 
 
+    // public function UpdateSMSNotice(Request $request,$unq_id){
+    //     try{
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+    //             $notice_type = DB::table('notice')->where('unq_id',$unq_id)->first();
+    //             if($notice_type->notice_type == "SMS"){
+    //                   $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
+    //                   foreach ($updatesmsnotice as $notice) {
+    //                     DB::table('notice')
+    //                         ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
+    //                         ->update([
+    //                             'subject' => $request->subject, // Update the subject field (example)
+    //                             'notice_desc' => $request->notice_desc, // Update the description (example)
+    //                             'teacher_id' => $user->reg_id,
+    //                             'notice_date' => now(), // You can also use dynamic values like current timestamp
+    //                             // Add other fields to update as needed
+    //                         ]);
+    //                 }
+                  
+    //                 $newsmsdata = DB::table('notice')->where('unq_id',$unq_id)->get();
+    //                 return response()->json([
+    //                     'status'=> 200,
+    //                     'message'=>'Sms Updated',
+    //                     'data' =>$newsmsdata,
+    //                     'success'=>true
+    //                     ]);
+
+                    
+    //             }
+    //             else{
+    //                 $filePaths = $request->filenottobedeleted ?? [];
+    //                 $trimmedFilePaths = array_map(function($filePath) {
+    //                     return Str::replaceFirst('storage/app/public/notice/', '', $filePath);
+    //                 }, $filePaths);
+    //                 $filesToExclude = $trimmedFilePaths;  
+
+    //                 // If $request->filenottobedeleted is a comma-separated string, you may need to explode it into an array
+    //                 if (is_string($filesToExclude)) {
+    //                     $filesToExclude = explode(',', $filesToExclude); // Convert string to an array if necessary
+    //                 }
+    //                 if (empty($filesToExclude)) {
+    //                     $filesToExclude = [];
+    //                 }
+    //                 $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
+    //                 foreach($updatesmsnotice as $noticeid){
+    //                     $notice_detail = DB::table('notice_detail')
+    //                                     ->where('notice_id', $noticeid->notice_id)
+    //                                     ->whereNotIn('image_name', $filesToExclude)
+    //                                     ->get()
+    //                                     ->toArray();
+    //                 }
+    //                 $notice_detail = array_filter($notice_detail, function($value) {
+    //                     return !empty($value); // Remove empty arrays
+    //                 });
+                    
+    //                 $notice_detail = array_values($notice_detail);
+    //                   // Check if there are any notice details
+    //                 if ($notice_detail) {
+    //                     // Loop through each notice detail and delete the files
+    //                     foreach ($notice_detail as $row) {
+    //                         $path = storage_path("app/public/notice/{$row->image_name}");
+    //                         // Check if the file exists and delete it
+    //                         if (File::exists($path)) {
+    //                             File::delete($path); // Delete the file
+    //                         }
+    //                     }
+    //                 }
+    //                 foreach($updatesmsnotice as $noticeid){
+    //                     $notice_detail = DB::table('notice_detail')
+    //                                     ->where('notice_id', $noticeid->notice_id)
+    //                                     ->whereNotIn('image_name', $filesToExclude)
+    //                                     ->delete();
+    //                 }
+    //                   foreach ($updatesmsnotice as $notice) {
+    //                     DB::table('notice')
+    //                         ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
+    //                         ->update([
+    //                             'subject' => $request->subject, // Update the subject field (example)
+    //                             'notice_desc' => $request->notice_desc, // Update the description (example)
+    //                             'teacher_id' => $user->reg_id,
+    //                             'notice_date' => now(), 
+    //                         ]);
+    //                     }
+
+    //                 $noticeFolder = storage_path("app/public/notice");
+    //                 if (!File::exists($noticeFolder)) {
+    //                     File::makeDirectory($noticeFolder, 0777, true);
+    //                 }
+    //                 // Handle file uploads
+    //                 $uploadedFiles = $request->file('userfile');
+    //                 if(is_null($uploadedFiles)){
+    //                     return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Notice Updated Successfully.',
+    //                         'success'=>true
+    //                         ]);
+    //                 }
+    //                 $notice=DB::table('notice')->where('unq_id',$unq_id)->first();
+    //                 foreach ($uploadedFiles as $file) {
+    //                     $fileName = $file->getClientOriginalName();
+    //                     $ImageName = $notice->notice_id.$fileName;
+    //                     $filePath = $noticeFolder . '/' . $fileName;
+                        
+    //                     // Save file details in 'notice_detail' table
+    //                     NoticeDetail::create([
+    //                         'notice_id' => $notice->notice_id,
+    //                         'image_name' => $ImageName,
+    //                         'file_size' => $file->getSize(),
+    //                     ]);
+
+    //                     // Move the file to the appropriate folder
+    //                     $file->move($noticeFolder, $ImageName);
+    //                     }
+    //                     return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Notice Updated',
+    //                         'data' =>$updatesmsnotice,
+    //                         'success'=>true
+    //                         ]);
+    //             }
+    //         }
+    //         else{
+    //             return response()->json([
+    //                 'status'=> 401,
+    //                 'message'=>'This User Doesnot have Permission for the Updating of Data',
+    //                 'data' =>$user->role_id,
+    //                 'success'=>false
+    //                 ]);
+    //         }
+
+
+    //     }
+    //     catch (Exception $e) {
+    //         \Log::error($e); // Log the exception
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //        }
+    // }
+
     public function UpdateSMSNotice(Request $request,$unq_id){
         try{
             $user = $this->authenticateUser();
@@ -329,7 +473,7 @@ class NoticeController extends Controller
                             ->update([
                                 'subject' => $request->subject, // Update the subject field (example)
                                 'notice_desc' => $request->notice_desc, // Update the description (example)
-                                'teacher_id' => $user->reg_id,
+                                'teacher_id' => $user->id,
                                 'notice_date' => now(), // You can also use dynamic values like current timestamp
                                 // Add other fields to update as needed
                             ]);
@@ -346,11 +490,13 @@ class NoticeController extends Controller
                     
                 }
                 else{
+                    //  dd($request->filenottobedeleted);
                     $filePaths = $request->filenottobedeleted ?? [];
                     $trimmedFilePaths = array_map(function($filePath) {
                         return Str::replaceFirst('storage/app/public/notice/', '', $filePath);
                     }, $filePaths);
-                    $filesToExclude = $trimmedFilePaths;  
+                    
+                    $filesToExclude = $trimmedFilePaths; // Should be an array of file names
 
                     // If $request->filenottobedeleted is a comma-separated string, you may need to explode it into an array
                     if (is_string($filesToExclude)) {
@@ -359,28 +505,76 @@ class NoticeController extends Controller
                     if (empty($filesToExclude)) {
                         $filesToExclude = [];
                     }
+                    
+                    // dd($filesToExclude);
+                    // $notice_detail = DB::table('notice_detail')
+                    //                     ->where('notice_id', '433')
+                    //                     ->whereNotIn('image_name', $filesToExclude) // Exclude all files in the array
+                    //                     ->get()
+                    //                     ->toArray();
+                                        // dd($notice_detail);
                     $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
+                    $uploadedFiles = $request->file('userfile');
                     foreach($updatesmsnotice as $noticeid){
                         $notice_detail = DB::table('notice_detail')
                                         ->where('notice_id', $noticeid->notice_id)
                                         ->whereNotIn('image_name', $filesToExclude)
                                         ->get()
                                         ->toArray();
+                                        // dd($notice_detail);
+                                        if(!is_null($uploadedFiles)){
+                                            $filenames = [];
+                                            $datafiles = [];
+                                    
+                                            foreach ($uploadedFiles as $file) {
+                                                $filenames[] = $file->getClientOriginalName();
+                                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                            }
+                                    
+                                            
+                                            $uploadDate = now()->format('d-m-Y');  // Get today's date
+                                            $docTypeFolder = 'notice';
+                                            $noticeId = $noticeid->notice_id;
+                                            
+                                            
+                                            // Call the helper function to upload the files
+                                            $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                            
+                        
+                                        }                                        
                     }
+                    //  dd($notice_detail);
+                    
                     $notice_detail = array_filter($notice_detail, function($value) {
                         return !empty($value); // Remove empty arrays
                     });
                     
+                    
                     $notice_detail = array_values($notice_detail);
+                    $imageNames = array_map(function ($item) {
+                        return $item->image_name;
+                    }, $notice_detail);
+                    
+                    // If you prefer to use Laravel collection's pluck method, you can convert to collection first:
+                    $noticeimagesCollection = collect($notice_detail);
+                    $imageNames = $noticeimagesCollection->pluck('image_name')->toArray();
+                    $uploadDate = '2025-02-23';
+                    $docTypeFolder='notice';
+                        foreach($updatesmsnotice as $noticeid){                          
+                          delete_uploaded_files_for_laravel ($imageNames,$uploadDate, $docTypeFolder, $noticeid->notice_id);
+                        }
+                    
                       // Check if there are any notice details
                     if ($notice_detail) {
                         // Loop through each notice detail and delete the files
                         foreach ($notice_detail as $row) {
-                            $path = storage_path("app/public/notice/{$row->image_name}");
+                            foreach($updatesmsnotice as $noticeid){
+                            $path = storage_path("app/public/notice/{$noticeid->notice_id}/{$row->image_name}");
                             // Check if the file exists and delete it
                             if (File::exists($path)) {
                                 File::delete($path); // Delete the file
                             }
+                           }
                         }
                     }
                     foreach($updatesmsnotice as $noticeid){
@@ -400,11 +594,7 @@ class NoticeController extends Controller
                             ]);
                         }
 
-                    $noticeFolder = storage_path("app/public/notice");
-                    if (!File::exists($noticeFolder)) {
-                        File::makeDirectory($noticeFolder, 0777, true);
-                    }
-                    // Handle file uploads
+                    
                     $uploadedFiles = $request->file('userfile');
                     if(is_null($uploadedFiles)){
                         return response()->json([
@@ -413,22 +603,85 @@ class NoticeController extends Controller
                             'success'=>true
                             ]);
                     }
-                    $notice=DB::table('notice')->where('unq_id',$unq_id)->first();
-                    foreach ($uploadedFiles as $file) {
-                        $fileName = $file->getClientOriginalName();
-                        $ImageName = $notice->notice_id.$fileName;
-                        $filePath = $noticeFolder . '/' . $fileName;
-                        
-                        // Save file details in 'notice_detail' table
-                        NoticeDetail::create([
-                            'notice_id' => $notice->notice_id,
-                            'image_name' => $ImageName,
-                            'file_size' => $file->getSize(),
-                        ]);
+                    $noticeids=DB::table('notice')->where('unq_id',$unq_id)->get();
+                    $fileData = [];    
+                    $base64EncodedImages=[];
+                    $fileNames=[];
 
-                        // Move the file to the appropriate folder
-                        $file->move($noticeFolder, $ImageName);
+
+                    if ($uploadedFiles) {
+                        foreach ($uploadedFiles as $file) {
+                            $fileName = $file->getClientOriginalName();
+                            $fileSize = $file->getSize();
+
+                            // 1. Store file information:
+                            $fileData[] = [
+                                'file' => $file,
+                                'fileName' => $fileName,
+                                'fileSize' => $fileSize,
+                            ];
+
+                            // 2. Generate Base64 encoding:
+                            try {
+                                $fileContents = file_get_contents($file->getRealPath()); // Get file contents
+
+                                if ($fileContents !== false) { // Check if file contents were read successfully
+                                    $base64Encoded = base64_encode($fileContents);
+                                    $base64EncodedImages[] = $base64Encoded;
+                                    $fileNames[] = $fileName;
+                                } else {
+                                    Log::error("Failed to read file contents for: " . $fileName);
+                                    // Handle the error as needed (e.g., skip this file)
+                                }
+
+
+                            } catch (\Exception $e) {
+                                Log::error("Base64 encoding failed: " . $e->getMessage() . " for file: " . $fileName);
+                                // Handle the error
+                            }
                         }
+                    }
+
+                    // Now $base64EncodedImages and $fileNames contain the data
+
+                    foreach ($noticeids as $notice) {
+                        $noticeFolder = storage_path("app/public/notice/" . $notice->notice_id);
+
+                        if (!File::exists($noticeFolder)) {
+                            File::makeDirectory($noticeFolder, 0777, true);
+                        }
+
+                        foreach ($fileData as $index => $data) { // Use $index to access arrays
+                            $ImageName = $data['fileName'];
+                            $filePath = $noticeFolder . '/' . $ImageName;
+                            NoticeDetail::create([
+                                'notice_id' => $notice->notice_id,
+                                'image_name' => $ImageName,
+                                'file_size' => $data['fileSize'],
+                            ]);
+
+                            if (isset($base64EncodedImages[$index])) { 
+                                try {
+                                    $decodedImage = base64_decode($base64EncodedImages[$index]);
+
+                                    if ($decodedImage !== false) { //Check if decoding successful
+                                        $fileSaved = file_put_contents($filePath, $decodedImage); // Save the decoded image
+                                        if($fileSaved === false){
+                                            Log::error("Failed to save decoded image: " . $ImageName . " in " . $noticeFolder);
+                                        }
+
+                                    } else {
+                                        Log::error("Base64 decoding failed for: " . $ImageName);
+                                    }
+                                } catch (\Exception $e) {
+                                    Log::error("Error saving decoded image: " . $e->getMessage() . " for file: " . $ImageName);
+                                }
+                            } else {
+                                Log::warning("No base64 data found for file: " . $ImageName);
+                            }
+
+                        }
+                    }
                         return response()->json([
                             'status'=> 200,
                             'message'=>'Notice Updated',
@@ -658,10 +911,99 @@ class NoticeController extends Controller
 
     }
 
+    // public function saveNotice(Request $request){
+    //     try{
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+    //             // Generate a unique ID for the notice
+    //         do {
+    //             $unq = rand(1000, 9999);
+    //         } while (Notice::where('unq_id', $unq)->exists());
+    
+    //         // Prepare the notice data
+    //         $noticeData = [
+    //             'subject' => $request->subject,
+    //             'notice_desc' =>"Dear Parent,".$request->notice_desc,
+    //             'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
+    //             'notice_type' => 'NOTICE',
+    //             'academic_yr' => $customClaims, // Assuming academic year is stored in Session
+    //             'publish' => 'N',
+    //             'unq_id' => $unq,
+    //             'notice_date' => now()->toDateString(), // Laravel helper for current date
+    //         ];
+    
+    //         // Insert the notice for each selected class
+    //         if ($request->has('checkbxevent') && !empty($request->checkbxevent)) {
+    //             foreach ($request->checkbxevent as $classId) {
+    //                 if (!empty($classId)) {
+    //                     // Associate notice with the class
+    //                     $notice = new Notice($noticeData);
+    //                     $notice->class_id = $classId;
+    //                     $notice->save(); // Insert the notice
+    //                 }
+    //         }
+    //     }
+
+    //     $noticeFolder = storage_path("app/public/notice");
+    //                 if (!File::exists($noticeFolder)) {
+    //                     File::makeDirectory($noticeFolder, 0777, true);
+    //                 }
+    //                 // Handle file uploads
+    //                 $uploadedFiles = $request->file('userfile');
+    //                 if(is_null($uploadedFiles)){
+    //                     return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Notice Saved Successfully.',
+    //                         'data' => $noticeData,
+    //                         'success'=>true
+    //                         ]);
+    //                 }
+    //                 foreach ($uploadedFiles as $file) {
+    //                     $fileName = $file->getClientOriginalName();
+    //                     $ImageName = $notice->notice_id.$fileName;
+    //                     $filePath = $noticeFolder . '/' . $fileName;
+                        
+    //                     // Save file details in 'notice_detail' table
+    //                     NoticeDetail::create([
+    //                         'notice_id' => $notice->notice_id,
+    //                         'image_name' => $ImageName,
+    //                         'file_size' => $file->getSize(),
+    //                     ]);
+
+    //                     // Move the file to the appropriate folder
+    //                     $file->move($noticeFolder, $ImageName);
+    //                     }
+
+    //                     return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Notice Saved Successfully.',
+    //                         'data' => $noticeData,
+    //                         'success'=>true
+    //                         ]);
+    //         }
+    //         else{
+    //             return response()->json([
+    //                 'status'=> 401,
+    //                 'message'=>'This User Doesnot have Permission for the Updating of Data',
+    //                 'data' =>$user->role_id,
+    //                 'success'=>false
+    //                 ]);
+    //         }
+
+    //     }
+    //     catch (Exception $e) {
+    //         \Log::error($e); // Log the exception
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //        }
+
+    // }
+
     public function saveNotice(Request $request){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            
             if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                 // Generate a unique ID for the notice
             do {
@@ -673,13 +1015,13 @@ class NoticeController extends Controller
                 'subject' => $request->subject,
                 'notice_desc' =>"Dear Parent,".$request->notice_desc,
                 'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
-                'notice_type' => 'NOTICE',
+                'notice_type' => 'Notice',
                 'academic_yr' => $customClaims, // Assuming academic year is stored in Session
                 'publish' => 'N',
                 'unq_id' => $unq,
                 'notice_date' => now()->toDateString(), // Laravel helper for current date
             ];
-    
+            $uploadedFiles = $request->file('userfile');
             // Insert the notice for each selected class
             if ($request->has('checkbxevent') && !empty($request->checkbxevent)) {
                 foreach ($request->checkbxevent as $classId) {
@@ -688,16 +1030,38 @@ class NoticeController extends Controller
                         $notice = new Notice($noticeData);
                         $notice->class_id = $classId;
                         $notice->save(); // Insert the notice
+                        
+                        // $uploadedFiles = $request->file('userfile');
+                    // Prepare dynamic data
+                    if(!is_null($uploadedFiles)){
+                    $filenames = [];
+                    $datafiles = [];
+            
+                    foreach ($uploadedFiles as $file) {
+                        $filenames[] = $file->getClientOriginalName();
+                        $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
                     }
-            }
-        }
+            
+                    
+                    $uploadDate = now()->format('d-m-Y');  // Get today's date
+                    $docTypeFolder = 'notice';
+                    $noticeId = $notice->notice_id;
+                    
+                    
+                    // Call the helper function to upload the files
+                    $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                    
+                    }
+                        }
+                    }
+                 }
 
-        $noticeFolder = storage_path("app/public/notice");
-                    if (!File::exists($noticeFolder)) {
-                        File::makeDirectory($noticeFolder, 0777, true);
-                    }
                     // Handle file uploads
-                    $uploadedFiles = $request->file('userfile');
+                    
+                    // Prepare dynamic data
+                    
+
+        
                     if(is_null($uploadedFiles)){
                         return response()->json([
                             'status'=> 200,
@@ -706,21 +1070,89 @@ class NoticeController extends Controller
                             'success'=>true
                             ]);
                     }
-                    foreach ($uploadedFiles as $file) {
-                        $fileName = $file->getClientOriginalName();
-                        $ImageName = $notice->notice_id.$fileName;
-                        $filePath = $noticeFolder . '/' . $fileName;
-                        
-                        // Save file details in 'notice_detail' table
-                        NoticeDetail::create([
-                            'notice_id' => $notice->notice_id,
-                            'image_name' => $ImageName,
-                            'file_size' => $file->getSize(),
-                        ]);
+                    $uploadedFiles = $request->file('userfile');
+                    $noticeids = DB::table('notice')->where('unq_id', $unq)->get();
+                            $fileData = [];    
+                            $base64EncodedImages=[];
+                            $fileNames=[];
+                            
+                            
+                            if ($uploadedFiles) {
+                                foreach ($uploadedFiles as $file) {
+                                    $fileName = $file->getClientOriginalName();
+                                    $fileSize = $file->getSize();
+                            
+                                    // 1. Store file information:
+                                    $fileData[] = [
+                                        'file' => $file,
+                                        'fileName' => $fileName,
+                                        'fileSize' => $fileSize,
+                                    ];
+                            
+                                    // 2. Generate Base64 encoding:
+                                    try {
+                                        $fileContents = file_get_contents($file->getRealPath()); // Get file contents
+                            
+                                        if ($fileContents !== false) { // Check if file contents were read successfully
+                                            $base64Encoded = base64_encode($fileContents);
+                                            $base64EncodedImages[] = $base64Encoded;
+                                            $fileNames[] = $fileName;
+                                        } else {
+                                            Log::error("Failed to read file contents for: " . $fileName);
+                                            // Handle the error as needed (e.g., skip this file)
+                                        }
+                            
+                            
+                                    } catch (\Exception $e) {
+                                        Log::error("Base64 encoding failed: " . $e->getMessage() . " for file: " . $fileName);
+                                        // Handle the error
+                                    }
+                                }
+                            }
+                            
+                            // Now $base64EncodedImages and $fileNames contain the data
+                            
+                            foreach ($noticeids as $notice) {
+                                $noticeFolder = storage_path("app/public/notice/" . $notice->notice_id);
+                            
+                                if (!File::exists($noticeFolder)) {
+                                    File::makeDirectory($noticeFolder, 0777, true);
+                                }
+                            
+                                foreach ($fileData as $index => $data) { // Use $index to access arrays
+                                    $ImageName = $data['fileName'];
+                                    $filePath = $noticeFolder . '/' . $ImageName;
+                                    NoticeDetail::create([
+                                        'notice_id' => $notice->notice_id,
+                                        'image_name' => $ImageName,
+                                        'file_size' => $data['fileSize'],
+                                    ]);
+                            
+                                    if (isset($base64EncodedImages[$index])) { 
+                                        try {
+                                            $decodedImage = base64_decode($base64EncodedImages[$index]);
+                            
+                                            if ($decodedImage !== false) { //Check if decoding successful
+                                                $fileSaved = file_put_contents($filePath, $decodedImage); // Save the decoded image
+                                                if($fileSaved === false){
+                                                    Log::error("Failed to save decoded image: " . $ImageName . " in " . $noticeFolder);
+                                                }
+                            
+                                            } else {
+                                                Log::error("Base64 decoding failed for: " . $ImageName);
+                                            }
+                                        } catch (\Exception $e) {
+                                            Log::error("Error saving decoded image: " . $e->getMessage() . " for file: " . $ImageName);
+                                        }
+                                    } else {
+                                        Log::warning("No base64 data found for file: " . $ImageName);
+                                    }
+                            
+                                }
+                            }
 
-                        // Move the file to the appropriate folder
-                        $file->move($noticeFolder, $ImageName);
-                        }
+
+                       
 
                         return response()->json([
                             'status'=> 200,
@@ -747,136 +1179,249 @@ class NoticeController extends Controller
     }
 
     public function savePUblishNotice(Request $request){
-        try{
-            $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
-                // Generate a unique ID for the notice
-            do {
-                $unq = rand(1000, 9999);
-            } while (Notice::where('unq_id', $unq)->exists());
+        set_time_limit(300);
     
-            // Prepare the notice data
-            $noticeData = [
-                'subject' => $request->subject,
-                'notice_desc' =>"Dear Parent,".$request->notice_desc,
-                'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
-                'notice_type' => 'NOTICE',
-                'academic_yr' => $customClaims, // Assuming academic year is stored in Session
-                'publish' => 'Y',
-                'unq_id' => $unq,
-                'notice_date' => now()->toDateString(), // Laravel helper for current date
-            ];
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    // Generate a unique ID for the notice
+                do {
+                    $unq = rand(1000, 9999);
+                } while (Notice::where('unq_id', $unq)->exists());
+        
+                // Prepare the notice data
+                $noticeData = [
+                    'subject' => $request->subject,
+                    'notice_desc' =>"Dear Parent,".$request->notice_desc,
+                    'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
+                    'notice_type' => 'Notice',
+                    'academic_yr' => $customClaims, // Assuming academic year is stored in Session
+                    'publish' => 'Y',
+                    'unq_id' => $unq,
+                    'notice_date' => now()->toDateString(), // Laravel helper for current date
+                ];
+                $uploadedFiles = $request->file('userfile');
+                // Insert the notice for each selected class
+                if ($request->has('checkbxevent') && !empty($request->checkbxevent)) {
+                    foreach ($request->checkbxevent as $classId) {
+                        if (!empty($classId)) {
+                            // Associate notice with the class
+                            $notice = new Notice($noticeData);
+                            $notice->class_id = $classId;
+                            $notice->save(); // Insert the notice
     
-            // Insert the notice for each selected class
-            if ($request->has('checkbxevent') && !empty($request->checkbxevent)) {
-                foreach ($request->checkbxevent as $classId) {
-                    if (!empty($classId)) {
-                        // Associate notice with the class
-                        $notice = new Notice($noticeData);
-                        $notice->class_id = $classId;
-                        $notice->save(); // Insert the notice
-                    }
-                    if($notice){
-                        $studParentdata = DB::table('student as a')
-                                    ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
-                                    ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
-                                    ->where('a.class_id', $classId)
-                                    ->get();
-                        foreach ($studParentdata as $student) {
-                            $smsdata = DB::table('daily_sms')
-                                        ->where('parent_id', $student->parent_id)
-                                        ->where('student_id', $student->student_id)
-                                        ->get(); 
-                            // dd($smsdata);
-                             $smsdatacount= count($smsdata);
-                              if($smsdatacount=='0'){
-                                $sdata = [
-                                    'parent_id' => $student->parent_id,
-                                    'student_id' => $student->student_id,
-                                    'phone' => $student->phone_no,
-                                    'homework' => 0,
-                                    'remark' => 0,
-                                    'achievement' => 0,
-                                    'note' => 0,
-                                    'notice' => 1,
-                                    'sms_date' => now() // Laravel's `now()` function returns the current date and time
-                                ];
+                            if(!is_null($uploadedFiles)){
+                                $filenames = [];
+                                $datafiles = [];
+                        
+                                foreach ($uploadedFiles as $file) {
+                                    $filenames[] = $file->getClientOriginalName();
+                                    $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                }
+                        
                                 
-                                DB::table('daily_sms')->insert($sdata);
-                              }
-                              else{
-                                $smsdata[0]->notice = 1 + $smsdata[0]->notice;
-                                $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
-
-                                // Perform the update
-                                DB::table('daily_sms')
-                                    ->where('parent_id', $smsdata[0]->parent_id)
-                                    ->where('student_id', $smsdata[0]->student_id)
-                                    ->update(['notice' => $smsdata[0]->notice,
-                                             'sms_date' => $smsdata[0]->sms_date]);
-                              }
-                              
-                        }  
-
-                    }
-            }
-        }
-
-        $noticeFolder = storage_path("app/public/notice/");
-                    if (!File::exists($noticeFolder)) {
-                        File::makeDirectory($noticeFolder, 0777, true);
-                    }
-                    // Handle file uploads
-                    $uploadedFiles = $request->file('userfile');
-                    if(is_null($uploadedFiles)){
-                        return response()->json([
-                            'status'=> 200,
-                            'message'=>'Notice Saved and Published Successfully.',
-                            'data' => $noticeData,
-                            'success'=>true
-                            ]);
-                    }
-                    foreach ($uploadedFiles as $file) {
-                        $fileName = $file->getClientOriginalName();
-                        $ImageName = $notice->notice_id.$fileName;
-                        $filePath = $noticeFolder . '/' . $fileName;
-                        
-                        // Save file details in 'notice_detail' table
-                        NoticeDetail::create([
-                            'notice_id' => $notice->notice_id,
-                            'image_name' => $ImageName,
-                            'file_size' => $file->getSize(),
-                        ]);
-
-                        // Move the file to the appropriate folder
-                        $file->move($noticeFolder, $ImageName);
+                                $uploadDate = now()->format('d-m-Y');  // Get today's date
+                                $docTypeFolder = 'notice';
+                                $noticeId = $notice->notice_id;
+                                
+                                
+                                // Call the helper function to upload the files
+                                $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                
+            
+                            }
                         }
-
-                        
-                        
-                        return response()->json([
-                            'status'=> 200,
-                            'message'=>'Notice Saved and Published Successfully.',
-                            'data' => $noticeData,
-                            'success'=>true
-                            ]);
-            }
-            else{
-                return response()->json([
-                    'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Updating of Data',
-                    'data' =>$user->role_id,
-                    'success'=>false
-                    ]);
+                        if($notice){
+                            $studParentdata = DB::table('student as a')
+                                        ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                                        ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+                                        ->where('a.class_id', $classId)
+                                        ->get();
+                            foreach ($studParentdata as $student) {
+                                $smsdata = DB::table('daily_sms')
+                                            ->where('parent_id', $student->parent_id)
+                                            ->where('student_id', $student->student_id)
+                                            ->get(); 
+                                // dd($smsdata);
+                                 $smsdatacount= count($smsdata);
+                                  if($smsdatacount=='0'){
+                                    $sdata = [
+                                        'parent_id' => $student->parent_id,
+                                        'student_id' => $student->student_id,
+                                        'phone' => $student->phone_no,
+                                        'homework' => 0,
+                                        'remark' => 0,
+                                        'achievement' => 0,
+                                        'note' => 0,
+                                        'notice' => 1,
+                                        'sms_date' => now() // Laravel's `now()` function returns the current date and time
+                                    ];
+                                    
+                                    DB::table('daily_sms')->insert($sdata);
+                                  }
+                                  else{
+                                    $smsdata[0]->notice = 1 + $smsdata[0]->notice;
+                                    $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
+    
+                                    // Perform the update
+                                    DB::table('daily_sms')
+                                        ->where('parent_id', $smsdata[0]->parent_id)
+                                        ->where('student_id', $smsdata[0]->student_id)
+                                        ->update(['notice' => $smsdata[0]->notice,
+                                                 'sms_date' => $smsdata[0]->sms_date]);
+                                  }
+                                  
+                            }  
+    
+                        }
+    
+                     $tokendata = DB::table('student as a')
+                                ->select('b.token', 'b.user_id', 'b.parent_teacher_id', 'b.login_type', 'a.parent_id', 'a.student_id')
+                                ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
+                                ->where('a.class_id', $classId)
+                                ->where('b.login_type', 'P')
+                                ->get(); // Use get() to retrieve the results
+                                foreach ($tokendata as $token) {
+                                    // Prepare the data for insertion
+                                    // dd($token->student_id);
+                                    $dailyNotification = [
+                                        'student_id' => $token->student_id,
+                                        'parent_id' => $token->parent_teacher_id,
+                                        'homework_id' => 0,
+                                        'remark_id' => 0,
+                                        'notice_id' => $notice->notice_id,
+                                        'notes_id' => 0,
+                                        'notification_date' => now()->toDateString(), // Using Laravel's now() helper to get today's date
+                                        'token' => $token->token,
+                                    ];
+                                    $data = [
+                                        'token' => $token->token, // The user's token to send the notification
+                                        'notification' => [
+                                            'title' => 'Notice',
+                                            'description' => $request->notice_desc
+                                        ]
+                                    ];
+                                    sendnotificationusinghttpv1($data);
+                            
+                                    // Insert the data using DB facade
+                                    DB::table('daily_notifications')->insert($dailyNotification);
+                                }
                 }
-
+            }
+                        $uploadedFiles = $request->file('userfile');
+                        if(is_null($uploadedFiles)){
+                            return response()->json([
+                                'status'=> 200,
+                                'message'=>'Notice Saved and Published Successfully.',
+                                'data' => $noticeData,
+                                'success'=>true
+                                ]);
+                        }
+                        $noticeids = DB::table('notice')->where('unq_id', $unq)->get();
+                        $fileData = [];    
+                        $base64EncodedImages=[];
+                        $fileNames=[];
+                        
+                        
+                        if ($uploadedFiles) {
+                            foreach ($uploadedFiles as $file) {
+                                $fileName = $file->getClientOriginalName();
+                                $fileSize = $file->getSize();
+                        
+                                // 1. Store file information:
+                                $fileData[] = [
+                                    'file' => $file,
+                                    'fileName' => $fileName,
+                                    'fileSize' => $fileSize,
+                                ];
+                        
+                                // 2. Generate Base64 encoding:
+                                try {
+                                    $fileContents = file_get_contents($file->getRealPath()); // Get file contents
+                        
+                                    if ($fileContents !== false) { // Check if file contents were read successfully
+                                        $base64Encoded = base64_encode($fileContents);
+                                        $base64EncodedImages[] = $base64Encoded;
+                                        $fileNames[] = $fileName;
+                                    } else {
+                                        Log::error("Failed to read file contents for: " . $fileName);
+                                        // Handle the error as needed (e.g., skip this file)
+                                    }
+                        
+                        
+                                } catch (\Exception $e) {
+                                    Log::error("Base64 encoding failed: " . $e->getMessage() . " for file: " . $fileName);
+                                    // Handle the error
+                                }
+                            }
+                        }
+                        
+                        // Now $base64EncodedImages and $fileNames contain the data
+                        
+                        foreach ($noticeids as $notice) {
+                            $noticeFolder = storage_path("app/public/notice/" . $notice->notice_id);
+                        
+                            if (!File::exists($noticeFolder)) {
+                                File::makeDirectory($noticeFolder, 0777, true);
+                            }
+                        
+                            foreach ($fileData as $index => $data) { // Use $index to access arrays
+                                $ImageName = $data['fileName'];
+                                $filePath = $noticeFolder . '/' . $ImageName;
+                                NoticeDetail::create([
+                                    'notice_id' => $notice->notice_id,
+                                    'image_name' => $ImageName,
+                                    'file_size' => $data['fileSize'],
+                                ]);
+                        
+                                if (isset($base64EncodedImages[$index])) { 
+                                    try {
+                                        $decodedImage = base64_decode($base64EncodedImages[$index]);
+                        
+                                        if ($decodedImage !== false) { //Check if decoding successful
+                                            $fileSaved = file_put_contents($filePath, $decodedImage); // Save the decoded image
+                                            if($fileSaved === false){
+                                                Log::error("Failed to save decoded image: " . $ImageName . " in " . $noticeFolder);
+                                            }
+                        
+                                        } else {
+                                            Log::error("Base64 decoding failed for: " . $ImageName);
+                                        }
+                                    } catch (\Exception $e) {
+                                        Log::error("Error saving decoded image: " . $e->getMessage() . " for file: " . $ImageName);
+                                    }
+                                } else {
+                                    Log::warning("No base64 data found for file: " . $ImageName);
+                                }
+                        
+                            }
+                        }
+    
+                            
+                            
+                            return response()->json([
+                                'status'=> 200,
+                                'message'=>'Notice Saved and Published Successfully.',
+                                'data' => $noticeData,
+                                'success'=>true
+                                ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Updating of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
         }
-        catch (Exception $e) {
-            \Log::error($e); // Log the exception
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-           }
-    }
 
     public function SendSMSLeft(Request $request,$unq_id){
         try{
@@ -1229,6 +1774,7 @@ class NoticeController extends Controller
                 $classterm=DB::table('exam_timetable')
                               ->join('class','class.class_id','=','exam_timetable.class_id')
                               ->join('exam','exam.exam_id','=','exam_timetable.exam_id')
+                              ->where('exam_timetable.exam_tt_id',$exam_id)
                               ->select('exam.name as examname','class.name as classname')
                               ->first();
 
