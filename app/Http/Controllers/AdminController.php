@@ -50,6 +50,9 @@ use App\Models\LeaveAllocation;
 use App\Models\Allot_mark_headings;
 use App\Models\LeaveApplication;
 use Illuminate\Support\Facades\App;
+use League\Csv\Writer;
+use ZipArchive;
+use File;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -5029,7 +5032,7 @@ public function downloadCsvRejected($id){
 }
 
 // Helper method to validate date format
-private function validateDate($date, $format = 'Y-m-d')
+private function validateDate($date, $format)
 {
 $d = \DateTime::createFromFormat($format, $date);
 return $d && $d->format($format) === $date;
@@ -7250,7 +7253,7 @@ public function getLeavetypedata(Request $request,$staff_id){
             $validationErrors = [];
             foreach ($studentsData as $key => $studentData) {
                 // For each student, define the validation rules
-                $validationRules["students.$key.reg_no"] = 'required|unique:student,reg_no,' . $studentData['student_id'] . ',student_id,academic_yr,' . $customClaims;
+                $validationRules["students.$key.reg_no"] = 'nullable|unique:student,reg_no,' . $studentData['student_id'] . ',student_id,academic_yr,' . $customClaims;
             }
 
             // Validate the entire student data
@@ -7476,6 +7479,858 @@ public function getLeavetypedata(Request $request,$staff_id){
                 'success' => true
             ], 200);
     
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+  }
+
+   //Dev Name - Manish Kumar Sharma 18-02-2025
+   public function saveHoliday(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims, 
+                'isDelete' => 'N',
+                'publish' => 'N',
+                'created_by' => $user->reg_id, 
+
+            ];
+    
+            DB::table('holidaylist')->insert($data);
+
+            return response()->json([
+                'status'=>200,
+                'message' => 'New holiday created!!!',
+                'data' => $data,
+                'success'=>true
+            ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+}
+
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function saveHolidaypublish(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims, 
+                'isDelete' => 'N',
+                'publish' => 'Y',
+                'created_by' => $user->reg_id, 
+
+            ];
+    
+            DB::table('holidaylist')->insert($data);
+
+            return response()->json([
+                'status'=>200,
+                'message' => 'New holiday created and published!!!',
+                'data' => $data,
+                'success'=>true
+            ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+}
+
+ //Dev Name - Manish Kumar Sharma 18-02-2025
+public function getholidayList(){
+    try{
+        $user = $this->authenticateUser();
+        
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
+            $holidaylist = DB::table('holidaylist')
+                            ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') // Join with the users table
+                            ->where('user_master.role_id','A')
+                            ->where('holidaylist.academic_yr', $customClaims)
+                            ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
+                            ->get();
+    
+            
+            return response()->json([
+                'status'=>200,
+                'message' => 'Holiday List!!!',
+                'data' => $holidaylist,
+                'success'=>true
+            ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+}
+
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function deleteHoliday($holiday_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $holiday = DB::table('holidaylist')->where('holiday_id', $holiday_id)->first();
+            if ($holiday) {
+                if ($holiday->publish == 'N') {
+                    DB::table('holidaylist')->where('holiday_id', $holiday_id)->delete();
+
+                } else {
+                    DB::table('holidaylist')
+                        ->where('holiday_id', $holiday_id)
+                        ->update(['isDelete' => 'Y']);
+                }
+            }
+        
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Holiday Deleted.!!!',
+                'success'=>true
+                    ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+}
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function updatepublishholiday(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $holidayIds = $request->input('holiday_id'); 
+
+            if ($holidayIds && is_array($holidayIds) && count($holidayIds) > 0) {
+
+                foreach ($holidayIds as $holiday_id) {
+                    DB::table('holidaylist')
+                        ->where('holiday_id', $holiday_id)
+                        ->update(['publish' => 'Y']);
+                }
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Holiday are published.!!!',
+                    'success' => true
+                ]);
+
+            } else {
+
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'No holiday IDs provided.',
+                    'success' => false
+                ]);
+            }
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+     
+}
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function updateHoliday(Request $request,$holiday_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims, 
+                'isDelete' => 'N',
+                'publish' => 'N',
+                'created_by' => $user->reg_id, 
+
+            ];
+
+            $updateddata = DB::table('holidaylist')
+                                ->where('holiday_id', $holiday_id)
+                                ->update($data);
+
+            return response()->json([
+                'status'=>200,
+                'message' => 'Holiday edited!!!',
+                'data' => $data,
+                'success'=>true
+            ]);
+
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+}
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function downloadCsvTemplate(){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="holidaylist.csv"',
+            ];
+            ob_get_clean();
+            $columns= ['*Title',
+                '*Holiday date(in yyyy/mm/dd format)',
+                'To date(in yyyy/mm/dd format)'];
+
+            $callback = function() use ($columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
+        
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+}
+
+//Dev Name - Manish Kumar Sharma 18-02-2025
+public function updateholidaylistCsv(Request $request){
+    $request->validate([
+        'file' => 'required|file|mimes:csv,txt|max:2048',
+    ]);
+    
+    $file = $request->file('file');
+    if (!$file->isValid()) {
+        return response()->json(['message' => 'Invalid file upload'], 400);
+    }
+    $csvData = file_get_contents($file->getRealPath());
+    $rows = array_map('str_getcsv', explode("\n", $csvData));
+    $header = array_shift($rows); // Extract the header row
+    
+    $columnMap = [
+        '*Title' => 'title',
+        '*Holiday date(in yyyy/mm/dd format)' => 'holiday_date',
+        'To date(in yyyy/mm/dd format)' => 'to_date'
+    ];
+    $invalidRows = [];
+    foreach ($rows as $rowIndex => $row) {
+        // Skip empty rows
+        if (empty(array_filter($row))) {
+            continue;
+        }
+        $holidayData = [];
+        foreach ($header as $index => $columnName) {
+            // dd($columnName);
+            if (isset($columnMap[$columnName])) {
+                $dbField = $columnMap[$columnName];
+                $holidayData[$dbField] = $row[$index] ?? null;
+                // dd($studentData[$dbField]);
+            }
+        }
+        DB::beginTransaction();
+        $errors = []; 
+        if (empty($holidayData['title'])) {
+            $errors[] = 'Title is required.';
+        }
+
+        if (empty($holidayData['holiday_date'])) {
+            $errors[] = 'Holiday Date is required.';
+        } elseif (!$this->validateDate($holidayData['holiday_date'], 'Y/m/d')) {
+            $errors[] = 'Invalid Holiday Date format. Expected yyyy/mm/dd.';
+        } else {
+            try {
+                // Convert DOB to the required format (yyyy-mm-dd)
+                $holidayData['holiday_date'] = \Carbon\Carbon::createFromFormat('Y/m/d', $holidayData['holiday_date'])->format('Y-m-d');
+            } catch (\Exception $e) {
+                $errors[] = 'Invalid Holidayy Date format. Expected yyyy/mm/dd.';
+            }
+        }
+
+        if (empty($holidayData['to_date'])) {
+            $holidayData['to_date'] = null;
+        }
+        elseif(!$this->validateDate($holidayData['holiday_date'], 'Y/m/d')){
+            $errors[] = 'Invalid To Date format. Expected yyyy/mm/dd.';
+        }
+        else{
+            $holidayData['to_date'] = \Carbon\Carbon::createFromFormat('Y/m/d', $holidayData['holiday_date'])->format('Y-m-d');
+        }
+
+        if (!empty($errors)) {
+            // Combine the row with the errors and store in invalidRows
+            $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
+            // Rollback or continue to the next iteration to prevent processing invalid data
+            DB::rollBack();
+            continue; // Skip this row, moving to the next iteration
+        }
+
+        try{   
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $data = [
+                    'title' => $holidayData['title'],
+                    'holiday_date' => $holidayData['holiday_date'],
+                    'to_date' => $holidayData['to_date'],
+                    'academic_yr' => $customClaims, 
+                    'isDelete' => 'N',
+                    'publish' => 'N',
+                    'created_by' => $user->reg_id, 
+
+                ];
+                
+        
+                DB::table('holidaylist')->insert($data);
+                DB::commit();
+                 
+                
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+                DB::rollBack();
+                $invalidRows[] = array_merge($row, ['error' => 'Error updating student: ' . $e->getMessage()]);
+                continue;
+            }
+
+
+    }
+    
+        if (!empty($invalidRows)) {
+            $csv = Writer::createFromString('');
+            $csv->insertOne(['title','holiday_date','to_date','error']);
+            foreach ($invalidRows as $invalidRow) {
+                $csv->insertOne($invalidRow);
+            }
+            $filePath = 'public/csv_rejected/rejected_rows_' . now()->format('Y_m_d_H_i_s') . '.csv';
+            Storage::put($filePath, $csv->toString());
+            $relativePath = str_replace('public/csv_rejected/', '', $filePath);
+    
+            return response()->json([
+                'message' => 'Some rows contained errors.',
+                'invalid_rows' => $relativePath,
+            ], 422);
+        }
+        return response()->json([
+            'status' =>200,
+            'message' => 'holidays Created Successfully.!!!',
+            'success'=>true
+        ]);
+
+}
+
+
+//Dev Name - Manish Kumar Sharma 25-02-2025
+public function getStudentIdCard(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            
+            $section_id = $request->input('section_id');
+            $idcarddetails = DB::table('confirmation_idcard')
+                                ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                                ->join('class', 'student.class_id', '=', 'class.class_id')
+                                ->join('section', 'student.section_id', '=', 'section.section_id')
+                                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                ->select(
+                                    'confirmation_idcard.*',
+                                    'student.first_name',
+                                    'student.mid_name',
+                                    'student.last_name',
+                                    'student.roll_no',
+                                    'student.image_name',
+                                    'student.reg_no',
+                                    'student.permant_add',
+                                    'student.blood_group',
+                                    'student.dob',
+                                    'student.house',
+                                    'student.student_id',
+                                    'parent.f_mobile',
+                                    'parent.m_mobile',
+                                    'class.name as class_name',
+                                    'section.name as sec_name'
+                                )
+                                ->where('student.section_id', $section_id)
+                                ->where('confirmation_idcard.confirm', 'Y')
+                                ->where('student.IsDelete', 'N')
+                                ->orderBy('student.roll_no')
+                                ->get();
+
+                                $globalVariables = App::make('global_variables');
+                                $parent_app_url = $globalVariables['parent_app_url'];
+                                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                            
+                                // Append image URLs for each student
+                    $idcarddetails->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                        $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                        if(!empty($student->image_name)){
+                            $student->image_url = $concatprojecturl."".$student->image_name;
+                        }
+                        else{
+                            $student->image_url = '';
+                            
+                    }
+                });
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Id card details for this class.',
+                        'data'=>$idcarddetails,
+                        'success'=>true
+                            ]);
+
+        }
+    
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+}
+//Dev Name - Manish Kumar Sharma 25-02-2025
+public function getziparchivestudentimages(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            
+            $section_id = $request->input('section_id');
+            $zip = new ZipArchive;
+            $zipName = time() . ".zip"; 
+            
+            $studentDetails = DB::table('confirmation_idcard')
+                            ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                            ->join('class', 'student.class_id', '=', 'class.class_id')
+                            ->join('section', 'student.section_id', '=', 'section.section_id')
+                            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                            ->select(
+                                'confirmation_idcard.*',
+                                'student.first_name',
+                                'student.mid_name',
+                                'student.last_name',
+                                'student.roll_no',
+                                'student.image_name',
+                                'student.reg_no',
+                                'student.permant_add',
+                                'student.blood_group',
+                                'student.dob',
+                                'student.house',
+                                'student.student_id',
+                                'parent.f_mobile',
+                                'parent.m_mobile',
+                                'class.name as class_name',
+                                'section.name as sec_name'
+                            )
+                            ->where('student.section_id', $section_id)
+                            ->where('confirmation_idcard.confirm', 'Y')
+                            ->where('student.IsDelete', 'N')
+                            ->orderBy('student.roll_no')
+                            ->get();
+
+                            $globalVariables = App::make('global_variables');
+                                        $parent_app_url = $globalVariables['parent_app_url'];
+                                        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                                    
+                                        // Append image URLs for each student
+                            $studentDetails->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                                $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                                if(!empty($student->image_name)){
+                                    $student->image_url = $concatprojecturl."".$student->image_name;
+                                }
+                                else{
+                                    $student->image_url = '';
+                                    
+                            }
+                            });
+                            $zip->open(public_path($zipName), ZipArchive::CREATE);
+                            foreach ($studentDetails as $url) {
+                                $fileContent = @file_get_contents($url->image_url);
+                                if ($fileContent) {
+                                    $fileName = basename($url->image_url);
+                                    $zip->addFromString($fileName, $fileContent);
+                                } else {
+                                    \Log::warning("File could not be downloaded: " . $url->image_url);
+                                }
+                            }
+                            
+                            $zip->close();
+
+                            $classname = DB::table('class')
+                                            ->join('section','section.class_id','=','class.class_id')
+                                            ->where('section.section_id',$section_id)
+                                            ->select('section.name as sectionname','class.name as classname')
+                                            ->first();
+                                        
+                            $zipFileName = $classname->classname . '-' . $classname->sectionname . '.zip';
+                            return response()->download($zipName, $zipFileName)
+                                ->deleteFileAfterSend(true);
+                            }
+            
+                            else{
+                                return response()->json([
+                                    'status'=> 401,
+                                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                                    'data' =>$user->role_id,
+                                    'success'=>false
+                                        ]);
+                                }
+                    
+                            }
+                            catch (Exception $e) {
+                            \Log::error($e); 
+                            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                            }
+           
+}
+
+
+public function fieldsForTimetable(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+         $class_id = $request->input('class_id'); 
+         $section_id=$request->input('section_id'); 
+         $lecturesPerWeek = $request->input('lectures_per_week', 0); 
+         $saturdayLectures = $request->input('saturday_lectures', 0); 
+ 
+        $existingtimetable = DB::table('timetable')
+                                ->where('class_id',$class_id)
+                                ->where('section_id',$section_id)
+                                ->where('academic_yr',$customClaims)
+                                ->first();
+        if($existingtimetable){
+            return response()->json([
+                'status'=> 400,
+                'message'=>'Timetable already created for this class',
+                'success'=>false
+                ]);
+
+        }
+        $fields = [];
+ 
+          // Generate Monday to Friday fields
+        $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        foreach ($daysOfWeek as $day) {
+            
+            $fields[$day] = [];
+            for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+                $fields[$day][] = [
+                    'subject' =>  [],
+                ];
+            }
+        }
+
+        for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+            $fields['Time-In'][] = [
+                'Time In' => '',
+            ];
+        }
+        for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+            $fields['Time-Out'][] = [
+                'Time Out' => '',
+            ];
+        }
+ 
+         for ($i = 1; $i <= $saturdayLectures; $i++) {
+             $fields['Saturday'][] = [
+                 'subject' => [],
+             ];
+         }
+         for ($i = 1; $i <= $saturdayLectures; $i++) {
+            $fields['Sat Time In'][] = [
+                'Time In' => '',
+            ];
+        }
+        for ($i = 1; $i <= $saturdayLectures; $i++) {
+            $fields['Sat Time Out'][] = [
+                'Time Out' => '',
+            ];
+        }
+ 
+         return response()->json([
+                'status'=> 200,
+                'message'=>'Fields for these lectures.',
+                'data'=>$fields,
+                'success'=>true
+                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+  }
+
+
+  public function getSubjectTimetable(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+
+            $subjects = DB::table('subject')
+                            ->select('subject_master.sm_id', 'subject_master.name')
+                            ->distinct()
+                            ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                            ->where('subject.class_id', $class_id)
+                            ->where('subject.section_id', $section_id)
+                            ->where('subject.academic_yr', $customClaims)
+                            ->orderBy('subject.class_id', 'asc')
+                            ->orderBy('subject.section_id', 'asc')
+                            ->orderBy('subject_master.name', 'asc')
+                            ->get();
+
+                            return response()->json([
+                                'status'=> 200,
+                                'message'=>'Subject for this class.',
+                                'data'=>$subjects,
+                                'success'=>true
+                                    ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+  }
+
+  public function deleteTimetable($class_id,$section_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+             
+            $deletetimetable =  DB::table('timetable')
+                                    ->where('class_id', $class_id)
+                                    ->where('section_id', $section_id)
+                                    ->where('academic_yr', $customClaims)
+                                    ->delete();
+
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Timetable Deleted.',
+                        'success'=>true
+                            ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+  }
+
+  public function getTimetableForClass($class_id,$section_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+              
+            $gettimetable = DB::table('timetable')
+                                ->where('class_id', $class_id)
+                                ->where('section_id', $section_id)
+                                ->where('academic_yr', '2024-2025')
+                                ->orderBy('period_no')
+                                ->get();
+
+            // Check if timetable data exists
+            if ($gettimetable->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No timetable found for the provided class and section.',
+                    'success' => false,
+                ], 404);
+            }
+
+            // Process the timetable data and fetch teacher names for each subject
+            $result = [];
+            foreach ($gettimetable as $row) {
+                $subject_name = $row->subject;
+                $teacher_names = $this->get_teacher_name_by_subname($subject_name, $class_id, $section_id);
+
+                // Assuming that get_teacher_name_by_subname returns an array with teacher names
+                $teacher_name = '';
+                if (count($teacher_names) > 0) {
+                    $teacher_name = ucfirst($teacher_names[0]['t_name']); // Take the first teacher's name
+                }
+
+                // Add to the result array
+                $result[] = [
+                    'period_no' => $row->period_no,
+                    'subject' => $subject_name,
+                    'teacher' => $teacher_name
+                ];
+            }
+
+            // Return the timetable data
+            return response()->json([
+                'status' => 200,
+                'message' => 'Timetable fetched successfully',
+                'data' => $result,
+                'success' => true
+            ], 200);
+             
 
         }
         else{

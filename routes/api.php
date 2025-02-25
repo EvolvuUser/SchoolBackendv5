@@ -383,6 +383,17 @@
         Route::get('get_studentidotherdetails/{class_id}/{section_id}',[AdminController::class,'getStudentOtherDetails']);
         Route::put('update_studentidotherdetails',[AdminController::class,'updateStudentIdOtherDetails']);
 
+        //Student Id Card Dev Name - Manish Kumar Sharma 25-02-2025
+        Route::get('get_studentidcard',[AdminController::class,'getStudentIdCard']);
+        Route::get('get_ziparchive',[AdminController::class,'getziparchivestudentimages']);
+
+
+        //Timetable Dev Name - Manish Kumar Sharma 18-02-2025
+        Route::get('get_fieldsfortimetable',[AdminController::class,'fieldsForTimetable']);
+        Route::get('get_subjectfortimetable',[AdminController::class,'getSubjectTimetable']);
+        Route::delete('delete_timetable/{class_id}/{section_id}',[AdminController::class,'deleteTimetable']);
+        Route::get('get_timetableforclass/{class_id}/{section_id}',[AdminController::class,'getTimetableForClass']);
+
     });
 
 //  API for the New Student list Buulk upload 
@@ -431,13 +442,13 @@ Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
 // Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
 // Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
 // Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
-// Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
+Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
       
 
 //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
 
 //routes for the Allot Marks headings//Hostinger Done
-Route::get('/get_AllotMarkheadingslist', [AssessmentController::class, 'getAllotMarksheadingsList']);
+Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
 Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
 Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
 Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarksheadings']);
