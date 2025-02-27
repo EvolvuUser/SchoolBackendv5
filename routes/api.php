@@ -386,6 +386,17 @@
         //Student Id Card Dev Name - Manish Kumar Sharma 25-02-2025
         Route::get('get_studentidcard',[AdminController::class,'getStudentIdCard']);
         Route::get('get_ziparchive',[AdminController::class,'getziparchivestudentimages']);
+        // Route::get('get_excelstudentidcard',[AdminController::class,'getStudentexcelIdCard']);
+
+        //Holiday List Dev Name - Manish Kumar Sharma 18-02-2025
+        Route::post('save_holiday',[AdminController::class,'saveHoliday']);
+        Route::post('save_holidaypublish',[AdminController::class,'saveHolidaypublish']);
+        Route::get('get_holidaylist',[AdminController::class,'getholidayList']);
+        Route::delete('delete_holiday/{holiday_id}',[AdminController::class,'deleteHoliday']);
+        Route::put('update_publishholiday',[AdminController::class,'updatepublishholiday']);
+        Route::put('update_holiday/{holiday_id}',[AdminController::class,'updateHoliday']);
+        Route::get('get_templatecsv',[AdminController::class,'downloadCsvTemplate']);
+        Route::post('update_holidaylist_csv',[AdminController::class,'updateholidaylistCsv']);
         
 
 
@@ -395,8 +406,25 @@
         Route::delete('delete_timetable/{class_id}/{section_id}',[AdminController::class,'deleteTimetable']);
         Route::get('get_timetableforclass/{class_id}/{section_id}',[AdminController::class,'getTimetableForClass']);
 
+
+        //Teacher Id Card Dev Name - Manish Kumar Sharma 26-02-2025
+        Route::get('get_teacheridcard',[AdminController::class,'getTeacherIdCard']);
+        Route::get('get_teacherziparchiveimages',[AdminController::class,'getTeacherzipimages']);
+        
+        //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
+        Route::post('save_stationery',[AdminController::class,'saveStationery']);
+        Route::get('get_stationery',[AdminController::class,'getStationeryList']);
+        Route::put('update_stationery/{stationery_id}',[AdminController::class,'updateStationery']);
+        Route::delete('delete_stationery/{stationery_id}',[AdminController::class,'deleteStationery']);
+
+
+        
+
+
     });
-    Route::get('get_excelstudentidcard',[AdminController::class,'getStudentexcelIdCard']);
+
+    
+    
 
 //  API for the New Student list Buulk upload 
 Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
