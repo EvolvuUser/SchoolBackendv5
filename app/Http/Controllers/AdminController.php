@@ -53,8 +53,8 @@ use Illuminate\Support\Facades\App;
 use League\Csv\Writer;
 use ZipArchive;
 use File;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\IdCardExport;
+// use Maatwebsite\Excel\Facades\Excel;
+// use App\Exports\IdCardExport;
 // use Illuminate\Support\Facades\Auth;
 
 
@@ -8034,7 +8034,8 @@ public function getziparchivestudentimages(Request $request){
             
             $section_id = $request->input('section_id');
             $zip = new ZipArchive;
-            $zipName = time() . ".zip"; 
+            $zipName = time() . ".zip";
+            $imageAdded = false; 
             
             $studentDetails = DB::table('confirmation_idcard')
                             ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
@@ -8082,13 +8083,19 @@ public function getziparchivestudentimages(Request $request){
                             });
                             $zip->open(public_path($zipName), ZipArchive::CREATE);
                             foreach ($studentDetails as $url) {
+                                if(!empty($url->image_url)){
                                 $fileContent = @file_get_contents($url->image_url);
                                 if ($fileContent) {
                                     $fileName = basename($url->image_url);
                                     $zip->addFromString($fileName, $fileContent);
+                                    $imageAdded = true;
                                 } else {
                                     \Log::warning("File could not be downloaded: " . $url->image_url);
                                 }
+                              }
+                            }
+                            if (!$imageAdded) {
+                                $zip->addFromString('nofilesfound.txt', ''); // Optionally add a dummy file if you want to keep the ZIP non-empty
                             }
                             
                             $zip->close();
@@ -8360,62 +8367,299 @@ public function fieldsForTimetable(Request $request){
 
   }
 
-  public function getStudentexcelIdCard(Request $request){
-            $idcarddetails = DB::table('confirmation_idcard')
-            ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
-            ->join('class', 'student.class_id', '=', 'class.class_id')
-            ->join('section', 'student.section_id', '=', 'section.section_id')
-            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-            ->select(
-                'confirmation_idcard.*',
-                'student.first_name',
-                'student.mid_name',
-                'student.last_name',
-                'student.roll_no',
-                'student.image_name',
-                'student.reg_no',
-                'student.permant_add',
-                'student.blood_group',
-                'student.dob',
-                'student.student_id',
-                'parent.f_mobile',
-                'parent.m_mobile',
-                'class.name as class_name',
-                'section.name as sec_name',
-                DB::raw("
-                    CASE
-                        WHEN student.house = 'E' THEN 'Emerald'
-                        WHEN student.house = 'R' THEN 'Ruby'
-                        WHEN student.house = 'S' THEN 'Sapphire'
-                        WHEN student.house = 'D' THEN 'Diamond'
-                        ELSE 'Unknown House'
-                    END as house
-                ")
-            )
-            ->where('student.section_id', '471')
-            ->where('confirmation_idcard.confirm', 'Y')
-            ->where('student.IsDelete', 'N')
-            ->orderBy('student.roll_no')
-            ->get();
+//   public function getStudentexcelIdCard(Request $request){
+//             $idcarddetails = DB::table('confirmation_idcard')
+//             ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+//             ->join('class', 'student.class_id', '=', 'class.class_id')
+//             ->join('section', 'student.section_id', '=', 'section.section_id')
+//             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+//             ->select(
+//                 'confirmation_idcard.*',
+//                 'student.first_name',
+//                 'student.mid_name',
+//                 'student.last_name',
+//                 'student.roll_no',
+//                 'student.image_name',
+//                 'student.reg_no',
+//                 'student.permant_add',
+//                 'student.blood_group',
+//                 'student.dob',
+//                 'student.student_id',
+//                 'parent.f_mobile',
+//                 'parent.m_mobile',
+//                 'class.name as class_name',
+//                 'section.name as sec_name',
+//                 DB::raw("
+//                     CASE
+//                         WHEN student.house = 'E' THEN 'Emerald'
+//                         WHEN student.house = 'R' THEN 'Ruby'
+//                         WHEN student.house = 'S' THEN 'Sapphire'
+//                         WHEN student.house = 'D' THEN 'Diamond'
+//                         ELSE 'Unknown House'
+//                     END as house
+//                 ")
+//             )
+//             ->where('student.section_id', '471')
+//             ->where('confirmation_idcard.confirm', 'Y')
+//             ->where('student.IsDelete', 'N')
+//             ->orderBy('student.roll_no')
+//             ->get();
 
-        // Append image URLs for each student
-        $globalVariables = App::make('global_variables');
-        $parent_app_url = $globalVariables['parent_app_url'];
-        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+//         // Append image URLs for each student
+//         $globalVariables = App::make('global_variables');
+//         $parent_app_url = $globalVariables['parent_app_url'];
+//         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-        $idcarddetails->each(function ($student) use($parent_app_url, $codeigniter_app_url) {
-        $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
-        if (!empty($student->image_name)) {
-        $student->image_url = $concatprojecturl . $student->image_name;
-        } else {
-        $student->image_url = '';
+//         $idcarddetails->each(function ($student) use($parent_app_url, $codeigniter_app_url) {
+//         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+//         if (!empty($student->image_name)) {
+//         $student->image_url = $concatprojecturl . $student->image_name;
+//         } else {
+//         $student->image_url = '';
+//         }
+//         });
+
+//         // Export to Excel
+//         return Excel::download(new IdCardExport($idcarddetails), 'idcarddetails_with_images.xlsx');
+
+//   }
+
+public function getTeacherIdCard(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $staffdata = DB::table('teacher')
+                            ->orderBy('teacher_id', 'asc')
+                            ->where('isDelete','N')
+                            ->get()
+                            ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
+                                $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
+                                if ($staff->teacher_image_name) {
+                                    $staff->teacher_image_url = $concatprojecturl.""."$staff->teacher_image_name";
+                                } else {
+                                    $staff->teacher_image_url = null; 
+                                }
+                                return $staff;
+                            });
+                            return response()->json([
+                                'status'=> 200,
+                                'message'=>'Id card details for the Staffs.',
+                                'data'=>$staffdata,
+                                'success'=>true
+                                    ]);
+             
+
         }
-        });
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
 
-        // Export to Excel
-        return Excel::download(new IdCardExport($idcarddetails), 'idcarddetails_with_images.xlsx');
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
 
-  }
+}
+
+ public function getTeacherzipimages(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $zip = new ZipArchive;
+                    $zipName = time() . ".zip";
+                    $imageAdded = false; 
+                    $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                    $staffdata = DB::table('teacher')
+                                ->orderBy('teacher_id', 'asc')
+                                ->where('isDelete','N')
+                                ->get()
+                                ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
+                                    $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
+                                    if ($staff->teacher_image_name) {
+                                        $staff->teacher_image_url = $concatprojecturl.""."$staff->teacher_image_name";
+                                    } else {
+                                        $staff->teacher_image_url = ''; 
+                                    }
+                                    return $staff;
+                                });
+                    $zip->open(public_path($zipName), ZipArchive::CREATE);
+                            foreach ($staffdata as $url) {
+                                if(!empty($url->teacher_image_url)){
+                                $fileContent = @file_get_contents($url->teacher_image_url);
+                                if ($fileContent) {
+                                    $fileName = basename($url->teacher_image_url);
+                                    $zip->addFromString($fileName, $fileContent);
+                                    $imageAdded = true;
+                                } else {
+                                    \Log::warning("File could not be downloaded: " . $url->teacher_image_url);
+                                }
+                              }
+                            }
+                            if (!$imageAdded) {
+                                $zip->addFromString('nofilesfound.txt', ''); // Optionally add a dummy file if you want to keep the ZIP non-empty
+                            }
+                            
+                            $zip->close();
+                            return response()->download($zipName, 'All_teachers.zip')
+                                ->deleteFileAfterSend(true);
+                            }
+                            else{
+                                return response()->json([
+                                    'status'=> 401,
+                                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                                    'data' =>$user->role_id,
+                                    'success'=>false
+                                        ]);
+                                }
+                            
+                            }
+                            catch (Exception $e) {
+                            \Log::error($e); 
+                            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                            }
+
+ }
+   //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
+   public function saveStationery(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+       $data = [
+           'name'=>$request->name
+       ];
+        $savestationery= DB::table('stationery_master')->insert($data);
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Stationery Saved Successfully',
+            'data'=>$savestationery,
+            'success'=>true
+                ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+   }
+   //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
+   public function getStationeryList(){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+       
+        $stationerylist = DB::table('stationery_master')->get();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Stationery List.',
+            'data'=>$stationerylist,
+            'success'=>true
+                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+   }
+   //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
+   public function updateStationery(Request $request,$stationery_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        $updateStationery=DB::table('stationery_master')
+                            ->where('stationery_id', $stationery_id)  // Find the user with id = 1
+                            ->update(['name' => $request->name]);
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Stationery Updated Successfully.',
+                        'data'=>$updateStationery,
+                        'success'=>true
+                            ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                }       
+
+   }
+   //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
+   public function deleteStationery(Request $request,$stationery_id){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        DB::table('stationery_master')->where('stationery_id',$stationery_id)->delete();
+        return response()->json([
+            'status'=> 200,
+            'message'=>'Stationery Deleted Successfully.',
+            'success'=>true
+                ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+   }
+
+
 
 
 }
