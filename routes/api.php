@@ -418,6 +418,11 @@
         Route::delete('delete_stationery/{stationery_id}',[AdminController::class,'deleteStationery']);
 
 
+        //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+        Route::post('save_classtimetable',[AdminController::class,'saveClassTimetable']);
+        Route::get('get_classtimetable/{class_id}/{section_id}',[AdminController::class,'viewclassTimetable']);
+        Route::put('update_classtimetable',[AdminController::class,'updateClasstimetable']);
+
         
 
 

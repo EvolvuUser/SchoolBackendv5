@@ -8659,6 +8659,273 @@ public function getTeacherIdCard(Request $request){
 
    }
 
+   //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+   public function saveClassTimetable(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $num_lec = $request->input('num_lec');
+            $data = [];
+    
+            for ($k = 1; $k <= $num_lec; $k++) {
+                $data[] = [
+                    'class_id' => $request->input('class_id'),
+                    'section_id' => $request->input('section_id'),
+                    'monday' => $this->getSubjectss($request->input('mon' . $k)),
+                    'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
+                    'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
+                    'thursday' => $this->getSubjectss($request->input('thu' . $k)),
+                    'friday' => $this->getSubjectss($request->input('fri' . $k)),
+                    'saturday' => $this->getSubjectss($request->input('sat' . $k)),
+                    'time_in' => $request->input('time_in' . $k),
+                    'time_out' => $request->input('time_out' . $k),
+                    'sat_in' => $request->input('sat_in' . $k),
+                    'sat_out' => $request->input('sat_out' . $k),
+                    'period_no' => $k,
+                    'academic_yr' => $customClaims,
+                    'date' => now(),
+                ]; 
+            }
+            
+            
+            DB::table('timetable')->insert($data);
+    
+            return response()->json([
+                'status' =>200,
+                'message' => 'Timetable created successfully!',
+                'success'=>true
+            ]);
+
+        }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }     
+   }
+   //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+   private function getSubjectss($subjects)
+    {
+        return implode('/', (array)$subjects);
+    }
+    //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+    public function viewclassTimetable(Request $request,$class_id,$section_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                  $timetables = DB::table('timetable')
+                                    ->where('class_id', $class_id)
+                                    ->where('section_id', $section_id)
+                                    ->where('academic_yr', $customClaims)
+                                    ->orderBy('t_id')
+                                    ->get();
+                    
+                                           
+                    if(count($timetables)==0){
+                        
+                        return response()->json([
+                            'status'=> 400,
+                            'message'=>'Timetable is not created for this class.',
+                            'success'=>false
+                            ]);
+            
+                    }
+                //   dd($timetable);
+                 // Initialize an array to hold data for each day
+            $monday = [];
+            $tuesday = [];
+            $wednesday = [];
+            $thursday = [];
+            $friday = [];
+            $saturday = [];
+
+            // Iterate over the timetables and separate them by day
+            foreach ($timetables as $timetable) {
+                // For Monday
+                if ($timetable->monday) {
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $timetable->monday,
+                        'teacher' => $this->getTeacherBySubject($timetable->monday, $class_id, $section_id),
+                    ];
+                }
+
+                // For Tuesday
+                if ($timetable->tuesday) {
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $timetable->tuesday,
+                        'teacher' => $this->getTeacherBySubject($timetable->tuesday, $class_id, $section_id),
+                    ];
+                }
+
+                // For Wednesday
+                if ($timetable->wednesday) {
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $timetable->wednesday,
+                        'teacher' => $this->getTeacherBySubject($timetable->wednesday, $class_id, $section_id),
+                    ];
+                }
+
+                // For Thursday
+                if ($timetable->thursday) {
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $timetable->thursday,
+                        'teacher' => $this->getTeacherBySubject($timetable->thursday, $class_id, $section_id),
+                    ];
+                }
+
+                // For Friday
+                if ($timetable->friday) {
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $timetable->friday,
+                        'teacher' => $this->getTeacherBySubject($timetable->friday, $class_id, $section_id),
+                    ];
+                }
+
+                // For Saturday
+                if ($timetable->saturday) {
+                    $saturday[] = [
+                        'time_in' => $timetable->sat_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->sat_out,
+                        'subject' => $timetable->saturday,
+                        'teacher' => $this->getTeacherBySubject($timetable->saturday, $class_id, $section_id),
+                    ];
+                }
+            }
+            $weeklySchedule = [
+                'Monday' => $monday,
+                'Tuesday' => $tuesday,
+                'Wednesday' => $wednesday,
+                'Thursday' => $thursday,
+                'Friday' => $friday,
+                'Saturday' => $saturday,
+            ];
+            
+                  return response()->json([
+                    'status' =>200,
+                    'data'=>$weeklySchedule,
+                    'message' => 'View Timetable!',
+                    'success'=>true
+                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
+
+    }
+    //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+    public function getTeacherBySubject( $subname,$class_id, $section_id)
+        {
+            // dd($class_id,$section_id,$subname);
+            $teachers = DB::table('subject')
+                ->select('teacher.name as t_name')
+                ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                ->join('teacher', 'subject.teacher_id', '=', 'teacher.teacher_id')
+                ->where('subject.class_id', $class_id)
+                ->where('subject.section_id', $section_id)
+                ->where('subject_master.name', 'like', "%$subname%") // using `like` with `%` to match partial name
+                ->get();
+            //    dd($teachers);
+            return $teachers;
+        }
+
+        public function updateClasstimetable(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $class_id = $request->input('class_id');
+                    $section_id = $request->input('section_id');
+                    $deletetimetable =  DB::table('timetable')
+                                            ->where('class_id', $class_id)
+                                            ->where('section_id', $section_id)
+                                            ->where('academic_yr', $customClaims)
+                                            ->delete();
+
+                    $num_lec = $request->input('num_lec');
+                    $data = [];
+            
+                    for ($k = 1; $k <= $num_lec; $k++) {
+                        $data[] = [
+                            'class_id' => $request->input('class_id'),
+                            'section_id' => $request->input('section_id'),
+                            'monday' => $this->getSubjectss($request->input('mon' . $k)),
+                            'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
+                            'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
+                            'thursday' => $this->getSubjectss($request->input('thu' . $k)),
+                            'friday' => $this->getSubjectss($request->input('fri' . $k)),
+                            'saturday' => $this->getSubjectss($request->input('sat' . $k)),
+                            'time_in' => $request->input('time_in' . $k),
+                            'time_out' => $request->input('time_out' . $k),
+                            'sat_in' => $request->input('sat_in' . $k),
+                            'sat_out' => $request->input('sat_out' . $k),
+                            'period_no' => $k,
+                            'academic_yr' => $customClaims,
+                            'date' => now(),
+                        ]; 
+                    }
+                    
+                    
+                    DB::table('timetable')->insert($data);
+
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+    
+
+        }
+
 
 
 
