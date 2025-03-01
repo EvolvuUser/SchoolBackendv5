@@ -7957,6 +7957,7 @@ public function getStudentIdCard(Request $request){
                                     'confirmation_idcard.*',
                                     'student.first_name',
                                     'student.mid_name',
+                                    'student.parent_id',
                                     'student.last_name',
                                     'student.roll_no',
                                     'student.image_name',
@@ -8905,6 +8906,11 @@ public function getTeacherIdCard(Request $request){
                     
                     
                     DB::table('timetable')->insert($data);
+                    return response([
+                        'status'=>200,
+                        'message'=>'Timetable Updated Successfully.',
+                        'success'=>true
+                    ]);
 
 
                 }
@@ -8926,7 +8932,308 @@ public function getTeacherIdCard(Request $request){
 
         }
 
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        public function getPendingStudentIdCard(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    // dd($request->all());
+                    $class_id = $request->input('class_id');
+                    $section_id=$request->input('section_id');
+                    $students = DB::table('student')
+                                ->join('class', 'student.class_id', '=', 'class.class_id')
+                                ->join('section', 'student.section_id', '=', 'section.section_id')
+                                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                ->leftJoin('confirmation_idcard', function($join) {
+                                    $join->on('student.parent_id', '=', 'confirmation_idcard.parent_id')
+                                        ->where('confirmation_idcard.confirm', '=', 'Y');
+                                })
+                                ->where('student.isDelete', 'N')
+                                ->where('student.class_id', $class_id)
+                                ->where('student.section_id', $section_id)
+                                ->whereNull('confirmation_idcard.parent_id')  // This ensures the parent_id is not in the confirmation_idcard table
+                                ->select(
+                                    'student.first_name', 
+                                    'student.mid_name', 
+                                    'student.last_name', 
+                                    'student.roll_no', 
+                                    'student.image_name', 
+                                    'student.reg_no', 
+                                    'student.permant_add', 
+                                    'student.blood_group', 
+                                    'student.house', 
+                                    'student.dob', 
+                                    'student.house as student_house',
+                                    'class.name as class_name', 
+                                    'section.name as sec_name', 
+                                    'parent.parent_id', 
+                                    'parent.father_name', 
+                                    'parent.f_mobile', 
+                                    'parent.m_mobile'
+                                )
+                                ->orderBy('student.roll_no')
+                                ->get();
+
+                                $result = [];
+
+                                foreach ($students as $student) {
+
+                                    $siblings = Student::where('parent_id', $student->parent_id)
+                                        ->where('IsDelete', 'N')
+                                        ->where('academic_yr', $customClaims)
+                                        ->get();
+                                        
+                        
+                                    $sibling_data = [];
+                                    foreach ($siblings as $sibling) {
+                                        $sibling_data[] = [
+                                            'student_id' => $sibling->student_id,
+                                            'first_name' => $sibling->first_name,
+                                            'mid_name' => $sibling->mid_name,
+                                            'last_name' => $sibling->last_name,
+                                            'roll_no' => $sibling->roll_no,
+                                            'class-secname' => $this->getClassOfStudent($sibling->student_id),
+                                            'dob' => $sibling->dob,
+                                            'permant_add' => $sibling->permant_add,
+                                            'blood_group' => $sibling->blood_group,
+                                            'house' => $sibling->house,
+                                        ];
+                                    }
+                               
+                                    $result[] = [
+                                        'parent' => [
+                                            'parent_id'=> $student->parent_id,
+                                            'father_name' => $student->father_name,
+                                            'f_mobile' => $student->f_mobile,
+                                            'm_mobile' => $student->m_mobile,
+                                            'siblings' => $sibling_data
+                                        ],
+                                        // 'siblings' => $sibling_data
+                                    ];
+                                }
+                        
+                                return response([
+                                    'status'=>200,
+                                    'data'=>$result,
+                                    'message'=>'Pending Student Id Card List.',
+                                    'success'=>true
+                                ]);
+                                
+                        
 
 
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        private function getClassOfStudent($student_id)
+        {
+            $result = DB::table('student as s')
+                        ->join('class as c', 's.class_id', '=', 'c.class_id')
+                        ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                        ->where('s.student_id', $student_id)
+                        ->select(DB::raw("CONCAT(c.name, '-', sc.name) as class"))
+                        ->first();
+            return $result->class;
+        }
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        public function updatePendingStudentIdCard(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    
+                    foreach ($request->parents as $parent) {
+                        // Update Parent Data
+                        $this->updateParentData($parent);
+                
+                        // Update Student Data
+                        $this->updateStudentData($parent);
+                
+                        // Handle ConfirmationIdCard Data
+                        $data = [
+                            'confirm' => 'Y',
+                            'parent_id' => $parent['parent_id'],
+                            'academic_yr' => $customClaims
+                        ];
+            
+                        $existingConfirmation = DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr',$customClaims)->first();
+            
+                        if ($existingConfirmation) {
+                            DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr',$customClaims)->update($data);
+                        } else {
+                            DB::table('confirmation_idcard')->insert($data);
+                        }
+                    }
+
+                    
+                    return response()->json([
+                        'status'=>200,
+                        'message' => 'Id card details saved successfully!',
+                        'success' =>true
+                    ]);
+            
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        private function updateParentData($parent)
+        {
+            DB::table('parent')->where('parent_id', $parent['parent_id'])
+                                ->update([
+                                    'f_mobile' => $parent['f_mobile'],
+                                    'm_mobile' => $parent['m_mobile']
+                                ]);
+        }
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        private function updateStudentData($parent)
+        {
+            foreach ($parent['students'] as $student) {
+                Student::where('student_id', $student['student_id'])
+                    ->update([
+                        'permant_add' => $student['permant_add'],
+                        'blood_group' => $student['blood_group'],
+                        'house' => $student['house']
+                    ]);
+            }
+        }
+        //Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        public function getStudentDataWithParentData(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                    $parent_id = $request->input('parent_id');
+                    $studentsdetails = DB::table('student')
+                                    ->join('class','class.class_id','=','student.class_id')
+                                    ->join('section','section.section_id','=','student.section_id')
+                                    ->select('student.*','class.name as classname','section.name as sectionname')
+                                    ->where('parent_id', $parent_id)
+                                    ->where('IsDelete', 'N')
+                                    ->where('student.academic_yr', $customClaims)
+                                    ->get();
+                                    $globalVariables = App::make('global_variables');
+                                    $parent_app_url = $globalVariables['parent_app_url'];
+                                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                            
+                                // Append image URLs for each student
+                    $studentsdetails->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                        $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                        if(!empty($student->image_name)){
+                            $student->image_url = $concatprojecturl."".$student->image_name;
+                        }
+                        else{
+                            $student->image_url = '';
+                            
+                    }
+                });
+
+                $parentdetails =  DB::table('parent')
+                                    ->where('parent_id', $parent_id)
+                                    ->get()
+                                    ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
+                                        $concatprojecturl = $codeigniter_app_url."".'uploads/parent_image/';
+                                        if ($staff->father_image_name) {
+                                            $staff->father_image_url = $concatprojecturl.""."$staff->father_image_name";
+                                        } else {
+                                            $staff->father_image_url = ''; 
+                                        }
+                                        if ($staff->mother_image_name) {
+                                            $staff->mother_image_url = $concatprojecturl.""."$staff->mother_image_name";
+                                        } else {
+                                            $staff->mother_image_url = ''; 
+                                        }
+                                        return $staff;
+                                    });
+
+                                    // dd($parentdetails);
+                $guardiandetails = DB::table('student')
+                                     ->where('parent_id', $parent_id)
+                                     ->where('IsDelete', 'N')
+                                     ->where('academic_yr', $customClaims)
+                                     ->select('guardian_name','guardian_add','guardian_mobile','relation','guardian_image_name')
+                                     ->first();
+
+                    if ($guardiandetails) {
+                        $concatprojecturl = $codeigniter_app_url . 'uploads/parent_image/';
+                        $guardiandetails->guardian_image_url = $guardiandetails->guardian_image_name 
+                            ? $concatprojecturl . $guardiandetails->guardian_image_name
+                            : ''; // If guardian_image_name exists, append the URL, otherwise set an empty string.
+                    }
+                    
+
+                    $response = [
+                        'students' => $studentsdetails,
+                        'parents' => $parentdetails,
+                        'guardian' => $guardiandetails,
+                    ];
+
+
+                
+
+                return response()->json([
+                    'status'=>200,
+                    'data' => $response,
+                    'message' => 'Fetching the data for the Id Card of Parent,Student,Guardian!',
+                    'success' =>true
+                ]);
+
+
+                                    
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+
+
+        
 
 }
