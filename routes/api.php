@@ -386,6 +386,7 @@
         //Student Id Card Dev Name - Manish Kumar Sharma 25-02-2025
         Route::get('get_studentidcard',[AdminController::class,'getStudentIdCard']);
         Route::get('get_ziparchive',[AdminController::class,'getziparchivestudentimages']);
+        Route::get('get_studentdatawithparentdata',[AdminController::class,'getStudentDataWithParentData']);
         // Route::get('get_excelstudentidcard',[AdminController::class,'getStudentexcelIdCard']);
 
         //Holiday List Dev Name - Manish Kumar Sharma 18-02-2025
@@ -422,6 +423,10 @@
         Route::post('save_classtimetable',[AdminController::class,'saveClassTimetable']);
         Route::get('get_classtimetable/{class_id}/{section_id}',[AdminController::class,'viewclassTimetable']);
         Route::put('update_classtimetable',[AdminController::class,'updateClasstimetable']);
+
+        //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
+        Route::get('get_pendingstudentidcard',[AdminController::class,'getPendingStudentIdCard']);
+        Route::put('update_pendingstudentidcard',[AdminController::class,'updatePendingStudentIdCard']);
 
         
 
