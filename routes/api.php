@@ -387,6 +387,7 @@
         Route::get('get_studentidcard',[AdminController::class,'getStudentIdCard']);
         Route::get('get_ziparchive',[AdminController::class,'getziparchivestudentimages']);
         Route::get('get_studentdatawithparentdata',[AdminController::class,'getStudentDataWithParentData']);
+        Route::post('save_studentparentguardianimage',[AdminController::class,'saveStudentParentGuardianImage']);
         // Route::get('get_excelstudentidcard',[AdminController::class,'getStudentexcelIdCard']);
 
         //Holiday List Dev Name - Manish Kumar Sharma 18-02-2025

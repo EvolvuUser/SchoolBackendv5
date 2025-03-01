@@ -53,6 +53,7 @@ use Illuminate\Support\Facades\App;
 use League\Csv\Writer;
 use ZipArchive;
 use File;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 // use Maatwebsite\Excel\Facades\Excel;
 // use App\Exports\IdCardExport;
 // use Illuminate\Support\Facades\Auth;
@@ -9213,6 +9214,148 @@ public function getTeacherIdCard(Request $request){
 
 
                                     
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+        public function saveStudentParentGuardianImage(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $studentCount = $request->input('students');
+                    $parentId = $request->input('parent_id');
+                    
+                    // Handle Guardian Image
+                    $gCroppedImage = $request->input('g_cropped_image');
+                    if ($gCroppedImage != '') {
+                        $ext = pathinfo($request->file('image_g')->getClientOriginalName(), PATHINFO_EXTENSION);
+                        $newCropImage = trim($gCroppedImage, '[removed]');
+                        $dataI = base64_decode($newCropImage);
+                        $imgNameEndG = 'g_' . $parentId . '.' . $ext;
+                        $imagePath = storage_path('app/public/parent_image/' . $imgNameEndG);
+                        file_put_contents($imagePath, $dataI);
+                        $data['guardian_image_name'] = $imgNameEndG;
+                        $doc_type_folder = 'parent_image';
+                        upload_guardian_profile_image_into_folder($parentId,$imgNameEndG,$doc_type_folder,$gCroppedImage);
+                    }
+                    // dd($gCroppedImage);
+
+                    // Loop through students
+                    for ($j = 1; $j <= $studentCount; $j++) {
+                        $data['blood_group'] = $request->input('blood_group' . $j);
+                        $data['house'] = $request->input('house' . $j);
+                        $data['permant_add'] = $request->input('permant_add' . $j);
+                        $studentId = $request->input('student_id' . $j);
+
+                        // Handle Student Image
+                        $sCroppedImage = $request->input('s_cropped_image' . $j);
+                        if ($sCroppedImage != '') {
+                            $ext = pathinfo($request->file('image' . $j)->getClientOriginalName(), PATHINFO_EXTENSION);
+                            $newCropImage = trim($sCroppedImage, '[removed]');
+                            $dataI = base64_decode($newCropImage);
+                            $imgNameEnd = $studentId . '.' . $ext;
+                            $imagePath = storage_path('app/public/student_image/' . $imgNameEnd);
+                            file_put_contents($imagePath, $dataI);
+                            $data['image_name'] = $imgNameEnd;
+                            $doc_type_folder='student_image';
+                            upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$sCroppedImage);
+                        }
+
+                        $data['guardian_name'] = $request->input('guardian_name');
+                        $data['guardian_mobile'] = $request->input('guardian_mobile');
+                        $data['relation'] = $request->input('relation');
+
+                        // Update student
+                        Student::where('student_id', $studentId)->update($data);
+                    }
+
+                    // Handle Parent Info
+                    $data1['f_mobile'] = $request->input('f_mobile');
+                    $fCroppedImage = $request->input('f_cropped_image');
+                    $mCroppedImage = $request->input('m_cropped_image');
+
+                    // Handle Father's Image
+                    if ($fCroppedImage != '') {
+                        $ext = pathinfo($request->file('image_f')->getClientOriginalName(), PATHINFO_EXTENSION);
+                        $newCropImage = trim($fCroppedImage, '[removed]');
+                        $data = base64_decode($newCropImage);
+                        $imgNameEndF = 'f_' . $parentId . '.' . $ext;
+                        $imagePath = storage_path('app/public/parent_image/' . $imgNameEndF);
+                        file_put_contents($imagePath, $data);
+                        $data1['father_image_name'] = $imgNameEndF;
+                        $doc_type_folder = 'parent_image';
+                        upload_father_profile_image_into_folder($parentId,$imgNameEndF,$doc_type_folder,$fCroppedImage);
+                    }
+
+                    // Handle Mother's Image
+                    if ($mCroppedImage != '') {
+                        $ext = pathinfo($request->file('image_m')->getClientOriginalName(), PATHINFO_EXTENSION);
+                        $newCropImage = trim($mCroppedImage, '[removed]');
+                        $data = base64_decode($newCropImage);
+                        $imgNameEndM = 'm_' . $parentId . '.' . $ext;
+                        $imagePath = storage_path('app/public/parent_image/' . $imgNameEndM);
+                        file_put_contents($imagePath, $data);
+                        $data1['mother_image_name'] = $imgNameEndM;
+                        $doc_type_folder = 'parent_image';
+                        upload_mother_profile_image_into_folder($parentId,$imgNameEndM,$doc_type_folder,$mCroppedImage);
+                    }
+
+                    $data1['m_mobile'] = $request->input('m_mobile');
+
+                    // Update parent
+                    
+                    DB::table('parent')->where('parent_id', $parentId)->update($data1);
+                    // dd("Hello");
+                    // Handle Confirmation Data
+                    $data2['confirm'] = 'Y';
+                    $data2['parent_id'] = $parentId;
+                    $data2['academic_yr'] = $customClaims;
+
+                    // Check if Confirmation exists, then insert or update
+                    $confirmation = DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr',$customClaims)->first();
+                    if ($confirmation) {
+                        DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr',$customClaims)->update($data2);
+                    } else {
+                        DB::table('confirmation_idcard')->insert($data2);
+                    }
+
+                    $qrCodeImageDir = 'app/public/qrcode/';
+    
+                    // Ensure the directory exists
+                    $directory = storage_path($qrCodeImageDir);
+                    if (!is_dir($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    // dd($directory);
+
+                    // Define image name
+                    $imageName = $parentId . '.png';
+                    // dd($imageName);
+                    // Set the QR code parameters
+                    $qrCode = QrCode::format('png')
+                                    ->generate($parentId, $directory . $imageName); // Generate and save the QR code
+                    dd($qrCode);
+                    // The URL to access the image
+                    $qrCodeImageUrl = asset($qrCodeImageDir . $imageName);
+                    dd($qrCodeImageUrl);
+                    $doc_type_folder = 'qrcode';
+                    upload_qrcode_into_folder($filename,$doc_type_folder,$base64File);
 
                 }
                 else{
