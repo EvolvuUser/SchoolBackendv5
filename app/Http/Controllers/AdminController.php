@@ -9270,7 +9270,7 @@ public function getTeacherIdCard(Request $request){
                             $newCropImage = trim($sCroppedImage, '[removed]');
                             $dataI = base64_decode($newCropImage);
                             $imgNameEnd = $studentId . '.' . $ext;
-                            $imagePath = storage_path('app/public/student_image/' . $imgNameEnd);
+                            $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
                             file_put_contents($imagePath, $dataI);
                             $data['image_name'] = $imgNameEnd;
                             $doc_type_folder='student_image';
@@ -9348,14 +9348,39 @@ public function getTeacherIdCard(Request $request){
                     $imageName = $parentId . '.png';
                     // dd($imageName);
                     // Set the QR code parameters
-                    $qrCode = QrCode::format('png')
-                                    ->generate($parentId, $directory . $imageName); // Generate and save the QR code
-                    dd($qrCode);
-                    // The URL to access the image
-                    $qrCodeImageUrl = asset($qrCodeImageDir . $imageName);
-                    dd($qrCodeImageUrl);
+                    $qrCodeConfig = [
+                    'format' => 'png', // You can change this to 'svg' if needed
+                    'size' => 50,
+                    'color' => [0,0,0], // Black color for the QR code (foreground)
+                    'backgroundColor' => [254, 255, 255], // White color for the background
+                    'margin' => 2, // Margin around the QR code
+                    'errorCorrection' => 'H', // Error correction level: L, M, Q, H
+                ];
+            
+                // Generate the QR code
+                $qrCode = QrCode::format($qrCodeConfig['format'])
+                                 ->size($qrCodeConfig['size'])
+                                 ->color($qrCodeConfig['color'][0], $qrCodeConfig['color'][1], $qrCodeConfig['color'][2])
+                                 ->backgroundColor($qrCodeConfig['backgroundColor'][0], $qrCodeConfig['backgroundColor'][1], $qrCodeConfig['backgroundColor'][2])
+                                 ->margin($qrCodeConfig['margin'])
+                                 ->errorCorrection($qrCodeConfig['errorCorrection'])
+                                 ->generate($parentId, $directory . $imageName);
+                    // dd($qrCode);
+                    // $data = '123';
+                    // $imagePath = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
+                    // $qrCode->generate($data, $imagePath);
+                    $filelocation = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
+                    // dd($filelocation);
+                    $imageData = file_get_contents($filelocation);
+                    $base64File = base64_encode($imageData);
                     $doc_type_folder = 'qrcode';
-                    upload_qrcode_into_folder($filename,$doc_type_folder,$base64File);
+                    upload_qrcode_into_folder($imageName,$doc_type_folder,$base64File);
+                    return response()->json([
+                        'status'=>200,
+                        'message' => 'Id Card Saved Successfully!',
+                        'success' =>true
+                    ]);
+                    
 
                 }
                 else{
