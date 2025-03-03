@@ -13,6 +13,7 @@
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\HscController;
+    use App\Http\Controllers\ReportController;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
@@ -428,6 +429,10 @@
         //Pending Student Id Card Dev Name - Manish Kumar Sharma 28-02-2025
         Route::get('get_pendingstudentidcard',[AdminController::class,'getPendingStudentIdCard']);
         Route::put('update_pendingstudentidcard',[AdminController::class,'updatePendingStudentIdCard']);
+
+        //Reports Dev Name - Manish Kumar Sharma 01-03-2025
+        Route::get('get_classofnewadmission',[ReportController::class,'getClassofNewStudent']);
+        Route::get('get_reportofnewadmission',[ReportController::class,'getReportofNewAdmission']);
 
         
 
