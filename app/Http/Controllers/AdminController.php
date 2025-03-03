@@ -9238,37 +9238,48 @@ public function getTeacherIdCard(Request $request){
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
                 if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-                    $studentCount = $request->input('students');
-                    $parentId = $request->input('parent_id');
+                    // dd($request->input('student'));
+                    // count($request->input('student'));
+                    // dd(count($request->input('student')));
+                    $studentCount = count($request->input('student'));
+                    $parentId = $request->input('parent.0.parent_id');
                     
                     // Handle Guardian Image
-                    $gCroppedImage = $request->input('g_cropped_image');
+                    $gCroppedImage = $request->input('guardian.0.guardian_image_base');
                     if ($gCroppedImage != '') {
-                        $ext = pathinfo($request->file('image_g')->getClientOriginalName(), PATHINFO_EXTENSION);
-                        $newCropImage = trim($gCroppedImage, '[removed]');
-                        $dataI = base64_decode($newCropImage);
+                        $ext='jpg';
+                        $dataI = base64_decode($gCroppedImage);
                         $imgNameEndG = 'g_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndG);
                         file_put_contents($imagePath, $dataI);
                         $data['guardian_image_name'] = $imgNameEndG;
                         $doc_type_folder = 'parent_image';
                         upload_guardian_profile_image_into_folder($parentId,$imgNameEndG,$doc_type_folder,$gCroppedImage);
+
                     }
+                    // dd("Hello from out");
                     // dd($gCroppedImage);
 
                     // Loop through students
-                    for ($j = 1; $j <= $studentCount; $j++) {
-                        $data['blood_group'] = $request->input('blood_group' . $j);
-                        $data['house'] = $request->input('house' . $j);
-                        $data['permant_add'] = $request->input('permant_add' . $j);
-                        $studentId = $request->input('student_id' . $j);
+                    // dd($request->input('student'));
+                    $students = $request->input('student');
+                    foreach ($students as $studentData) {
+                        // dd($studentData);
+                        $data = [
+                            'blood_group' => $studentData['blood_group'],
+                            'house' => $studentData['house'],
+                            'permant_add' => $studentData['permant_add']
+                        ];
+                        
+                        $studentId = $studentData['student_id'];
+                        // dd($studentId);
 
                         // Handle Student Image
-                        $sCroppedImage = $request->input('s_cropped_image' . $j);
+                        $sCroppedImage = $studentData['image_url'];
+                        // dd($sCroppedImage);
                         if ($sCroppedImage != '') {
-                            $ext = pathinfo($request->file('image' . $j)->getClientOriginalName(), PATHINFO_EXTENSION);
-                            $newCropImage = trim($sCroppedImage, '[removed]');
-                            $dataI = base64_decode($newCropImage);
+                            $ext='jpg';
+                            $dataI = base64_decode($sCroppedImage);
                             $imgNameEnd = $studentId . '.' . $ext;
                             $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
                             file_put_contents($imagePath, $dataI);
@@ -9276,25 +9287,25 @@ public function getTeacherIdCard(Request $request){
                             $doc_type_folder='student_image';
                             upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$sCroppedImage);
                         }
+                        // dd("Hello from outside");
 
-                        $data['guardian_name'] = $request->input('guardian_name');
-                        $data['guardian_mobile'] = $request->input('guardian_mobile');
-                        $data['relation'] = $request->input('relation');
+                        $data['guardian_name'] = $request->input('guardian.0.guardian_name');
+                        $data['guardian_mobile'] = $request->input('guardian.0.guardian_mobile');
+                        $data['relation'] = $request->input('guardian.0.relation');
 
                         // Update student
                         Student::where('student_id', $studentId)->update($data);
                     }
 
                     // Handle Parent Info
-                    $data1['f_mobile'] = $request->input('f_mobile');
-                    $fCroppedImage = $request->input('f_cropped_image');
-                    $mCroppedImage = $request->input('m_cropped_image');
+                    $data1['f_mobile'] = $request->input('parent.0.f_mobile');
+                    $fCroppedImage = $request->input('parent.0.father_image_base');
+                    $mCroppedImage = $request->input('parent.0.mother_image_base');
 
                     // Handle Father's Image
                     if ($fCroppedImage != '') {
-                        $ext = pathinfo($request->file('image_f')->getClientOriginalName(), PATHINFO_EXTENSION);
-                        $newCropImage = trim($fCroppedImage, '[removed]');
-                        $data = base64_decode($newCropImage);
+                        $ext='jpg';
+                        $data = base64_decode($fCroppedImage);
                         $imgNameEndF = 'f_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndF);
                         file_put_contents($imagePath, $data);
@@ -9305,9 +9316,8 @@ public function getTeacherIdCard(Request $request){
 
                     // Handle Mother's Image
                     if ($mCroppedImage != '') {
-                        $ext = pathinfo($request->file('image_m')->getClientOriginalName(), PATHINFO_EXTENSION);
-                        $newCropImage = trim($mCroppedImage, '[removed]');
-                        $data = base64_decode($newCropImage);
+                        $ext = 'jpg';
+                        $data = base64_decode($mCroppedImage);
                         $imgNameEndM = 'm_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndM);
                         file_put_contents($imagePath, $data);
@@ -9316,7 +9326,7 @@ public function getTeacherIdCard(Request $request){
                         upload_mother_profile_image_into_folder($parentId,$imgNameEndM,$doc_type_folder,$mCroppedImage);
                     }
 
-                    $data1['m_mobile'] = $request->input('m_mobile');
+                    $data1['m_mobile'] = $request->input('parent.0.m_mobile');
 
                     // Update parent
                     
