@@ -434,7 +434,14 @@
         Route::get('get_classofnewadmission',[ReportController::class,'getClassofNewStudent']);
         Route::get('get_reportofnewadmission',[ReportController::class,'getReportofNewAdmission']);
 
-        
+        //Reports Balance Leave Dev Name - Manish Kumar Sharma 03-03-2025
+        Route::get('get_balanceleavereport',[ReportController::class,'getBalanceLeaveReport']);
+
+        //Reports Consolidated Leave Dev Name - Manish Kumar Sharma 03-03-2025
+        Route::get('get_consolidatedleavereport',[ReportController::class,'getConsolidatedLeaveReport']);
+        //Reports Student Report Dev Name - Manish Kumar Sharma 03-03-2025
+        Route::get('get_studentreport',[ReportController::class,'getStudentReport']);
+
 
 
     });
