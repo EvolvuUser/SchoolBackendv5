@@ -9247,8 +9247,9 @@ public function getTeacherIdCard(Request $request){
                     // Handle Guardian Image
                     $gCroppedImage = $request->input('guardian.0.guardian_image_base');
                     if ($gCroppedImage != '') {
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $gCroppedImage);
                         $ext='jpg';
-                        $dataI = base64_decode($gCroppedImage);
+                        $dataI = base64_decode($base64Data);
                         $imgNameEndG = 'g_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndG);
                         file_put_contents($imagePath, $dataI);
@@ -9278,8 +9279,9 @@ public function getTeacherIdCard(Request $request){
                         $sCroppedImage = $studentData['image_url'];
                         // dd($sCroppedImage);
                         if ($sCroppedImage != '') {
+                            $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
                             $ext='jpg';
-                            $dataI = base64_decode($sCroppedImage);
+                            $dataI = base64_decode($base64Data);
                             $imgNameEnd = $studentId . '.' . $ext;
                             $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
                             file_put_contents($imagePath, $dataI);
@@ -9304,8 +9306,9 @@ public function getTeacherIdCard(Request $request){
 
                     // Handle Father's Image
                     if ($fCroppedImage != '') {
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $fCroppedImage);
                         $ext='jpg';
-                        $data = base64_decode($fCroppedImage);
+                        $data = base64_decode($base64Data);
                         $imgNameEndF = 'f_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndF);
                         file_put_contents($imagePath, $data);
@@ -9316,8 +9319,9 @@ public function getTeacherIdCard(Request $request){
 
                     // Handle Mother's Image
                     if ($mCroppedImage != '') {
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mCroppedImage);
                         $ext = 'jpg';
-                        $data = base64_decode($mCroppedImage);
+                        $data = base64_decode($base64Data);
                         $imgNameEndM = 'm_' . $parentId . '.' . $ext;
                         $imagePath = storage_path('app/public/parent_image/' . $imgNameEndM);
                         file_put_contents($imagePath, $data);
