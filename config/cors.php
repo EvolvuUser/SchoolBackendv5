@@ -27,6 +27,7 @@ return [
     env('FRONTEND_URL', 'http://localhost:5173'),
     'http://103.159.85.174:8506',
     'http://103.159.85.174:8509',
+    'https://hscstestl.evolvu.in'
 ],
 
 

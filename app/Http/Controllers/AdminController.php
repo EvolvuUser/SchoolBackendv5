@@ -9241,7 +9241,6 @@ public function getTeacherIdCard(Request $request){
                     // dd($request->input('student'));
                     // count($request->input('student'));
                     // dd(count($request->input('student')));
-                    $studentCount = count($request->input('student'));
                     $parentId = $request->input('parent.0.parent_id');
                     
                     // Handle Guardian Image
@@ -9255,7 +9254,7 @@ public function getTeacherIdCard(Request $request){
                         file_put_contents($imagePath, $dataI);
                         $data['guardian_image_name'] = $imgNameEndG;
                         $doc_type_folder = 'parent_image';
-                        upload_guardian_profile_image_into_folder($parentId,$imgNameEndG,$doc_type_folder,$gCroppedImage);
+                        upload_guardian_profile_image_into_folder($parentId,$imgNameEndG,$doc_type_folder,$base64Data);
 
                     }
                     // dd("Hello from out");
@@ -9276,7 +9275,7 @@ public function getTeacherIdCard(Request $request){
                         // dd($studentId);
 
                         // Handle Student Image
-                        $sCroppedImage = $studentData['image_url'];
+                        $sCroppedImage = $studentData['image_base'];
                         // dd($sCroppedImage);
                         if ($sCroppedImage != '') {
                             $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
@@ -9287,7 +9286,7 @@ public function getTeacherIdCard(Request $request){
                             file_put_contents($imagePath, $dataI);
                             $data['image_name'] = $imgNameEnd;
                             $doc_type_folder='student_image';
-                            upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$sCroppedImage);
+                            upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$base64Data);
                         }
                         // dd("Hello from outside");
 
@@ -9314,7 +9313,7 @@ public function getTeacherIdCard(Request $request){
                         file_put_contents($imagePath, $data);
                         $data1['father_image_name'] = $imgNameEndF;
                         $doc_type_folder = 'parent_image';
-                        upload_father_profile_image_into_folder($parentId,$imgNameEndF,$doc_type_folder,$fCroppedImage);
+                        upload_father_profile_image_into_folder($parentId,$imgNameEndF,$doc_type_folder,$base64Data);
                     }
 
                     // Handle Mother's Image
@@ -9327,7 +9326,7 @@ public function getTeacherIdCard(Request $request){
                         file_put_contents($imagePath, $data);
                         $data1['mother_image_name'] = $imgNameEndM;
                         $doc_type_folder = 'parent_image';
-                        upload_mother_profile_image_into_folder($parentId,$imgNameEndM,$doc_type_folder,$mCroppedImage);
+                        upload_mother_profile_image_into_folder($parentId,$imgNameEndM,$doc_type_folder,$base64Data);
                     }
 
                     $data1['m_mobile'] = $request->input('parent.0.m_mobile');

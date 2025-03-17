@@ -8,7 +8,7 @@
     padding: 0;
   }
     body{
-    background-image: url('http://103.159.85.174/SchoolBackendv5/public/lc_bg.jpg');
+    background-image: url('https://sms.evolvu.in/public/lc_bg.jpg');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
