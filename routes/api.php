@@ -442,6 +442,29 @@
         //Reports Student Report Dev Name - Manish Kumar Sharma 03-03-2025
         Route::get('get_studentreport',[ReportController::class,'getStudentReport']);
 
+        //Reports Student Contact Details report Dev name - Manish Kumar Sharma 10-03-2025
+        Route::get('get_studentcontactdetailsreport',[ReportController::class,'getContactDetailsReport']);
+
+        //Reports Student Remarks Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_studentremarksreport',[ReportController::class,'getStudentRemarksReport']);
+
+        //Reports Categorywise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_categorywisestudentreport',[ReportController::class,'getCategoryWiseStudentReport']);
+
+        //Reports Religionwise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_religionwisestudentreport',[ReportController::class,'getReligionWiseStudentReport']);
+
+        //Reports Genderwise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_genderwisestudentreport',[ReportController::class,'getGenderWiseStudentReport']);
+
+        //Reports Genderwise Religionwise Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_religiongenderwisestudentreport',[ReportController::class,'getGenderReligionwiseReport']);
+
+        //Reports Genderwise Categorywise Report Dev Name- Manish Kumar Sharma 10-03-2025
+        Route::get('get_gendercategorywisestudentreport',[ReportController::class,'getGenderCategorywiseReport']);
+        
+
+
 
 
     });
