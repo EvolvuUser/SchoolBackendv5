@@ -33,7 +33,7 @@ class ReportController extends Controller
             else{
                 return response()->json([
                     'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'message'=>'This User Doesnot have Permission for the Class of New Admission.',
                     'data' =>$user->role_id,
                     'success'=>false
                         ]);
@@ -129,7 +129,7 @@ class ReportController extends Controller
             else{
                 return response()->json([
                     'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'message'=>'This User Doesnot have Permission for the New Admission Report',
                     'data' =>$user->role_id,
                     'success'=>false
                         ]);
@@ -191,7 +191,7 @@ class ReportController extends Controller
             else{
                 return response()->json([
                     'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'message'=>'This User Doesnot have Permission for the Balance Leave Report',
                     'data' =>$user->role_id,
                     'success'=>false
                         ]);
@@ -215,23 +215,23 @@ class ReportController extends Controller
                 $to_date = $request->input('to_date');
 
                 $query = DB::table('leave_application')
-                        ->join('teacher as staff', 'leave_application.staff_id', '=', 'staff.teacher_id') // Alias for staff
-                        ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-                        ->leftJoin('teacher as approver', 'approver.teacher_id', '=', 'leave_application.approved_by') // LEFT JOIN for approver
-                        ->select(
-                            'leave_application.leave_app_id',
-                            'leave_application.leave_type_id as leave_type_id',
-                            'staff.name as StaffName', 
-                            'staff.phone',
-                            'leave_application.status as status',
-                            'leave_application.leave_end_date',
-                            'leave_application.leave_start_date',
-                            'leave_application.no_of_days',
-                            'leave_application.approved_by as approved_by',
-                            'leave_type_master.name as LeaveType',
-                            'approver.name as ApprovedBy'
-                        )
-                        ->where('leave_application.academic_yr', $customClaims);
+                                ->join('teacher as staff', 'leave_application.staff_id', '=', 'staff.teacher_id') // Alias for staff
+                                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
+                                ->leftJoin('teacher as approver', 'approver.teacher_id', '=', 'leave_application.approved_by') // LEFT JOIN for approver
+                                ->select(
+                                    'leave_application.leave_app_id',
+                                    'leave_application.leave_type_id as leave_type_id',
+                                    'staff.name as StaffName', 
+                                    'staff.phone',
+                                    'leave_application.status as status',
+                                    'leave_application.leave_end_date',
+                                    'leave_application.leave_start_date',
+                                    'leave_application.no_of_days',
+                                    'leave_application.approved_by as approved_by',
+                                    'leave_type_master.name as LeaveType',
+                                    'approver.name as ApprovedBy'
+                                )
+                                ->where('leave_application.academic_yr', $customClaims);
         
             // Add the 'from_date' filter if provided
             if ($from_date) {
@@ -262,7 +262,7 @@ class ReportController extends Controller
             else{
                 return response()->json([
                     'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'message'=>'This User Doesnot have Permission for the Consolidated Leave Report',
                     'data' =>$user->role_id,
                     'success'=>false
                         ]);
@@ -283,26 +283,103 @@ class ReportController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 // dd("Hello");
-                $class_id = $request->input('class_id');
+                // dd($customClaims);
                 $section_id = $request->input('section_id');
-                $query = DB::table('student as a')
-                            ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
-                            ->join('class as c','c.class_id','=','a.class_id')
-                            ->join('section as d','d.section_id','=','a.section_id')
-                            ->where('a.isDelete', 'N')  // Condition for 'isDelete'
-                            ->where('a.class_id', $class_id)  // Condition for class_id
-                            ->where('a.section_id', $section_id)  // Condition for section_id
-                            ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
-                            ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
-                            ->select('a.*', 'b.*','c.name as classname','d.name as sectionname')  // Select all columns from both student (a) and parent (b)
-                            ->get();
-                            dd($query);
+                $studentdetails = DB::table('student as a')
+                                    ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
+                                    ->join('class as c','c.class_id','=','a.class_id')
+                                    ->join('section as d','d.section_id','=','a.section_id')
+                                    ->where('a.isDelete', 'N')  // Condition for 'isDelete'
+                                    ->where('a.section_id', $section_id)  // Condition for section_id
+                                    ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
+                                    ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
+                                    ->select('a.*', 'b.*','c.name as classname','d.name as sectionname')  // Select all columns from both student (a) and parent (b)
+                                    ->get();
+                            // dd($query);
+                            $mappedStudentDetails = [];
+                        foreach($studentdetails as $studentdetail){
+                            // dd($studentdetail);
+                            $acd_yr_from = substr($customClaims, 0, 4) - 1;
+                            $acd_yr_to = substr($customClaims, 5, 4) - 1;
+                            $prev_acd_yr = $acd_yr_from . "-" . $acd_yr_to;
+                            $prev_yr_student_id = DB::table('student')
+                                                   ->select('student_id')
+                                                   ->where('academic_yr', $prev_acd_yr)
+                                                   ->where('parent_id', $studentdetail->parent_id)
+                                                   ->where('first_name',$studentdetail->first_name)
+                                                   ->where('reg_no',$studentdetail->reg_no)
+                                                   ->first();
+                                                //  dd($prev_yr_student_id);
+                            $class = DB::table('student as s')
+                                        ->join('class as c', 's.class_id', '=', 'c.class_id')
+                                        ->where('s.student_id', $prev_yr_student_id->student_id)
+                                        ->first();  
+                            //   dd($class);
+
+                                // Based on the class, create the respective query
+                                if ($class->name == '9') {
+                                    $result = DB::table('student_marks as sm')
+                                        ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                                        ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                                        ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                                        ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                                        ->where('sb.subject_type', '=', 'Scholastic')
+                                        ->where('e.name', 'like', 'Final%')
+                                        ->where('sm.publish', '=', 'Y')
+                                        ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                                        ->groupBy('sm.student_id')
+                                        ->first();  // Using first() to get the single result
+                                } elseif ($class->name == '11') {
+                                    $result = DB::table('student_marks as sm')
+                                        ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                                        ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                                        ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                                        ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                                        ->where('e.name', 'like', 'Final%')
+                                        ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
+                                        ->where('sm.publish', '=', 'Y')
+                                        ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                                        ->groupBy('sm.student_id')
+                                        ->first();
+                                } elseif ($class->name == '12') {
+                                    $result = DB::table('student_marks as sm')
+                                        ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                                        ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                                        ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                                        ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
+                                        ->where('sm.publish', '=', 'Y')
+                                        ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                                        ->groupBy('sm.student_id')
+                                        ->first();
+                                } else {
+                                    $result = DB::table('student_marks as sm')
+                                        ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                                        ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                                        ->where('sb.subject_type', '=', 'Scholastic')
+                                        ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                                        ->where('sm.publish', '=', 'Y')
+                                        ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                                        ->groupBy('sm.student_id')
+                                        ->first();
+                                }
+                            //    dd($result);
+                                // If the result is found, return the total percentage
+                                $studentdetail->total_percent = $result ? $result->total_percent : null;
+
+                                // Push the student detail with total_percent into the array
+                                $mappedStudentDetails[] = $studentdetail;
+
+                        }
+
+                        dd($mappedStudentDetails);
+                            
+                            
 
             }
             else{
                 return response()->json([
                     'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'message'=>'This User Doesnot have Permission for the Student List Report',
                     'data' =>$user->role_id,
                     'success'=>false
                         ]);
@@ -315,4 +392,338 @@ class ReportController extends Controller
             }
 
     }
+
+    //Reports Student Contact Details report Dev name - Manish Kumar Sharma 10-03-2025
+    public function getContactDetailsReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                // dd($customClaims);
+                $section_id= $request->input('section_id');
+                $studentparent = get_parent_student_data_by_class( $section_id, $customClaims);
+
+                return response([
+                    'status'=>200,
+                    'data'=>$studentparent,
+                    'message'=>'Contact Details Report',
+                    'success'=>true
+                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Contact Details Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+    }
+
+    //Reports Student Remarks Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getStudentRemarksReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $date = $request->input('date');
+                $staff_id=$request->input('staff_id');
+                $section_id=$request->input('section_id');
+                $student_id=$request->input('student_id');
+                $studentremarks = DB::table('remark')
+                                      ->leftjoin('student','student.student_id','=','remark.student_id')
+                                      ->leftjoin('class','remark.class_id','=','class.class_id')
+                                      ->leftjoin('section','remark.section_id','=','section.section_id')
+                                      ->leftjoin('teacher','teacher.teacher_id','=','remark.teacher_id')
+                                      ->leftjoin('subject_master','remark.subject_id','=','subject_master.sm_id')
+                                      ->select('class.name as classname','section.name as sectionname','remark.remark_date','remark.remark_type','student.first_name','student.mid_name','student.last_name','teacher.name as teachername','subject_master.name as subjectname','remark.remark_subject','remark.remark_desc','remark.academic_yr')
+                                      ->orderBy('remark.remark_date');
+
+                                      if ($date != '') {
+                                        $studentremarks->whereDate('remark.remark_date', '=', $date);
+                                      }
+
+                                      if ($staff_id != '') {
+                                        $studentremarks->where('remark.teacher_id', '=', $staff_id);
+                                      }
+                                      if ($section_id != '') {
+                                        $studentremarks->where('remark.section_id', '=', $section_id);
+                                      }
+                                      if ($student_id != '') {
+                                        $studentremarks->where('remark.student_id', '=', $student_id);
+                                      }
+
+                                      $results = $studentremarks->get();
+
+                                      return response([
+                                        'status'=>200,
+                                        'data'=>$results,
+                                        'message'=>'Student Remarks Report',
+                                        'success'=>true
+                                    ]);
+                                      
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Student Remarks Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+    //Reports Categorywise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getCategoryWiseStudentReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $class_id = $request->input('class_id');
+                $studentcategorywise = DB::table('student')
+                                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                                        ->select('student.class_id', 'category', DB::raw('COUNT(*) as counts'), 'class.name')
+                                        ->where('student.academic_yr', '=', $customClaims)
+                                        ->where('student.isDelete', '=', 'N')
+                                        ->groupBy('student.class_id', 'category');
+
+                    if ($class_id != '') {
+                        $studentcategorywise->where('student.class_id', '=', $class_id);
+                        }
+
+                    $results = $studentcategorywise->get();
+                    return response([
+                        'status'=>200,
+                        'data'=>$results,
+                        'message'=>'Student Category Wise Report',
+                        'success'=>true
+                    ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Category Wise Student Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+    //Reports Religionwise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getReligionWiseStudentReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $class_id = $request->input('class_id');
+                $studentreligionwise = DB::table('student')
+                                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                                        ->select('class.name', DB::raw('COUNT(*) as counts'), 'student.religion')
+                                        ->where('student.academic_yr', '=', $customClaims)
+                                        ->where('student.isDelete', '=', 'N')
+                                        ->groupBy('student.class_id', 'student.religion');
+                    if ($class_id != '') {
+                        $studentreligionwise->where('student.class_id', '=', $class_id);
+                        }
+
+
+                        $results = $studentreligionwise->get();
+                        return response([
+                            'status'=>200,
+                            'data'=>$results,
+                            'message'=>'Student Religion Wise Report',
+                            'success'=>true
+                        ]);
+
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Religion Wise Student Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+    //Reports Genderwise Student Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getGenderWiseStudentReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $class_id = $request->input('class_id');
+                $studentgenderwise = DB::table('student')
+                                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                                        ->select('student.class_id', 'student.gender', DB::raw('COUNT(*) as counts'), 'class.name')
+                                        ->where('student.isDelete', '=', 'N')
+                                        ->where('student.academic_yr', '=', $customClaims)
+                                        ->whereIn('student.gender', ['M', 'F'])
+                                        ->groupBy('student.class_id', 'student.gender');
+
+                        if ($class_id != '') {
+                        $studentgenderwise->where('student.class_id', '=', $class_id);
+                        }
+        
+                                $results = $studentgenderwise->get();
+                                $totalcount = DB::table('student')
+                                                ->selectRaw("sum(case when gender = 'M' then 1 else 0 end) as male")
+                                                ->selectRaw("sum(case when gender = 'F' then 1 else 0 end) as female")
+                                                ->where('isDelete', 'N')
+                                                ->where('academic_yr', $customClaims)
+                                                ->first();
+
+                                return response([
+                                    'status'=>200,
+                                    'data'=>$results,
+                                    'MaleFemale'=>$totalcount,
+                                    'message'=>'Student Religion Wise Report',
+                                    'success'=>true
+                                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Gender Wise Student Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+    //Reports Genderwise Religionwise Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getGenderReligionwiseReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $class_id = $request->input('class_id');
+                $studentreligionwisegenderwise = DB::table('student')
+                                                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                                                    ->select('student.class_id', 'student.gender', 'student.religion', DB::raw('COUNT(*) as counts'), 'class.name')
+                                                    ->where('student.isDelete', 'N')
+                                                    ->where('student.academic_yr', $customClaims)
+                                                    ->whereIn('student.gender', ['M', 'F'])
+                                                    ->groupBy('student.class_id', 'student.gender', 'student.religion');
+                
+
+                            if ($class_id != '') {
+                                $studentreligionwisegenderwise->where('student.class_id', '=', $class_id);
+                                }
+
+                                $results = $studentreligionwisegenderwise->get();
+                                return response([
+                                    'status'=>200,
+                                    'data'=>$results,
+                                    'message'=>'Student Religion Gender Wise Report',
+                                    'success'=>true
+                                ]);
+    
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Gender Religion Wise Student Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+    //Reports Genderwise Categorywise Report Dev Name- Manish Kumar Sharma 10-03-2025
+    public function getGenderCategorywiseReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $class_id = $request->input('class_id');
+                $studentcategorywisegenderwise = DB::table('student')
+                                                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                                                    ->select('student.class_id', 'student.gender', 'student.category', DB::raw('COUNT(*) as counts'), 'class.name')
+                                                    ->where('student.isDelete', 'N')
+                                                    ->where('student.academic_yr', $customClaims)
+                                                    ->whereIn('student.gender', ['M', 'F'])
+                                                    ->groupBy('student.class_id', 'student.gender', 'student.category');
+                    
+                    if ($class_id != '') {
+                        $studentcategorywisegenderwise->where('student.class_id', '=', $class_id);
+                        }
+
+                        $results = $studentcategorywisegenderwise->get();
+                        return response([
+                            'status'=>200,
+                            'data'=>$results,
+                            'message'=>'Student Category Gender Wise Report',
+                            'success'=>true
+                        ]);
+
+                       
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Gender Category Wise Student Report',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+
+
+
 }

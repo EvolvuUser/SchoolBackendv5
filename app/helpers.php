@@ -439,3 +439,17 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             return ['error' => $e->getMessage()];
         }
     }
+
+     function get_parent_student_data_by_class( $section_id, $acd_yr)
+    {
+        return DB::table('student as a')
+            ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
+            ->join('class as c','c.class_id','=','a.class_id')
+            ->join('section as d','d.section_id','=','a.section_id')
+            ->where('a.isDelete', '=', 'N')
+            ->where('a.section_id', '=', $section_id)
+            ->where('a.academic_yr', '=', $acd_yr)
+            ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')
+            ->select('a.*','b.*','c.name as classname','d.name as sectionname')
+            ->get();
+    }
