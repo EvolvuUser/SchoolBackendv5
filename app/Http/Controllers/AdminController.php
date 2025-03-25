@@ -1687,11 +1687,13 @@ if ($request->has('teacher_image_name')) {
                     throw new \Exception('Base64 decode failed');
                 }
 
-                // Generate a filename for the new image
                 $filename = $id. '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
+                $doc_type_folder = 'teacher_image';
+                $fileContent = file_get_contents($filePath);
+                $base64File = base64_encode($fileContent); 
+                upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
 
-                // Ensure directory exists
                 $directory = dirname($filePath);
                 if (!is_dir($directory)) {
                     mkdir($directory, 0755, true);
@@ -1750,10 +1752,7 @@ if ($request->has('teacher_image_name')) {
 
         DB::commit(); // Commit the transaction
         
-        $doc_type_folder = 'teacher_image';
-        $fileContent = file_get_contents($filePath);           // Get the file content
-        $base64File = base64_encode($fileContent); 
-        upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
+        
         return response()->json([
             'message' => 'Teacher updated successfully!',
             'teacher' => $teacher,
@@ -3053,6 +3052,9 @@ public function toggleActiveStudent($studentId)
                 $filename = $studentId . '.' . $type;
                 $filePath = storage_path('app/public/student_images/' . $filename);
                 $doc_type_folder = 'student_image';
+                $fileContent = file_get_contents($filePath);           // Get the file content
+                $base64File = base64_encode($fileContent); 
+                upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
 
                 // Ensure directory exists
                 $directory = dirname($filePath);
@@ -3223,9 +3225,7 @@ public function toggleActiveStudent($studentId)
                 //     Log::info("Email preference unchanged for student ID: {$studentId}");
                 // }
             }
-            $fileContent = file_get_contents($filePath);           // Get the file content
-            $base64File = base64_encode($fileContent); 
-            upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
+            
             return response()->json(['success' => 'Student and parent information updated successfully']);
         } catch (Exception $e) {
             Log::error("Exception occurred for student ID: {$studentId} - " . $e->getMessage());
@@ -8170,12 +8170,12 @@ public function fieldsForTimetable(Request $request){
 
         for ($i = 1; $i <= $lecturesPerWeek; $i++) {
             $fields['Time-In'][] = [
-                'Time In' => '',
+                'Weekday Time In' => '',
             ];
         }
         for ($i = 1; $i <= $lecturesPerWeek; $i++) {
             $fields['Time-Out'][] = [
-                'Time Out' => '',
+                'Weekday Time Out' => '',
             ];
         }
  
@@ -8186,12 +8186,12 @@ public function fieldsForTimetable(Request $request){
          }
          for ($i = 1; $i <= $saturdayLectures; $i++) {
             $fields['Sat Time In'][] = [
-                'Time In' => '',
+                'Weekend Time In' => '',
             ];
         }
         for ($i = 1; $i <= $saturdayLectures; $i++) {
             $fields['Sat Time Out'][] = [
-                'Time Out' => '',
+                'Weekend Time Out' => '',
             ];
         }
  
@@ -9394,6 +9394,72 @@ public function getTeacherIdCard(Request $request){
                         'success' =>true
                     ]);
                     
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+        public function getStudentRemarkObservation(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $student_id = $request->input('student_id');
+                    $academic_yr = $request->input('academic_yr');
+                    $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                    
+                    $remarkobservation = DB::table('remark')
+                                            ->leftJoin('subject_master','remark.subject_id','=','subject_master.sm_id')
+                                            ->leftJoin('teacher','teacher.teacher_id','=','remark.teacher_id')
+                                            ->leftJoin('remark_detail','remark_detail.remark_id','=','remark.remark_id')
+                                            ->leftJoin('class','class.class_id','=','remark.class_id')
+                                            ->leftJoin('section','section.section_id','=','remark.section_id')
+                                            ->where('remark.student_id', $student_id)
+                                            ->where('remark.academic_yr', $academic_yr)
+                                            ->where(function($query) {
+                                                $query->where('remark_type', 'Observation')
+                                                    ->orWhere(function($query) {
+                                                        $query->where('remark_type', 'Remark')
+                                                                ->where('publish', 'Y');
+                                                    });
+                                            })
+                                            ->orderBy('publish_date')
+                                            ->select('remark.*','subject_master.name as subjectname','teacher.name as teachername','remark_detail.image_name','class.name as classname','section.name as sectionname')
+                                            ->get()
+                                            ->map(function ($remark)use($parent_app_url,$codeigniter_app_url){
+                                                $concatprojecturl = $codeigniter_app_url."".'uploads/remark/';
+                                                $remark_url = $concatprojecturl . $remark->publish_date . "/" . $remark->remark_id . "/";  
+                                                if ($remark->image_name) {
+                                                    $remark->remark_url = $remark_url.""."$remark->image_name";
+                                                } else {
+                                                    $remark->remark_url = null; 
+                                                }
+                                                return $remark;
+                                            });
+                                            
+                                            return response()->json([
+                                                'status'=>200,
+                                                'data'=>$remarkobservation,
+                                                'message' => 'Student Remark Observation',
+                                                'success' =>true
+                                            ]);
+                                            
 
                 }
                 else{
