@@ -463,8 +463,44 @@
         //Reports Genderwise Categorywise Report Dev Name- Manish Kumar Sharma 10-03-2025
         Route::get('get_gendercategorywisestudentreport',[ReportController::class,'getGenderCategorywiseReport']);
         
+        //Reports New Student Report Dev Name-Manish Kumar Sharma 17-03-2025
+        Route::get('get_newstudentreport',[ReportController::class,'getNewStudentReport']);
 
+        //Reports Left Students Report Dev Name-Manish Kumar Sharma 18-03-2025
+        Route::get('get_leftstudentreport',[ReportController::class,'getLeftStudentReport']);
 
+        //Reports Subject HSC Studentwise Report Dev Name-Manish Kumar Sharma 18-03-2025
+        Route::get('get_subjectshscstudentwisereport',[ReportController::class,'getSubjectHSCStudentwiseReport']);
+
+        //Reports Staff Report Dev Name-Manish Kumar Sharma 19-03-2025
+        Route::get('get_staff_report',[ReportController::class,'getStaffReport']);
+
+        //Reports Monthly Attendance Report Dev Name-Manish Kumar Sharma 19-03-2025
+        Route::get('get_monthly_attendance_report',[ReportController::class,'getMonthlyAttendanceReport']);
+        
+        //Reports Fee Payment Record Report Dev Name-Manish Kumar Sharma 20-03-2025
+        Route::get('getfeepaymentrecordreport',[ReportController::class,'getFeePaymentRecordReport']);
+
+        //Reports WorldLine Fee Payment Record Report Dev Name-Manish Kumar Sharma 20-03-2025
+        Route::get('getworldfeepaymentrecordreport',[ReportController::class,'getWorldlineFeePaymentRecordReport']);
+
+        //Reports Razorpay Fee Payment Record Report Dev Name-Manish Kumar Sharma 20-03-2025
+        Route::get('getrazorpayfeepaymentreport',[ReportController::class,'getRazorpayFeePaymentRecordReport']);
+
+        //Reports Pending Student Id Card Record Report Dev Name-Manish Kumar Sharma 24-03-2025
+        Route::get('getpendingstudentidcardreport',[ReportController::class,'getPendingStudentIdCardRecordReport']);
+
+        //Reports Substitute Teacher Monthly Report Dev Name-Manish Kumar Sharma 24-03-2025
+        Route::get('getsubstituteteachermonthlyreport',[ReportController::class,'getSubstituteTeacherMonthlyReport']);
+
+        //Reports Substitute Teacher Weekly Report Dev Name-Manish Kumar Sharma 24-03-2025
+        Route::get('getsubstituteteacherweeklyreport',[ReportController::class,'getSubstituteTeacherWeeklyReport']);
+
+        //Reports Leaving Certificate Report Dev Name-Manish Kumar Sharma 24-03-2025
+        Route::get('getleavingcertificatereport',[ReportController::class,'getLeavingCertificateReport']);
+
+        //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 25-03-2025
+        Route::get('getstudentremarkobservation',[AdminController::class,'getStudentRemarkObservation']);
 
 
     });
