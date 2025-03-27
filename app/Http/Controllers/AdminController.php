@@ -54,6 +54,7 @@ use League\Csv\Writer;
 use ZipArchive;
 use File;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use PDF;
 // use Maatwebsite\Excel\Facades\Excel;
 // use App\Exports\IdCardExport;
 // use Illuminate\Support\Facades\Auth;
@@ -9478,6 +9479,153 @@ public function getTeacherIdCard(Request $request){
                 } 
 
         }
+
+        //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 26-03-2025
+        public function getStudentDataByStudentId(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $student_id = $request->input('student_id');
+                    $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+                    $query = Student::query();
+                    $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+                    if ($student_id) {
+                        $query->where('student_id', $student_id)->where('isDelete','N')->where('academic_yr',$customClaims)->where('parent_id','!=','0');
+                    }
+
+                    $students = $query->get();
+
+                    $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                        $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                        if (!empty($student->image_name)) {
+                            $student->image_name = $concatprojecturl."".$student->image_name;
+                        } else {
+                        
+                            $student->image_name = '';
+                        }
+
+                        $contactDetails = ContactDetails::find($student->parent_id);
+                        if ($contactDetails===null) {
+                            $student->SetToReceiveSMS='';
+                        }else{
+                            $student->SetToReceiveSMS=$contactDetails->phone_no;
+                        }
+                    
+
+                        $userMaster = UserMaster::where('role_id','P')
+                                                    ->where('reg_id', $student->parent_id)->first();
+                        if ($userMaster===null) {
+                            $student->SetEmailIDAsUsername='';
+                        }else{
+                            $student->SetEmailIDAsUsername=$userMaster->user_id;
+                        }
+                        
+                    });
+                    return response()->json([
+                        'status'=>200,
+                        'data'=>$students,
+                        'message' => 'Student Data By Student Id.',
+                        'success' =>true
+                    ]);
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Student Data By Student Id',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+
+        //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 26-03-2025
+        public function getAcademicYrBySettings(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $academic_yr = DB::table('settings')->select('academic_yr','active')->get();
+                    return response()->json([
+                        'status'=>200,
+                        'data'=>$academic_yr,
+                        'message' => 'Academic yr List.',
+                        'success' =>true
+                    ]);         
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Academic yr List',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+        //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 26-03-2025
+        public function getHealthActivityPdf(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $student_id = $request->input('student_id');
+                    $student_name = get_student_name($student_id);
+                    $fitnessdata = check_health_activity_data_exist_for_studentid($student_id);
+                    $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
+                    
+                    $pdf = PDF::loadView('healthactivityrecord.healthactivityrecordpdf1', compact('student_id','customClaims'))->setPaper('A4','portrait');
+                    return response()->stream(
+                        function () use ($pdf) {
+                            echo $pdf->output();
+                        },
+                        200,
+                        [
+                            'Content-Type' => 'application/pdf',
+                            'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                        ]
+                    );
+
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Academic yr List',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+
 
 
 
