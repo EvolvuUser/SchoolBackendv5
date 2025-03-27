@@ -453,3 +453,86 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             ->select('a.*','b.*','c.name as classname','d.name as sectionname')
             ->get();
     }
+
+    function check_health_activity_data_exist_for_studentid($student_id)
+    {
+        $records = DB::table('health_activity_record')
+             ->where('student_id', $student_id)
+             ->get();
+        return $records->toArray();
+    }
+
+    function get_student_name($student_id)
+    {
+        // Perform the join query
+        $results = DB::table('student as a')
+            ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
+            ->where('a.student_id', $student_id)
+            ->select('a.first_name', 'a.mid_name', 'a.last_name')
+            ->get();
+
+        $student_name = "";
+
+        // Loop through the results
+        foreach ($results as $row) {
+            if (!empty($row->first_name) && $row->first_name !== "No Data") {
+                $student_name = $row->first_name;
+            }
+            if (!empty($row->mid_name) && $row->mid_name !== "No Data") {
+                $student_name .= " " . $row->mid_name;
+            }
+            if (!empty($row->last_name) && $row->last_name !== "No Data") {
+                $student_name .= " " . $row->last_name;
+            }
+        }
+
+        return $student_name;
+    }
+
+    function get_student_parent_info($student_id, $acd_yr)
+    {
+        // dd($acd_yr);
+        $result = DB::table('student as s')
+            ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+            ->join('user_master as u', 's.parent_id', '=', 'u.reg_id')
+            ->join('class as c', 's.class_id', '=', 'c.class_id')
+            ->join('section as d', 's.section_id', '=', 'd.section_id')
+            ->leftJoin('house as e', 's.house', '=', 'e.house_id')
+            ->where('s.student_id', $student_id)
+            ->where('s.academic_yr', '2021-2022')
+            ->where('u.role_id', 'P')
+            ->select(
+                's.*', 'p.parent_id', 'p.father_name', 'p.father_occupation', 'p.f_office_add', 'p.f_office_tel',
+                'p.f_mobile', 'p.f_email', 'p.mother_occupation', 'p.m_office_add', 'p.m_office_tel',
+                'p.mother_name', 'p.m_mobile', 'p.m_emailid', 'p.parent_adhar_no', 'u.user_id',
+                'c.name as class_name', 'd.name as sec_name', 'e.house_name','p.m_dob','p.m_blood_group','p.f_dob','p.m_adhar_no','p.f_blood_group'
+            )
+            ->get();
+
+        return $result->toArray(); 
+    }
+
+    function get_class_section_of_student($student_id)
+    {
+        $result = DB::table('student')
+            ->join('class', 'student.class_id', '=', 'class.class_id')
+            ->join('section', 'student.section_id', '=', 'section.section_id')
+            ->where('student.student_id', $student_id)
+            ->select('class.name as classname', 'section.name as sectionname')
+            ->first(); 
+
+        if ($result) {
+            return $result->classname . ' ' . $result->sectionname;
+        }
+
+        return null; 
+    }
+
+    function get_previous_student_id($student_id)
+    {
+        $result = DB::table('student')
+            ->where('student_id', $student_id)
+            ->value('prev_year_student_id'); 
+
+        return $result; 
+    }

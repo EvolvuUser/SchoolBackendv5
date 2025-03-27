@@ -501,10 +501,14 @@
 
         //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 25-03-2025
         Route::get('getstudentremarkobservation',[AdminController::class,'getStudentRemarkObservation']);
-
+        //Manage Student Report Cards & Certificates Dev Name-Manish Kumar Sharma 26-03-2025
+        Route::get('getstudentdatabystudentid',[AdminController::class,'getStudentDataByStudentId']);
+        Route::get('getacademicyrbysettings',[AdminController::class,'getAcademicYrBySettings']);
+        Route::get('health_activity_data_pdf',[AdminController::class,'getHealthActivityPdf']);
+        
 
     });
-
+    
     
     
 
