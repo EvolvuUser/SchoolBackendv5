@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Models\UserMaster;
+use Http;
+use DB;
 
 class AuthController extends Controller
 {
@@ -75,66 +77,79 @@ class AuthController extends Controller
 //     }
 // }
 
+    // Modified By Manish Kumar Sharma 27-03-2025
+    public function login(Request $request)
+    {
+        $credentials = $request->only('user_id', 'password');
 
-public function login(Request $request)
-{
-    $credentials = $request->only('user_id', 'password');
+        try {
+            $url = 'https://aceventura.in/demo/evolvuUserService/validate_staff_user';
 
-    // Log::info('Login attempt with credentials:', $credentials);
-
-    try {
-        // Check if the email exists in the database
-        $userrole= UserMaster::where('user_id',$credentials['user_id'])->where('role_id','A')->first();
-        // dd($userrole);
-        if($userrole){
-            $user = UserMaster::where('user_id', $credentials['user_id'])->first();
-        // dd($user);
-        if (!$user) {
-            Log::warning('Username is not valid:', $credentials);
-            return response()->json(['error' => 'Username is not valid'], 404);
-        }
-        if (!($user instanceof \Tymon\JWTAuth\Contracts\JWTSubject)) {
-            return response()->json(['error' => 'User model does not implement JWTSubject'], 500);
-        }
-
-        // dd(JWTAuth::attempt($credentials));
-        // Attempt to authenticate using the password
-        if (!$token = JWTAuth::attempt($credentials)) {
-            Log::warning('Invalid password for user:', $credentials);
-            return response()->json(['error' => 'Invalid password'], 401);
-        }
-
-        // If authentication is successful
-        $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
-
-        // Log::info('Authenticated user:', ['user_id' => $user->id, 'academic_year' => $academic_yr]);
-
-        $customClaims = [
-            'role_id' => $user->role_id,
-            'reg_id' => $user->reg_id,
-            'academic_year' => $academic_yr,
-        ];
-
-        $token = JWTAuth::claims($customClaims)->fromUser($user);
-
-        Log::info('Token created successfully:', ['token' => $token]);
-
-        return response()->json(['token' => $token
-                               ,'user' => $user]);
-            
-        }
-        else{
-             return response()->json([
-                'status' => 403,
-                'message' => 'User not allowed',
-                'success'=>false
+            $response = Http::asMultipart()->post($url, [
+                [
+                    'name' => 'user_id',
+                    'contents' => $credentials['user_id'], 
+                ],
             ]);
+            $responseData = $response->json();
+            $shortName = $responseData[0]['short_name'];
+            $schoolName = $responseData[0]['name'];
+            $databaseConnectionName = $shortName;
+            if (array_key_exists($databaseConnectionName, config('database.connections'))) {
+                config(['database.default' => $databaseConnectionName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+            $userrole= UserMaster::where('user_id',$credentials['user_id'])->where('role_id','A')->first();
+            if($userrole){
+
+                $user = UserMaster::where('user_id', $credentials['user_id'])->first();
+            if (!$user) {
+
+                Log::warning('Username is not valid:', $credentials);
+                return response()->json(['error' => 'Username is not valid'], 404);
+            }
+
+            if (!($user instanceof \Tymon\JWTAuth\Contracts\JWTSubject)) {
+                return response()->json(['error' => 'User model does not implement JWTSubject'], 500);
+            }
+
+            if (!$token = JWTAuth::attempt($credentials)) {
+                Log::warning('Invalid password for user:', $credentials);
+                return response()->json(['error' => 'Invalid password'], 401);
+            }
+
+            $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
+
+            $customClaims = [
+                'role_id' => $user->role_id,
+                'reg_id' => $user->reg_id,
+                'academic_year' => $academic_yr,
+                'short_name' => $shortName,
+                'school_name'=> $schoolName
+
+            ];
+
+            $token = JWTAuth::claims($customClaims)->fromUser($user);
+
+            Log::info('Token created successfully:', ['token' => $token]);
+
+            return response()->json(['token' => $token
+                                ,'user' => $user,'userdetails'=>$customClaims]);
+                
+            }
+            else{
+                return response()->json([
+                    'status' => 403,
+                    'message' => 'User not allowed',
+                    'success'=>false
+                ]);
+            }
+        } catch (JWTException $e) {
+            Log::error('JWTException occurred:', ['message' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not create token'], 500);
         }
-    } catch (JWTException $e) {
-        Log::error('JWTException occurred:', ['message' => $e->getMessage()]);
-        return response()->json(['error' => 'Could not create token'], 500);
     }
-}
 
 
     public function getUserDetails(Request $request)

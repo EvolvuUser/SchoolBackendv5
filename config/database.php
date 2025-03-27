@@ -59,6 +59,22 @@ return [
             ]) : [],
         ],
 
+        'SACS' => [
+            'driver' => 'mysql',
+            'host' => '127.0.0.1',
+            'database' => env('DB_DATABASE_SACS'),
+            'username' => env('DB_USERNAME_SACS'),
+            'password' => env('DB_PASSWORD_SACS'),
+        ],
+
+        'HSCS' => [
+            'driver' => 'mysql',
+            'host' => '127.0.0.1',
+            'database' => env('DB_DATABASE_HSCS'),
+            'username' => env('DB_USERNAME_HSCS'),
+            'password' => env('DB_PASSWORD_HSCS'),
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
