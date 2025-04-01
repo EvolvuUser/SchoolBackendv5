@@ -8310,7 +8310,7 @@ public function fieldsForTimetable(Request $request){
             $gettimetable = DB::table('timetable')
                                 ->where('class_id', $class_id)
                                 ->where('section_id', $section_id)
-                                ->where('academic_yr', '2024-2025')
+                                ->where('academic_yr', $customClaims)
                                 ->orderBy('period_no')
                                 ->get();
 
@@ -9624,6 +9624,753 @@ public function getTeacherIdCard(Request $request){
                 } 
 
         }
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        public function getTeacherClassTimetable(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $teacher_id = $request->input('teacher_id');
+                    $classdata = DB::table('subject')
+                                     ->join('class','class.class_id','=','subject.class_id')
+                                     ->join('section','section.section_id','=','subject.section_id')
+                                     ->join('teacher','teacher.teacher_id','=','subject.teacher_id')
+                                     ->where('subject.academic_yr',$customClaims)
+                                     ->where('subject.teacher_id',$teacher_id)
+                                     ->distinct()
+                                     ->select('section.section_id','class.name as classname','section.name as sectionname','teacher.name as teachername','teacher.teacher_id','class.class_id')
+                                      ->get();
+                                      return response()->json([
+                                        'status'=>200,
+                                        'data'=>$classdata,
+                                        'message' => 'Teachers Class',
+                                        'success' =>true
+                                    ]);    
+                      
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Class.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        public function getDepartmentss(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $departments = DB::table('department')
+                                       ->where('academic_yr',$customClaims)
+                                       ->get();
+                                       
+                                       return response()->json([
+                                        'status'=>200,
+                                        'data'=>$departments,
+                                        'message' => 'Departments',
+                                        'success' =>true
+                                    ]); 
+                                       
+                    
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Class.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        public function getTeacherPeriodAllocation(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $department = $request->input('departmentname');
+                    $subject = $request->input('subject');
+                    $teachersQuery = DB::table('teacher')
+                        ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
+                        ->where('role_id', 'T')
+                        ->leftJoin('teachers_period_allocation', 'teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
+                        ->where(function ($query) use ($customClaims) {
+                            $query->where('teachers_period_allocation.academic_yr', $customClaims)
+                                  ->orWhereNull('teachers_period_allocation.academic_yr');
+                        })
+                        ->where('teacher.isDelete', 'N')
+                        ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
+                    
+                    if ($department) {
+                        $teachersQuery->leftJoin('view_teacher_group', 'teacher.teacher_id', '=', 'view_teacher_group.teacher_id')
+                                      ->where('view_teacher_group.teacher_group', '=', $department)
+                                      ->where('view_teacher_group.academic_yr',$customClaims);
+                    }
+                    if($subject){
+                        $teachersQuery->leftJoin('subject', 'teacher.teacher_id', '=', 'subject.teacher_id')
+                                      ->where('subject.sm_id', '=', $subject)
+                                      ->where('subject.academic_yr',$customClaims);
+                        
+                    }
+                    $teachersQuery->distinct();
+                    
+                    $teachers = $teachersQuery->get();
+                                    
+                                    return response()->json([
+                                        'status'=>200,
+                                        'data'=>$teachers,
+                                        'message' => 'Teachers List Period Allocated.',
+                                        'success' =>true
+                                    ]); 
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Period ALlocation Data.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        public function saveTeacherPeriodAllocation(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $teacherperiodAllocations = $request->all();
+                    foreach ($teacherperiodAllocations as $teacherperiodAllocation) {
+                        $teacherId = $teacherperiodAllocation['teacher_id'];
+                        $periodsAllocated = $teacherperiodAllocation['periods_allocated'];
+                    
+                        DB::table('teachers_period_allocation')->updateOrInsert(
+                            [
+                                'teacher_id' => $teacherId,    
+                                'academic_yr' => $customClaims
+                            ],
+                            [
+                                'periods_allocated' => $periodsAllocated
+                            ]
+                        );
+                    }
+                    
+                    return response()->json([
+                                        'status'=>200,
+                                        'message' => 'Teachers Period Allocated.',
+                                        'success' =>true
+                                    ]); 
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Save Teacher Period ALlocation Data.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        public function getSubjectWithoutSocial(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $subjects = DB::table('subject_master')->where('subject_type','!=','Social')->get();
+                    return response()->json([
+                                            'status'=>200,
+                                            'data'=>$subjects,
+                                            'message' => 'Get Subjects Without Social',
+                                            'success' =>true
+                                        ]); 
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Get Subject Without Social.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        public function getClassSection(Request $request){
+            try{               
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $classsection = DB::table('section')
+                                        ->join('class', 'section.class_id', '=', 'class.class_id')
+                                        ->select(DB::raw('CONCAT(class.name," ", section.name) as classname_section'), 'class.class_id', 'section.section_id')
+                                        ->where('section.academic_yr', $customClaims)
+                                        ->get();
+                                        $groupedByClass = $classsection->groupBy('class_id');
+
+
+
+                                        return response()->json([
+                                            'status'=>200,
+                                            'data'=>$groupedByClass,
+                                            'message' => 'Get Class Section with Section Id and class Id',
+                                            'success' =>true
+                                        ]);         
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Get Class Section.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        public function saveClasswisePeriod(Request $request){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $classwiseperiods = $request->all();
+                    foreach($classwiseperiods as $classwiseperiod){
+                        // dd($classwiseperiod);
+                        $classId = $classwiseperiod['class_id'];
+                        $sectionId = $classwiseperiod['section_id'];
+                        $monfri = $classwiseperiod['mon-fri'];
+                        $sat = $classwiseperiod['sat'];
+                        DB::table('classwise_period_allocation')->updateOrInsert(
+                            [
+                                'class_id' => $classId,   
+                                'section_id'=>$sectionId, 
+                                'academic_yr' => $customClaims
+                            ],
+                            [
+                                'mon-fri' => $monfri,
+                                'sat' => $sat
+                            ]
+                        );
+                    }
+
+                    return response()->json([
+                        'status'=>200,
+                        'message' => 'Classwise Period Allocated.',
+                        'success' =>true
+                    ]); 
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Get Class Section.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        public function getClasswisePeriodList(Request $request){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                      $classwiseperiodlist = DB::table('classwise_period_allocation')
+                                                ->join('class','class.class_id','=','classwise_period_allocation.class_id')
+                                                ->join('section','section.section_id','=','classwise_period_allocation.section_id')
+                                                ->select(DB::raw('CONCAT(class.name," ", section.name) as classname'),'classwise_period_allocation.*')
+                                                ->where('classwise_period_allocation.academic_yr',$customClaims)
+                                                ->get();
+
+                                                return response()->json([
+                                                    'status'=>200,
+                                                    'data'=>$classwiseperiodlist,
+                                                    'message' => 'Get Classwise Period List.',
+                                                    'success' =>true
+                                                ]);   
+
+
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Get Classwise Period List.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        public function updateClasswisePeriod(Request $request,$class_id,$section_id){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                      $lectures = $request->all();
+                      $monfri = $lectures['mon-fri'];
+                      $sat = $lectures['sat'];
+                      DB::table('classwise_period_allocation')
+                        ->where('class_id', $class_id)   
+                        ->where('section_id', $section_id) 
+                        ->where('academic_yr',$customClaims)
+                        ->update(['mon-fri' => $monfri, 'sat' => $sat]);
+
+                        return response()->json([
+                            'status'=>200,
+                            'message' => 'Classwise Period Updated Successfully.',
+                            'success' =>true
+                        ]);  
+
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Update Classwise Period.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+
+        }
+
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        public function deleteClasswisePeriod($class_id,$section_id){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $classwiseperiod = DB::table('classwise_period_allocation')
+                                            ->where('class_id',$class_id)
+                                            ->where('section_id',$section_id)
+                                            ->where('academic_yr',$customClaims)
+                                            ->delete();
+                            return response()->json([
+                            'status'=>200,
+                            'message' => 'Classwise Period Deleted Successfully.',
+                            'success' =>true
+                        ]); 
+                    
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Delete Classwise Period.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+
+        //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
+        public function getTeacherPeriodData(Request $request){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $teacherId = $request->input('teacher_id');
+                    $teacherperiod = DB::table('teachers_period_allocation')
+                                         ->where('teacher_id',$teacherId)
+                                         ->where('academic_yr',$customClaims)
+                                         ->get();
+                                         
+                                         return response()->json([
+                                            'status'=>200,
+                                            'data'=>$teacherperiod,
+                                            'message' => 'Teacher Period Data.',
+                                            'success' =>true
+                                        ]); 
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+        
+        //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
+        public function getTeacherSubjectByClass(Request $request){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                    $teacherId = $request->input('teacher_id');
+                    $classId = $request->input('class_id');
+                    $sectionId = $request->input('section_id');
+                    $subjectdata = DB::table('subject')
+                                       ->join('subject_master','subject_master.sm_id','=','subject.sm_id')
+                                       ->where('subject.class_id',$classId)
+                                       ->where('subject.section_id',$sectionId)
+                                       ->where('subject.teacher_id',$teacherId)
+                                       ->where('subject.academic_yr',$customClaims)
+                                       ->select('subject_master.name as subjectname','subject.*')
+                                       ->get();
+                                       
+                                       return response()->json([
+                                            'status'=>200,
+                                            'data'=>$subjectdata,
+                                            'message' => 'Subject Data.',
+                                            'success' =>true
+                                        ]); 
+                    
+                    
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+
+        //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
+        public function getTeacherListByPeriod(Request $request){
+            try{       
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                     $teacherlist = DB::table('teacher')
+                                         ->join('teachers_period_allocation','teachers_period_allocation.teacher_id','=','teacher.teacher_id')
+                                         ->where('teachers_period_allocation.academic_yr',$customClaims)
+                                         ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
+                                         ->select('teacher.name as teachername','teachers_period_allocation.*')
+                                         ->get();
+                                         
+                                         return response()->json([
+                                            'status'=>200,
+                                            'data'=>$teacherlist,
+                                            'message' => 'Teacher List.',
+                                            'success' =>true
+                                        ]); 
+                                         
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                \Log::error($e); 
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                } 
+            
+        }
+
+         //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
+        public function getTimetableByClassSection($class_id,$section_id){
+            try{       
+               $user = $this->authenticateUser();
+               $customClaims = JWTAuth::getPayload()->get('academic_year');
+               if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                   $timetables = DB::table('timetable')
+                                   ->where('class_id', $class_id)
+                                   ->where('section_id', $section_id)
+                                   ->where('academic_yr', $customClaims)
+                                   ->orderBy('t_id')
+                                   ->get();
+                   
+                                          
+                   if(count($timetables)==0){
+                       
+                       $monday = [];
+                       $tuesday = [];
+                       $wednesday = [];
+                       $thursday = [];
+                       $friday = [];
+                       $saturday = [];
+                       $classwiseperiod = DB::table('classwise_period_allocation')
+                                             ->where('class_id',$class_id)
+                                             ->where('section_id',$section_id)
+                                             ->where('academic_yr',$customClaims)
+                                             ->first();
+                                             
+                                             if($classwiseperiod === null){
+                                                 return response()->json([
+                                                   'status' =>400,
+                                                   'message' => 'Classwise Period Allocation is not done.',
+                                                   'success'=>false
+                                               ]);
+                                             }
+                                                 
+                                             
+                       $monfrilectures = $classwiseperiod->{'mon-fri'};
+                       for($i=1;$i<=$monfrilectures;$i++){
+                           $monday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $tuesday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $wednesday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $thursday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $friday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           
+                       }
+                       $satlectures=$classwiseperiod->sat;
+                       for($i=1;$i<=$satlectures;$i++){
+                           $saturday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           
+                       }
+                       
+                       
+                       
+                       $weeklySchedule = [
+                           'Monday' => $monday,
+                           'Tuesday' => $tuesday,
+                           'Wednesday' => $wednesday,
+                           'Thursday' => $thursday,
+                           'Friday' => $friday,
+                           'Saturday' => $saturday,
+                       ];
+                       
+                                             
+                                       
+                       
+                      return response()->json([
+                           'status' =>200,
+                           'data'=>$weeklySchedule,
+                           'message' => 'View Timetable!',
+                           'success'=>true
+                       ]);
+           
+                   }
+           $monday = [];
+           $tuesday = [];
+           $wednesday = [];
+           $thursday = [];
+           $friday = [];
+           $saturday = [];
+
+           foreach ($timetables as $timetable) {
+               if ($timetable->monday) {
+                   $monday[] = [
+                       'time_in' => $timetable->time_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->time_out,
+                       'subject' => $timetable->monday,
+                       'teacher' => $this->getTeacherBySubject($timetable->monday, $class_id, $section_id),
+                   ];
+               }
+
+               if ($timetable->tuesday) {
+                   $tuesday[] = [
+                       'time_in' => $timetable->time_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->time_out,
+                       'subject' => $timetable->tuesday,
+                       'teacher' => $this->getTeacherBySubject($timetable->tuesday, $class_id, $section_id),
+                   ];
+               }
+
+               if ($timetable->wednesday) {
+                   $wednesday[] = [
+                       'time_in' => $timetable->time_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->time_out,
+                       'subject' => $timetable->wednesday,
+                       'teacher' => $this->getTeacherBySubject($timetable->wednesday, $class_id, $section_id),
+                   ];
+               }
+
+               if ($timetable->thursday) {
+                   $thursday[] = [
+                       'time_in' => $timetable->time_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->time_out,
+                       'subject' => $timetable->thursday,
+                       'teacher' => $this->getTeacherBySubject($timetable->thursday, $class_id, $section_id),
+                   ];
+               }
+
+               if ($timetable->friday) {
+                   $friday[] = [
+                       'time_in' => $timetable->time_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->time_out,
+                       'subject' => $timetable->friday,
+                       'teacher' => $this->getTeacherBySubject($timetable->friday, $class_id, $section_id),
+                   ];
+               }
+
+               if ($timetable->saturday) {
+                   $saturday[] = [
+                       'time_in' => $timetable->sat_in,
+                       'period_no'=>$timetable->period_no,
+                       'time_out' => $timetable->sat_out,
+                       'subject' => $timetable->saturday,
+                       'teacher' => $this->getTeacherBySubject($timetable->saturday, $class_id, $section_id),
+                   ];
+               }
+           }
+           $weeklySchedule = [
+               'Monday' => $monday,
+               'Tuesday' => $tuesday,
+               'Wednesday' => $wednesday,
+               'Thursday' => $thursday,
+               'Friday' => $friday,
+               'Saturday' => $saturday,
+           ];
+           
+                 return response()->json([
+                   'status' =>200,
+                   'data'=>$weeklySchedule,
+                   'message' => 'View Timetable!',
+                   'success'=>true
+               ]);
+                   
+                   
+               }
+               else{
+                   return response()->json([
+                       'status'=> 401,
+                       'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                       'data' =>$user->role_id,
+                       'success'=>false
+                           ]);
+                   }
+       
+               }
+               catch (Exception $e) {
+               \Log::error($e); 
+               return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               } 
+           
+       }
 
 
 

@@ -505,7 +505,28 @@
         Route::get('getstudentdatabystudentid',[AdminController::class,'getStudentDataByStudentId']);
         Route::get('getacademicyrbysettings',[AdminController::class,'getAcademicYrBySettings']);
         Route::get('health_activity_data_pdf',[AdminController::class,'getHealthActivityPdf']);
+
+        //Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+        Route::get('get_departments',[AdminController::class,'getDepartmentss']);
+        Route::get('get_teacherperiodallocation',[AdminController::class,'getTeacherPeriodAllocation']);
+        Route::post('save_teacherperiodallocation',[AdminController::class,'saveTeacherPeriodAllocation']);
+        Route::get('get_subjectwithoutsocial',[AdminController::class,'getSubjectWithoutSocial']);
+        Route::get('get_teacherclasstimetable',[AdminController::class,'getTeacherClassTimetable']);
+
+        //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
+        Route::get('get_classsection',[AdminController::class,'getClassSection']);
+        Route::post('save_classwiseperiod',[AdminController::class,'saveClasswisePeriod']);
+        Route::get('get_classwiseperiodlist',[AdminController::class,'getClasswisePeriodList']);
+        Route::put('update_classwiseperiod/{class_id}/{section_id}',[AdminController::class,'updateClasswisePeriod']);
+        Route::delete('delete_classwiseperiod/{class_id}/{section_id}',[AdminController::class,'deleteClasswisePeriod']);
         
+
+        //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
+        Route::get('get_teacherperioddata',[AdminController::class,'getTeacherPeriodData']);
+        Route::get('get_teachersubjectbyclass',[AdminController::class,'getTeacherSubjectByClass']);
+        Route::get('get_teacherslistbyperiod',[AdminController::class,'getTeacherListByPeriod']);
+        Route::get('get_timetablebyclasssection/{class_id}/{section_id}',[AdminController::class,'getTimetableByClassSection']);
+
 
     });
     
