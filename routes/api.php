@@ -514,7 +514,7 @@
         Route::get('get_teacherclasstimetable',[AdminController::class,'getTeacherClassTimetable']);
 
         //Classwise Period Allocation Dev Name- Manish Kumar Sharma 31-03-2025
-        Route::get('get_classsection',[AdminController::class,'getClassSection']);
+        Route::get('get_classsectionfortimetable',[AdminController::class,'getClassSection']);
         Route::post('save_classwiseperiod',[AdminController::class,'saveClasswisePeriod']);
         Route::get('get_classwiseperiodlist',[AdminController::class,'getClasswisePeriodList']);
         Route::put('update_classwiseperiod/{class_id}/{section_id}',[AdminController::class,'updateClasswisePeriod']);
@@ -526,6 +526,7 @@
         Route::get('get_teachersubjectbyclass',[AdminController::class,'getTeacherSubjectByClass']);
         Route::get('get_teacherslistbyperiod',[AdminController::class,'getTeacherListByPeriod']);
         Route::get('get_timetablebyclasssection/{class_id}/{section_id}',[AdminController::class,'getTimetableByClassSection']);
+        Route::post('save_timetableallotment',[AdminController::class,'saveTimetableAllotment']);
 
 
     });
