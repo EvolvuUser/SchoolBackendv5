@@ -9671,8 +9671,9 @@ public function getTeacherIdCard(Request $request){
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
                 if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-                    $departments = DB::table('department')
-                                       ->where('academic_yr',$customClaims)
+                    $departments = DB::table('view_teacher_group')
+                                       ->distinct()
+                                       ->select('teacher_group')
                                        ->get();
                                        
                                        return response()->json([
@@ -9711,18 +9712,20 @@ public function getTeacherIdCard(Request $request){
                     $subject = $request->input('subject');
                     $teachersQuery = DB::table('teacher')
                         ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
-                        ->where('role_id', 'T')
-                        ->leftJoin('teachers_period_allocation', 'teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
-                        ->where(function ($query) use ($customClaims) {
-                            $query->where('teachers_period_allocation.academic_yr', $customClaims)
-                                  ->orWhereNull('teachers_period_allocation.academic_yr');
+                        ->where('user_master.role_id', 'T')
+                        ->leftJoin('teachers_period_allocation', function ($join) use ($customClaims) {
+                            $join->on('teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
+                                 ->where(function ($query) use ($customClaims) {
+                                     $query->where('teachers_period_allocation.academic_yr', $customClaims)
+                                           ->orWhereNull('teachers_period_allocation.academic_yr');
+                                 });
                         })
                         ->where('teacher.isDelete', 'N')
                         ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
                     
                     if ($department) {
                         $teachersQuery->leftJoin('view_teacher_group', 'teacher.teacher_id', '=', 'view_teacher_group.teacher_id')
-                                      ->where('view_teacher_group.teacher_group', '=', $department)
+                                      ->whereRaw("view_teacher_group.teacher_group COLLATE utf8mb4_unicode_ci = ?", [$department])
                                       ->where('view_teacher_group.academic_yr',$customClaims);
                     }
                     if($subject){
@@ -9936,10 +9939,27 @@ public function getTeacherIdCard(Request $request){
                                                 ->select(DB::raw('CONCAT(class.name," ", section.name) as classname'),'classwise_period_allocation.*')
                                                 ->where('classwise_period_allocation.academic_yr',$customClaims)
                                                 ->get();
+                                                
+                                                $classCheck = $classwiseperiodlist->map(function($classPeriod) {
+                                                        $exists = DB::table('timetable')
+                                                            ->where('class_id', $classPeriod->class_id)
+                                                            ->where('section_id', $classPeriod->section_id)
+                                                            ->exists();
+                                                        
+                                                        return [
+                                                            'classname' => $classPeriod->classname,
+                                                            'class_id'=>$classPeriod->class_id,
+                                                            'section_id'=>$classPeriod->section_id,
+                                                            'mon-fri'=>$classPeriod->{'mon-fri'},
+                                                            'sat'=>$classPeriod->sat,
+                                                            'exists_in_timetable' => $exists ,
+                                                        ];
+                                                    });
+
 
                                                 return response()->json([
                                                     'status'=>200,
-                                                    'data'=>$classwiseperiodlist,
+                                                    'data'=>$classCheck,
                                                     'message' => 'Get Classwise Period List.',
                                                     'success' =>true
                                                 ]);   
@@ -10127,6 +10147,8 @@ public function getTeacherIdCard(Request $request){
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
                 if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                      $teacherlist = DB::table('teacher')
+                                         ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
+                                         ->where('user_master.role_id', 'T')
                                          ->join('teachers_period_allocation','teachers_period_allocation.teacher_id','=','teacher.teacher_id')
                                          ->where('teachers_period_allocation.academic_yr',$customClaims)
                                          ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
@@ -10160,7 +10182,7 @@ public function getTeacherIdCard(Request $request){
         }
 
          //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
-        public function getTimetableByClassSection($class_id,$section_id){
+         public function getTimetableByClassSection($class_id,$section_id){
             try{       
                $user = $this->authenticateUser();
                $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -10250,6 +10272,8 @@ public function getTeacherIdCard(Request $request){
                        
                        
                        $weeklySchedule = [
+                            'mon_fri'=>$monfrilectures,
+                            'sat'=>$satlectures,
                            'Monday' => $monday,
                            'Tuesday' => $tuesday,
                            'Wednesday' => $wednesday,
@@ -10337,7 +10361,16 @@ public function getTeacherIdCard(Request $request){
                    ];
                }
            }
+           
+            $lastMonday = !empty($monday) ? end($monday) : null;
+            $lastMondayPeriodNo = $lastMonday ? $lastMonday['period_no'] : 0; 
+            $lastSaturday = !empty($saturday) ? end($saturday) : null;
+            $lastSaturdayPeriodNo = $lastSaturday ? $lastSaturday['period_no'] : 0; 
+            
+            
            $weeklySchedule = [
+               'mon_fri'=>$lastMondayPeriodNo,
+               'sat'=>$lastSaturdayPeriodNo,
                'Monday' => $monday,
                'Tuesday' => $tuesday,
                'Wednesday' => $wednesday,
@@ -10371,6 +10404,239 @@ public function getTeacherIdCard(Request $request){
                } 
            
        }
+
+       //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 04-04-2025
+       public function saveTimetableAllotment(Request $request){
+        try{       
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                 $timetablerequest = $request->all();
+                 $timetabledata = $timetablerequest['timetable_data'];
+                 $teacherId =  $timetablerequest['teacher_id'];
+                 $periodUsed = $timetablerequest['period_used'];
+                 DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
+                 foreach ($timetabledata as $timetable){
+                     
+                      $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
+                      if(is_null($timetabledata5)){
+                          $timetabledata1 = $timetable['subjects'];
+                             $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
+                                 $monfrilectures =  $classwiseperiod->{'mon-fri'};
+                                 for($i=1;$i<=$monfrilectures;$i++){
+                                     $inserttimetable = DB::table('timetable')->insert([
+                                                             'date'=>Carbon::now()->format('Y-m-d H:i:s'),
+                                                             'class_id' => $timetable['class_id'],
+                                                             'section_id' => $timetable['section_id'],
+                                                             'academic_yr'=>$customClaims,
+                                                             'period_no'=>$i,
+                                                         ]);
+                                     
+                                     
+                                 }
+                             foreach ($timetabledata1 as $timetabledata2){
+                                 
+                                 if($timetabledata2['day']== 'Monday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'monday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Tuesday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'tuesday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Wednesday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'wednesday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Thursday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'thursday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Friday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'friday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Saturday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'saturday' => $timetabledata4['subject']['id']
+                                                     ]);
+                                     }
+                                     
+                                 }
+                             }
+                          
+                      }
+                     $timetabledata1 = $timetable['subjects'];
+                     foreach ($timetabledata1 as $timetabledata2){
+                         
+                         if($timetabledata2['day']== 'Monday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'monday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Tuesday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'tuesday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Wednesday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'wednesday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Thursday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'thursday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Friday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'friday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Saturday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                        DB::table('timetable')
+                                             ->where('class_id', $timetable['class_id'])
+                                             ->where('section_id', $timetable['section_id'])
+                                             ->where('academic_yr', $customClaims)
+                                             ->where('period_no', $timetabledata4['period_no'])
+                                             ->update([
+                                                 'saturday' => $timetabledata4['subject']['id']
+                                             ]);
+                             }
+                             
+                         }
+                     }
+                     
+                 }
+                 return response()->json([
+                'status' =>200,
+                'message' => 'Timetable Saved Successfully!',
+                'success'=>true
+               ]);
+                 
+                
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
+        
+    }
 
 
 
