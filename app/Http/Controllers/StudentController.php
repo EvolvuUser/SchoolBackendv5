@@ -407,7 +407,12 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
-        $students = DB::table('student')->where('class_id',$class_id)->where('section_id',$section_id)->get();
+            $students = DB::table('student')
+                            ->where('class_id',$class_id)
+                            ->where('section_id',$section_id)
+                            ->where('IsDelete','N')
+                            ->where('isPromoted','!=','Y')
+                            ->get();
         return response()->json([
             'status'=> 200,
             'message'=>'Student List for this class',
@@ -630,6 +635,66 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
        }
         
     }
+    //Student List with Class name Dev name-Manish Kumar Sharma 09-04-2025
+    public function getallStudentWithClass(){
+        try{
+           $user = $this->authenticateUser();
+           $customClaims = JWTAuth::getPayload()->get('academic_year');
+           if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+               $data = $this->get_all_registered_students($customClaims);
+
+               // Process the data to add 'label' and 'value'
+               $data->transform(function ($item) {
+                   if (!empty($item->last_name) && $item->last_name != "No Data") {
+                       $item->label = $item->first_name . ' ' . $item->last_name . ' (' . $item->class_name . $item->section_name . ')';
+                   } else {
+                       if (!empty($item->mid_name) && $item->mid_name != "No Data") {
+                           $item->label = $item->first_name . ' ' . $item->mid_name . ' (' . $item->class_name . $item->section_name . ')';
+                       } else {
+                           $item->label = $item->first_name . ' (' . $item->class_name . $item->section_name . ')';
+                       }
+                   }
+                   
+                   // Create the 'value' field
+                   $item->value = $item->student_id . "^" . $item->class_id . "*" . $item->section_id;
+           
+                   return $item;
+               });
+           
+               // Return the processed data as a JSON response
+               return response()->json($data);
+               
+               
+           }
+           else{
+               return response()->json([
+                   'status'=> 401,
+                   'message'=>'This user does not have permission for the updating of data.',
+                   'data' =>$user->role_id,
+                   'success'=>false
+                   ]);
+                   }
+               
+               }
+           catch (Exception $e) {
+               \Log::error($e); // Log the exception
+               return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+              }
+       
+   }
+   //Student List with Class name Dev name-Manish Kumar Sharma 09-04-2025
+   public function get_all_registered_students($acd_yr)
+   {
+       $data = DB::table('student as a')
+           ->join('class as b', 'a.class_id', '=', 'b.class_id')
+           ->join('section as c', 'a.section_id', '=', 'c.section_id')
+           ->select('a.student_id', 'a.first_name', 'a.mid_name', 'a.last_name', 'b.class_id', 'b.name as class_name', 'c.section_id', 'c.name as section_name')
+           ->where('a.IsDelete', 'N')
+           ->where('a.academic_yr', $acd_yr)
+           ->get();
+   
+       return $data;
+   }
 
     private function authenticateUser()
     {

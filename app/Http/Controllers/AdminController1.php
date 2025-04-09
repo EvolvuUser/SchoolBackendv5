@@ -929,7 +929,13 @@ public function getClass(Request $request)
     $classes = Classes::with('getDepartment')
         ->withCount('students')
         ->where('academic_yr', $academicYr)
-        ->orderBy('class_id') 
+        ->orderByRaw("CASE 
+            WHEN name REGEXP '^[0-9]' THEN 1 
+            ELSE 0 
+        END, 
+        name REGEXP '^[0-9]', 
+        CAST(name AS SIGNED) ASC, 
+        name ASC") // Ensure alphabetical first, then numeric
         ->get();
         
     return response()->json($classes);
@@ -7408,23 +7414,12 @@ public function getLeavetypedata(Request $request,$staff_id){
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
             $students = DB::table('student')
-                            ->where('class_id', $class_id)
-                            ->where('section_id', $section_id)
-                            ->where('academic_yr', $customClaims)
-                            ->select(
-                                'student_id',
-                                'first_name',
-                                'mid_name',
-                                'last_name',
-                                'roll_no',
-                                'stud_id_no',
-                                'birth_place',
-                                'mother_tongue',
-                                'admission_class',
-                                DB::raw("CASE WHEN udise_pen_no = '00000000000' THEN '' ELSE udise_pen_no END as udise_pen_no")
-                            )
-                            ->orderBy('roll_no', 'asc')
-                            ->get();
+            ->where('class_id',$class_id)
+            ->where('section_id',$section_id)
+            ->where('academic_yr',$customClaims)
+            ->select('student_id','first_name','mid_name','last_name','roll_no','stud_id_no','udise_pen_no','birth_place','mother_tongue','admission_class')
+            ->orderBy('roll_no','asc')
+            ->get();
 
             $students = $students->map(function ($student) {
                 $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
@@ -8896,7 +8891,7 @@ public function getTeacherIdCard(Request $request){
             $subject = DB::table('subject_master')
                 ->select('name')
                 ->where('subject_master.sm_id', $subject_id)
-                ->first(); // Use first() to get the first result
+                ->first(); 
 
                 // Check if the result is not null and return the name directly
                 return $subject ? $subject->name : null;
@@ -10424,7 +10419,7 @@ public function getTeacherIdCard(Request $request){
                else{
                    return response()->json([
                        'status'=> 401,
-                       'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                       'message'=>'This user does not have permission for the teacher period data.',
                        'data' =>$user->role_id,
                        'success'=>false
                            ]);
@@ -10562,71 +10557,7 @@ public function getTeacherIdCard(Request $request){
                          if($timetabledata2['day']== 'Monday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('monday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->monday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                                        
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'monday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'monday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -10634,78 +10565,13 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'monday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Tuesday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('tuesday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->tuesday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -10713,78 +10579,13 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'tuesday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Wednesday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('wednesday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->wednesday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -10792,78 +10593,13 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'wednesday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Thursday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('thursday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->thursday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'thursday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'thursday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -10871,79 +10607,13 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'thursday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
-                                      
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Friday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('friday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->friday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'friday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'friday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -10951,79 +10621,13 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'friday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
-                                
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Saturday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('saturday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
-                                
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
-                                   
-                                    
-                                }
-                                else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->saturday)
-                                                                  ->first();
-                                   
-                                }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'saturday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                    
-                                }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
-                                   
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'saturday' => $timetabledata4['subject']['id']
-                                                     ]);
-                                                     
-                                                     
-                                    
-                                    
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
-                                    
-                                    
-                                    DB::table('timetable')
+                                        DB::table('timetable')
                                              ->where('class_id', $timetable['class_id'])
                                              ->where('section_id', $timetable['section_id'])
                                              ->where('academic_yr', $customClaims)
@@ -11031,9 +10635,6 @@ public function getTeacherIdCard(Request $request){
                                              ->update([
                                                  'saturday' => $timetabledata4['subject']['id']
                                              ]);
-                                    
-                                }
-                                        
                              }
                              
                          }
@@ -11064,7 +10665,7 @@ public function getTeacherIdCard(Request $request){
             } 
         
     }
-    
+
     //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
     public function getTeacherlistByperiodallocation(Request $request){
         try{       
@@ -11115,7 +10716,7 @@ public function getTeacherIdCard(Request $request){
         
     }
     
-    //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
+    //Timetable Edit Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
     public function getEditTimetableClassSection($class_id,$section_id){
        try{       
                $user = $this->authenticateUser();
@@ -11350,6 +10951,7 @@ public function getTeacherIdCard(Request $request){
                } 
         
     }
+
 
 
 
