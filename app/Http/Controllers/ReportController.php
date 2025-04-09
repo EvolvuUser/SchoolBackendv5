@@ -1181,7 +1181,7 @@ class ReportController extends Controller
                 }
 
                 $query = DB::table('worldline_payment_details as w')
-                            ->join('onlinefees_payment_record as o', 'w.OrderId', '=', 'o.cheque_no')
+                            ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'w.OrderId')
                             ->select('w.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
                             ->where('w.Status_code', 'S');
     
@@ -1422,8 +1422,44 @@ class ReportController extends Controller
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 $teacher_id = $request->input('teacher_id');
                 $week = $request->input('week');
+                // dd($week);
+                if(is_null($week)){
+                   
+                $result = DB::table('substitute_teacher')
+                    ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
+                    ->join('teacher','teacher.teacher_id','=','substitute_teacher.sub_teacher_id')
+                    ->join('timetable', function($join) {
+                        $join->on('substitute_teacher.period', '=', 'timetable.period_no')
+                            ->on('substitute_teacher.class_id', '=', 'timetable.class_id')
+                            ->on('substitute_teacher.section_id', '=', 'timetable.section_id');
+                    })
+                    ->where('substitute_teacher.academic_yr', $customClaims)
+                    ->where('substitute_teacher.sub_teacher_id', $teacher_id)
+                    ->orderBy('substitute_teacher.teacher_id')
+                    ->orderBy('substitute_teacher.date')
+                    ->select('substitute_teacher.*', 'subject_master.name', 'timetable.time_in', 'timetable.time_out','teacher.name as teachername')
+                    ->get();
 
-                $dates = explode("/", $week);
+                    $total_minutes = 0;
+                    foreach ($result as $row) {
+                        
+                        $dateTime1 = new \DateTime($row->time_in);
+                        $dateTime2 = new \DateTime($row->time_out);
+                        
+                        $interval = $dateTime1->diff($dateTime2);
+                        
+                        $minutes = $interval->h * 60 + $interval->i;
+                        
+                        $total_minutes= $total_minutes + $minutes;
+                        $total_hours = intdiv($total_minutes, 60); 
+                        $remaining_minutes = $total_minutes % 60;
+                        
+                        $row->time_difference_decimal = $total_hours.".".$remaining_minutes;  
+                    }
+                    
+                }
+                else{
+                    $dates = explode("/", $week);
                 $start_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[0])->format('Y-m-d');
                 $end_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[1])->format('Y-m-d');
                 $result = DB::table('substitute_teacher')
@@ -1459,6 +1495,10 @@ class ReportController extends Controller
                         
                         $row->time_difference_decimal = $total_hours.".".$remaining_minutes;  
                     }
+                    
+                }
+
+                
                     return response([
                         'status'=>200,
                         'data'=>$result,
