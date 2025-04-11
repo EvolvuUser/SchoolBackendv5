@@ -61,7 +61,7 @@ return [
 
         'SACS' => [
             'driver' => 'mysql',
-            'host' => '127.0.0.1',
+            'host' => env('DB_HOST_SACS'),
             'database' => env('DB_DATABASE_SACS'),
             'username' => env('DB_USERNAME_SACS'),
             'password' => env('DB_PASSWORD_SACS'),
@@ -69,7 +69,7 @@ return [
 
         'HSCS' => [
             'driver' => 'mysql',
-            'host' => '127.0.0.1',
+            'host' => env('DB_HOST_HSCS'),
             'database' => env('DB_DATABASE_HSCS'),
             'username' => env('DB_USERNAME_HSCS'),
             'password' => env('DB_PASSWORD_HSCS'),

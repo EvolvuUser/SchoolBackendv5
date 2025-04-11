@@ -7925,7 +7925,7 @@ public function updateholidaylistCsv(Request $request){
     
         if (!empty($invalidRows)) {
             $csv = Writer::createFromString('');
-            $csv->insertOne(['title','holiday_date','to_date','error']);
+            $csv->insertOne(['*Title','*Holiday date(in yyyy/mm/dd format)','To date(in yyyy/mm/dd format)','error']);
             foreach ($invalidRows as $invalidRow) {
                 $csv->insertOne($invalidRow);
             }
