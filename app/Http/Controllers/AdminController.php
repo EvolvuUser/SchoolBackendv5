@@ -8891,6 +8891,17 @@ public function getTeacherIdCard(Request $request){
             return $teachers;
         }
         
+        public function getTeacherByTeacherId( $teacher_id)
+        {
+            // dd($class_id,$section_id,$subname);
+            $teachers = DB::table('teacher')
+                ->select('teacher.name as t_name')
+                ->where('teacher_id',$teacher_id)
+                ->get();
+            //    dd($teachers);
+            return $teachers;
+        }
+        
         public function getSubjectnameBySubjectId( $subject_id)
         {
             $subject = DB::table('subject_master')
@@ -10335,75 +10346,79 @@ public function getTeacherIdCard(Request $request){
 
            foreach ($timetables as $timetable) {
                if ($timetable->monday) {
+                   list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
                    $monday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->monday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->monday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
                    ];
                }
 
                if ($timetable->tuesday) {
+                   list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
                    $tuesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->tuesday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->tuesday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
                    ];
                }
 
                if ($timetable->wednesday) {
+                   list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
                    $wednesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->wednesday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->wednesday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
                    ];
                }
 
                if ($timetable->thursday) {
+                   list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
                    $thursday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->thursday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->thursday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
                    ];
                }
 
                if ($timetable->friday) {
+                    list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
                    $friday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->friday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->friday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
                    ];
                }
 
                if ($timetable->saturday) {
+                   list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
                    $saturday[] = [
                        'time_in' => $timetable->sat_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->sat_out,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->saturday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->saturday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
                    ];
                }
            }
            
-            $lastMonday = !empty($monday) ? end($monday) : null;
-            $lastMondayPeriodNo = $lastMonday ? $lastMonday['period_no'] : 0; 
-            $lastSaturday = !empty($saturday) ? end($saturday) : null;
-            $lastSaturdayPeriodNo = $lastSaturday ? $lastSaturday['period_no'] : 0; 
+            $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
+            $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
             
             
            $weeklySchedule = [
-               'mon_fri'=>$lastMondayPeriodNo,
-               'sat'=>$lastSaturdayPeriodNo,
+               'mon_fri'=>$lastMondayPeriodNo->{'mon-fri'},
+               'sat'=>$lastSaturdayPeriodNo->sat,
                'Monday' => $monday,
                'Tuesday' => $tuesday,
                'Wednesday' => $wednesday,
@@ -10478,7 +10493,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'monday' => $timetabledata4['subject']['id']
+                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10492,7 +10507,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id']
+                                                         'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10506,7 +10521,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id']
+                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10520,7 +10535,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'thursday' => $timetabledata4['subject']['id']
+                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10534,7 +10549,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'friday' => $timetabledata4['subject']['id']
+                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10548,7 +10563,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'saturday' => $timetabledata4['subject']['id']
+                                                         'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                      }
                                      
@@ -10556,7 +10571,8 @@ public function getTeacherIdCard(Request $request){
                              }
                           
                       }
-                     $timetabledata1 = $timetable['subjects'];
+                      else{
+                          $timetabledata1 = $timetable['subjects'];
                      foreach ($timetabledata1 as $timetabledata2){
                          
                          if($timetabledata2['day']== 'Monday'){
@@ -10576,21 +10592,11 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->monday)
-                                                                  ->first();
+                                     list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
+                                     $teacheridforexistingsubject = $teacherIdmonday;
                                    
                                 }
                                 
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                                         
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
@@ -10600,11 +10606,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'monday' => $timetabledata4['subject']['id']
+                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -10612,7 +10618,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'monday' => $timetabledata4['subject']['id']
+                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -10621,7 +10627,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -10632,7 +10638,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'monday' => $timetabledata4['subject']['id']
+                                                 'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -10656,21 +10662,10 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->tuesday)
-                                                                  ->first();
+                                     list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
+                                     $teacheridforexistingsubject = $teacherIdtuesday;
                                    
                                 }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
                                             DB::table('timetable')
@@ -10679,11 +10674,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id']
+                                                         'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -10691,7 +10686,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id']
+                                                         'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -10700,7 +10695,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -10711,7 +10706,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'tuesday' => $timetabledata4['subject']['id']
+                                                 'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -10735,21 +10730,10 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->wednesday)
-                                                                  ->first();
+                                     list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
+                                     $teacheridforexistingsubject = $teacherIdwednesday;
                                    
                                 }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
                                             DB::table('timetable')
@@ -10758,11 +10742,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id']
+                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -10770,7 +10754,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id']
+                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -10779,7 +10763,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -10790,7 +10774,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'wednesday' => $timetabledata4['subject']['id']
+                                                 'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -10814,21 +10798,10 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->thursday)
-                                                                  ->first();
+                                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
+                                     $teacheridforexistingsubject = $teacherIdthursday;
                                    
                                 }
-                                
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
                                             DB::table('timetable')
@@ -10837,11 +10810,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'thursday' => $timetabledata4['subject']['id']
+                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -10849,7 +10822,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'thursday' => $timetabledata4['subject']['id']
+                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -10858,7 +10831,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -10869,7 +10842,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'thursday' => $timetabledata4['subject']['id']
+                                                 'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -10894,21 +10867,11 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->friday)
-                                                                  ->first();
+                                     list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
+                                     $teacheridforexistingsubject = $teacherIdfriday;
                                    
                                 }
                                 
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
                                             DB::table('timetable')
@@ -10917,11 +10880,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'friday' => $timetabledata4['subject']['id']
+                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -10929,7 +10892,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'friday' => $timetabledata4['subject']['id']
+                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -10938,7 +10901,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -10949,7 +10912,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'friday' => $timetabledata4['subject']['id']
+                                                 'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -10974,21 +10937,12 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     $teacheridforexistingsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetablesubject->saturday)
-                                                                  ->first();
+                                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
+                                     $teacheridforexistingsubject = $teacherIdsaturday;
+                                    
                                    
                                 }
                                 
-                                $teacheridfornewsubject = DB::table('subject')
-                                                                  ->where('class_id',$timetable['class_id'])
-                                                                  ->where('section_id',$timetable['section_id'])
-                                                                  ->where('academic_yr', $customClaims)
-                                                                  ->where('sm_id',$timetabledata4['subject']['id'])
-                                                                  ->first();
                                 if(is_null($teacheridforexistingsubject)){
                                     // dd("Hello");
                                             DB::table('timetable')
@@ -10997,11 +10951,11 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'saturday' => $timetabledata4['subject']['id']
+                                                         'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                     
                                 }
-                                elseif($teacheridforexistingsubject->teacher_id == $teacheridfornewsubject->teacher_id){
+                                elseif($teacheridforexistingsubject == $teacherId){
                                    
                                     DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
@@ -11009,7 +10963,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->where('academic_yr', $customClaims)
                                                      ->where('period_no', $timetabledata4['period_no'])
                                                      ->update([
-                                                         'saturday' => $timetabledata4['subject']['id']
+                                                         'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
                                                      
                                                      
@@ -11018,7 +10972,7 @@ public function getTeacherIdCard(Request $request){
                                 }
                                 else{
                                     DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject->teacher_id)
+                                        ->where('teacher_id', $teacheridforexistingsubject)
                                         ->where('academic_yr', $customClaims)
                                         ->decrement('periods_used', 1); 
                                     
@@ -11029,7 +10983,7 @@ public function getTeacherIdCard(Request $request){
                                              ->where('academic_yr', $customClaims)
                                              ->where('period_no', $timetabledata4['period_no'])
                                              ->update([
-                                                 'saturday' => $timetabledata4['subject']['id']
+                                                 'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                              ]);
                                     
                                 }
@@ -11038,6 +10992,9 @@ public function getTeacherIdCard(Request $request){
                              
                          }
                      }
+                          
+                      }
+                     
                      
                  }
                  return response()->json([
@@ -11242,81 +11199,85 @@ public function getTeacherIdCard(Request $request){
 
            foreach ($timetables as $timetable) {
                if ($timetable->monday) {
+                   list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
                    $monday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
                        'subject_id'=>$timetable->monday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->monday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->monday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
                    ];
                }
 
                if ($timetable->tuesday) {
+                   list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
                    $tuesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
                        'subject_id'=>$timetable->tuesday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->tuesday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->tuesday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
                    ];
                }
 
                if ($timetable->wednesday) {
+                    list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
                    $wednesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
                        'subject_id'=>$timetable->wednesday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->wednesday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->wednesday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
                    ];
                }
 
                if ($timetable->thursday) {
+                   list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
                    $thursday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
                         'subject_id'=>$timetable->thursday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->thursday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->thursday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
                    ];
                }
 
                if ($timetable->friday) {
+                   list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
                    $friday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
                         'subject_id'=>$timetable->friday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->friday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->friday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
                    ];
                }
 
                if ($timetable->saturday) {
+                   list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
                    $saturday[] = [
                        'time_in' => $timetable->sat_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->sat_out,
                        'subject_id'=>$timetable->saturday,
-                       'subject' => $this->getSubjectnameBySubjectId($timetable->saturday),
-                       'teacher' => $this->getTeacherBySubjectId($timetable->saturday, $class_id, $section_id),
+                       'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
+                       'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
                    ];
                }
            }
            
-            $lastMonday = !empty($monday) ? end($monday) : null;
-            $lastMondayPeriodNo = $lastMonday ? $lastMonday['period_no'] : 0; 
-            $lastSaturday = !empty($saturday) ? end($saturday) : null;
-            $lastSaturdayPeriodNo = $lastSaturday ? $lastSaturday['period_no'] : 0; 
+            $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
+            $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first();
             
             
            $weeklySchedule = [
-               'mon_fri'=>$lastMondayPeriodNo,
-               'sat'=>$lastSaturdayPeriodNo,
+               'mon_fri'=>$lastMondayPeriodNo->{'mon-fri'},
+               'sat'=>$lastSaturdayPeriodNo->sat,
                'Monday' => $monday,
                'Tuesday' => $tuesday,
                'Wednesday' => $wednesday,
@@ -11351,6 +11312,70 @@ public function getTeacherIdCard(Request $request){
         
     }
 
+     //Delete Teacher Periods Dev Name-Manish Kumar Sharma 14-04-2025
+     public function deleteTeacherPeriodTimetable($teacher_id){
+          try{       
+               $user = $this->authenticateUser();
+               $customClaims = JWTAuth::getPayload()->get('academic_year');
+               if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                   $updateperiodallocation = DB::table('teachers_period_allocation')
+                                                 ->where('teacher_id',$teacher_id)
+                                                 ->where('academic_yr',$customClaims)
+                                                 ->update([
+                                                      'periods_used'=>0
+                                                     ]);
+                   $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+                    $rows = DB::table('timetable')->get();
+                
+                    foreach ($rows as $row) {
+                        $updateData = [];
+                
+                        foreach ($days as $day) {
+                            $value = $row->$day;
+                
+                            // Check if value exists and has '^' (i.e., subjectId^teacherId format)
+                            if (!empty($value) && str_contains($value, '^')) {
+                                $parts = explode('^', $value);
+                
+                                if (count($parts) === 2 && (int)$parts[1] === (int)$teacher_id) {
+                                    $updateData[$day] = null; // or '' to set as empty string
+                                }
+                            }
+                        }
+                
+                        // If any column matched, update this row
+                        if (!empty($updateData)) {
+                            DB::table('timetable')->where('t_id', $row->t_id)->update($updateData);
+                        }
+                    }
+                    
+                    
+                      return response()->json([
+                       'status'=> 200,
+                       'message'=>'Teacher periods removed successfully. ',
+                       'success'=>true
+                           ]);
+                    
+                   
+                   
+               }
+               else{
+                   return response()->json([
+                       'status'=> 401,
+                       'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                       'data' =>$user->role_id,
+                       'success'=>false
+                           ]);
+                   }
+       
+               }
+               catch (Exception $e) {
+               \Log::error($e); 
+               return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               } 
+         
+     }
 
 
 
