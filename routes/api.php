@@ -535,6 +535,9 @@
         //API for All Student List with Class Name Dev Name- Manish Kumar Sharma 09-04-2025
         Route::get('get_allstudentwithclass',[StudentController::class,'getallStudentWithClass']);
 
+        //Delete Teacher Periods Dev Name-Manish Kumar Sharma 14-04-2025
+        Route::delete('delete_teacherperiodintimetable/{teacher_id}',[AdminController::class,'deleteTeacherPeriodTimetable']);
+
 
     });
 
