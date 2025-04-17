@@ -8762,67 +8762,103 @@ public function getTeacherIdCard(Request $request){
             foreach ($timetables as $timetable) {
                 // For Monday
                 if ($timetable->monday) {
+                    $subjectIdmonday = null;
+                    $teacherIdmonday = null;
+                    
+                    if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
+                    list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                    }
                     $monday[] = [
                         'time_in' => $timetable->time_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $timetable->monday,
-                        'teacher' => $this->getTeacherBySubject($timetable->monday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
                     ];
                 }
 
                 // For Tuesday
                 if ($timetable->tuesday) {
+                    $subjectIdtuesday = null;
+                    $teacherIdtuesday = null;
+                    
+                    if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
+                    list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                    }
                     $tuesday[] = [
                         'time_in' => $timetable->time_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $timetable->tuesday,
-                        'teacher' => $this->getTeacherBySubject($timetable->tuesday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
                     ];
                 }
 
                 // For Wednesday
                 if ($timetable->wednesday) {
+                    $subjectIdwednesday = null;
+                    $teacherIdwednesday = null;
+                    
+                    if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
+                    list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                    }
                     $wednesday[] = [
                         'time_in' => $timetable->time_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $timetable->wednesday,
-                        'teacher' => $this->getTeacherBySubject($timetable->wednesday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
                     ];
                 }
 
                 // For Thursday
                 if ($timetable->thursday) {
+                    $subjectIdthursday = null;
+                    $teacherIdthursday = null;
+                    
+                    if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
+                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                    }
                     $thursday[] = [
                         'time_in' => $timetable->time_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $timetable->thursday,
-                        'teacher' => $this->getTeacherBySubject($timetable->thursday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
                     ];
                 }
 
                 // For Friday
                 if ($timetable->friday) {
+                    $subjectIdfriday = null;
+                    $teacherIdfriday = null;
+                    
+                    if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
+                    list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                    }
                     $friday[] = [
                         'time_in' => $timetable->time_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $timetable->friday,
-                        'teacher' => $this->getTeacherBySubject($timetable->friday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
                     ];
                 }
 
                 // For Saturday
                 if ($timetable->saturday) {
+                    $subjectIdsaturday = null;
+                    $teacherIdsaturday = null;
+                    
+                    if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
+                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                    }
                     $saturday[] = [
                         'time_in' => $timetable->sat_in,
                         'period_no'=>$timetable->period_no,
                         'time_out' => $timetable->sat_out,
-                        'subject' => $timetable->saturday,
-                        'teacher' => $this->getTeacherBySubject($timetable->saturday, $class_id, $section_id),
+                        'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
+                        'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
                     ];
                 }
             }
@@ -10195,7 +10231,6 @@ public function getTeacherIdCard(Request $request){
                                          ->where('user_master.role_id', 'T')
                                          ->join('teachers_period_allocation','teachers_period_allocation.teacher_id','=','teacher.teacher_id')
                                          ->where('teachers_period_allocation.academic_yr',$customClaims)
-                                         ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
                                          ->select('teacher.name as teachername','teachers_period_allocation.*')
                                          ->get();
                                          
@@ -10346,7 +10381,12 @@ public function getTeacherIdCard(Request $request){
 
            foreach ($timetables as $timetable) {
                if ($timetable->monday) {
-                   list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                   $subjectIdmonday = null;
+                    $teacherIdmonday = null;
+                    
+                    if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
+                    list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                    }
                    $monday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
@@ -10357,7 +10397,12 @@ public function getTeacherIdCard(Request $request){
                }
 
                if ($timetable->tuesday) {
-                   list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                   $subjectIdtuesday = null;
+                    $teacherIdtuesday = null;
+                    
+                    if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
+                    list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                    }
                    $tuesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
@@ -10368,7 +10413,12 @@ public function getTeacherIdCard(Request $request){
                }
 
                if ($timetable->wednesday) {
-                   list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                   $subjectIdwednesday = null;
+                    $teacherIdwednesday = null;
+                    
+                    if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
+                    list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                    }
                    $wednesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
@@ -10379,7 +10429,12 @@ public function getTeacherIdCard(Request $request){
                }
 
                if ($timetable->thursday) {
-                   list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                   $subjectIdthursday = null;
+                    $teacherIdthursday = null;
+                    
+                    if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
+                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                    }
                    $thursday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
@@ -10390,7 +10445,12 @@ public function getTeacherIdCard(Request $request){
                }
 
                if ($timetable->friday) {
+                   $subjectIdfriday = null;
+                    $teacherIdfriday = null;
+                    
+                    if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
                     list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                    }
                    $friday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
@@ -10401,7 +10461,12 @@ public function getTeacherIdCard(Request $request){
                }
 
                if ($timetable->saturday) {
-                   list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                   $subjectIdsaturday = null;
+                    $teacherIdsaturday = null;
+                    
+                    if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
+                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                    }
                    $saturday[] = [
                        'time_in' => $timetable->sat_in,
                        'period_no'=>$timetable->period_no,
@@ -10592,8 +10657,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
+                                    $subjectIdmonday = null;
+                                    $teacherIdmonday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
                                      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
                                      $teacheridforexistingsubject = $teacherIdmonday;
+                                    }
                                    
                                 }
                                 
@@ -10662,8 +10733,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
+                                    $subjectIdtuesday = null;
+                                    $teacherIdtuesday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
                                      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
                                      $teacheridforexistingsubject = $teacherIdtuesday;
+                                    }
                                    
                                 }
                                 if(is_null($teacheridforexistingsubject)){
@@ -10730,8 +10807,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
-                                     list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-                                     $teacheridforexistingsubject = $teacherIdwednesday;
+                                     $subjectIdwednesday = null;
+                                    $teacherIdwednesday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
+                                        list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
+                                        $teacheridforexistingsubject = $teacherIdwednesday;
+                                    }
                                    
                                 }
                                 if(is_null($teacheridforexistingsubject)){
@@ -10798,8 +10881,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
+                                    $subjectIdthursday = null;
+                                    $teacherIdthursday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
                                     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
                                      $teacheridforexistingsubject = $teacherIdthursday;
+                                    }
                                    
                                 }
                                 if(is_null($teacheridforexistingsubject)){
@@ -10867,8 +10956,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
+                                    $subjectIdfriday = null;
+                                    $teacherIdfriday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
                                      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
                                      $teacheridforexistingsubject = $teacherIdfriday;
+                                    }
                                    
                                 }
                                 
@@ -10937,8 +11032,14 @@ public function getTeacherIdCard(Request $request){
                                     
                                 }
                                 else{
+                                    $subjectIdsaturday = null;
+                                    $teacherIdsaturday = null;
+                                    $teacheridforexistingsubject = null;
+                                    
+                                    if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
                                     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
                                      $teacheridforexistingsubject = $teacherIdsaturday;
+                                    }
                                     
                                    
                                 }
@@ -11039,7 +11140,8 @@ public function getTeacherIdCard(Request $request){
                                  });
                         })
                         ->where('teacher.isDelete', 'N')
-                        ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
+                        ->where('teachers_period_allocation.periods_used','!=','0')
+                        ->select('teacher.teacher_id', 'teacher.name as teachername', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
                         
                          $teachersQuery->distinct();
                     
@@ -11199,72 +11301,102 @@ public function getTeacherIdCard(Request $request){
 
            foreach ($timetables as $timetable) {
                if ($timetable->monday) {
-                   list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                   $subjectIdmonday = null;
+                    $teacherIdmonday = null;
+                    
+                    if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
+                    list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                    }
                    $monday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject_id'=>$timetable->monday,
+                       'subject_id'=>$subjectIdmonday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
                    ];
                }
 
                if ($timetable->tuesday) {
-                   list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                   $subjectIdtuesday = null;
+                    $teacherIdtuesday = null;
+                    
+                    if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
+                    list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                    }
                    $tuesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject_id'=>$timetable->tuesday,
+                       'subject_id'=>$subjectIdtuesday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
                    ];
                }
 
                if ($timetable->wednesday) {
+                   $subjectIdwednesday = null;
+                    $teacherIdwednesday = null;
+                    
+                    if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
                     list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                    }
                    $wednesday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                       'subject_id'=>$timetable->wednesday,
+                       'subject_id'=>$subjectIdwednesday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
                    ];
                }
 
                if ($timetable->thursday) {
-                   list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                   $subjectIdthursday = null;
+                    $teacherIdthursday = null;
+                    
+                    if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
+                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                    }
                    $thursday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                        'subject_id'=>$timetable->thursday,
+                        'subject_id'=>$subjectIdthursday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
                    ];
                }
 
                if ($timetable->friday) {
-                   list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                   $subjectIdfriday = null;
+                    $teacherIdfriday = null;
+                    
+                    if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
+                    list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                    }
                    $friday[] = [
                        'time_in' => $timetable->time_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->time_out,
-                        'subject_id'=>$timetable->friday,
+                        'subject_id'=>$subjectIdfriday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
                    ];
                }
 
                if ($timetable->saturday) {
-                   list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                   $subjectIdsaturday = null;
+                    $teacherIdsaturday = null;
+                    
+                    if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
+                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                    }
                    $saturday[] = [
                        'time_in' => $timetable->sat_in,
                        'period_no'=>$timetable->period_no,
                        'time_out' => $timetable->sat_out,
-                       'subject_id'=>$timetable->saturday,
+                       'subject_id'=>$subjectIdsaturday,
                        'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
                        'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
                    ];
