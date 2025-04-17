@@ -103,7 +103,10 @@ class ReportController extends Controller
                                                         ->first();
                                         //  dd($section_name);
                                         // Set sibling student info
-                                        $row->sibling_student_info = $row->sibling_student_id . " (" . $class_name->name . " " . $section_name->name . ")";
+                                        $class = $class_name->name ?? 'N/A';
+                                        $section = $section_name->name ?? 'N/A';
+                                        
+                                        $row->sibling_student_info = $row->sibling_student_id . " ({$class} {$section})";
                                         }
                                         else{
                                              $row->sibling_student_info = $row->sibling_student_id."()";
