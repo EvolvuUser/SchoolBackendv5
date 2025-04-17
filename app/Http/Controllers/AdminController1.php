@@ -10666,8 +10666,8 @@ public function getTeacherIdCard(Request $request){
         
     }
 
-    //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
-    public function getTeacherlistByperiodallocation(Request $request){
+     //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
+     public function getTeacherlistByperiodallocation(Request $request){
         try{       
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -10683,7 +10683,8 @@ public function getTeacherIdCard(Request $request){
                                  });
                         })
                         ->where('teacher.isDelete', 'N')
-                        ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
+                        ->where('teachers_period_allocation.periods_used','!=','0')
+                        ->select('teacher.teacher_id', 'teacher.name as teachername', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'),'teachers_period_allocation.periods_used');
                         
                          $teachersQuery->distinct();
                     

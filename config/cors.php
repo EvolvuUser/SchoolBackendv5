@@ -25,6 +25,7 @@ return [
 //    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173')],
    'allowed_origins' => [
     env('FRONTEND_URL', 'http://localhost:5173'),
+    'https://sacs.evolvu.in',
     'http://103.159.85.174:8506',
     'http://103.159.85.174:8509',
     'https://hscstestl.evolvu.in'
