@@ -3,6 +3,7 @@
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\App;
 
 if (!function_exists('getTokenPayload')) {
     function getTokenPayload(Request $request)
@@ -151,7 +152,10 @@ function imagesforall(){
 }
 
 function upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$newImageData){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_student_profile_image_into_folder';
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url . 'upload_student_profile_image_into_folder';
 
      $response = Http::asMultipart()->post($url, [
         [
@@ -186,7 +190,10 @@ function upload_student_profile_image_into_folder($studentId,$filename,$doc_type
 }
 
 function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_teacher_profile_image_into_folder';
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url.'upload_teacher_profile_image_into_folder';
          Log::info('Student ID: ' . $id . ' | Filename: ' . $filename . ' | Doc Type Folder: ' . $doc_type_folder);
 
 
@@ -225,7 +232,10 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
 }
 
 function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_guardian_profile_image_into_folder';
+     $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url.'upload_guardian_profile_image_into_folder';
          Log::info('Student ID: ' . $id . ' | Filename: ' . $filename . ' | Doc Type Folder: ' . $doc_type_folder);
 
 
@@ -265,7 +275,10 @@ function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folde
 
 
 function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_father_profile_image_into_folder';
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url.'upload_father_profile_image_into_folder';
          Log::info('Student ID: ' . $id . ' | Filename: ' . $filename . ' | Doc Type Folder: ' . $doc_type_folder);
 
 
@@ -304,7 +317,10 @@ function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_mother_profile_image_into_folder';
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url.'upload_mother_profile_image_into_folder';
          Log::info('Student ID: ' . $id . ' | Filename: ' . $filename . ' | Doc Type Folder: ' . $doc_type_folder);
 
 
@@ -343,7 +359,10 @@ function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
-    $url = 'https://sms.arnoldcentralschool.org/Test_ParentAppService/upload_qrcode_into_folder';
+    $globalVariables = App::make('global_variables');
+    $parent_app_url = $globalVariables['parent_app_url'];
+    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $url = $parent_app_url.'upload_qrcode_into_folder';
          
 
 
@@ -380,7 +399,10 @@ function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
 function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFolder, $noticeId)
     {
         // API URL
-        $url = 'https://sms.arnoldcentralschool.org/SACSv4test/index.php/AdminApi/upload_files_for_laravel';
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url.'index.php/AdminApi/upload_files_for_laravel';
 
         // Prepare the data array with dynamic values
         $data = [
@@ -411,8 +433,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function delete_uploaded_files_for_laravel ($filename,$uploadDate, $docTypeFolder, $noticeId)
     {
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         // API URL
-        $url = 'https://sms.arnoldcentralschool.org/SACSv4test/index.php/AdminApi/delete_uploaded_files_for_laravel';
+        $url = $codeigniter_app_url.'index.php/AdminApi/delete_uploaded_files_for_laravel';
 
         // Prepare the data array with dynamic values
         $data = [

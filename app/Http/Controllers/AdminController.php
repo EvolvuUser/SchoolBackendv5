@@ -11509,6 +11509,49 @@ public function getTeacherIdCard(Request $request){
          
      }
 
+     //Get SectionId with ClassName Dev Name-Manish Kumar Sharma 21-04-2025
+     public function getSectionwithClassName(){
+        try{       
+              $user = $this->authenticateUser();
+              $customClaims = JWTAuth::getPayload()->get('academic_year');
+              if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                  $classname = DB::table('section')
+                               ->join('class','class.class_id','=','section.class_id')
+                               ->where('section.academic_yr', $customClaims)
+                               ->select('section.section_id', 'class.name as classname', 'section.name as sectionname')
+                               ->get();
+
+                                       $result = [];
+                                       
+                                       foreach ($classname as $item) {
+                                           $result[$item->section_id] = $item->classname . '-' . $item->sectionname;
+                                       }
+                                     return response()->json([
+                                          'status'=> 200,
+                                          'data'=>$result,
+                                          'message'=>'SectionId with classname. ',
+                                          'success'=>true
+                                              ]);
+                    
+                  
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                          ]);
+                  }
+      
+              }
+              catch (Exception $e) {
+              \Log::error($e); 
+              return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+              } 
+        
+    }
+
 
 
 
