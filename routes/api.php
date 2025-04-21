@@ -538,6 +538,9 @@
         //Delete Teacher Periods Dev Name-Manish Kumar Sharma 14-04-2025
         Route::delete('delete_teacherperiodintimetable/{teacher_id}',[AdminController::class,'deleteTeacherPeriodTimetable']);
 
+        //Get SectionId with ClassName Dev Name-Manish Kumar Sharma 21-04-2025
+        Route::get('get_sectionwithclassname',[AdminController::class,'getSectionwithClassName']);
+
 
     });
 
