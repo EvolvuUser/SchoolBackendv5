@@ -1297,13 +1297,16 @@ public function destroyDivision($id)
                             );
 }
 
-
+//Updated By-Manish Kumar Sharma 21-04-2025
 public function getStaffList(Request $request) {
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-    $stafflist = Teacher::where('designation', '!=', 'Caretaker')
-        ->get()
+    $stafflist = DB::table('teacher')
+    ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+    ->where('user_master.role_id', '=', 'T')
+    ->select('teacher.*') 
+    ->get()
         ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
             $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
             if ($staff->teacher_image_name) {
@@ -1315,12 +1318,17 @@ public function getStaffList(Request $request) {
         });
     return response()->json($stafflist);
 }
-//Edited by - Manish Kumar sharma 15-02-2025
+//Edited by - Manish Kumar sharma 15-02-2025  Updated By-Manish Kumar Sharma 21-04-2025
 public function editStaff($id)
 {
     try {
         // Find the teacher by ID
-        $teacher = Teacher::findOrFail($id);
+    $teacher = DB::table('teacher')
+            ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+            ->where('teacher.teacher_id', $id)
+            ->where('user_master.role_id', 'T')
+            ->select('teacher.*') // or any user fields you need
+            ->first();
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -1332,9 +1340,10 @@ public function editStaff($id)
         } else {
             $teacher->teacher_image_name = null;
         }
+        
 
         // Find the associated user record
-        $user = User::where('reg_id', $id)->first();
+        $user = DB::table('user_master')->where('reg_id', $id)->where('role_id','T')->first();
 
         return response()->json([
             'teacher' => $teacher,
@@ -8776,6 +8785,16 @@ public function getTeacherIdCard(Request $request){
                         'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
                     ];
                 }
+                if (empty($timetable->monday)) {
+                    
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
 
                 // For Tuesday
                 if ($timetable->tuesday) {
@@ -8791,6 +8810,16 @@ public function getTeacherIdCard(Request $request){
                         'time_out' => $timetable->time_out,
                         'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
                         'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
+                    ];
+                }
+                if (empty($timetable->tuesday)) {
+                    
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
                     ];
                 }
 
@@ -8810,6 +8839,17 @@ public function getTeacherIdCard(Request $request){
                         'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
                     ];
                 }
+                
+                if (empty($timetable->wednesday)) {
+                    
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
 
                 // For Thursday
                 if ($timetable->thursday) {
@@ -8825,6 +8865,17 @@ public function getTeacherIdCard(Request $request){
                         'time_out' => $timetable->time_out,
                         'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
                         'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
+                    ];
+                }
+                
+                if (empty($timetable->thursday)) {
+                    
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
                     ];
                 }
 
@@ -8844,6 +8895,17 @@ public function getTeacherIdCard(Request $request){
                         'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
                     ];
                 }
+                
+                if (empty($timetable->friday)) {
+                    
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
 
                 // For Saturday
                 if ($timetable->saturday) {
@@ -8859,6 +8921,16 @@ public function getTeacherIdCard(Request $request){
                         'time_out' => $timetable->sat_out,
                         'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
                         'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
+                    ];
+                }
+                if (is_null($timetable->saturday)) {
+                    
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no'=>$timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
                     ];
                 }
             }
