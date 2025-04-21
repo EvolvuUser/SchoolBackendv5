@@ -10231,6 +10231,7 @@ public function getTeacherIdCard(Request $request){
                                          ->where('user_master.role_id', 'T')
                                          ->join('teachers_period_allocation','teachers_period_allocation.teacher_id','=','teacher.teacher_id')
                                          ->where('teachers_period_allocation.academic_yr',$customClaims)
+                                         ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
                                          ->select('teacher.name as teachername','teachers_period_allocation.*')
                                          ->get();
                                          
