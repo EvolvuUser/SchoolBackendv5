@@ -607,6 +607,21 @@ Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentContr
 Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
 Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
 
+Route::get('/clear-all', function () {
+    Artisan::call('optimize:clear');
+    Artisan::call('config:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('config:cache');
+    Artisan::call('route:cache');
+    
+    return response()->json([
+        'status' => 'success',
+        'message' => 'All caches cleared and optimized.',
+    ]);
+});
+
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);
 
