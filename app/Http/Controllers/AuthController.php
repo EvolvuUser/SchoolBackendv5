@@ -83,7 +83,7 @@ class AuthController extends Controller
         $credentials = $request->only('user_id', 'password');
 
         try {
-            $url = 'https://aceventura.in/demo/evolvuUserService/validate_staff_user';
+            $url = config('externalapis.validate_staff_user');
 
             $response = Http::asMultipart()->post($url, [
                 [
