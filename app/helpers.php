@@ -135,7 +135,7 @@ if (!function_exists('getFullName')) {
 
 
 function imagesforall(){
-    $url ='https://aceventura.in/demo/evolvuUserService/get_school_details';
+    $url =config('externalapis.get_school_details');
 
      $response = Http::asMultipart()->post($url, [
         [
