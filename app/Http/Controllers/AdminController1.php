@@ -1299,24 +1299,67 @@ public function destroyDivision($id)
 
 //Updated By-Manish Kumar Sharma 21-04-2025
 public function getStaffList(Request $request) {
-    $globalVariables = App::make('global_variables');
-    $parent_app_url = $globalVariables['parent_app_url'];
-    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-    $stafflist = DB::table('teacher')
-    ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
-    ->where('user_master.role_id', '=', 'T')
-    ->select('teacher.*') 
-    ->get()
-        ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
-            $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
-            if ($staff->teacher_image_name) {
-                $staff->teacher_image_name = $concatprojecturl.""."$staff->teacher_image_name";
-            } else {
-                $staff->teacher_image_name = null; 
+            try{       
+                  $user = $this->authenticateUser();
+                  $customClaims = JWTAuth::getPayload()->get('academic_year');
+                  if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $globalVariables = App::make('global_variables');
+                $parent_app_url = $globalVariables['parent_app_url'];
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                $stafflist = DB::table('teacher')
+                ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+                ->where('user_master.role_id', '=', 'T')
+                ->select('teacher.*') 
+                ->get();
+            
+            // Get class-section mappings for all teachers
+            $classMappings = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class_teachers.teacher_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id'
+                )
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->orderBy('class_teachers.section_id')
+                ->get();
+            
+            // Attach classes + fix image URL
+            $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+            
+                // Fix image path
+                $staff->teacher_image_name = $staff->teacher_image_name
+                    ? $concatprojecturl . $staff->teacher_image_name
+                    : null;
+            
+                // Attach class-section data
+                $staff->classes = $classMappings
+                    ->where('teacher_id', $staff->teacher_id)
+                    ->values(); // reset index
+            
+                return $staff;
+            });
+            
+            return response()->json($stafflist);
             }
-            return $staff;
-        });
-    return response()->json($stafflist);
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                          ]);
+                  }
+      
+              }
+              catch (Exception $e) {
+              \Log::error($e); 
+              return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+              } 
 }
 //Edited by - Manish Kumar sharma 15-02-2025  Updated By-Manish Kumar Sharma 21-04-2025
 public function editStaff($id)
@@ -1693,20 +1736,22 @@ if ($request->has('teacher_image_name')) {
 
                 $filename = $id. '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
-                $doc_type_folder = 'teacher_image';
-                $fileContent = file_get_contents($filePath);
-                $base64File = base64_encode($fileContent); 
-                upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
-
                 $directory = dirname($filePath);
                 if (!is_dir($directory)) {
                     mkdir($directory, 0755, true);
                 }
-
+                $doc_type_folder = 'teacher_image';
                 // Save the new image to file
                 if (file_put_contents($filePath, $newImageData) === false) {
                     throw new \Exception('Failed to save image file');
                 }
+                $fileContent = file_get_contents($filePath);
+                $base64File = base64_encode($fileContent); 
+                upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File);
+
+                
+
+                
 
                 // Update the validated data with the new filename
                 $validatedData['teacher_image_name'] = $filename;
