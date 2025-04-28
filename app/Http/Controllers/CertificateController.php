@@ -21,6 +21,7 @@ use App\Models\LeavingCertificate;
 use App\Models\Student;
 use App\Models\UserMaster;
 use Http;
+use Illuminate\Support\Facades\App;
 
 
 class CertificateController extends Controller
@@ -2625,19 +2626,21 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->orWhere('slc_no', '!=', 0);
                     })
-                    ->where('a.IsDelete','N')
                     ->where('a.section_id', '=', $section_id)
                     ->where('a.academic_yr', '=', $customClaims)
                     ->select('a.*','b.name as classname','c.name as sectionname')
                     ->orderByDesc('a.slc_no')
                     ->get();
-                $students->each(function ($student) {
+                    $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                $students->each(function ($student) use($parent_app_url,$codeigniter_app_url){
+                    $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
                     if (!empty($student->image_name)) {
-                        // Generate the full URL for the student image based on their unique image_name
-                        $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                        $student->image_name = $concatprojecturl."".$student->image_name;
                     } else {
-                        
-                        $student->image_name = asset('storage/uploads/student_image/default.png');
+                       
+                        $student->image_name = '';
                     }
                 }); 
             }
@@ -2649,19 +2652,20 @@ class CertificateController extends Controller
                         $query->where('slc_no', '!=', '')
                             ->where('slc_no', '!=', 0);
                     })
-                    ->where('a.IsDelete','N')
                     ->where('a.academic_yr', '=', $customClaims)
                     ->select('a.*','b.name as classname','c.name as sectionname')
                     ->orderByDesc('a.slc_no')
                     ->get();
-                
-                    $students->each(function ($student) {
+                     $globalVariables = App::make('global_variables');
+                    $parent_app_url = $globalVariables['parent_app_url'];
+                    $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                    $students->each(function ($student)  use($parent_app_url,$codeigniter_app_url){
+                         $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
                         if (!empty($student->image_name)) {
-                            // Generate the full URL for the student image based on their unique image_name
-                            $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
+                            $student->image_name = $concatprojecturl."".$student->image_name;
                         } else {
-                            
-                            $student->image_name = asset('storage/uploads/student_image/default.png');
+                           
+                            $student->image_name = '';
                         }
                     }); 
                     
@@ -2802,13 +2806,12 @@ class CertificateController extends Controller
                                                         ->where('id', $studentinfo->parent_id)
                                                         ->first();
                                                 
-                        $data3 = [
-                            'id' => $studentinfo->parent_id,
-                            // Use null coalescing operator with array or object check
-                            'phone_no' => $parentdetail->phone_no,
-                            'm_emailid' => $parentdetail->m_emailid,
-                            'email_id' => $parentdetail->email_id ,
-                        ];
+                            $data3 = [
+                                'id' => $studentinfo->parent_id ?? null,
+                                'phone_no' => $parentdetail->phone_no ?? '',
+                                'm_emailid' => $parentdetail->m_emailid ?? '',
+                                'email_id' => $parentdetail->email_id ?? '',
+                            ];
                             // Step 6: Check if the contact details exist in the 'deleted_contact_details' table
                             $existingContact = DB::table('deleted_contact_details')
                                 ->where('id', $studentinfo->parent_id)

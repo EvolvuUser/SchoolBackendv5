@@ -83,23 +83,7 @@ class AuthController extends Controller
         $credentials = $request->only('user_id', 'password');
 
         try {
-            $url = config('externalapis.validate_staff_user');
-
-            $response = Http::asMultipart()->post($url, [
-                [
-                    'name' => 'user_id',
-                    'contents' => $credentials['user_id'], 
-                ],
-            ]);
-            $responseData = $response->json();
-            $shortName = $responseData[0]['short_name'];
-            $schoolName = $responseData[0]['name'];
-            $databaseConnectionName = $shortName;
-            if (array_key_exists($databaseConnectionName, config('database.connections'))) {
-                config(['database.default' => $databaseConnectionName]);
-            } else {
-                dd("No database configuration for the given short_name");
-            }
+            
             $userrole= UserMaster::where('user_id',$credentials['user_id'])->where('role_id','A')->first();
             if($userrole){
 
@@ -117,6 +101,23 @@ class AuthController extends Controller
             if (!$token = JWTAuth::attempt($credentials)) {
                 Log::warning('Invalid password for user:', $credentials);
                 return response()->json(['error' => 'Invalid password'], 401);
+            }
+            $url = config('externalapis.validate_staff_user');
+
+            $response = Http::asMultipart()->post($url, [
+                [
+                    'name' => 'user_id',
+                    'contents' => $credentials['user_id'], 
+                ],
+            ]);
+            $responseData = $response->json();
+            $shortName = $responseData[0]['short_name'];
+            $schoolName = $responseData[0]['name'];
+            $databaseConnectionName = $shortName;
+            if (array_key_exists($databaseConnectionName, config('database.connections'))) {
+                config(['database.default' => $databaseConnectionName]);
+            } else {
+                dd("No database configuration for the given short_name");
             }
 
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
@@ -141,7 +142,7 @@ class AuthController extends Controller
             else{
                 return response()->json([
                     'status' => 403,
-                    'message' => 'User not allowed',
+                    'message' => 'Invalid user name',
                     'success'=>false
                 ]);
             }
@@ -241,11 +242,20 @@ class AuthController extends Controller
         }
     }
 
-
+    //Edited By Manish Kumar Sharma 25-04-2025
     public function editUser(Request $request)
     {
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $user = auth()->user();
         $teacher = $user->getTeacher;
+        if ($teacher) {
+            $teacher->teacher_image_name = $teacher->teacher_image_name
+                ? $codeigniter_app_url .'uploads/teacher_image/'. $teacher->teacher_image_name
+                : null;
+        }
+        
 
         if ($teacher) {
             return response()->json([
@@ -281,7 +291,6 @@ class AuthController extends Controller
                 'trained' => 'nullable|string|max:255',
                 'experience' => 'nullable|string|max:255',
                 'aadhar_card_no' => 'nullable|string|max:20|unique:teacher,aadhar_card_no,' . auth()->user()->reg_id . ',teacher_id',
-                'teacher_image_name' => 'nullable|string|max:255',
                 'class_id' => 'nullable|integer',
                 'section_id' => 'nullable|integer',
                 'isDelete' => 'nullable|string|in:Y,N',
@@ -293,12 +302,73 @@ class AuthController extends Controller
 
              $user = $this->authenticateUser();
             $teacher = $user->getTeacher;
+            if (!isset($validatedData['teacher_image_name']) || $validatedData['teacher_image_name'] === null) {
+                unset($validatedData['teacher_image_name']);
+            }
+
 
             if ($teacher) {
                 $teacher->fill($validatedData);
                 $teacher->save();
 
                 $user->update($request->only('name'));
+                $staff = DB::table('teacher')->where('teacher_id', auth()->user()->reg_id)->first();
+            $existingImageUrl = $staff->teacher_image_name;
+            
+            // Handle base64 image
+            if ($request->has('teacher_image_name')) {
+                $newImageData = $request->input('teacher_image_name');
+            
+                // Check if the new image data is null
+                if ($newImageData === null || $newImageData === 'null') {
+                    // If the new image data is null, keep the existing filename
+                    $validatedData['teacher_image_name'] = $staff->teacher_image_name;
+                } elseif (!empty($newImageData)) {
+                    // Check if the new image data matches the existing image URL
+                    if ($existingImageUrl !== $newImageData) {
+                        if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
+                            $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
+                            $type = strtolower($type[1]); // jpg, png, gif
+            
+                            if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+                                throw new \Exception('Invalid image type');
+                            }
+            
+                            $newImageData = base64_decode($newImageData);
+                            if ($newImageData === false) {
+                                throw new \Exception('Base64 decode failed');
+                            }
+            
+                            $filename = auth()->user()->reg_id. '.' . $type;
+                            $filePath = storage_path('app/public/teacher_images/' . $filename);
+                            $directory = dirname($filePath);
+                            if (!is_dir($directory)) {
+                                mkdir($directory, 0755, true);
+                            }
+                            $doc_type_folder = 'teacher_image';
+                            // Save the new image to file
+                            if (file_put_contents($filePath, $newImageData) === false) {
+                                throw new \Exception('Failed to save image file');
+                            }
+                            $fileContent = file_get_contents($filePath);
+                            $base64File = base64_encode($fileContent); 
+                            upload_teacher_profile_image_into_folder(auth()->user()->reg_id,$filename,$doc_type_folder,$base64File);
+            
+                            
+            
+                            
+            
+                            // Update the validated data with the new filename
+                            $validatedData['teacher_image_name'] = $filename;
+                        } else {
+                            throw new \Exception('Invalid image data');
+                        }
+                    } else {
+                        // If the image is the same, keep the existing filename
+                        $validatedData['teacher_image_name'] = $staff->teacher_image_name;
+                    }
+                }
+            }
 
                 return response()->json([
                     'message' => 'Profile updated successfully!',

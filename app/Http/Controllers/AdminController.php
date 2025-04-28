@@ -129,19 +129,24 @@ public function sendTeacherBirthdayEmail()
 
     public function staff(){
      
-       $teachingStaff = UserMaster::where('IsDelete','N')
-                        ->where('role_id','T')
-                        ->count();
-
-        $non_teachingStaff = UserMaster::where('IsDelete', 'N')
-                        ->whereIn('role_id', ['A', 'F', 'M', 'L', 'X', 'Y'])
-                        ->count();            
-
-       return response()->json([
-        'teachingStaff'=>$teachingStaff,
-        'non_teachingStaff'=>$non_teachingStaff,
-       ]);                 
-    }
+        $teachingStaff = count(DB::select("
+                             SELECT distinct(t.teacher_id) FROM teacher t, user_master u WHERE t.teacher_id=u.reg_id and t.isDelete='N' and role_id in ('T','L')
+                         "));
+                         
+        $attendanceteachingstaff = count(DB::select("SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t, user_master u WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED) and t.teacher_id=u.reg_id and t.isDelete='N' and u.role_id in ('T','L') and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE()"));
+ 
+         $non_teachingStaff = count(DB::select("
+                            SELECT distinct(t.teacher_id) FROM teacher t, user_master u WHERE t.teacher_id=u.reg_id and t.isDelete='N' and role_id in ('A','F', 'M', 'N', 'X', 'Y') UNION SELECT distinct(c.teacher_id) FROM teacher c where designation='Caretaker'
+                         ")); 
+         $attendancenonteachingstaff = count(DB::select("SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t, user_master u WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED) and t.teacher_id=u.reg_id and t.isDelete='N' and u.role_id in ('A','F', 'M', 'N', 'X', 'Y') and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE() UNION SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED) and t.isDelete='N' and t.designation='Caretaker' and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE()"));
+ 
+        return response()->json([
+         'teachingStaff'=>$teachingStaff,
+         'non_teachingStaff'=>$non_teachingStaff,
+         'attendancenonteachingstaff'=>$attendancenonteachingstaff,
+         'attendanceteachingstaff'=>$attendanceteachingstaff
+        ]);                 
+     }
 
 
     public function staffBirthdaycount(Request $request)
@@ -387,32 +392,19 @@ return response()->json($tickets);
     DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
 
     $sql = "
-        SELECT SUM(installment_fees - concession - paid_amount) AS pending_fee 
-        FROM (
-            SELECT s.student_id, s.installment, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount 
-            FROM view_student_fees_category s
-            LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment 
-            WHERE s.academic_yr = ? AND due_date < CURDATE() 
-                AND s.student_installment NOT IN (
-                    SELECT student_installment 
-                    FROM view_student_fees_payment a 
-                    WHERE a.academic_yr = ?
-                ) 
-            GROUP BY s.student_id, s.installment, installment_fees
-
-            UNION
-
-            SELECT f.student_id AS student_id, b.installment AS installment, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession, SUM(f.fees_paid) AS paid_amount 
-            FROM view_student_fees_payment f
-            LEFT JOIN fee_concession_details c ON f.student_id = c.student_id AND f.installment = c.installment 
-            JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment 
-            WHERE f.academic_yr = ?
-            GROUP BY f.student_id, b.installment, b.installment_fees, c.installment, b.fees_category_id
-            HAVING (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)
-        ) as z
+        SELECT SUM(installment_fees - concession - paid_amount) AS pending_fee FROM
+        (SELECT s.student_id, s.installment, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount FROM
+        view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE
+        s.academic_yr = '$academicYr' and s.installment<>4 AND due_date < CURDATE() AND s.student_installment NOT IN
+        (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '$academicYr') GROUP BY s.student_id, s.installment
+        UNION SELECT f.student_id AS student_id, b.installment AS installment, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession,
+        SUM(f.fees_paid) AS paid_amount FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id
+        AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment
+        WHERE b.installment<>4 and f.academic_yr = '$academicYr' GROUP BY f.installment, c.installment  HAVING
+        (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)) as z
     ";
 
-    $results = DB::select($sql, [$academicYr, $academicYr, $academicYr]);
+    $results = DB::select($sql);
 
     $pendingFee = $results[0]->pending_fee;
 
@@ -554,63 +546,38 @@ public function getBankAccountName()
 
 public function pendingCollectedFeeData(): JsonResponse
 {
-     DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
-
-    $subQuery1 = DB::table('view_student_fees_category as s')
-        ->leftJoin('fee_concession_details as d', function ($join) {
-            $join->on('s.student_id', '=', 'd.student_id')
-                 ->on('s.installment', '=', 'd.installment');
-        })
-        ->select(
-            's.student_id',
-            's.installment',
-            's.installment_fees',
-            DB::raw('COALESCE(SUM(d.amount), 0) as concession'),
-            DB::raw('0 as paid_amount')
-        )
-        ->where('s.academic_yr', '2023-2024')
-        ->where('s.installment', '<>', 4)
-        ->where('s.due_date', '<', DB::raw('CURDATE()'))
-        ->whereNotIn('s.student_installment', function ($query) {
-            $query->select('a.student_installment')
-                  ->from('view_student_fees_payment as a')
-                  ->where('a.academic_yr', '2023-2024');
-        })
-        ->groupBy('s.student_id', 's.installment');
-
-    $subQuery2 = DB::table('view_student_fees_payment as f')
-        ->leftJoin('fee_concession_details as c', function ($join) {
-            $join->on('f.student_id', '=', 'c.student_id')
-                 ->on('f.installment', '=', 'c.installment');
-        })
-        ->join('view_fee_allotment as b', function ($join) {
-            $join->on('f.fee_allotment_id', '=', 'b.fee_allotment_id')
-                 ->on('b.installment', '=', 'f.installment');
-        })
-        ->select(
-            'f.student_id as student_id',
-            'b.installment as installment',
-            'b.installment_fees',
-            DB::raw('COALESCE(SUM(c.amount), 0) as concession'),
-            DB::raw('SUM(f.fees_paid) as paid_amount')
-        )
-        ->where('b.installment', '<>', 4)
-        ->where('f.academic_yr', '2023-2024')
-        ->groupBy('f.installment', 'c.installment')
-        ->havingRaw('(b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)');
-
-    $unionQuery = $subQuery1->union($subQuery2);
-
-    $finalQuery = DB::table(DB::raw("({$unionQuery->toSql()}) as z"))
-        ->select(
-            'z.installment',
-            DB::raw('SUM(z.installment_fees - z.concession - z.paid_amount) as pending_fee')
-        )
-        ->groupBy('z.installment')
-        ->mergeBindings($unionQuery) 
-        ->get();
+ try{       
+          $user = $this->authenticateUser();
+          $customClaims = JWTAuth::getPayload()->get('academic_year');
+          if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+    
+            $finalQuery = DB::select("
+            select z.installment, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id, s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
+        0 as paid_amount FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment WHERE s.academic_yr='$customClaims' and
+        s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims')
+        group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession,
+        sum(f.fees_paid) as paid_amount FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join
+        view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment,
+        c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment
+        ");
 
     return response()->json($finalQuery);
+     }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
 }
 
 
@@ -687,58 +654,48 @@ public function collectedFeeList(Request $request){
         return response()->json(['error' => 'Invalid or missing token'], 401);
     }
     $academicYr = $payload->get('academic_year'); 
-    $bankAccountNames = DB::table('bank_account_name')
-        ->whereIn('account_name', ['Nursery', 'KG', 'School'])
-        ->pluck('account_name')
-        ->toArray();
+    $collectedfees = DB::select("SELECT 'Nursery' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name = 'Nursery' 
+    GROUP BY d.installment 
 
-    $query = DB::table('view_fees_payment_record as a')
-        ->join('view_fees_payment_detail as d', 'a.fees_payment_id', '=', 'd.fees_payment_id')
-        ->join('student as b', 'a.student_id', '=', 'b.student_id')
-        ->join('class as c', 'b.class_id', '=', 'c.class_id')
-        ->select(DB::raw("'Total' as account"), 'd.installment', DB::raw('SUM(d.amount) as amount'))
-        ->where('a.isCancel', 'N')
-        ->where('a.academic_yr', $academicYr)
-        ->groupBy('d.installment');
+    UNION
 
-    foreach ($bankAccountNames as $class) {
-        $query->union(function ($query) use ($class, $academicYr) {
-            $query->select(DB::raw("'{$class}' as account"), 'd.installment', DB::raw('SUM(d.amount) as amount'))
-                ->from('view_fees_payment_record as a')
-                ->join('view_fees_payment_detail as d', 'a.fees_payment_id', '=', 'd.fees_payment_id')
-                ->join('student as b', 'a.student_id', '=', 'b.student_id')
-                ->join('class as c', 'b.class_id', '=', 'c.class_id')
-                ->where('a.isCancel', 'N')
-                ->where('a.academic_yr', $academicYr);
+    SELECT 'KG' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name IN ('LKG','UKG') 
+    GROUP BY d.installment 
 
-            if ($class === 'Nursery') {
-                $query->where('c.name', 'Nursery');
-            } elseif ($class === 'KG') {
-                $query->whereIn('c.name', ['LKG', 'UKG']);
-            } elseif ($class === 'School') {
-                $query->whereIn('c.name', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
-            }
+    UNION
 
-            $query->groupBy('d.installment');
-        });
-    }
+    SELECT 'School' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
+    GROUP BY d.installment");
+    
 
-    $results = $query->get();
-
-    $formattedResults = [];
-
-    foreach ($results as $result) {
-        $account = $result->account;
-
-        if ($account !== 'Total') {
-            $formattedResults[$account][] = [
-                'installment' => $result->installment,
-                'amount' => $result->amount,
-            ];
-        }
-    }
-
-    return response()->json($formattedResults);
+    return response()->json($collectedfees);
 }
 
 
@@ -4291,7 +4248,7 @@ public function checkSubjectNameForReportCard(Request $request)
 
     $sequence = $validatedData['sequence'];
     // return response()->json($sequence);
-    $exists = SubjectForReportCard::where(DB::raw('LOWER(sequence)'), strtolower($sequence))->exists();
+    // $exists = SubjectForReportCard::where(DB::raw('LOWER(sequence)'), strtolower($sequence))->exists();
     $exists = SubjectForReportCard::where('sequence', $sequence)->exists();
     return response()->json(['exists' => $exists]);
 }
@@ -5062,7 +5019,7 @@ return response()->json(['message' => 'CSV data updated successfully.']);
 }
 
 public function downloadCsvRejected($id){
-    $filePath = "https://sms.evolvu.in/storage/app/public/csv_rejected/".$id;
+    $filePath = storage_path('app/public/csv_rejected/' . $id);
     $file = fopen($filePath, 'r');
     
     if ($file) {
@@ -9579,7 +9536,7 @@ public function getTeacherIdCard(Request $request){
                     // $data = '123';
                     // $imagePath = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
                     // $qrCode->generate($data, $imagePath);
-                    $filelocation = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
+                    $filelocation = storage_path('app/public/qrcode/'.$imageName);
                     // dd($filelocation);
                     $imageData = file_get_contents($filelocation);
                     $base64File = base64_encode($imageData);
