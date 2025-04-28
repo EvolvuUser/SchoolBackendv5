@@ -309,7 +309,6 @@ class ReportController extends Controller
                                                    ->where('academic_yr', $prev_acd_yr)
                                                    ->where('parent_id', $studentdetail->parent_id)
                                                    ->where('first_name',$studentdetail->first_name)
-                                                   ->where('reg_no',$studentdetail->reg_no)
                                                    ->first();
                                                 //  dd($prev_yr_student_id);
                             if(!empty($prev_yr_student_id)){
