@@ -14,6 +14,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Models\UserMaster;
 use Http;
 use DB;
+use Illuminate\Support\Facades\App;
 
 class AuthController extends Controller
 {
@@ -88,6 +89,16 @@ class AuthController extends Controller
             if($userrole){
 
                 $user = UserMaster::where('user_id', $credentials['user_id'])->first();
+                $passwordFromDb = $user->password;
+                $isHashed = strlen($passwordFromDb) === 60 && preg_match('/^\$2[ayb]\$/', $passwordFromDb);
+                
+                if (!$isHashed) {
+                    return response()->json([
+                    'status' => 403,
+                    'message' => 'Invalid userid',
+                    'success'=>false
+                   ]);
+                }
             if (!$user) {
 
                 Log::warning('Username is not valid:', $credentials);
