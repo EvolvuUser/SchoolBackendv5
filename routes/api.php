@@ -553,6 +553,12 @@
         //Student Id Card New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
         Route::get('get_studentidcarddetails',[AdminController::class,'getStudentIdCardDetails']);
         Route::post('save_studentdetailsforidcard',[AdminController::class,'saveStudentDetailsForIdCard']);
+
+        //Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+        Route::get('get_update_idcard_data_by_teacher',[AdminController::class,'getUpdateIdCardData']);
+        Route::put('update_idcarddata',[AdminController::class,'updateIdCardData']);
+        Route::put('update_idcarddataandconfirm',[AdminController::class,'updateIdCardDataAndConfirm']);
+        Route::put('update_studentphotoforidcard',[AdminController::class,'updateStudentPhotoForIdCard']);
         
 
 
