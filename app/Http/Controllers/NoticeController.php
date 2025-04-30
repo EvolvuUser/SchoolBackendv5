@@ -283,7 +283,7 @@ class NoticeController extends Controller
                                     ->where('unq_id',$unq_id)
                                     ->join('notice_detail','notice_detail.notice_id','=','notice.notice_id')
                                     ->where('notice.notice_id',$notice_type->notice_id)
-                                    ->select('notice_detail.image_name')
+                                    ->select('notice_detail.image_name','notice_detail.notice_id')
                                     ->get();
                                  
                     $imageUrls = []; 
@@ -2127,8 +2127,8 @@ class NoticeController extends Controller
 
             // Fallback to SMS if the recipient is not on WhatsApp
             $sender_id = 'ACEVIT';
-            $username = 'ACEVENTURA';
-            $apikey = '435B6-9DEAB';
+            $username = 'sacs';
+            $apikey = 'A3AB1-5903F';
             $uri = 'http://sms.quicksmsservices.com/sms-panel/api/http/index.php';
 
             $data = [

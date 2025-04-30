@@ -799,13 +799,13 @@ public function updateCsvData(Request $request, $section_id)
     //dd($header);
     // Define the CSV to database column mapping
     $columnMap = [
-        '    student_id' => 'student_id',
+        'student_id' => 'student_id',
         '*First Name' => 'first_name',
         'Mid name' => 'mid_name',
         'last name' => 'last_name',
         '*Gender' => 'gender',
         '*DOB(in dd/mm/yyyy format)' => 'dob',
-        'Student Aadhaar No.' => 'stu_aadhaar_no',
+        '*Student Aadhaar No.' => 'stu_aadhaar_no',
         'Mother Tongue' => 'mother_tongue',
         'Religion' => 'religion',
         '*Blood Group' => 'blood_group',
@@ -819,8 +819,8 @@ public function updateCsvData(Request $request, $section_id)
         'Father Occupation' => 'father_occupation',
         '*Father Mobile No.(Only Indian Numbers)' => 'father_mobile',
         '*Father Email-Id' => 'father_email',
-        'Mother Aadhaar No.' => 'mother_aadhaar_no',
-        'Father Aadhaar No.' => 'father_aadhaar_no',
+        '*Mother Aadhaar No.' => 'mother_aadhaar_no',
+        '*Father Aadhaar No.' => 'father_aadhaar_no',
         '*Address' => 'permant_add',
         '*City' => 'city',
         '*State' => 'state',
@@ -859,6 +859,11 @@ public function updateCsvData(Request $request, $section_id)
         // dd($studentData);
         $studentData['father_aadhaar_no'] = preg_replace('/\D/', '', $studentData['father_aadhaar_no']);
         $studentData['mother_aadhaar_no'] = preg_replace('/\D/', '', $studentData['mother_aadhaar_no']);
+        $studentData['stu_aadhaar_no'] = preg_replace('/\D/', '', $studentData['stu_aadhaar_no']);
+        $studentData['mother_mobile'] = preg_replace('/\D/', '', $studentData['mother_mobile']);
+        $studentData['father_mobile'] = preg_replace('/\D/', '', $studentData['father_mobile']);
+        $studentData['dob'] = preg_replace('/[^0-9\/]/', '', $studentData['dob']);
+        $studentData['admission_date'] = preg_replace('/[^0-9\/]/', '', $studentData['admission_date']);
        
         DB::beginTransaction();
         $errors = []; 
@@ -948,6 +953,16 @@ public function updateCsvData(Request $request, $section_id)
         } else {
             // Ensure it's stored as an integer
             $studentData['mother_aadhaar_no'] = intval($studentData['mother_aadhaar_no']);
+        }
+        
+        if (empty($studentData['stu_aadhaar_no'])) {
+            $errors[] = 'Student Aadhar is required.';
+        }
+        elseif (!is_numeric((string)$studentData['stu_aadhaar_no']) || strlen($studentData['stu_aadhaar_no']) != 12) {
+            $errors[] = 'Student Aadhar must be a 12-digit numeric value.';
+        } else {
+            // Ensure it's stored as an integer
+            $studentData['stu_aadhaar_no'] = intval($studentData['stu_aadhaar_no']);
         }
         
         // Validate and handle DOB format (dd/mm/yyyy)
@@ -1044,10 +1059,9 @@ public function updateCsvData(Request $request, $section_id)
             $student->created_by = $user->reg_id;
             $student->save();
             
-             DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+             DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?)', [
                     $student->parent_id,                
                     $studentData['father_mobile'],
-                    $studentData['mother_mobile'],
                     $studentData['father_email'],
                     $studentData['mother_email']  // sms_consent
                 ]);
@@ -1083,7 +1097,7 @@ public function updateCsvData(Request $request, $section_id)
         'last name', 
         '*Gender', 
         '*DOB(in dd/mm/yyyy format)', 
-        'Student Aadhaar No.', 
+        '*Student Aadhaar No.', 
         'Mother Tongue', 
         'Religion', 
         '*Blood Group', 
@@ -1099,8 +1113,8 @@ public function updateCsvData(Request $request, $section_id)
         'Father Occupation', 
         '*Father Mobile No.(Only Indian Numbers)', 
         '*Father Email-Id', 
-        'Mother Aadhaar No.', 
-        'Father Aadhaar No.', 
+        '*Mother Aadhaar No.', 
+        '*Father Aadhaar No.', 
         '*Address', 
         '*City', 
         '*State', 

@@ -149,41 +149,78 @@ public function sendTeacherBirthdayEmail()
      }
 
 
-    public function staffBirthdaycount(Request $request)
-{
-    $currentDate = Carbon::now();
-    $count = Teacher::where('IsDelete', 'N')
-                     ->whereMonth('birthday', $currentDate->month)
-                     ->whereDay('birthday', $currentDate->day)
-                     ->count();
-
-    return response()->json([
-        'count' => $count,       
-    ]);
-}
-
-public function staffBirthdayList(Request $request)
-{
-        $payload = getTokenPayload($request);
-        if (!$payload) {
-            return response()->json(['error' => 'Invalid or missing token'], 401);
-        }
-        $academicYr = $payload->get('academic_year'); 
-        if (!$academicYr) {
-        return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
-    }
-
-    $currentDate = Carbon::now();
-
-    $staffBirthday = Teacher::where('IsDelete', 'N')
-        ->whereMonth('birthday', $currentDate->month)
-        ->whereDay('birthday', $currentDate->day)
-        ->get();
-
-    return response()->json([
-        'staffBirthday' => $staffBirthday,
-    ]);
-}
+     public function staffBirthdaycount(Request $request)
+     {
+         $payload = getTokenPayload($request);
+             if (!$payload) {
+                 return response()->json(['error' => 'Invalid or missing token'], 401);
+             }
+             $academicYr = $payload->get('academic_year'); 
+             if (!$academicYr) {
+             return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
+         }
+         $currentDate = Carbon::now();
+         $teachercount = Teacher::where('IsDelete', 'N')
+                          ->whereMonth('birthday', $currentDate->month)
+                          ->whereDay('birthday', $currentDate->day)
+                          ->count();
+         $studentcount = Student::where('IsDelete','N')
+                                 ->whereMonth('dob', $currentDate->month) 
+                                 ->whereDay('dob', $currentDate->day)
+                                 ->where('academic_yr',$academicYr)
+                                 ->count();
+         $count = $teachercount + $studentcount;
+         return response()->json([
+             'count' => $count,       
+         ]);
+     }
+     
+     public function staffBirthdayList(Request $request)
+     {
+             $payload = getTokenPayload($request);
+             if (!$payload) {
+                 return response()->json(['error' => 'Invalid or missing token'], 401);
+             }
+             $academicYr = $payload->get('academic_year'); 
+             if (!$academicYr) {
+             return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
+         }
+     
+         $currentDate = Carbon::now();
+     
+         $staffBirthday = Teacher::where('IsDelete', 'N')
+             ->whereMonth('birthday', $currentDate->month)
+             ->whereDay('birthday', $currentDate->day)
+             ->get();
+             
+             $studentBirthday = Student::where('IsDelete','N')
+                                    ->join('class','class.class_id','=','student.class_id')
+                                    ->join('section','section.section_id','=','student.section_id')
+                                    ->join('contact_details','contact_details.id','=','student.parent_id')
+                                    ->whereMonth('dob', $currentDate->month) 
+                                    ->whereDay('dob', $currentDate->day)
+                                    ->where('student.academic_yr',$academicYr)
+                                    ->select('student.*','class.name as classname','section.name as sectionname','contact_details.*')
+                                    ->get();
+                                 
+         $teachercount = Teacher::where('IsDelete', 'N')
+                          ->whereMonth('birthday', $currentDate->month)
+                          ->whereDay('birthday', $currentDate->day)
+                          ->count();
+         $studentcount = Student::where('IsDelete','N')
+                                 ->whereMonth('dob', $currentDate->month) 
+                                 ->whereDay('dob', $currentDate->day)
+                                 ->where('academic_yr',$academicYr)
+                                 ->count();
+     
+         return response()->json([
+             'staffBirthday' => $staffBirthday,
+             'studentBirthday'=>$studentBirthday,
+             'studentcount'=>$studentcount,
+             'teachercount'=>$teachercount
+             
+         ]);
+     }
 
 
     public function getEvents(Request $request): JsonResponse
@@ -202,25 +239,38 @@ public function staffBirthdayList(Request $request)
         $year = $request->input('year', $currentDate->year);
 
         $events = Event::select([
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.start_date',
-                'events.end_date',
-                'events.start_time',
-                'events.end_time',
-                DB::raw('GROUP_CONCAT(class.name) as class_name')
-            ])
-            ->join('class', 'events.class_id', '=', 'class.class_id')
-            ->where('events.isDelete', 'N')
-            ->where('events.publish', 'Y')
-            ->where('events.academic_yr', $academicYr)
-            ->whereMonth('events.start_date', $month)
-            ->whereYear('events.start_date', $year)
-            ->groupBy('events.unq_id', 'events.title', 'events.event_desc', 'events.start_date', 'events.end_date', 'events.start_time', 'events.end_time')
-            ->orderBy('events.start_date')
-            ->orderByDesc('events.start_time')
-            ->get();
+        'events.unq_id',
+        'events.title',
+        'events.event_desc',
+        'events.start_date',
+        'events.end_date',
+        'events.start_time',
+        'events.end_time',
+        DB::raw('GROUP_CONCAT(class.name) as class_name')
+    ])
+    ->join('class', 'events.class_id', '=', 'class.class_id')
+    ->where('events.isDelete', 'N')
+    ->where('events.publish', 'Y')
+    ->where('events.academic_yr', $academicYr)
+    ->whereMonth('events.start_date', $month)
+    ->whereYear('events.start_date', $year)
+    ->groupBy(
+        'events.unq_id', 
+        'events.title', 
+        'events.event_desc', 
+        'events.start_date', 
+        'events.end_date', 
+        'events.start_time', 
+        'events.end_time'
+    )
+    ->orderBy('events.start_date')
+    ->orderByDesc('events.start_time')
+    ->get()
+    ->map(function ($event) {
+        // Strip only if it is fully wrapped in <p>...</p>
+        $event->event_desc = strip_tags($event->event_desc);
+        return $event;
+    });
 
         return response()->json($events);
     }
@@ -2100,12 +2150,14 @@ public function getStudentListBySectionData(Request $request){
         if(!$sectionId){
             $student = DB::table('student')
                 ->where('academic_yr',$academicYr)
+                ->where('isDelete','N')
                 ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
                 ->get();
         }
         else{
             $student = DB::table('student')
                          ->where('academic_yr',$academicYr)
+                         ->where('isDelete','N')
                          ->where('section_id',$sectionId)
                          ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
                          ->get();
@@ -2861,6 +2913,7 @@ public function toggleActiveStudent($studentId)
                 'section_id' => 'nullable|integer',
                 'religion' => 'nullable|string|max:255',
                 'caste' => 'nullable|string|max:100',
+                'category' => 'nullable|string|max:100',
                 'subcaste' => 'nullable|string|max:255',
                 'vehicle_no' => 'nullable|string|max:13',
                 'emergency_name' => 'nullable|string|max:100',
@@ -3057,13 +3110,7 @@ public function toggleActiveStudent($studentId)
                 // Generate a filename for the new image
                 $filename = $studentId . '.' . $type;
                 $filePath = storage_path('app/public/student_images/' . $filename);
-                $doc_type_folder = 'student_image';
-                $fileContent = file_get_contents($filePath);           // Get the file content
-                $base64File = base64_encode($fileContent); 
-                upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
-
-                // Ensure directory exists
-                $directory = dirname($filePath);
+                 $directory = dirname($filePath);
                 if (!is_dir($directory)) {
                     mkdir($directory, 0755, true);
                 }
@@ -3072,6 +3119,13 @@ public function toggleActiveStudent($studentId)
                 if (file_put_contents($filePath, $newImageData) === false) {
                     throw new \Exception('Failed to save image file');
                 }
+                $doc_type_folder = 'student_image';
+                $fileContent = file_get_contents($filePath);           // Get the file content
+                $base64File = base64_encode($fileContent); 
+                upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
+
+                // Ensure directory exists
+               
 
                 // Update the validated data with the new filename
                 $validatedData['image_name'] = $filename;
@@ -3165,7 +3219,6 @@ public function toggleActiveStudent($studentId)
                     // If the record exists, update the contact details
                     $contactDetails->update([
                         'phone_no' => $phoneNo,
-                        'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid, // Mother's email
                         'sms_consent' => 'N' // Store consent for SMS
@@ -4732,8 +4785,8 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
         'mid_name as Mid name',
         'last_name as last name',
         'gender as *Gender',
-        'dob as *DOB(in dd/mm/yyyy format)',
-        'stu_aadhaar_no as Student Aadhaar No.',
+        'dob as dob', // Normal field name for DOB
+        'stu_aadhaar_no as *Student Aadhaar No.',
         'mother_tongue as Mother Tongue',
         'religion as Religion',
         'blood_group as *Blood Group',
@@ -4749,12 +4802,12 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
         'father_occupation as Father Occupation', // Assuming you have this field
         'f_mobile as *Father Mobile No.(Only Indian Numbers)', // Assuming you have this field
         'f_email as *Father Email-Id', // Assuming you have this field
-        'm_adhar_no as Mother Aadhaar No.', // Assuming you have this field
-        'parent_adhar_no as Father Aadhaar No.', // Assuming you have this field
+        'm_adhar_no as *Mother Aadhaar No.', // Assuming you have this field
+        'parent_adhar_no as *Father Aadhaar No.', // Assuming you have this field
         'permant_add as *Address',
         'city as *City',
         'state as *State',
-        'admission_date as *DOA(in dd/mm/yyyy format)',
+        'admission_date as admission_date', 
         'reg_no as *GRN No'
     )
     ->distinct() 
@@ -4762,13 +4815,30 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
     ->leftJoin('section', 'student.section_id', '=', 'section.section_id') // Use correct table name 'sections'
     ->leftJoin('class', 'student.class_id', '=', 'class.class_id') // Use correct table name 'sections'
     ->where('student.parent_id', '=', '0')
+    ->where('student.isNew', '=', 'Y')
+    ->where('student.isDelete','N')
     ->where('student.academic_yr', $customClaims)  // Specify the table name here
     ->where('student.section_id', $section_id) // Specify the table name here
     ->get()
     ->toArray();
+    
+    foreach ($students as &$student) {
+        // Format DOB (Date of Birth) to dd/mm/yyyy
+        if (!empty($student['dob'])) {
+            $student['dob'] = \Carbon\Carbon::parse($student['dob'])->format('d/m/Y');
+        }
 
-    // Debugging: Log the retrieved students data
-    \Log::info('Students Data: ', $students); // Check Laravel logs to see if data is fetched correctly
+        // Format Admission Date (DOA) to dd/mm/yyyy
+        if (!empty($student['admission_date'])) {
+            
+            $student['admission_date'] = \Carbon\Carbon::parse($student['admission_date'])->format('d/m/Y');
+            
+        }
+    }
+    
+
+    
+    \Log::info('Students Data: ', $students);
 
     $headers = [
         'Content-Type' => 'text/csv',
@@ -4782,7 +4852,7 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
         'last name', 
         '*Gender', 
         '*DOB(in dd/mm/yyyy format)', 
-        'Student Aadhaar No.', 
+        '*Student Aadhaar No.', 
         'Mother Tongue', 
         'Religion', 
         '*Blood Group', 
@@ -4798,8 +4868,8 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
         'Father Occupation', 
         '*Father Mobile No.(Only Indian Numbers)', 
         '*Father Email-Id', 
-        'Mother Aadhaar No.', 
-        'Father Aadhaar No.', 
+        '*Mother Aadhaar No.', 
+        '*Father Aadhaar No.', 
         '*Address', 
         '*City', 
         '*State', 
@@ -4815,6 +4885,15 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
 
         // Write each student's data below the headers
         foreach ($students as $student) {
+                $student['*Father Aadhaar No.'] = " ' " . (string) $student['*Father Aadhaar No.'] . " ' ";
+                $student['*Mother Aadhaar No.'] =  " ' " . (string) $student['*Mother Aadhaar No.'] . " ' " ;
+                $student['*Student Aadhaar No.'] =  " ' " . (string) $student['*Student Aadhaar No.'] . " ' " ;
+                $student['*Mother Mobile No.(Only Indian Numbers)'] =  " ' " . (string) $student['*Mother Mobile No.(Only Indian Numbers)'] . " ' " ;
+                $student['*Father Mobile No.(Only Indian Numbers)'] =  " ' " . (string) $student['*Father Mobile No.(Only Indian Numbers)'] . " ' " ;
+                $student['dob'] =  " ' " . (string) $student['dob'] . " ' " ;
+                $student['admission_date'] =  " ' " . (string) $student['admission_date'] . " ' " ;
+            
+            
             fputcsv($file, $student);
         }
 
@@ -5855,10 +5934,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 }
 
                 // If the record doesn't exist, create a new one with parent_id as the id
-                DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+                DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?)', [
                     $parentId,                
                     $phoneNo,
-                    $alternatePhoneNo,
                     $validatedData['f_email'],
                     $validatedData['m_emailid']  // sms_consent
                 ]);
@@ -5941,7 +6019,6 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     // If the record exists, update the contact details
                     $contactDetails->update([
                         'phone_no' => $phoneNo,
-                        'alternate_phone_no' => $alternatePhoneNo, // Assuming alternate phone is Father's mobile number
                         'email_id' => $parent->f_email, // Father's email
                         'm_emailid' => $parent->m_emailid // Mother's email
                          // Store consent for SMS
@@ -5950,10 +6027,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     Log::info("msggg5 {$phoneNo}");
                     Log::info("msggg5 {$alternatePhoneNo}");
                     // If the record doesn't exist, create a new one with parent_id as the id
-                    DB::insert('INSERT INTO contact_details (id, phone_no, alternate_phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?, ?)', [
+                    DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?)', [
                         $parentId,                
                         $phoneNo,
-                        $alternatePhoneNo,
                         $parent->f_email,
                         $parent->m_emailid // sms_consent
                     ]);
@@ -7792,8 +7868,8 @@ public function downloadCsvTemplate(){
             ];
             ob_get_clean();
             $columns= ['*Title',
-                '*Holiday date(in yyyy/mm/dd format)',
-                'To date(in yyyy/mm/dd format)'];
+                '*Holiday date(in dd-mm-yyyy format)',
+                'To date(in dd-mm-yyyy format)'];
 
             $callback = function() use ($columns) {
                 $file = fopen('php://output', 'w');
@@ -7838,8 +7914,8 @@ public function updateholidaylistCsv(Request $request){
     
     $columnMap = [
         '*Title' => 'title',
-        '*Holiday date(in yyyy/mm/dd format)' => 'holiday_date',
-        'To date(in yyyy/mm/dd format)' => 'to_date'
+        '*Holiday date(in dd-mm-yyyy format)' => 'holiday_date',
+        'To date(in dd-mm-yyyy format)' => 'to_date'
     ];
     $invalidRows = [];
     foreach ($rows as $rowIndex => $row) {
@@ -7861,28 +7937,30 @@ public function updateholidaylistCsv(Request $request){
         if (empty($holidayData['title'])) {
             $errors[] = 'Title is required.';
         }
+       
 
         if (empty($holidayData['holiday_date'])) {
             $errors[] = 'Holiday Date is required.';
-        } elseif (!$this->validateDate($holidayData['holiday_date'], 'Y/m/d')) {
-            $errors[] = 'Invalid Holiday Date format. Expected yyyy/mm/dd.';
+        } elseif (!$this->validateDate($holidayData['holiday_date'], 'd-m-Y')) {
+            $errors[] = 'Invalid Holiday Date format. Expected dd-mm-yyyy.';
         } else {
             try {
                 // Convert DOB to the required format (yyyy-mm-dd)
-                $holidayData['holiday_date'] = \Carbon\Carbon::createFromFormat('Y/m/d', $holidayData['holiday_date'])->format('Y-m-d');
+                $holidayData['holiday_date'] = \Carbon\Carbon::createFromFormat('d-m-Y', $holidayData['holiday_date'])->format('Y-m-d');
             } catch (\Exception $e) {
-                $errors[] = 'Invalid Holidayy Date format. Expected yyyy/mm/dd.';
+                $errors[] = 'Invalid Holiday Date format. Expected dd-mm-yyyy.';
             }
         }
-
+        // dd($holidayData['to_date']);
         if (empty($holidayData['to_date'])) {
             $holidayData['to_date'] = null;
         }
-        elseif(!$this->validateDate($holidayData['holiday_date'], 'Y/m/d')){
-            $errors[] = 'Invalid To Date format. Expected yyyy/mm/dd.';
+        elseif(!$this->validateDate($holidayData['to_date'], 'd-m-Y')){
+            dd("Hello");
+            $errors[] = 'Invalid To Date format. Expected dd-mm-yyyy.';
         }
         else{
-            $holidayData['to_date'] = \Carbon\Carbon::createFromFormat('Y/m/d', $holidayData['holiday_date'])->format('Y-m-d');
+            $holidayData['to_date'] = \Carbon\Carbon::createFromFormat('d-m-Y', $holidayData['to_date'])->format('Y-m-d');
         }
 
         if (!empty($errors)) {
@@ -7936,7 +8014,7 @@ public function updateholidaylistCsv(Request $request){
     
         if (!empty($invalidRows)) {
             $csv = Writer::createFromString('');
-            $csv->insertOne(['*Title','*Holiday date(in yyyy/mm/dd format)','To date(in yyyy/mm/dd format)','error']);
+            $csv->insertOne(['*Title','*Holiday date(in dd-mm-yyyy format)','To date(in dd-mm-yyyy format)','error']);
             foreach ($invalidRows as $invalidRow) {
                 $csv->insertOne($invalidRow);
             }
@@ -8925,7 +9003,14 @@ public function getTeacherIdCard(Request $request){
                         'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
                     ];
                 }
-                if (is_null($timetable->saturday)) {
+                $saturdayperiodcount = DB::table('classwise_period_allocation')
+                                          ->where('academic_yr',$customClaims)
+                                          ->where('section_id',$section_id)
+                                          ->where('class_id',$class_id)
+                                          ->select('sat')
+                                          ->first();
+                
+                if (is_null($timetable->saturday)&&$timetable->period_no<=$saturdayperiodcount->sat) {
                     
                     $saturday[] = [
                         'time_in' => $timetable->time_in,
@@ -11626,6 +11711,224 @@ public function getTeacherIdCard(Request $request){
               } 
         
     }
+
+     //Get Classes For New StudentList Dev Name-Manish Kumar Sharma 29-04-2025
+     public function getClassesforNewStudentList(){
+        try{       
+              $user = $this->authenticateUser();
+              $customClaims = JWTAuth::getPayload()->get('academic_year');
+              if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                  return DB::table('student')
+                    ->distinct()
+                    ->select([
+                        'student.class_id as class_id',
+                        'student.section_id as section_id',
+                        'class.name as classname',
+                        'section.name as sectionname',
+                    ])
+                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                    ->join('section', 'student.section_id', '=', 'section.section_id')
+                    ->where('class.academic_yr', $customClaims)
+                    ->where('section.academic_yr', $customClaims)
+                    ->where('student.parent_id', 0)
+                    ->where('student.IsDelete', 'N')
+                    ->get()
+                    ->toArray();
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the classes for new student list.',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                          ]);
+                  }
+      
+              }
+              catch (Exception $e) {
+              \Log::error($e); 
+              return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+              } 
+        
+    }
+    //Birthday list for student and staff Dev Name- Manish Kumar Sharma 30-04-2025
+    public function getBirthdayListForStaffStudent(Request $request){
+        try{       
+              $user = $this->authenticateUser();
+              $customClaims = JWTAuth::getPayload()->get('academic_year');
+              if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                   $date = $request->input('date');
+                   $carbonDate = Carbon::createFromFormat('d-m-Y', $date);
+
+                   $day = $carbonDate->day; 
+                   $month = $carbonDate->month;
+                   
+                   $staffBirthday = Teacher::where('IsDelete', 'N')
+                                 ->whereMonth('birthday', $month)
+                                 ->whereDay('birthday', $day)
+                                 ->get();
+                                 
+                                 $studentBirthday = Student::where('IsDelete','N')
+                                                ->join('class','class.class_id','=','student.class_id')
+                                                ->join('section','section.section_id','=','student.section_id')
+                                                ->join('contact_details','contact_details.id','=','student.parent_id')
+                                                ->whereMonth('dob', $month) 
+                                                ->whereDay('dob', $day)
+                                                ->where('student.academic_yr',$customClaims)
+                                                ->select('student.*','class.name as classname','section.name as sectionname','contact_details.*')
+                                                ->get();
+                                                     
+                             $teachercount = Teacher::where('IsDelete', 'N')
+                                              ->whereMonth('birthday', $month)
+                                              ->whereDay('birthday', $day)
+                                              ->count();
+                             $studentcount = Student::where('IsDelete','N')
+                                                     ->whereMonth('dob',$month) 
+                                                     ->whereDay('dob', $day)
+                                                     ->where('academic_yr',$customClaims)
+                                                     ->count();
+                         
+                             return response()->json([
+                                 'staffBirthday' => $staffBirthday,
+                                 'studentBirthday'=>$studentBirthday,
+                                 'studentcount'=>$studentcount,
+                                 'teachercount'=>$teachercount
+                                 
+                             ]);
+                  
+              }
+              else{
+                  return response()->json([
+                      'status'=> 401,
+                      'message'=>'This User Doesnot have Permission for the birthday list of staff and student.',
+                      'data' =>$user->role_id,
+                      'success'=>false
+                          ]);
+                  }
+      
+              }
+              catch (Exception $e) {
+              \Log::error($e); 
+              return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+              } 
+        
+    }
+
+    //Student Id Card New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+    public function getStudentIdCardDetails(Request $request){
+        try{       
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                  $student_id = $request->input('student_id');
+                  $globalVariables = App::make('global_variables');
+                  $parent_app_url = $globalVariables['parent_app_url'];
+                  $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                  $students = DB::table('student')
+                               ->where([
+                                   ['student_id', '=', $student_id],
+                                   ['academic_yr', '=', $customClaims]
+                               ])
+                               ->get();
+                    $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                   // Check if the image_name is present and not empty
+                   $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                   if (!empty($student->image_name)) {
+                       $student->image_name = $concatprojecturl."".$student->image_name;
+                   } else {
+                      
+                       $student->image_name = '';
+                     }
+                   });
+                   
+                   return response()->json([
+                                         'status'=> 200,
+                                         'data'=>$students,
+                                         'message'=>'Student data by studentid. ',
+                                         'success'=>true
+                                             ]);
+                   
+                 
+             }
+             else{
+                 return response()->json([
+                     'status'=> 401,
+                     'message'=>'This User Doesnot have Permission for the student data.',
+                     'data' =>$user->role_id,
+                     'success'=>false
+                         ]);
+                 }
+     
+             }
+             catch (Exception $e) {
+             \Log::error($e); 
+             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+             } 
+       
+   }
+
+   //Student Id Card New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+   public function saveStudentDetailsForIdCard(Request $request){
+    try{       
+          $user = $this->authenticateUser();
+          $customClaims = JWTAuth::getPayload()->get('academic_year');
+          if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+              $students = $request->all();
+                    // dd($studentData);
+                    $data = [
+                        'blood_group' => $students['blood_group'],
+                        'house' => $students['house'],
+                        'permant_add' => $students['permant_add']
+                    ];
+                    
+                    $studentId = $students['student_id'];
+
+                    // Handle Student Image
+                    $sCroppedImage = $students['image_base'];
+                    if ($sCroppedImage != '') {
+                        if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
+                            $ext = strtolower($matches[1]); // e.g., "png", "jpeg", "jpg"
+                        } else {
+                            $ext = 'jpg';
+                        }
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                        $ext='jpg';
+                        $dataI = base64_decode($base64Data);
+                        $imgNameEnd = $studentId . '.' . $ext;
+                        $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
+                        file_put_contents($imagePath, $dataI);
+                        $data['image_name'] = $imgNameEnd;
+                        $doc_type_folder='student_image';
+                        upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$base64Data);
+                    }
+
+                    // Update student
+                    Student::where('student_id', $studentId)->update($data);
+                    
+                    return response()->json([
+                                      'status'=> 200,
+                                      'message'=>'Student data updated successfully. ',
+                                      'success'=>true
+                                          ]);
+
+              
+          }
+          else{
+              return response()->json([
+                  'status'=> 401,
+                  'message'=>'This User Doesnot have Permission for the birthday list of staff and student.',
+                  'data' =>$user->role_id,
+                  'success'=>false
+                      ]);
+              }
+  
+          }
+          catch (Exception $e) {
+          \Log::error($e); 
+          return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+          } 
+    
+}
 
 
 
