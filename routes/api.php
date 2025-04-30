@@ -541,6 +541,22 @@
         //Get SectionId with ClassName Dev Name-Manish Kumar Sharma 21-04-2025
         Route::get('get_sectionwithclassname',[AdminController::class,'getSectionwithClassName']);
 
+        //Classes for new StudentList Dev Name- Manish Kumar Sharma 29-04-2025
+        Route::get('get_classesfornewstudentlist',[AdminController::class,'getClassesforNewStudentList']);
+
+        //Birthday list for student and staff Dev Name- Manish Kumar Sharma 30-04-2025
+        Route::get('get_birthdaylistforstaffstudent',[AdminController::class,'getBirthdayListForStaffStudent']);
+
+        //Student Id Card New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+        Route::get('get_studentidcarddetails',[AdminController::class,'getStudentIdCardDetails']);
+
+        //Student Id Card New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+        Route::get('get_studentidcarddetails',[AdminController::class,'getStudentIdCardDetails']);
+        Route::post('save_studentdetailsforidcard',[AdminController::class,'saveStudentDetailsForIdCard']);
+        
+
+
+
 
     });
 

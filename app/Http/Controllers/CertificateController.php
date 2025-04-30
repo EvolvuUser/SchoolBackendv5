@@ -2306,7 +2306,7 @@ class CertificateController extends Controller
                             'leaving_remark' =>$data->remark,
                         ]);
                     
-            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
@@ -2428,7 +2428,7 @@ class CertificateController extends Controller
             $data= DB::table('leaving_certificate')
                     ->where('sr_no',$sr_no)  
                     ->orderBy('sr_no','desc')->first();
-            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
@@ -2592,7 +2592,7 @@ class CertificateController extends Controller
                     ->where('sr_no',$leavingcertificate->sr_no)  
                     ->orderBy('sr_no','desc')->first();
                     
-            $dynamicFilename = "Leaving_Certificate_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+            $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
