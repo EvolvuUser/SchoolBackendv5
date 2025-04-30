@@ -11825,10 +11825,13 @@ public function getTeacherIdCard(Request $request){
                   $parent_app_url = $globalVariables['parent_app_url'];
                   $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
                   $students = DB::table('student')
+                                  ->join('class','class.class_id','=','student.class_id')
+                                  ->join('section','section.section_id','=','student.section_id')
                                ->where([
                                    ['student_id', '=', $student_id],
-                                   ['academic_yr', '=', $customClaims]
+                                   ['student.academic_yr', '=', $customClaims]
                                ])
+                               ->select('student.*','class.name as classname','section.name as sectionname')
                                ->get();
                     $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
                    // Check if the image_name is present and not empty
@@ -11892,7 +11895,6 @@ public function getTeacherIdCard(Request $request){
                             $ext = 'jpg';
                         }
                         $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
-                        $ext='jpg';
                         $dataI = base64_decode($base64Data);
                         $imgNameEnd = $studentId . '.' . $ext;
                         $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
@@ -11930,6 +11932,307 @@ public function getTeacherIdCard(Request $request){
     
 }
 
+ //Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+public function getUpdateIdCardData(Request $request){
+    try{       
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
+    if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+         $section_id = $request->input('section_id');
+         $globalVariables = App::make('global_variables');
+         $parent_app_url = $globalVariables['parent_app_url'];
+         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+         $students = DB::table('student')
+                      ->join('class', 'student.class_id', '=', 'class.class_id')
+                      ->join('section', 'student.section_id', '=', 'section.section_id')
+                      ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                      ->where('student.isDelete', 'N')
+                      ->where('student.section_id', $section_id)
+                      ->orderBy('roll_no')
+                      ->select(
+                          'student.student_id',
+                          'student.first_name',
+                          'student.mid_name',
+                          'student.last_name',
+                          'student.roll_no',
+                          'student.image_name',
+                          'student.reg_no',
+                          'student.permant_add',
+                          'student.blood_group',
+                          'student.house',
+                          'student.dob',
+                          'class.name as class_name',
+                          'section.name as sec_name',
+                          'parent.parent_id',
+                          'parent.father_name',
+                          'parent.f_mobile',
+                          'parent.m_mobile'
+                      )
+                      ->get();
+                      $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
+                     // Check if the image_name is present and not empty
+                     $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
+                     if (!empty($student->image_name)) {
+                         $student->image_name = $concatprojecturl."".$student->image_name;
+                     } else {
+                        
+                         $student->image_name = '';
+                       }
+                     });
+             
+             return response()->json([
+                                   'status'=> 200,
+                                   'data'=>$students,
+                                   'message'=>'Student data by class. ',
+                                   'success'=>true
+                                       ]);
+        
+    }
+    else{
+        return response()->json([
+            'status'=> 401,
+            'message'=>'This User Doesnot have Permission for the birthday list of staff and student.',
+            'data' =>$user->role_id,
+            'success'=>false
+                ]);
+        }
+
+    }
+    catch (Exception $e) {
+    \Log::error($e); 
+    return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    } 
+   
+}
+ //Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+ public function updateIdCardData(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+           $section_id = $request->input('section_id');
+           $students = DB::table('student')
+                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                        ->join('section', 'student.section_id', '=', 'section.section_id')
+                        ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                        ->where('student.isDelete', 'N')
+                        ->where('student.section_id', $section_id)
+                        ->orderBy('roll_no')
+                        ->select(
+                            'student.student_id',
+                            'student.first_name',
+                            'student.mid_name',
+                            'student.last_name',
+                            'student.roll_no',
+                            'student.image_name',
+                            'student.reg_no',
+                            'student.permant_add',
+                            'student.blood_group',
+                            'student.house',
+                            'student.dob',
+                            'class.name as class_name',
+                            'section.name as sec_name',
+                            'parent.parent_id',
+                            'parent.father_name',
+                            'parent.f_mobile',
+                            'parent.m_mobile'
+                        )
+                        ->get();
+                        foreach ($students as $srow) {
+                        $parent_id = $srow->parent_id;
+                
+                        // Update parent data
+                        DB::table('parent')
+                            ->where('parent_id', $parent_id)
+                            ->update([
+                                'f_mobile' => $request->input("f_mobile_$parent_id"),
+                                'm_mobile' => $request->input("m_mobile_$parent_id"),
+                            ]);
+                
+                        // Update student data
+                        DB::table('student')
+                            ->where('student_id', $srow->student_id)
+                            ->update([
+                                'permant_add' => $request->input("permant_add_$parent_id"),
+                                'blood_group' => $request->input("blood_group_$parent_id"),
+                                'house' => $request->input("house_$parent_id"),
+                            ]);
+                    }
+                
+                    return response()->json([
+                        'status'=>200,
+                        'message' => 'Student and parent records updated successfully.',
+                        'success'=>true
+                        ]);
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the updating of student data.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+//Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+public function updateIdCardDataAndConfirm(Request $request){
+      try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+           $section_id = $request->input('section_id');
+           $students = DB::table('student')
+                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                        ->join('section', 'student.section_id', '=', 'section.section_id')
+                        ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                        ->where('student.isDelete', 'N')
+                        ->where('student.section_id', $section_id)
+                        ->orderBy('roll_no')
+                        ->select(
+                            'student.student_id',
+                            'student.first_name',
+                            'student.mid_name',
+                            'student.last_name',
+                            'student.roll_no',
+                            'student.image_name',
+                            'student.reg_no',
+                            'student.permant_add',
+                            'student.blood_group',
+                            'student.house',
+                            'student.dob',
+                            'class.name as class_name',
+                            'section.name as sec_name',
+                            'parent.parent_id',
+                            'parent.father_name',
+                            'parent.f_mobile',
+                            'parent.m_mobile'
+                        )
+                        ->get();
+                        foreach ($students as $srow) {
+                        $parent_id = $srow->parent_id;
+                
+                        // Update parent data
+                        DB::table('parent')
+                            ->where('parent_id', $parent_id)
+                            ->update([
+                                'f_mobile' => $request->input("f_mobile_$parent_id"),
+                                'm_mobile' => $request->input("m_mobile_$parent_id"),
+                            ]);
+                
+                        // Update student data
+                        DB::table('student')
+                            ->where('student_id', $srow->student_id)
+                            ->update([
+                                'permant_add' => $request->input("permant_add_$parent_id"),
+                                'blood_group' => $request->input("blood_group_$parent_id"),
+                                'house' => $request->input("house_$parent_id"),
+                            ]);
+                        $data2 = [
+                                'confirm' => 'Y',
+                                'parent_id' => $parent_id,
+                                'academic_yr' => $customClaims,
+                            ];
+                    
+                            $exists = DB::table('confirmation_idcard')
+                                ->where('parent_id', $parent_id)
+                                ->exists();
+                    
+                            if ($exists) {
+                                DB::table('confirmation_idcard')
+                                    ->where('parent_id', $parent_id)
+                                    ->update($data2);
+                            } else {
+                                DB::table('confirmation_idcard')
+                                    ->insert($data2);
+                            }
+                    }
+                
+                    return response()->json([
+                        'status' =>200,
+                        'message' => 'Id card details are saved and confirmed.',
+                        'success'=>true
+                        
+                        ]);
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the updating of student data.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+//Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
+public function updateStudentPhotoForIdCard(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $students = $request->all();
+                // dd($studentData);
+                
+                $studentId = $students['student_id'];
+
+                // Handle Student Image
+                $sCroppedImage = $students['image_base'];
+                if ($sCroppedImage != '') {
+                    if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
+                        $ext = strtolower($matches[1]); // e.g., "png", "jpeg", "jpg"
+                    } else {
+                        $ext = 'jpg';
+                    }
+                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                    $ext='jpg';
+                    $dataI = base64_decode($base64Data);
+                    $imgNameEnd = $studentId . '.' . $ext;
+                    $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
+                    file_put_contents($imagePath, $dataI);
+                    $data['image_name'] = $imgNameEnd;
+                    $doc_type_folder='student_image';
+                    upload_student_profile_image_into_folder($studentId,$imgNameEnd,$doc_type_folder,$base64Data);
+                }
+                
+                 return response()->json([
+                        'status' =>200,
+                        'message' => 'Student Photo Saved Successfully.',
+                        'success'=>true
+                        
+                        ]);
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the updating of student photo.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
 
 
 
