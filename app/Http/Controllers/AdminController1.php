@@ -11931,7 +11931,6 @@ public function getTeacherIdCard(Request $request){
           } 
     
 }
-//Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 30-04-2025
 public function getUpdateIdCardData(Request $request){
     try{       
     $user = $this->authenticateUser();
@@ -11967,9 +11966,16 @@ public function getUpdateIdCardData(Request $request){
                           'parent.f_mobile',
                           'parent.m_mobile'
                       )
-                      ->get();
+                      ->get()
+                      ->map(function ($student) {
+                            $confirm = DB::table('confirmation_idcard')
+                                ->where('parent_id', $student->parent_id)
+                                ->value('confirm'); 
+                    
+                            $student->idcard_confirm = $confirm ?? 'N'; 
+                            return $student;
+                        });
                       $students->each(function ($student) use($parent_app_url,$codeigniter_app_url) {
-                     // Check if the image_name is present and not empty
                      $concatprojecturl = $codeigniter_app_url."".'uploads/student_image/';
                      if (!empty($student->image_name)) {
                          $student->image_name = $concatprojecturl."".$student->image_name;
@@ -12234,9 +12240,207 @@ public function updateStudentPhotoForIdCard(Request $request){
     
 }
 
+//Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 05-05-2025
+public function getParentAndGuardianImage(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+          $studentId = $request->input('student_id');
+          $globalVariables = App::make('global_variables');
+         $parent_app_url = $globalVariables['parent_app_url'];
+         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+         $parentdata = DB::table('student as s')
+                    ->select(
+                        's.*',
+                        'p.parent_id', 'p.father_name', 'p.father_occupation', 'p.f_office_add', 'p.f_office_tel', 'p.f_mobile', 'p.f_email',
+                        'p.mother_occupation', 'p.m_office_add', 'p.m_office_tel', 'p.mother_name', 'p.m_mobile', 'p.m_emailid',
+                        'p.parent_adhar_no', 'p.m_adhar_no', 'p.f_dob', 'p.m_dob', 'p.f_blood_group', 'p.m_blood_group',
+                        'p.f_qualification', 'p.m_qualification', 'p.father_image_name', 'p.mother_image_name',
+                        'u.user_id',
+                        'c.name as class_name',
+                        'd.name as sec_name',
+                        'e.house_name'
+                    )
+                    ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+                    ->join('user_master as u', 's.parent_id', '=', 'u.reg_id')
+                    ->join('class as c', 's.class_id', '=', 'c.class_id')
+                    ->join('section as d', 's.section_id', '=', 'd.section_id')
+                    ->leftJoin('house as e', 's.house', '=', 'e.house_id')
+                    ->where('s.student_id', $studentId)
+                    ->where('s.academic_yr', $customClaims)
+                    ->where('u.role_id', 'P')
+                    ->get();
+                    $parentdata->each(function ($parent) use($parent_app_url,$codeigniter_app_url) {
+                     // Check if the image_name is present and not empty
+                     $concatprojecturl = $codeigniter_app_url."".'uploads/parent_image/';
+                     if (!empty($parent->father_image_name)) {
+                         $parent->father_image_name = $concatprojecturl."".$parent->father_image_name;
+                     } else {
+                        
+                         $parent->father_image_name = '';
+                       }
+                       
+                       if (!empty($parent->mother_image_name)) {
+                         $parent->mother_image_name = $concatprojecturl."".$parent->mother_image_name;
+                       } else {
+                        
+                         $parent->mother_image_name = '';
+                       }
+                       
+                       if (!empty($parent->guardian_image_name)) {
+                         $parent->guardian_image_name = $concatprojecturl."".$parent->guardian_image_name;
+                       } else {
+                        
+                         $parent->guardian_image_name = '';
+                       }
+                       
+                     });
+                    return response()->json([
+                        'status' =>200,
+                        'data'=>$parentdata,
+                        'message' => 'Parent Guardian Image data.',
+                        'success'=>true
+                        
+                        ]);
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the getting of parent and guardian image.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
 
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+//Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 05-05-2025
+public function updateParentGuardianImage(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+          $studentId = $request->input('student_id');
+          $parentId = $request->input('parent_id');
+          $father_image = $request->input('father_image');
+          $mother_image = $request->input('mother_image');
+          $guardian_image = $request->input('guardian_image');
+                 if ($guardian_image != '') {
+                  if (preg_match('/^data:image\/(\w+);base64,/', $guardian_image, $matches)) {
+                            $ext = strtolower($matches[1]); // e.g., "png", "jpeg", "jpg"
+                        } else {
+                            $ext = 'jpg';
+                        }
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $guardian_image);
+                        $dataI = base64_decode($base64Data);
+                        $imgNameEndG = 'g_' . $parentId . '.' . $ext;
+                        $directory = storage_path('app/public/parent_image');
 
+                        if (!file_exists($directory)) {
+                            mkdir($directory, 0755, true); // Create directory with permissions, recursive
+                        }
+                        
+                        $imagePath = $directory . '/' . $imgNameEndG;
+                        file_put_contents($imagePath, $dataI);
+                        $data['guardian_image_name'] = $imgNameEndG;
+                        $doc_type_folder = 'parent_image';
+                        upload_guardian_profile_image_into_folder($parentId,$imgNameEndG,$doc_type_folder,$base64Data);
 
-        
+                    }
+                    
+                     if ($father_image != '') {
+                          if (preg_match('/^data:image\/(\w+);base64,/', $father_image, $matches)) {
+                            $ext = strtolower($matches[1]); // e.g., "png", "jpeg", "jpg"
+                        } else {
+                            $ext = 'jpg';
+                        }
+                                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $father_image);
+           
+                                    $data = base64_decode($base64Data);
+                                    $imgNameEndF = 'f_' . $parentId . '.' . $ext;
+                                    $directory = storage_path('app/public/parent_image');
+
+                                    if (!file_exists($directory)) {
+                                        mkdir($directory, 0755, true); // Create directory with permissions, recursive
+                                    }
+                                    
+                                    $imagePath = $directory . '/' . $imgNameEndF;
+                                    file_put_contents($imagePath, $data);
+                                    $data1['father_image_name'] = $imgNameEndF;
+                                    $doc_type_folder = 'parent_image';
+                                    upload_father_profile_image_into_folder($parentId,$imgNameEndF,$doc_type_folder,$base64Data);
+                                }
+            
+                    if ($mother_image != '') {
+                         if (preg_match('/^data:image\/(\w+);base64,/', $mother_image, $matches)) {
+                            $ext = strtolower($matches[1]); // e.g., "png", "jpeg", "jpg"
+                        } else {
+                            $ext = 'jpg';
+                        }
+                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mother_image);
+                     
+                        $data = base64_decode($base64Data);
+                        $imgNameEndM = 'm_' . $parentId . '.' . $ext;
+                        $directory = storage_path('app/public/parent_image');
+
+                        if (!file_exists($directory)) {
+                            mkdir($directory, 0755, true); 
+                        }
+                        
+                        $imagePath = $directory . '/' . $imgNameEndM;
+                        file_put_contents($imagePath, $data);
+                        $data1['mother_image_name'] = $imgNameEndM;
+                        $doc_type_folder = 'parent_image';
+                        upload_mother_profile_image_into_folder($parentId,$imgNameEndM,$doc_type_folder,$base64Data);
+                    }
+                    
+                    return response()->json([
+                        'status' =>200,
+                        'message' => 'Parent guardian image data successfully updated.',
+                        'success'=>true
+                        
+                        ]);
+          
+          
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the updating of parent and guardian image.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+
+//API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
+public function getSchoolName(Request $request){
+    $schoolname = DB::table('settings')->where('active','Y')->first();
+    return response()->json([
+                        'status' =>200,
+                        'data'=>$schoolname,
+                        'message' => 'Parent guardian image data successfully updated.',
+                        'success'=>true
+                        
+                        ]);
+    
+}
+
+    
 
 }
