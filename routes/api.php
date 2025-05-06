@@ -559,10 +559,11 @@
         Route::put('update_idcarddata',[AdminController::class,'updateIdCardData']);
         Route::put('update_idcarddataandconfirm',[AdminController::class,'updateIdCardDataAndConfirm']);
         Route::put('update_studentphotoforidcard',[AdminController::class,'updateStudentPhotoForIdCard']);
+
+        //Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 05-05-2025
+        Route::get('get_parentandguardianimage',[AdminController::class,'getParentAndGuardianImage']);
+        Route::post('update_parentguradianimage',[AdminController::class,'updateParentGuardianImage']);
         
-
-
-
 
     });
 
@@ -643,6 +644,8 @@ Route::get('/clear-all', function () {
         'message' => 'All caches cleared and optimized.',
     ]);
 });
+//API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
+Route::get('get_schoolname',[AdminController::class,'getSchoolName']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);
