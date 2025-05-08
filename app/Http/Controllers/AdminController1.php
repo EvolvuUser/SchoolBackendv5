@@ -55,6 +55,7 @@ use ZipArchive;
 use File;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use PDF;
+use App\Http\Services\WhatsAppService;
 // use Maatwebsite\Excel\Facades\Excel;
 // use App\Exports\IdCardExport;
 // use Illuminate\Support\Facades\Auth;
@@ -62,6 +63,12 @@ use PDF;
 
 class AdminController extends Controller
 {
+    protected $whatsAppService;
+
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
     public function hello(){
         return view('hello');
     }
@@ -602,13 +609,8 @@ public function pendingCollectedFeeData(): JsonResponse
           if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
     
             $finalQuery = DB::select("
-            select z.installment, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id, s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
-        0 as paid_amount FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment WHERE s.academic_yr='$customClaims' and
-        s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims')
-        group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession,
-        sum(f.fees_paid) as paid_amount FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join
-        view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment,
-        c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment
+            select z.installment, z.Account, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id,s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
+        0 as paid_amount, CASE WHEN cl.name = 'Nursery' THEN 'Nursery' WHEN cl.name IN ('LKG','UKG') THEN 'KG' ELSE 'School' END as Account FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment join class cl on s.class_id=cl.class_id WHERE s.academic_yr='$customClaims' and s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims') group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession, sum(f.fees_paid) as paid_amount, CASE WHEN cs.name = 'Nursery' THEN 'Nursery' WHEN cs.name IN ('LKG','UKG') THEN 'KG' ELSE 'School'  END as Account  FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment join class cs on f.class_id=cs.class_id WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment, c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment, z.Account
         ");
 
       return response()->json($finalQuery);
@@ -12439,6 +12441,192 @@ public function getSchoolName(Request $request){
                         
                         ]);
     
+}
+//API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
+public function updateForgotPassword(Request $request){
+    $userId = trim($request->input('user_id'));
+       $answerOne = trim($request->input('answer_one'));
+       $dob = date('Y-m-d', strtotime($request->input('dob')));
+       $roleId = DB::table('user_master')->where('user_id',$userId)->first();
+       // dd($roleId);
+       
+       //  dd($roleId,$regId);
+       // Check if user and answer match
+       $user = DB::table('user_master')
+           ->where('user_id', $userId)
+           ->where('answer_one', $answerOne)
+           ->first();
+
+       if (!$user) {
+           return response()->json([
+               'status'=>400,
+               'message' => 'Invalid user ID or security answer.',
+               'success'=>false
+               ]);
+       }
+       
+       $regId = $roleId->reg_id;
+
+       $dobMatch = false;
+
+       if ($roleId->role_id === 'P') {
+           $dobMatch = DB::table('student')
+               ->where('parent_id', $regId)
+               ->whereDate('dob', $dob)
+               ->exists();
+       } else {
+           $dobMatch = DB::table('teacher')
+               ->where('teacher_id', $regId)
+               ->whereDate('birthday', $dob)
+               ->exists();
+       }
+
+       if ($dobMatch) {
+           DB::table('user_master')
+               ->where('user_id', $userId)
+               ->update(['password' => bcrypt('arnolds')]);
+
+           return response()->json([
+               'status'=>200,
+               'message' => 'Password reset successfully to arnolds.',
+               'success'=>true
+           ]);
+       } else {
+           return response()->json([
+               'status'=>400,
+               'message' => 'Date of birth or registration ID mismatch.',
+               'success'=>false
+               ]);
+       }
+   
+}
+//API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
+public function generateNewPassword(Request $request)
+   {
+       
+       $userId = trim($request->input('user_id'));
+       // dd($userId);
+
+       if ($userId === '') {
+           return response()->json([
+               'message' => 'Please enter user id',
+               'type' => 'error'
+           ]);
+       }
+
+       $userMasterData = DB::table('user_master')->where('user_id', $userId)->get();
+       
+       if ($userMasterData->isEmpty()) {
+           return response()->json([
+               'status'=>400,
+               'message' => 'Invalid user id!!!',
+               'type' => 'error',
+               'success'=>false
+           ]);
+       }
+
+       $user = $userMasterData[0];
+       $roleId = $user->role_id;
+       $regId = $user->reg_id;
+       $userEmail = '';
+       $userEmail1 = '';
+
+       if (in_array($roleId, ['T', 'M', 'A', 'F', 'L', 'X'])) {
+           $teacherData = DB::table('teacher')->where('teacher_id', $regId)->first();
+           if ($teacherData) {
+               $userEmail = $teacherData->email ?? '';
+           }
+       }
+       
+       if ($roleId === 'P') {
+           $contactData = DB::table('contact_details')->where('id', $regId)->first();
+           if ($contactData) {
+               $userEmail = $contactData->email_id ?? '';
+               $userEmail1 = $contactData->m_emailid ?? '';
+           }
+       }
+
+       if (empty(trim($userEmail)) && empty(trim($userEmail1))) {
+           return response()->json([
+               'status'=>400,
+               'message' => 'Your email id is not present in the system, please send an email to supportsacs@aceventura.in to reset your password!!!',
+               'type' => 'error',
+               'success'=>false
+           ]);
+       }
+
+       $newPassword = 'sacs@' . mt_rand(1000, 9999);
+
+       $updated = DB::table('user_master')->where('user_id', $userId)->update([
+           'password' => bcrypt($newPassword),
+       ]);
+
+       if ($updated) {
+           $emailContent = "
+               Dear Parent,<br/><br/>
+               The password for login id <strong>{$userId}</strong> has been reset to <strong>{$newPassword}</strong><br>
+               Login at <a href='https://sms.arnoldcentralschool.org/'>https://sms.arnoldcentralschool.org/</a><br><br/>
+               Please READ THE INSTRUCTION on login page and refer to the help once you login into the application.<br/><br/>
+               Make sure your email id and mobile number are correctly added into profile.<br/><br/>
+               Regards,<br/>
+               SACS Support
+           ";
+
+           $subject = "SACS - New Password On Reset";
+           $emailsSentTo = [];
+
+           if (!empty($userEmail)) {
+               Mail::html($emailContent, function ($message) use ($userEmail, $subject) {
+                   $message->to($userEmail)
+                           ->subject($subject);
+               });
+               $emailsSentTo[] = $userEmail;
+           }
+           
+           if (!empty($userEmail1)) {
+               Mail::html($emailContent, function ($message) use ($userEmail1, $subject) {
+                   $message->to($userEmail1)
+                           ->subject($subject);
+               });
+               $emailsSentTo[] = $userEmail1;
+           }
+
+           return response()->json([
+               'status'=>200,
+               'message' => 'A new password has been sent to ' . implode(' and ', $emailsSentTo) . '. Please check your inbox.!!!',
+               'type' => 'success',
+               'success'=>true
+           ]);
+       }
+
+       return response()->json([
+           'status'=>400,
+           'message' => 'Unable to reset password. Please try again.',
+           'type' => 'error',
+           'success'=>false
+       ]);
+   }
+
+   public function sendwhatsappmessages(Request $request){
+    $phone = '916367379170';
+
+    $templateName = 'birthday_wishes';
+    $parameters =['Deepak Sir','Manish'];
+
+    $result = $this->whatsAppService->sendTextMessage(
+        $phone,
+        $templateName,
+        $parameters
+    );
+    if (isset($result['messages'][0]['message_status']) && $result['messages'][0]['message_status'] === 'accepted') {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Message accepted by WhatsApp platform.',
+        'data' => $result
+    ]);
+   }
+
+    return response()->json($result);
 }
 
     

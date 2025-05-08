@@ -563,6 +563,8 @@
         //Update Id Card Data New Implementation Dev Name- Manish Kumar Sharma 05-05-2025
         Route::get('get_parentandguardianimage',[AdminController::class,'getParentAndGuardianImage']);
         Route::post('update_parentguradianimage',[AdminController::class,'updateParentGuardianImage']);
+        //API for the View Staff Notices Dev Name- Manish Kumar Sharma 06-05-2025
+        Route::get('get_viewstaffnotices',[NoticeController::class,'getViewStaffNotices']);
         
 
     });
@@ -646,6 +648,11 @@ Route::get('/clear-all', function () {
 });
 //API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
 Route::get('get_schoolname',[AdminController::class,'getSchoolName']);
+//API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
+Route::post('update_forgotpassword',[AdminController::class,'updateForgotPassword']);
+Route::post('save_newpasswordforgot',[AdminController::class,'generateNewPassword']);
+
+Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);
