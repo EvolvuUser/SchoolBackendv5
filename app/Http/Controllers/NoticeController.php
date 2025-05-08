@@ -19,9 +19,16 @@ use App\Models\Exams;
 use Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\App;
+use App\Http\Services\WhatsAppService;
 
 class NoticeController extends Controller
 {
+    protected $whatsAppService;
+
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
     public function saveSmsNotice(Request $request){
         try{
             $user = $this->authenticateUser();
@@ -125,6 +132,14 @@ class NoticeController extends Controller
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                         foreach ($studParentdata as $student) {
+                            $templateName = 'notice';
+                            $parameters =[$noticeData['notice_desc']];
+                        
+                            $result = $this->whatsAppService->sendTextMessage(
+                                $student->phone_no,
+                                $templateName,
+                                $parameters
+                            );
                             $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
                             $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
                     
@@ -807,6 +822,14 @@ class NoticeController extends Controller
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                                 foreach ($studParentdata as $student) {
+                                    $templateName = 'notice';
+                                    $parameters =[$noticeData['notice_desc']];
+                                
+                                    $result = $this->whatsAppService->sendTextMessage(
+                                        $student->phone_no,
+                                        $templateName,
+                                        $parameters
+                                    );
                                     $message = $notice->notice_desc . ". Login to school application for details - AceVentura";
                                     $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
                             
@@ -2160,5 +2183,65 @@ class NoticeController extends Controller
                     'error' => $response->body()
                 ], 500);
             }
+        }
+        //API for the View Staff Notices Dev Name- Manish Kumar Sharma 06-05-2025
+        public function getViewStaffNotices(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $teacherId = $user->reg_id;
+                    $noticeDate = $request->input('notice_date');
+                    $query = DB::table('staff_notice')
+                                ->select(
+                                    'staff_notice.t_notice_id',
+                                    'staff_notice.subject',
+                                    'staff_notice.notice_desc',
+                                    'staff_notice.notice_date',
+                                    'staff_notice.teacher_id',
+                                    'staff_notice.notice_type',
+                                    'staff_notice.academic_yr',
+                                    'staff_notice.publish',
+                                    't2.name',
+                                    'staff_notice.created_by',
+                                    't1.name as created_by_name'
+                                )
+                                ->join('teacher as t2', 'staff_notice.teacher_id', '=', 't2.teacher_id')
+                                ->join('teacher as t1', 'staff_notice.created_by', '=', 't1.teacher_id')
+                                ->where('staff_notice.teacher_id', $teacherId)
+                                ->where('staff_notice.academic_yr', $customClaims)
+                                ->where('staff_notice.publish', 'Y')
+                                ->orderByDesc('staff_notice.t_notice_id');
+                    
+                            if (!empty($noticeDate)) {
+                                $query->whereDate('staff_notice.notice_date', $noticeDate);
+                            }
+                    
+                            $notices = $query->get();
+
+                           return response()->json([
+                               'status'=>200,
+                               'data'=>$notices,
+                               'message'=>'View staff notices',
+                               'success'=>true
+                               ]);
+                    
+                    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the viewing of staff notices',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+    
+            }
+            catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+            
         }
 }
