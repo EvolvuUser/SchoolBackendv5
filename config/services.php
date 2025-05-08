@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'redington' => [
+    'api_key' => env('REDINGTON_API_KEY'),
+    ],
+
 ];
