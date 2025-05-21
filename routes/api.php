@@ -577,6 +577,9 @@
         //API for the Absent Teacher  Dev Name- Manish Kumar Sharma 19-05-2025
         Route::get('get_absentteacherfortoday',[AdminController::class,'getAbsentTeacherForToday']);
 
+        //API for the Absent Non Teacher  Dev Name- Manish Kumar Sharma 21-05-2025
+        Route::get('get_absentnonteacherfortoday',[AdminController::class,'getAbsentnonTeacherForToday']);
+
         
 
     });
