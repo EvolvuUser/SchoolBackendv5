@@ -667,3 +667,25 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         return $response;
     }
+
+    function edit_user_id($username, $currentUserName)
+    {
+        $user_data = [
+            'user_id'      => $username,
+            'school_id'    => '1',
+            'old_user_id'  => $currentUserName,
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post(config('externalapis.EVOLVU_URL') . '/user_edit_post', $user_data);
+
+            // You can log or return the response for debugging
+            return $response; // or $response->body();
+        } catch (\Exception $e) {
+            // Log the error or handle it gracefully
+            \Log::error('API call failed: ' . $e->getMessage());
+            return null;
+        }
+    }
