@@ -115,7 +115,7 @@ class NoticeController extends Controller
             'publish' => 'Y',
             'unq_id' => $unq,
             'notice_date' => now()->toDateString(), // Laravel helper for current date
-        ];
+         ];
                 if ($request->has('checkbxevent') && !empty($request->checkbxevent)) {
                     foreach ($request->checkbxevent as $classId) {
                         if (!empty($classId)) {
@@ -129,10 +129,11 @@ class NoticeController extends Controller
                             $studParentdata = DB::table('student as a') // 'students' table alias as 'a'
                                         ->join('contact_details as b', 'a.parent_id', '=', 'b.id') // Joining contact_details with alias 'b'
                                         ->where('a.class_id', $classId) // Filter by class_id
+                                        // ->where('a.student_id','21222')
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                         foreach ($studParentdata as $student) {
-                            $templateName = 'notice';
+                            $templateName = 'emergency_message';
                             $parameters =[$noticeData['notice_desc']];
                         
                             $result = $this->whatsAppService->sendTextMessage(
@@ -140,25 +141,74 @@ class NoticeController extends Controller
                                 $templateName,
                                 $parameters
                             );
-                            $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
-                            $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
+                            
+                            $wamid = $result['messages'][0]['id'];
+                            $phone_no = $result['contacts'][0]['input'];
+                            // dd($phone_no);
+                            $message_type = 'short_sms';
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id'=>$wamid,
+                                'phone_no'=>$phone_no,
+                                'stu_teacher_id'=>$student->student_id,
+                                'notice_id'=> $notice->notice_id,
+                                'message_type'=>$message_type,
+                                'created_at'=>now()
+                                ]);
+                            // $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
+                            // $temp_id = '1107161354408119887';  
                     
-                            // Send SMS using the send_sms method
-                                $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
-                                if ($student->phone_no != null) {
+                            // // Send SMS using the send_sms method
+                            //     $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
+                            //     if ($student->phone_no != null) {
+                            //         // Prepare the data to be inserted
+                            //         $sms_log_data = [
+                            //             'sms_status' => $sms_status,
+                            //             'stu_teacher_id' => $student->student_id,
+                            //             'notice_id' => $notice->notice_id,
+                            //             'phone_no' => $student->phone_no,
+                            //             'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                            //         ];
+                                
+                            //         // Insert the data into the 'notice_sms_log' table
+                            //         NoticeSmsLog::create($sms_log_data);
+                            //     }
+                        }
+                        sleep(20);
+                        $leftmessages = DB::table('redington_webhook_details')
+                                             ->where('message_type','short_sms')
+                                             ->where('status','failed')
+                                             ->where('sms_sent','N')
+                                             ->get();
+                        foreach($leftmessages as $leftmessage){
+                            $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
+                            $temp_id = '1107161354408119887';  
+                    
+                                // Send SMS using the send_sms method
+                               
+                                $sms_status = $this->send_sms($leftmessage->phone_no, $message, $temp_id); // Assuming send_sms is implemented
+                                // dd($sms_status);
+                                $responseData = $sms_status->getData(true); // true = convert to array
+                                $messagestatus = $responseData['data']['status'];
+                                // dd($messagestatus);
+                                if($messagestatus == "success"){
+                                    // dd("Hello");
+                                    DB::table('redington_webhook_details')->where('webhook_id',$leftmessage->webhook_id)->update(['sms_sent'=>'Y']);
+                                }
+                                
+                                if ($leftmessage->phone_no != null) {
                                     // Prepare the data to be inserted
                                     $sms_log_data = [
                                         'sms_status' => $sms_status,
-                                        'stu_teacher_id' => $student->student_id,
+                                        'stu_teacher_id' => $leftmessage->stu_teacher_id,
                                         'notice_id' => $notice->notice_id,
-                                        'phone_no' => $student->phone_no,
-                                        'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                                        'phone_no' => $leftmessage->phone_no,
+                                        'sms_date' => Carbon::now()->format('Y/m/d') 
                                     ];
                                 
-                                    // Insert the data into the 'notice_sms_log' table
                                     NoticeSmsLog::create($sms_log_data);
                                 }
-                        }  
+                            
+                        }
                                                
                }
            
@@ -822,7 +872,7 @@ class NoticeController extends Controller
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                                 foreach ($studParentdata as $student) {
-                                    $templateName = 'notice';
+                                    $templateName = 'emergency_message';
                                     $parameters =[$noticeData['notice_desc']];
                                 
                                     $result = $this->whatsAppService->sendTextMessage(
@@ -830,26 +880,71 @@ class NoticeController extends Controller
                                         $templateName,
                                         $parameters
                                     );
-                                    $message = $notice->notice_desc . ". Login to school application for details - AceVentura";
-                                    $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
+                                    $wamid = $result['messages'][0]['id'];
+                                    $phone_no = $result['contacts'][0]['input'];
+                                    // dd($phone_no);
+                                    $message_type = 'short_sms';
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id'=>$wamid,
+                                        'phone_no'=>$phone_no,
+                                        'stu_teacher_id'=>$student->student_id,
+                                        'notice_id'=> $notice->notice_id,
+                                        'message_type'=>$message_type,
+                                        'created_at'=>now()
+                                        ]);
+                                    // $message = $notice->notice_desc . ". Login to school application for details - AceVentura";
+                                    // $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
                             
-                                    // Send SMS using the send_sms method
-                                        $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
-                                        if ($student->phone_no != null) {
+                                    // // Send SMS using the send_sms method
+                                    //     $sms_status = $this->send_sms($student->phone_no, $message, $temp_id); // Assuming send_sms is implemented
+                                    //     if ($student->phone_no != null) {
+                                    //         // Prepare the data to be inserted
+                                    //         $sms_log_data = [
+                                    //             'sms_status' => $sms_status,
+                                    //             'stu_teacher_id' => $student->student_id,
+                                    //             'notice_id' => $notice->notice_id,
+                                    //             'phone_no' => $student->phone_no,
+                                    //             'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                                    //         ];
+                                        
+                                    //         // Insert the data into the 'notice_sms_log' table
+                                    //         NoticeSmsLog::create($sms_log_data);
+                                    //     }
+                                }
+                                sleep(20);
+                                $leftmessages = DB::table('redington_webhook_details')
+                                                     ->where('message_type','short_sms')
+                                                     ->where('status','failed')
+                                                     ->where('sms_sent','N')
+                                                     ->get();
+                                foreach($leftmessages as $leftmessage){
+                                    $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
+                                    $temp_id = '1107161354408119887';  
+                            
+                                        $sms_status = $this->send_sms($leftmessage->phone_no, $message, $temp_id); // Assuming send_sms is implemented
+                                        // dd($sms_status);
+                                        $responseData = $sms_status->getData(true); // true = convert to array
+                                        $messagestatus = $responseData['data']['status'];
+                                        // dd($messagestatus);
+                                        if($messagestatus == "success"){
+                                            // dd("Hello");
+                                            DB::table('redington_webhook_details')->where('webhook_id',$leftmessage->webhook_id)->update(['sms_sent'=>'Y']);
+                                        }
+                                        if ($leftmessage->phone_no != null) {
                                             // Prepare the data to be inserted
                                             $sms_log_data = [
                                                 'sms_status' => $sms_status,
-                                                'stu_teacher_id' => $student->student_id,
+                                                'stu_teacher_id' => $leftmessage->stu_teacher_id,
                                                 'notice_id' => $notice->notice_id,
-                                                'phone_no' => $student->phone_no,
-                                                'sms_date' => Carbon::now()->format('Y/m/d') // Using Carbon to format the date
+                                                'phone_no' => $leftmessage->phone_no,
+                                                'sms_date' => Carbon::now()->format('Y/m/d') 
                                             ];
                                         
-                                            // Insert the data into the 'notice_sms_log' table
                                             NoticeSmsLog::create($sms_log_data);
                                         }
+                                    
                                 }
-                 }
+                    }
 
                     return response()->json([
                         'status'=> 200,
@@ -1660,6 +1755,7 @@ class NoticeController extends Controller
                                        ->join('exam_timetable','exam_timetable.exam_id','=','exam.exam_id')
                                        ->join('class','class.class_id','=','exam_timetable.class_id')
                                        ->select('exam.name as examname','exam.*','class.*','exam_timetable.*')
+                                       ->where('exam.academic_yr',$customClaims)
                                        ->get();
                           
                                 return response()->json([

@@ -20,3 +20,4 @@ yarn-error.log
 /.vscode
 /config/externalapis.php
 /config/cors.php
+/public/fcm.json

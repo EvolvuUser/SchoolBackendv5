@@ -1080,6 +1080,8 @@ public function updateCsvData(Request $request, $section_id)
 
             // Commit the transaction
             DB::commit();
+            $user_id_user_master = DB::table('user_master')->where('role_id','P')->where('reg_id',$parent->parent_id)->first();
+            createUserInEvolvu($user_id_user_master->user_id);
         } catch (\Exception $e) {
             // Rollback the transaction in case of an error
             DB::rollBack();
