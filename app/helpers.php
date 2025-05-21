@@ -135,7 +135,7 @@ if (!function_exists('getFullName')) {
 
 
 function imagesforall(){
-    $url =config('externalapis.get_school_details');
+    $url =config('externalapis.EVOLVU_URL').'/get_school_details';
 
      $response = Http::asMultipart()->post($url, [
         [
@@ -560,4 +560,110 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             ->value('prev_year_student_id'); 
 
         return $result; 
+    }
+
+    function createUserInEvolvu($user_id)
+    {
+        $payload = [
+            'user_id' => $user_id,
+            'school_id' => 1,
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post(config('externalapis.EVOLVU_URL') . '/user_create_post', $payload);
+
+            if ($response->successful()) {
+                return $response->json(); // return decoded JSON
+            } else {
+                Log::error('Evolvu API error: ' . $response->body());
+                return null;
+            }
+        } catch (\Exception $e) {
+            Log::error('Evolvu API request failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    function get_active_academic_year()
+    {
+        $setting = DB::table('settings')
+                    ->where('active', 'Y')
+                    ->first();
+    
+        return $setting ? $setting->academic_yr : null;
+    }
+    
+    function formatIndianCurrency($amount) {
+    $decimal = "";
+    if (strpos($amount, '.') !== false) {
+        list($amount, $decimal) = explode('.', $amount);
+        $decimal = '.' . $decimal;
+    }
+
+    $len = strlen($amount);
+    if ($len > 3) {
+        $last3digits = substr($amount, -3);
+        $restUnits = substr($amount, 0, $len - 3);
+        $restUnits = preg_replace("/\B(?=(\d{2})+(?!\d))/", ",", $restUnits);
+        return $restUnits . "," . $last3digits . $decimal;
+    } else {
+        return $amount . $decimal;
+    }
+}
+
+    function createStaffUser($userId, $role)
+    {
+        $url = config('externalapis.EVOLVU_URL').'/create_staff_userid';
+
+        $response = Http::post($url, [
+            'user_id' => $userId,
+            'role' => $role,
+            'short_name' => 'SACS',
+        ]);
+
+        // Log the API response
+        Log::info('External API response:', [
+            'url' => $url,
+            'status' => $response->status(),
+            'response_body' => $response->body(),
+        ]);
+
+        return $response;
+    }
+
+    function getParentUserId($parentId)
+    {
+        $result = DB::table('user_master as a')
+            ->where('a.role_id', 'P')
+            ->where('a.reg_id', $parentId)
+            ->select('a.user_id')
+            ->first();
+    
+        return $result ? $result->user_id : null;
+    }
+    
+     function deleteParentUser($currentUserName)
+    {
+        $url = config('externalapis.EVOLVU_URL') . '/user_delete_post';
+
+        $payload = [
+            'user_id' => $userId,
+            'school_id' => '1',
+        ];
+
+        $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])
+            ->post($url, $payload);
+
+        Log::info('Delete User API response:', [
+            'url' => $url,
+            'request_body' => $payload,
+            'status' => $response->status(),
+            'response_body' => $response->body(),
+        ]);
+
+        return $response;
     }

@@ -85,7 +85,9 @@ class AuthController extends Controller
 
         try {
             
-            $userrole= UserMaster::where('user_id',$credentials['user_id'])->where('role_id','A')->first();
+            $userrole = UserMaster::where('user_id', $credentials['user_id'])
+                        ->whereIn('role_id', ['A', 'M'])
+                        ->first();
             if($userrole){
 
                 $user = UserMaster::where('user_id', $credentials['user_id'])->first();
@@ -113,7 +115,7 @@ class AuthController extends Controller
                 Log::warning('Invalid password for user:', $credentials);
                 return response()->json(['error' => 'Invalid password'], 401);
             }
-            $url = config('externalapis.validate_staff_user');
+            $url = config('externalapis.EVOLVU_URL').'/validate_staff_user';
 
             $response = Http::asMultipart()->post($url, [
                 [
