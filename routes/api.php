@@ -565,6 +565,18 @@
         Route::post('update_parentguradianimage',[AdminController::class,'updateParentGuardianImage']);
         //API for the View Staff Notices Dev Name- Manish Kumar Sharma 06-05-2025
         Route::get('get_viewstaffnotices',[NoticeController::class,'getViewStaffNotices']);
+
+        //API for the Roles  Dev Name- Manish Kumar Sharma 12-05-2025
+        Route::put('update_activeinactiverole/{id}',[RoleController::class,'update_activeinactiverole']);
+        //API for the Roles and Menus  Dev Name- Manish Kumar Sharma 12-05-2025
+        Route::delete('delete_rolesandmenus/{id}',[RoleController::class,'deleterolesandmenus']);
+
+        //API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
+        Route::get('get_absentstudentfortoday',[AdminController::class,'getAbsentStudentForToday']);
+
+        //API for the Absent Teacher  Dev Name- Manish Kumar Sharma 19-05-2025
+        Route::get('get_absentteacherfortoday',[AdminController::class,'getAbsentTeacherForToday']);
+
         
 
     });
@@ -653,6 +665,8 @@ Route::post('update_forgotpassword',[AdminController::class,'updateForgotPasswor
 Route::post('save_newpasswordforgot',[AdminController::class,'generateNewPassword']);
 
 Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages']);
+
+Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

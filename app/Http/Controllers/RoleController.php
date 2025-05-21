@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Validation\Rule;
+use DB;
 class RoleController extends Controller
 {
     public function index()
@@ -32,7 +34,7 @@ class RoleController extends Controller
 
         $role = Role::create([
             'role_id'=>$request->role_id,
-            'rolename'=>$request->rolename
+            'name'=>$request->rolename
             ]);
 
         return response()->json([
@@ -62,45 +64,56 @@ class RoleController extends Controller
     public function update(Request $request, $role_id)
     {
         $validatedData = $request->validate([
-            'rolename' => 'required|string|max:50',
-            'is_active' => 'required|string|max:1',
+            'rolename' => [ 'required','string', 'max:50',Rule::unique('role_master', 'name')->ignore($role_id, 'role_id'),],
+            'role_id' =>  [ 'required','string', 'max:1',Rule::unique('role_master', 'role_id')->ignore($role_id, 'role_id'),],
         ]);
 
         $role = Role::find($role_id);
-
-        if ($role) {
-            // Check if the role is being used before deactivating it
-            if ($validatedData['is_active'] === 'N') {
-                $isRoleInUse = User::where('role_id', $role_id)->exists();
-
-                if ($isRoleInUse) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Role cannot be deactivated as it is being used in another table.'
-                    ], 400);
-                }
-            }
+        if(!$role){
+            return response()->json([
+            'success' => false,
+            'message' => 'Role not found.'
+        ], 404);
+            
+        }
 
             // Update the role
             $role->update([
                 'name'=>$request->rolename,
-                'is_active'=>$request->is_active
+                'role_id'=>$request->role_id
                 ]);
-            return response()->json([
-                'success' => true,
-                'message' => 'Role updated successfully.',
-                'data' => $role
-            ]);
-        }
+            
 
         return response()->json([
-            'success' => false,
-            'message' => 'Role not found.'
-        ], 404);
+            'status'=>200,
+            'success' => true,
+            'message' => 'Role updated successfully.'
+        ]);
     }
 
     public function delete($role_id)
     {
+        $tables = [
+        'user_master' => 'role_id',
+        'roles_and_menus' => 'role_id',
+        'role_menu' => 'role_id',
+        'roles' => 'role_id',
+        'service_type' => 'role_id',
+        'appointment_window' => 'role_id',
+        'transport_usermaster' => 'role_id',
+        ];
+    
+        
+        foreach ($tables as $table => $column) {
+            $exists = DB::table($table)->where($column, $role_id)->exists();
+            if ($exists) {
+                return response()->json([
+                    'status'=>400,
+                    'success' => false,
+                    'message' => "Role cannot be deleted as it is being used in another table."
+                ], 400);
+            }
+        }
         $role = Role::find($role_id);
 
         if ($role) {
@@ -113,9 +126,10 @@ class RoleController extends Controller
         }
 
         return response()->json([
+             'status'=>400,
             'success' => false,
             'message' => 'Role not found.'
-        ], 404);
+        ]);
     }
 
     public function showRoles()
@@ -274,6 +288,115 @@ public function getSubMenus($parentId, $assignedMenuIds)
         $menu = Menu::findOrFail($id);
         $menu->delete();
         return response()->json(null, 204);
+    }
+
+    //API for the Roles  Dev Name- Manish Kumar Sharma 12-05-2025
+    public function update_activeinactiverole($role_id){
+        $role = Role::find($role_id);
+        if($role){
+            if($role->is_active == 'Y'){
+                $tables = [
+                    'user_master' => 'role_id',
+                    'roles_and_menus' => 'role_id',
+                    'role_menu' => 'role_id',
+                    'roles' => 'role_id',
+                    'service_type' => 'role_id',
+                    'appointment_window' => 'role_id',
+                    'transport_usermaster' => 'role_id',
+                    ];
+                
+                    
+                    foreach ($tables as $table => $column) {
+                        $exists = DB::table($table)->where($column, $role_id)->exists();
+                        if ($exists) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Role cannot be deactivated as it is being used in another table."
+                            ], 400);
+                        }
+                    }
+                    
+                    $role->update([
+                'is_active'=>'N'
+                ]);
+                return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Role has been deactivated."
+                            ], 200);
+                
+            }
+            else{
+                $role->update([
+                'is_active'=>'Y'
+                ]);
+                
+                return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Role has been activated."
+                            ], 200);
+            }
+            
+        }
+        else{
+            return response()->json([
+            'status' =>400,
+            'success' => false,
+            'message' => 'Role not found.'
+        ]);
+            
+        }
+        
+        
+        
+    }
+
+    //API for the Roles and Menus  Dev Name- Manish Kumar Sharma 12-05-2025
+    public function deleterolesandmenus($menu_id){
+        $menu = Menu::find($menu_id);
+        if($menu){
+            $parent_id = $menu->parent_id;
+            if($parent_id == '0'){
+                 $childmenu = DB::table('menus')->where('parent_id',$menu_id)->exists();
+                 if ($childmenu) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it has submenus."
+                            ], 400);
+                        }
+                        $menu->delete();
+                        DB::table('roles_and_menus')->where('menu_id',$menu_id)->delete();
+                         return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Menu deleted successfully."
+                            ], 200);
+                        
+                 
+            }
+            else{
+                        $menu->delete();
+                        DB::table('roles_and_menus')->where('menu_id',$menu_id)->delete();
+                         return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Menu deleted successfully."
+                            ], 200);
+                
+            }
+            
+        }
+        else{
+            return response()->json([
+                                'status'=>400,
+                                'success' => true,
+                                'message' => "Menu not found."
+                            ], 400);
+            
+        }
     }
 
    

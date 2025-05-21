@@ -2790,9 +2790,7 @@ class CertificateController extends Controller
                             ];
                             
                             // Send POST request to external service using Laravel's HTTP client
-                            $response = Http::withHeaders([
-                                'Content-Type' => 'application/json',
-                            ])->post('http://aceventura.in/demo/evolvuUserService/user_delete_post', $user_data1);
+                            $response = deleteParentUser($user_id);
                             
                             
                             if ($response->successful()) {

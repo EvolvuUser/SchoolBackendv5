@@ -612,6 +612,9 @@ public function pendingCollectedFeeData(): JsonResponse
             select z.installment, z.Account, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id,s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
         0 as paid_amount, CASE WHEN cl.name = 'Nursery' THEN 'Nursery' WHEN cl.name IN ('LKG','UKG') THEN 'KG' ELSE 'School' END as Account FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment join class cl on s.class_id=cl.class_id WHERE s.academic_yr='$customClaims' and s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims') group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession, sum(f.fees_paid) as paid_amount, CASE WHEN cs.name = 'Nursery' THEN 'Nursery' WHEN cs.name IN ('LKG','UKG') THEN 'KG' ELSE 'School'  END as Account  FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment join class cs on f.class_id=cs.class_id WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment, c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment, z.Account
         ");
+        foreach ($finalQuery as &$row) {
+            $row->pending_fee = formatIndianCurrency(number_format((float)$row->pending_fee, 2, '.', ''));
+        }
 
     return response()->json($finalQuery);
      }
@@ -1558,18 +1561,7 @@ public function storeStaff(Request $request)
         Mail::to($validatedData['email'])->send(new WelcomeEmail($user->email, 'arnolds'));
 
         // Call external API
-        $response = Http::post('http://aceventura.in/demo/evolvuUserService/create_staff_userid', [
-            'user_id' => $user->user_id,
-            'role' => $validatedData['role'],
-            'short_name' => 'SACS',
-        ]);
-
-        // Log the API response
-        Log::info('External API response:', [
-            'url' => 'http://aceventura.in/demo/evolvuUserService/create_staff_userid',
-            'status' => $response->status(),
-            'response_body' => $response->body(),
-        ]);
+        $response = createStaffUser($user->user_id, $validatedData['role']);
 
         if ($response->successful()) {
             DB::commit(); // Commit the transaction
@@ -2386,25 +2378,31 @@ public function deleteStudent( Request $request , $studentId)
                 $userMasterParent->IsDelete='Y';
                 $userMasterParent->save();
             }
+            $parent1 = Parents::find($student->parent_id);
+            $contact = ContactDetails::find($student->parent_id);
+            // After deletion, check if the deleted information exists in the deleted_contact_details table
+            $deletedContact = DeletedContactDetails::where('id', $parent1)->first();
+            if (!$deletedContact) {
+                // Insert deleted contact details into the deleted_contact_details table
+                DeletedContactDetails::create([
+                    'student_id' => $studentId,
+                    'parent_id' => $student->parent_id,
+                    'phone_no' => $contact->phone_no, 
+                    'email_id' => $parent1->f_email, 
+                    'm_emailid' => $parent1->m_emailid 
+                ]);
+            }
 
             // Hard delete parent information from the contact_details table
             ContactDetails::where('id', $student->parent_id)->delete();
+            $currentUserName = getParentUserId($student->parent_id);
+            if($currentUserName){
+            $response = deleteParentUser($currentUserName);
+            }
+            
         }
     }
-    $parent1 = Parents::find($student->parent_id);
-
-    // After deletion, check if the deleted information exists in the deleted_contact_details table
-    $deletedContact = ContactDetails::where('id', $parent1)->first();
-    if (!$deletedContact) {
-        // Insert deleted contact details into the deleted_contact_details table
-        DeletedContactDetails::create([
-            'student_id' => $studentId,
-            'parent_id' => $student->parent_id,
-            'phone_no' => $student->parents->m_mobile, 
-            'email_id' => $parent1->f_email, 
-            'm_emailid' => $parent1->m_emailid 
-        ]);
-    }
+    
 
     return response()->json(['message' => 'Student deleted successfully']);
     //while deleting  please cll the api for the evolvu database. while sibling is not present then  call the api to delete the paret 
@@ -5705,6 +5703,8 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
         ]);
         $payload = getTokenPayload($request);  
+        $studentdetails = DB::table('student')->where('student_id',$studentId)->first();
+        $studentAcademicYr = $studentdetails->academic_yr;
         $academicYr = $payload->get('academic_year');
         $validator = Validator::make($request->all(),[
         
@@ -5953,6 +5953,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 $user->role_id = 'P';
                 $user->save();
                 
+                
                 $user = UserMaster::where('reg_id', $parentId)->where('role_id','P')->first();
                 Log::info("Student information updated for parent ID: {$parentId}");
 
@@ -5980,8 +5981,32 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                             $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
                             break;
                     }
+                    createUserInEvolvu($user->user_id);
+                    if($studentAcademicYr == get_active_academic_year()){
+                    $templateName = 'send_user_id';
+                    $parameters =[$validatedData['first_name'],$user->user_id];
+                
+                    $result = $this->whatsAppService->sendTextMessage(
+                        $phoneNo,
+                        $templateName,
+                        $parameters
+                    );
+                    
+                        $recipients = array_filter([
+                                $validatedData['f_email'] ?? null,
+                                $validatedData['m_emailid'] ?? null,
+                            ]);
+                            
+                            $messageemail = "Dear Parent,Welcome to St.Arnold's Central School's online application.'".$validatedData['first_name']."' is registered in the application. Your user id is ".$user->user_id." and password is arnolds.The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at https://sms.arnoldcentralschool.org .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards,SACS Support";
+                            Mail::raw($messageemail, function ($mail) use ($recipients) {
+                                $mail->to($recipients)
+                                     ->subject("SACS-Login Details");
+                            });
+                    }
                     $user->save();
+                    
                     Log::info("User Data saved in if");
+                    
                 }
         }else{
             Log::info("Parent Id: {$parentId}");
@@ -6065,6 +6090,29 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                             $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
                             break;
                     }
+                    if($studentAcademicYr == get_active_academic_year()){
+                    $templateName = 'send_existing_user_id';
+                    $parameters =[$validatedData['first_name'],$user->user_id];
+                
+                    $result = $this->whatsAppService->sendTextMessage(
+                        $phoneNo,
+                        $templateName,
+                        $parameters
+                    );
+                    
+                    $recipients = array_filter([
+                                $parent->f_email ?? null,
+                                $parent->m_emailid ?? null,
+                            ]);
+                            
+                            $messageemail = "Dear Parent,<br/><br/>Welcome to St.Arnold's Central School's online application. <br/><br/>'".$validatedData['first_name']."' is registered in the application. Please use your existing user id ".$user->user_id." to access the application.<br><br>Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.
+<br/><br/>Please make sure to update your profile and your child's profile.<br/><br/>Regards,<br/>
+SACS Support";
+                            Mail::raw($messageemail, function ($mail) use ($recipients) {
+                                $mail->to($recipients)
+                                     ->subject("SACS-Login Details");
+                            });
+                    }
                     $user->save();
                     Log::info("User saved in else");
                 }
@@ -6079,6 +6127,15 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         $student->update($validatedData);
         $student->updated_by = $user->reg_id;
         $student->save();
+        $user_id = "S" . str_pad($param2, 4, "0", STR_PAD_LEFT);
+
+        DB::table('user_master')->insert([
+            'user_id' => $user_id,
+            'name' => $validatedData['first_name'],
+            'password' => bcrypt('arnolds'), // Consider hashing if it's a real password
+            'reg_id' => $studentId,
+            'role_id' => 'S',
+        ]);
         $fileContent = file_get_contents($filePath);           // Get the file content
         $base64File = base64_encode($fileContent); 
         upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
@@ -12607,28 +12664,143 @@ public function generateNewPassword(Request $request)
        ]);
    }
 
-   public function sendwhatsappmessages(Request $request){
-    $phone = '916367379170';
+public function sendwhatsappmessages(Request $request){
+    $phone = '6367379170';
 
-    $templateName = 'birthday_wishes';
-    $parameters =['Deepak Sir','Manish'];
+    $templateName = 'emergency_message';
+    $parameters =['Manish'];
 
     $result = $this->whatsAppService->sendTextMessage(
         $phone,
         $templateName,
         $parameters
     );
-    if (isset($result['messages'][0]['message_status']) && $result['messages'][0]['message_status'] === 'accepted') {
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Message accepted by WhatsApp platform.',
-        'data' => $result
-    ]);
-   }
+     // dd($result);
+     $wamid = $result['messages'][0]['id'];
+     $phone_no = $result['contacts'][0]['input'];
+    // dd($phone_no);
+    DB::table('redington_webhook_details')->insert([
+        'wa_id'=>$wamid,
+        'phone_no'=>$phone_no
+        ]);
+    
+    Log::info($result);
 
     return response()->json($result);
 }
 
+public function webhookredington(Request $request){
+    Log::info('Redington Webhook Received:', $request->all());
+    $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+
+    foreach ($statuses as $status) {
+        $wamid = $status['id']; // The WhatsApp message ID
+        $deliveryStatus = $status['status']; // e.g., 'sent', 'delivered', 'failed'
+        Log::info($wamid);
+        Log::info($deliveryStatus);
+        // Update the database table where wa_id = wamid
+        $updateData = [
+                'status' => $deliveryStatus,
+                'updated_at' => now(),
+            ];
+            
+            // If status is one of the success types, add sms_sent = 'Y'
+            if (in_array($deliveryStatus, ['sent', 'delivered', 'read'])) {
+                $updateData['sms_sent'] = 'Y';
+            }
+            
+            // Update DB record where wa_id matches
+            DB::table('redington_webhook_details')
+                ->where('wa_id', $wamid)
+                ->update($updateData);
+
+        Log::info("Updated status for WAMID: $wamid to $deliveryStatus");
+    }
         
 
+    return response()->json(['status' => 'success'], 200);
+}
+//API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
+public function getAbsentStudentForToday(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+          $absentstudents = DB::table('attendance')
+                                ->join('student','student.student_id','=','attendance.student_id')
+                                ->join('class','class.class_id','=','attendance.class_id')
+                                ->join('section','section.section_id','=','attendance.section_id')
+                                ->where('attendance.attendance_status','1')
+                                ->where('only_date','2025-02-01')
+                                ->where('student.isDelete','N')
+                                ->select('student.first_name','student.mid_name','student.last_name','class.name as classname','section.name as sectionname','class.class_id','section.section_id')
+                                ->orderBy('section_id')
+                                ->get();
+         
+          return response()->json([
+                        'status' =>200,
+                        'data'=>$absentstudents,
+                        'message' => 'Absent students list.',
+                        'success'=>true
+                        
+                        ]);
+      
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the Absent students list.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+//API for the Absent Teacher  Dev Name- Manish Kumar Sharma 19-05-2025
+public function getAbsentTeacherForToday(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+          $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '2025-01-31' JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE ta.employee_id IS NULL AND t.isDelete = 'N' AND u.role_id IN ('T', 'L');");
+          
+          $lateabsent = [
+               'absent_staff'=>$absentstaff
+               
+              ];
+          
+          return response()->json([
+                        'status' =>200,
+                        'data'=>$lateabsent,
+                        'message' => 'Absent and late teachers.',
+                        'success'=>true
+                        
+                        ]);
+          
+          
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the Absent and late teachers.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+
+        
 }
