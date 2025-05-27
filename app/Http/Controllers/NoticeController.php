@@ -129,13 +129,14 @@ class NoticeController extends Controller
                             $studParentdata = DB::table('student as a') // 'students' table alias as 'a'
                                         ->join('contact_details as b', 'a.parent_id', '=', 'b.id') // Joining contact_details with alias 'b'
                                         ->where('a.class_id', $classId) // Filter by class_id
-                                        // ->where('a.student_id','21222')
+                                        //  ->where('a.student_id','21222')
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                         foreach ($studParentdata as $student) {
                             $templateName = 'emergency_message';
-                            $parameters =[$noticeData['notice_desc']];
-                        
+                            $parameters =[str_replace('Dear', '', $noticeData['notice_desc'])];
+                            Log::info($student->phone_no);
+                            if($student->phone_no){
                             $result = $this->whatsAppService->sendTextMessage(
                                 $student->phone_no,
                                 $templateName,
@@ -154,6 +155,7 @@ class NoticeController extends Controller
                                 'message_type'=>$message_type,
                                 'created_at'=>now()
                                 ]);
+                            }
                             // $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
                             // $temp_id = '1107161354408119887';  
                     
@@ -538,7 +540,7 @@ class NoticeController extends Controller
                             ->update([
                                 'subject' => $request->subject, // Update the subject field (example)
                                 'notice_desc' => $request->notice_desc, // Update the description (example)
-                                'teacher_id' => $user->id,
+                                'teacher_id' => $user->reg_id,
                                 'notice_date' => now(), // You can also use dynamic values like current timestamp
                                 // Add other fields to update as needed
                             ]);
@@ -862,6 +864,8 @@ class NoticeController extends Controller
                 if($notice_type->notice_type == "SMS"){
                     $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
                     foreach ($updatesmsnotice as $notice) {
+                        $noticemessage = $notice->notice_desc;
+                        
                       DB::table('notice')
                           ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
                           ->update(['publish' => 'Y',]);
@@ -873,13 +877,15 @@ class NoticeController extends Controller
                                         ->get();
                                 foreach ($studParentdata as $student) {
                                     $templateName = 'emergency_message';
-                                    $parameters =[$noticeData['notice_desc']];
-                                
+                                    $parameters =[str_replace('Dear', '', $noticemessage)];
+                                    Log::info($parameters);
+                                    if($student->phone_no){
                                     $result = $this->whatsAppService->sendTextMessage(
                                         $student->phone_no,
                                         $templateName,
                                         $parameters
                                     );
+                                    Log::info($result);
                                     $wamid = $result['messages'][0]['id'];
                                     $phone_no = $result['contacts'][0]['input'];
                                     // dd($phone_no);
@@ -892,6 +898,8 @@ class NoticeController extends Controller
                                         'message_type'=>$message_type,
                                         'created_at'=>now()
                                         ]);
+                                        
+                                    }
                                     // $message = $notice->notice_desc . ". Login to school application for details - AceVentura";
                                     // $temp_id = '1107161354408119887';  // Assuming this is required for SMS service
                             
@@ -918,14 +926,13 @@ class NoticeController extends Controller
                                                      ->where('sms_sent','N')
                                                      ->get();
                                 foreach($leftmessages as $leftmessage){
-                                    $message = $noticeData['notice_desc'] . ". Login to school application for details - AceVentura";
+                                    $message = $noticemessage . ". Login to school application for details - AceVentura";
                                     $temp_id = '1107161354408119887';  
                             
                                         $sms_status = $this->send_sms($leftmessage->phone_no, $message, $temp_id); // Assuming send_sms is implemented
                                         // dd($sms_status);
                                         $responseData = $sms_status->getData(true); // true = convert to array
                                         $messagestatus = $responseData['data']['status'];
-                                        // dd($messagestatus);
                                         if($messagestatus == "success"){
                                             // dd("Hello");
                                             DB::table('redington_webhook_details')->where('webhook_id',$leftmessage->webhook_id)->update(['sms_sent'=>'Y']);
@@ -957,6 +964,7 @@ class NoticeController extends Controller
                 {
                     $updatesmsnotice = DB::table('notice')->where('unq_id',$unq_id)->get();
                     foreach ($updatesmsnotice as $notice) {
+                        $noticemessage = $notice->notice_desc;
                       DB::table('notice')
                           ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
                           ->update(['publish' => 'Y',]);
@@ -967,40 +975,109 @@ class NoticeController extends Controller
                                         ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id') // Select the required fields
                                         ->get();
                                 foreach ($studParentdata as $student) {
-                                    $smsdata = DB::table('daily_sms')
-                                        ->where('parent_id', $student->parent_id)
-                                        ->where('student_id', $student->student_id)
-                                        ->get(); 
-                            // dd($smsdata);
-                             $smsdatacount= count($smsdata);
-                              if($smsdatacount=='0'){
-                                $sdata = [
-                                    'parent_id' => $student->parent_id,
-                                    'student_id' => $student->student_id,
-                                    'phone' => $student->phone_no,
-                                    'homework' => 0,
-                                    'remark' => 0,
-                                    'achievement' => 0,
-                                    'note' => 0,
-                                    'notice' => 1,
-                                    'sms_date' => now() // Laravel's `now()` function returns the current date and time
-                                ];
+                                    $templateName = 'emergency_message';
+                                    $parameters =[$noticemessage];
+                                    Log::info($parameters);
+                                    if($student->phone_no){
+                                    $result = $this->whatsAppService->sendTextMessage(
+                                        $student->phone_no,
+                                        $templateName,
+                                        $parameters
+                                    );
+                                    Log::info($result);
+                                    $wamid = $result['messages'][0]['id'];
+                                    $phone_no = $result['contacts'][0]['input'];
+                                    // dd($phone_no);
+                                    $message_type = 'notice';
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id'=>$wamid,
+                                        'phone_no'=>$phone_no,
+                                        'stu_teacher_id'=>$student->student_id,
+                                        'notice_id'=> $notice->notice_id,
+                                        'message_type'=>$message_type,
+                                        'created_at'=>now()
+                                        ]);
+                                        
+                                    }
+                                    
+                            //         $smsdata = DB::table('daily_sms')
+                            //             ->where('parent_id', $student->parent_id)
+                            //             ->where('student_id', $student->student_id)
+                            //             ->get(); 
+                            // // dd($smsdata);
+                            //  $smsdatacount= count($smsdata);
+                            //   if($smsdatacount=='0'){
+                            //     $sdata = [
+                            //         'parent_id' => $student->parent_id,
+                            //         'student_id' => $student->student_id,
+                            //         'phone' => $student->phone_no,
+                            //         'homework' => 0,
+                            //         'remark' => 0,
+                            //         'achievement' => 0,
+                            //         'note' => 0,
+                            //         'notice' => 1,
+                            //         'sms_date' => now() // Laravel's `now()` function returns the current date and time
+                            //     ];
                                 
-                                DB::table('daily_sms')->insert($sdata);
-                              }
-                              else{
-                                $smsdata[0]->notice = 1 + $smsdata[0]->notice;
-                                $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
+                            //     DB::table('daily_sms')->insert($sdata);
+                            //   }
+                            //   else{
+                            //     $smsdata[0]->notice = 1 + $smsdata[0]->notice;
+                            //     $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
 
-                                // Perform the update
-                                DB::table('daily_sms')
-                                    ->where('parent_id', $smsdata[0]->parent_id)
-                                    ->where('student_id', $smsdata[0]->student_id)
-                                    ->update(['notice' => $smsdata[0]->notice,
-                                             'sms_date' => $smsdata[0]->sms_date]);
-                              }
+                            //     // Perform the update
+                            //     DB::table('daily_sms')
+                            //         ->where('parent_id', $smsdata[0]->parent_id)
+                            //         ->where('student_id', $smsdata[0]->student_id)
+                            //         ->update(['notice' => $smsdata[0]->notice,
+                            //                  'sms_date' => $smsdata[0]->sms_date]);
+                            //   }
                             
                                 }
+                                sleep(20);
+                                $leftmessages = DB::table('redington_webhook_details')
+                                                     ->where('message_type','notice')
+                                                     ->where('status','failed')
+                                                     ->where('sms_sent','N')
+                                                     ->get();
+                            foreach($leftmessages as $leftmessage){
+                                $parentidstudentdetails = DB::table('student')->where('student_id',$leftmessage->stu_teacher_id)->first();
+                                $parent_id = $parentidstudentdetails->parent_id;
+                                $smsdata = DB::table('daily_sms')
+                                            ->where('parent_id', $parent_id)
+                                            ->where('student_id', $leftmessage->stu_teacher_id)
+                                            ->get(); 
+                                // dd($smsdata);
+                                 $smsdatacount= count($smsdata);
+                                  if($smsdatacount=='0'){
+                                    $sdata = [
+                                        'parent_id' => $parent_id,
+                                        'student_id' => $leftmessage->stu_teacher_id,
+                                        'phone' => $leftmessage->phone_no,
+                                        'homework' => 0,
+                                        'remark' => 0,
+                                        'achievement' => 0,
+                                        'note' => 0,
+                                        'notice' => 1,
+                                        'sms_date' => now() // Laravel's `now()` function returns the current date and time
+                                    ];
+                                    
+                                    DB::table('daily_sms')->insert($sdata);
+                                  }
+                                  else{
+                                    $smsdata[0]->notice = 1 + $smsdata[0]->notice;
+                                    $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
+    
+                                    // Perform the update
+                                    DB::table('daily_sms')
+                                        ->where('parent_id', $smsdata[0]->parent_id)
+                                        ->where('student_id', $smsdata[0]->student_id)
+                                        ->update(['notice' => $smsdata[0]->notice,
+                                                 'sms_date' => $smsdata[0]->sms_date]);
+                                  }
+                                
+                            }
+                                
                             }
                             return response()->json([
                                 'status'=> 200,
@@ -1311,7 +1388,7 @@ class NoticeController extends Controller
                 // Prepare the notice data
                 $noticeData = [
                     'subject' => $request->subject,
-                    'notice_desc' =>"Dear Parent,".$request->notice_desc,
+                    'notice_desc' =>$request->notice_desc,
                     'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
                     'notice_type' => 'Notice',
                     'academic_yr' => $customClaims, // Assuming academic year is stored in Session
@@ -1357,17 +1434,86 @@ class NoticeController extends Controller
                                         ->where('a.class_id', $classId)
                                         ->get();
                             foreach ($studParentdata as $student) {
+                                $templateName = 'emergency_message';
+                                $parameters =[$noticeData['notice_desc']];
+                                Log::info($parameters);
+                                if($student->phone_no){
+                                $result = $this->whatsAppService->sendTextMessage(
+                                    $student->phone_no,
+                                    $templateName,
+                                    $parameters
+                                );
+                                Log::info($result);
+                                $wamid = $result['messages'][0]['id'];
+                                $phone_no = $result['contacts'][0]['input'];
+                                // dd($phone_no);
+                                $message_type = 'notice';
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id'=>$wamid,
+                                    'phone_no'=>$phone_no,
+                                    'stu_teacher_id'=>$student->student_id,
+                                    'notice_id'=> $notice->notice_id,
+                                    'message_type'=>$message_type,
+                                    'created_at'=>now()
+                                    ]);
+                                    
+                                }
+                                
+                                
+                                // $smsdata = DB::table('daily_sms')
+                                //             ->where('parent_id', $student->parent_id)
+                                //             ->where('student_id', $student->student_id)
+                                //             ->get(); 
+                                // // dd($smsdata);
+                                //  $smsdatacount= count($smsdata);
+                                //   if($smsdatacount=='0'){
+                                //     $sdata = [
+                                //         'parent_id' => $student->parent_id,
+                                //         'student_id' => $student->student_id,
+                                //         'phone' => $student->phone_no,
+                                //         'homework' => 0,
+                                //         'remark' => 0,
+                                //         'achievement' => 0,
+                                //         'note' => 0,
+                                //         'notice' => 1,
+                                //         'sms_date' => now() // Laravel's `now()` function returns the current date and time
+                                //     ];
+                                    
+                                //     DB::table('daily_sms')->insert($sdata);
+                                //   }
+                                //   else{
+                                //     $smsdata[0]->notice = 1 + $smsdata[0]->notice;
+                                //     $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
+    
+                                //     // Perform the update
+                                //     DB::table('daily_sms')
+                                //         ->where('parent_id', $smsdata[0]->parent_id)
+                                //         ->where('student_id', $smsdata[0]->student_id)
+                                //         ->update(['notice' => $smsdata[0]->notice,
+                                //                  'sms_date' => $smsdata[0]->sms_date]);
+                                //   }
+                                  
+                            }  
+                            sleep(20);
+                             $leftmessages = DB::table('redington_webhook_details')
+                                                     ->where('message_type','notice')
+                                                     ->where('status','failed')
+                                                     ->where('sms_sent','N')
+                                                     ->get();
+                            foreach($leftmessages as $leftmessage){
+                                $parentidstudentdetails = DB::table('student')->where('student_id',$leftmessage->stu_teacher_id)->first();
+                                $parent_id = $parentidstudentdetails->parent_id;
                                 $smsdata = DB::table('daily_sms')
-                                            ->where('parent_id', $student->parent_id)
-                                            ->where('student_id', $student->student_id)
+                                            ->where('parent_id', $parent_id)
+                                            ->where('student_id', $leftmessage->stu_teacher_id)
                                             ->get(); 
                                 // dd($smsdata);
                                  $smsdatacount= count($smsdata);
                                   if($smsdatacount=='0'){
                                     $sdata = [
-                                        'parent_id' => $student->parent_id,
-                                        'student_id' => $student->student_id,
-                                        'phone' => $student->phone_no,
+                                        'parent_id' => $parent_id,
+                                        'student_id' => $leftmessage->stu_teacher_id,
+                                        'phone' => $leftmessage->phone_no,
                                         'homework' => 0,
                                         'remark' => 0,
                                         'achievement' => 0,
@@ -1389,8 +1535,10 @@ class NoticeController extends Controller
                                         ->update(['notice' => $smsdata[0]->notice,
                                                  'sms_date' => $smsdata[0]->sms_date]);
                                   }
-                                  
-                            }  
+                                
+                            }
+                            
+                            
     
                         }
     

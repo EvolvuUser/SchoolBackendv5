@@ -580,7 +580,14 @@
         //API for the Absent Non Teacher  Dev Name- Manish Kumar Sharma 21-05-2025
         Route::get('get_absentnonteacherfortoday',[AdminController::class,'getAbsentnonTeacherForToday']);
 
-        
+        //API for the Lesson Plan Teacher  Dev Name- Manish Kumar Sharma 23-05-2025
+        Route::get('get_lesson_plan_created_teachers',[AdminController::class,'get_lesson_plan_created_teachers']);
+
+        //API for the Count Non Approved Lesson  Dev Name- Manish Kumar Sharma 23-05-2025
+        Route::get('get_count_non_approved_lesson_plan',[AdminController::class,'getCountNonApprovedLessonPlan']);
+
+        //API for the Maximum Sequence For Parent  Dev Name- Manish Kumar Sharma 26-05-2025
+        Route::get('get_maximumsequenceforparent',[RoleController::class,'getMaximumSequenceForParent']);
 
     });
 
