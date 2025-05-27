@@ -1843,7 +1843,14 @@ public function deleteStaff($id)
         $teacher->isDelete = 'Y';
 
         if ($teacher->save()) {
-            $user = User::where('reg_id', $id)->first();
+            $user = UserMaster::where('reg_id', $id)->first();
+            Log::info($user);
+            $user_id = $user->user_id;
+            $role = $user->role_id;
+            Log::info($user_id);
+            Log::info($role);
+            
+            $deletestaff = delete_staff_user_id($user_id, $role);
             if ($user) {
                 $user->IsDelete = 'Y';
                 $user->save();
@@ -12741,7 +12748,7 @@ public function getAbsentStudentForToday(Request $request){
                                 ->join('class','class.class_id','=','attendance.class_id')
                                 ->join('section','section.section_id','=','attendance.section_id')
                                 ->where('attendance.attendance_status','1')
-                                ->where('only_date','2025-02-01')
+                                ->where('only_date','2025-05-23')
                                 ->where('student.isDelete','N')
                                 ->when($class_id, function ($query) use ($class_id) {
                                         return $query->where('attendance.class_id', $class_id);
@@ -12857,6 +12864,92 @@ public function getAbsentnonTeacherForToday(Request $request){
       } 
     
 }
+//API for the Lesson Plan Teacher  Dev Name- Manish Kumar Sharma 23-05-2025
+public function get_lesson_plan_created_teachers(Request $request){
+    try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+          $teachers = DB::table('lesson_plan')
+        ->distinct()
+        ->select('teacher.teacher_id', 'teacher.name', 'lesson_plan.reg_id')
+        ->join('teacher', 'lesson_plan.reg_id', '=', 'teacher.teacher_id')
+        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+        ->where('lesson_plan.academic_yr', $customClaims)
+        ->where('lesson_plan.approve', '!=', 'Y')
+        ->where('chapters.isDelete', '!=', 'Y')
+        ->get();
+        $teachers = $teachers->map(function ($teacher) use ($customClaims) {
+            $lessonCount = getPendingLessonCountForTeacher($customClaims,$teacher->teacher_id);
+            $teacher->name = $teacher->name . " ({$lessonCount})";
+            return $teacher;
+        });
+        return response()->json([
+                        'status' =>200,
+                        'data'=>$teachers,
+                        'message' => 'Lesson Plan created teachers.',
+                        'success'=>true
+                        
+                        ]);
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the lesson plan created teachers.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+}
+//API for the Count Non Approved Lesson  Dev Name- Manish Kumar Sharma 23-05-2025
+public function getCountNonApprovedLessonPlan(Request $request)
+    {
+        try{       
+      $user = $this->authenticateUser();
+      $customClaims = JWTAuth::getPayload()->get('academic_year');
+      if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        $pending = DB::table('lesson_plan')
+            ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+            ->where('chapters.isDelete', '!=', 'Y')
+            ->where('lesson_plan.approve', '!=', 'Y')
+            ->where('lesson_plan.academic_yr', $customClaims)
+            ->count();
+            
+            return response()->json([
+                        'status' =>200,
+                        'data'=>$pending,
+                        'message' => 'Lesson Plan created teachers.',
+                        'success'=>true
+                        
+                        ]);
+    
+        
+        
+      }
+      else{
+          return response()->json([
+              'status'=> 401,
+              'message'=>'This User Doesnot have Permission for the lesson plan created teachers.',
+              'data' =>$user->role_id,
+              'success'=>false
+                  ]);
+          }
+
+      }
+      catch (Exception $e) {
+      \Log::error($e); 
+      return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+      } 
+    
+    }
     
 
 }
