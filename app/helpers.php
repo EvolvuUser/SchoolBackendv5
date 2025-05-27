@@ -689,3 +689,43 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             return null;
         }
     }
+
+    function getPendingLessonCountForTeacher($academicYear, $regId)
+    {
+        $subquery = DB::table('lesson_plan')
+            ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+            ->where('chapters.isDelete', '!=', 'Y')
+            ->where('lesson_plan.approve', '!=', 'Y')
+            ->where('lesson_plan.academic_yr', $academicYear)
+            ->where('lesson_plan.reg_id', $regId)
+            ->select('lesson_plan.unq_id')
+            ->groupBy('lesson_plan.unq_id');
+
+        $pending = DB::table(DB::raw("({$subquery->toSql()}) as subquery_alias"))
+            ->mergeBindings($subquery) 
+            ->count();
+
+        return $pending;
+    }
+
+    function delete_staff_user_id($user_id, $role)
+    {
+        $user_data = [
+            'user_id'      => $user_id,
+            'short_name'    => 'SACS',
+            'role'  => $role,
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post(config('externalapis.EVOLVU_URL') . '/delete_staff_userid', $user_data);
+
+            // You can log or return the response for debugging
+            return $response; // or $response->body();
+        } catch (\Exception $e) {
+            // Log the error or handle it gracefully
+            \Log::error('API call failed: ' . $e->getMessage());
+            return null;
+        }
+    }

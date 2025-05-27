@@ -234,16 +234,34 @@ public function getSubMenus($parentId, $assignedMenuIds)
     //Menu Methods 
      public function getMenus()
     {
-        return response()->json(Menu::all());
+        $menus = Menu::orderBy('sequence')->get();
+
+        // Step 2: Create a lookup array of menu_id => name
+        $menuNames = $menus->pluck('name', 'menu_id');
+        
+        // Step 3: Add parent_name to each item
+        $menusWithParentName = $menus->map(function ($menu) use ($menuNames) {
+            $menu->parent_name = $menu->parent_id == 0 
+                ? 'None' 
+                : ($menuNames[$menu->parent_id] ?? 'Unknown');
+            return $menu;
+        });
+        return response()->json($menus);
     }
 
-    public function storeMenus(Request $request)
+     public function storeMenus(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'url' => 'required|string|max:255',
-            'parent_id' => 'nullable|integer|exists:menus,menu_id',
-            'sequence' => 'required|integer|unique:menus',
+            'url' => 'nullable|string|max:255',
+            'parent_id' => 'nullable|integer',
+            'sequence' => [
+                'required',
+                'integer',
+                Rule::unique('menus')->where(function ($query) use ($request) {
+                    return $query->where('parent_id', $request->parent_id);
+                }),
+            ],
         ]);
 
         $validated['parent_id'] = $validated['parent_id'] ?? 0;
@@ -267,27 +285,102 @@ public function getSubMenus($parentId, $assignedMenuIds)
 
     public function updateMenus(Request $request, $id)
     {
+        
         $menu = Menu::findOrFail($id);
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'url' => 'required|string|max:255',
-            'parent_id' => 'nullable|integer|exists:menus,menu_id',
-            'sequence' => 'nullable|integer|unique:menus,sequence,' . $id . ',menu_id', // Unique except for the current menu
-        ]);
+                'name' => 'required|string|max:255',
+                'url' => 'nullable|string|max:255',
+                'parent_id' => 'nullable|integer',
+                'sequence' => [
+                    'nullable',
+                    'integer',
+                    Rule::unique('menus')
+                        ->where(function ($query) use ($request) {
+                            return $query->where('parent_id', $request->parent_id);
+                        })
+                        ->ignore($id, 'menu_id'), // exclude current record
+                ],
+            ]);
+                        
+                        $validated['parent_id'] = $validated['parent_id'] ?? 0;
+                    
+                        $menu->update($validated);
+                        return response()->json($menu, 200);
         
-        $validated['parent_id'] = $validated['parent_id'] ?? 0;
-    
-        $menu->update($validated);
-        return response()->json($menu, 200);
     }
     
 
 
-    public function destroy($id)
+    public function destroy($menu_id)
     {
-        $menu = Menu::findOrFail($id);
-        $menu->delete();
-        return response()->json(null, 204);
+         $menu = Menu::find($menu_id);
+        if($menu){
+            $parent_id = $menu->parent_id;
+            if($parent_id == '0'){
+                 $childmenu = DB::table('menus')->where('parent_id',$menu_id)->exists();
+                 if ($childmenu) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it has submenus."
+                            ], 400);
+                        }
+                        
+                        $rolesmenus = DB::table('roles_and_menus')->where('menu_id',$menu_id)->exists();
+                        if ($rolesmenus) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it is used in access."
+                            ], 400);
+                        }
+                        $menu->delete();
+                        
+                         return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Menu deleted successfully."
+                            ], 200);
+                        
+                 
+            }
+            else{
+                $childmenu = DB::table('menus')->where('parent_id',$menu_id)->exists();
+                 if ($childmenu) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it has submenus."
+                            ], 400);
+                        }
+                        
+                       $rolesmenus= DB::table('roles_and_menus')->where('menu_id',$menu_id)->exists();
+                        if ($rolesmenus) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it is used in access."
+                            ], 400);
+                        }
+                        
+                        $menu->delete();
+                         return response()->json([
+                                'status'=>200,
+                                'success' => true,
+                                'message' => "Menu deleted successfully."
+                            ], 200);
+                
+            }
+            
+        }
+        else{
+            return response()->json([
+                                'status'=>400,
+                                'success' => true,
+                                'message' => "Menu not found."
+                            ], 400);
+            
+        }
     }
 
     //API for the Roles  Dev Name- Manish Kumar Sharma 12-05-2025
@@ -378,6 +471,14 @@ public function getSubMenus($parentId, $assignedMenuIds)
                  
             }
             else{
+                $childmenu = DB::table('menus')->where('parent_id',$menu_id)->exists();
+                 if ($childmenu) {
+                            return response()->json([
+                                'status'=>400,
+                                'success' => false,
+                                'message' => "Menu cant be deleted because it has submenus."
+                            ], 400);
+                        }
                         $menu->delete();
                         DB::table('roles_and_menus')->where('menu_id',$menu_id)->delete();
                          return response()->json([
@@ -397,6 +498,22 @@ public function getSubMenus($parentId, $assignedMenuIds)
                             ], 400);
             
         }
+    }
+    //API for the Maximum Sequence For Parent  Dev Name- Manish Kumar Sharma 26-05-2025
+    public function getMaximumSequenceForParent(Request $request){
+        $parent_id = $request->parent_id;
+        $results = DB::table('menus')
+                    ->select('parent_id', DB::raw('MAX(sequence) as max_sequence'))
+                    ->groupBy('parent_id')
+                    ->where('parent_id',$parent_id)
+                    ->get();
+                    return response()->json([
+                        'status' =>200,
+                        'data'=>$results,
+                        'message' => 'Maximum sequence for parent.',
+                        'success'=>true
+                        ]);
+        
     }
 
    
