@@ -306,9 +306,10 @@ public function sendTeacherBirthdayEmail()
             ->join('class', 'notice.class_id', '=', 'class.class_id') // Adjusted table name to singular 'class'
             ->where('notice.publish', 'Y')
             ->where('notice.academic_yr', $academicYr)
-            ->groupBy('notice.subject', 'notice.notice_desc', 'notice.notice_date', 'notice.notice_type')
-            ->orderBy('notice_date')
+            ->groupBy('notice.unq_id')
+            ->orderBy('notice_id')
             ->get();
+
 
         return response()->json(['parent_notices' => $parentNotices]);
     }
@@ -466,6 +467,9 @@ return response()->json($tickets);
     $pendingFee = $results[0]->pending_fee;
 
     return response()->json($pendingFee);
+    // $pendingFee = $results[0]->pending_fee ?? 0;
+
+    // return response()->json(['pendingFee' => $pendingFee]);
 }
 
 
@@ -1312,67 +1316,66 @@ public function destroyDivision($id)
 
 //Updated By-Manish Kumar Sharma 21-04-2025
 public function getStaffList(Request $request) {
-            try{       
-                  $user = $this->authenticateUser();
-                  $customClaims = JWTAuth::getPayload()->get('academic_year');
-                  if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $stafflist = DB::table('teacher')
-                ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
-                ->where('user_master.role_id', '=', 'T')
-                ->select('teacher.*') 
-                ->get();
-            
-            // Get class-section mappings for all teachers
-            $classMappings = DB::table('class_teachers')
-                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
-                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
-                ->select(
-                    'class_teachers.teacher_id',
-                    'class.name as classname',
-                    'section.name as sectionname',
-                    'class_teachers.class_id',
-                    'class_teachers.section_id'
-                )
-                ->where('class_teachers.academic_yr', $customClaims)
-                ->orderBy('class_teachers.section_id')
-                ->get();
-            
-            // Attach classes + fix image URL
-            $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
-                $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
-            
-                // Fix image path
-                $staff->teacher_image_name = $staff->teacher_image_name
-                    ? $concatprojecturl . $staff->teacher_image_name
-                    : null;
-            
-                // Attach class-section data
-                $staff->classes = $classMappings
-                    ->where('teacher_id', $staff->teacher_id)
-                    ->values(); // reset index
-            
-                return $staff;
-            });
-            
-            return response()->json($stafflist);
+    try{       
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $stafflist = DB::table('teacher')
+        ->where('teacher.designation', '!=', 'Caretaker')
+        ->select('teacher.*') 
+        ->get();
+    
+    // Get class-section mappings for all teachers
+    $classMappings = DB::table('class_teachers')
+        ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+        ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+        ->select(
+            'class_teachers.teacher_id',
+            'class.name as classname',
+            'section.name as sectionname',
+            'class_teachers.class_id',
+            'class_teachers.section_id'
+        )
+        ->where('class_teachers.academic_yr', $customClaims)
+        ->orderBy('class_teachers.section_id')
+        ->get();
+    
+    // Attach classes + fix image URL
+    $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
+        $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+    
+        // Fix image path
+        $staff->teacher_image_name = $staff->teacher_image_name
+            ? $concatprojecturl . $staff->teacher_image_name
+            : null;
+    
+        // Attach class-section data
+        $staff->classes = $classMappings
+            ->where('teacher_id', $staff->teacher_id)
+            ->values(); // reset index
+    
+        return $staff;
+    });
+    
+    return response()->json($stafflist);
+    }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
             }
-              else{
-                  return response()->json([
-                      'status'=> 401,
-                      'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-                      'data' =>$user->role_id,
-                      'success'=>false
-                          ]);
-                  }
-      
-              }
-              catch (Exception $e) {
-              \Log::error($e); 
-              return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-              } 
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        } 
 }
 //Edited by - Manish Kumar sharma 15-02-2025  Updated By-Manish Kumar Sharma 21-04-2025
 public function editStaff($id)
@@ -1462,7 +1465,7 @@ public function storeStaff(Request $request)
             'blood_group' => 'nullable|string|max:10',
             'address' => 'required|string|max:255',
             'phone' => 'required|string|max:15',
-            'email' => 'required|string|max:50|unique:user_master,user_id', // Ensure email uniqueness
+            'email' => 'required|string|max:50', // Ensure email uniqueness
             'designation' => 'nullable|string|max:255',
             'academic_qual' => 'nullable|array',
             'academic_qual.*' => 'nullable|string|max:255',
@@ -1559,7 +1562,7 @@ public function storeStaff(Request $request)
         }
 
         // Send welcome email
-        Mail::to($validatedData['email'])->send(new WelcomeEmail($user->email, 'arnolds'));
+        // Mail::to($validatedData['email'])->send(new WelcomeEmail($user->email, 'arnolds'));
 
         // Call external API
         $response = createStaffUser($user->user_id, $validatedData['role']);
@@ -1828,8 +1831,6 @@ if ($request->has('teacher_image_name')) {
         ], 500);
     }
 }
-
-
 
 
 
