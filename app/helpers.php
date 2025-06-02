@@ -649,7 +649,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
         $url = config('externalapis.EVOLVU_URL') . '/user_delete_post';
 
         $payload = [
-            'user_id' => $userId,
+            'user_id' => $currentUserName,
             'school_id' => '1',
         ];
 

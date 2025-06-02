@@ -440,7 +440,7 @@ return response()->json($tickets);
 
  }
 
- public function feeCollection(Request $request) {
+  public function feeCollection(Request $request) {
     $payload = getTokenPayload($request);
     if (!$payload) {
         return response()->json(['error' => 'Invalid or missing token'], 401);
@@ -464,10 +464,55 @@ return response()->json($tickets);
 
     $results = DB::select($sql);
 
-    $pendingFee = $results[0]->pending_fee;
+    // $pendingFee = $results[0]->pending_fee;
+    $pendingFee = $results[0]->pending_fee ?? 0;
+    
+    $collectedfees = DB::select("SELECT 'Nursery' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name = 'Nursery' 
+    GROUP BY d.installment 
 
-    return response()->json($pendingFee);
+    UNION
 
+    SELECT 'KG' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name IN ('LKG','UKG') 
+    GROUP BY d.installment 
+
+    UNION
+
+    SELECT 'School' AS account, 
+           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+           SUM(d.amount) AS amount 
+    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+    WHERE a.student_id = b.student_id 
+      AND b.class_id = c.class_id 
+      AND a.fees_payment_id = d.fees_payment_id 
+      AND a.isCancel = 'N' 
+      AND a.academic_yr = '$academicYr' 
+      AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
+    GROUP BY d.installment");
+    $totalAmount = number_format(collect($collectedfees)->sum('amount'), 2, '.', '');
+    $feesdata =[
+        'Collected Fees'=>$totalAmount,
+        'Pending Fees'=>$pendingFee
+        ];
+
+    return response()->json($feesdata);
     // $pendingFee = $results[0]->pending_fee ?? 0;
 
     // return response()->json(['pendingFee' => $pendingFee]);
@@ -1383,9 +1428,7 @@ public function editStaff($id)
     try {
         // Find the teacher by ID
     $teacher = DB::table('teacher')
-            ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
             ->where('teacher.teacher_id', $id)
-            ->where('user_master.role_id', 'T')
             ->select('teacher.*') // or any user fields you need
             ->first();
         $globalVariables = App::make('global_variables');
@@ -1402,7 +1445,7 @@ public function editStaff($id)
         
 
         // Find the associated user record
-        $user = DB::table('user_master')->where('reg_id', $id)->where('role_id','T')->first();
+        $user = DB::table('user_master')->where('reg_id', $id)->whereNotIn('role_id', ['P', 'S'])->first();
 
         return response()->json([
             'teacher' => $teacher,
