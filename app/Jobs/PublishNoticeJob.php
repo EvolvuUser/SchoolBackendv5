@@ -54,8 +54,10 @@ class PublishNoticeJob implements ShouldQueue
                             'emergency_message',
                             [$this->noticeDesc]
                         );
-
-                        DB::table('redington_webhook_details')->insert([
+                        if (isset($result['code']) && isset($result['message'])) {
+                            Log::warning("Rate limit hit", []);
+                        } else {
+                            DB::table('redington_webhook_details')->insert([
                             'wa_id' => $result['messages'][0]['id'],
                             'phone_no' => $result['contacts'][0]['input'],
                             'stu_teacher_id' => $student->student_id,
@@ -63,6 +65,10 @@ class PublishNoticeJob implements ShouldQueue
                             'message_type' => 'notice',
                             'created_at' => now()
                         ]);
+
+                        }
+
+                        
                     } catch (\Exception $e) {
                         \Log::error("WhatsApp failed: " . $e->getMessage());
                     }
