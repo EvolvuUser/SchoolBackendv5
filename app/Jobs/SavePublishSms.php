@@ -102,6 +102,8 @@ class SavePublishSms implements ShouldQueue
                             ]);
                         }
                     }
+
+
                 }
                 Log::info("TestCronJob JOB Failed AFter Sending Whatsapp Message");
                 sleep(20); // throttle
@@ -141,6 +143,34 @@ class SavePublishSms implements ShouldQueue
                     ]);
                      Log::info("TestCronJob JOB Failed AFter Model Calling");
                 }
+
+            $tokens = DB::table('student as a')
+                ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
+                ->where('a.class_id', $classId)
+                ->where('b.login_type', 'P')
+                ->select('b.token', 'b.user_id', 'b.parent_teacher_id', 'a.parent_id', 'a.student_id')
+                ->get();
+
+            foreach ($tokens as $token) {
+                DB::table('daily_notifications')->insert([
+                    'student_id' => $token->student_id,
+                    'parent_id' => $token->parent_teacher_id,
+                    'homework_id' => 0,
+                    'remark_id' => 0,
+                    'notice_id' => $noticeId,
+                    'notes_id' => 0,
+                    'notification_date' => now()->toDateString(),
+                    'token' => $token->token,
+                ]);
+
+                sendnotificationusinghttpv1([
+                    'token' => $token->token,
+                    'notification' => [
+                        'title' => 'Notice',
+                        'description' => $this->noticeDesc
+                    ]
+                ]);
+             }
             }
         }
     } catch (\Exception $e) {
