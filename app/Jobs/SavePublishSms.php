@@ -78,7 +78,7 @@ class SavePublishSms implements ShouldQueue
                     Log::info("TestCronJob JOB Failed AFter parameter Whatsapp Message");
 
                     if ($student->phone_no) {
-                        $result = app('App\Http\Services\WhatsappService')->sendTextMessage(
+                        $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                             $student->phone_no,
                             $templateName,
                             $parameters

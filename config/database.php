@@ -65,6 +65,9 @@ return [
             'database' => env('DB_DATABASE_SACS'),
             'username' => env('DB_USERNAME_SACS'),
             'password' => env('DB_PASSWORD_SACS'),
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::ATTR_PERSISTENT => true,
+            ]) : [],
         ],
 
         'HSCS' => [
@@ -73,6 +76,9 @@ return [
             'database' => env('DB_DATABASE_HSCS'),
             'username' => env('DB_USERNAME_HSCS'),
             'password' => env('DB_PASSWORD_HSCS'),
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::ATTR_PERSISTENT => true,
+            ]) : [],
         ],
 
         'mariadb' => [

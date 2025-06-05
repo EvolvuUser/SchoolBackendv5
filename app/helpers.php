@@ -81,6 +81,8 @@ function sendnotificationusinghttpv1($data){
             ];
         }
 
+        Log::info("Nofification response",$result);
+
         // Decode the response from Firebase
         $response = json_decode($result, true);
         if (isset($response['error'])) {
@@ -90,6 +92,7 @@ function sendnotificationusinghttpv1($data){
                 'success' => false
             ]);
         }
+        Log::info("Nofification response",$response);
 
         // If Firebase response is valid, return the notification ID or other relevant information
         return response()->json([

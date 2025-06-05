@@ -49,7 +49,7 @@ class PublishNoticeJob implements ShouldQueue
             foreach ($students as $student) {
                 if ($student->phone_no) {
                     try {
-                        $result = app('App\Http\Services\WhatsappService')->sendTextMessage(
+                        $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                             $student->phone_no,
                             'emergency_message',
                             [$this->noticeDesc]
