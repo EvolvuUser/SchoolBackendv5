@@ -589,6 +589,17 @@
         //API for the Maximum Sequence For Parent  Dev Name- Manish Kumar Sharma 26-05-2025
         Route::get('get_maximumsequenceforparent',[RoleController::class,'getMaximumSequenceForParent']);
 
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 04-06-2025
+        Route::get('get_departmentlist',[NoticeController::class,'getdepartmentlist']);
+        Route::get('get_teacherlistbydepartment',[NoticeController::class,'getTeacherlistByDepartment']);
+        Route::post('save_noticeforstaffsms',[NoticeController::class,'savenoticeforStaffSms']);
+        Route::get('get_staffnoticelist',[NoticeController::class,'getStaffnoticeList']);
+
+         //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 05-06-2025
+         Route::post('save_staffsavenpublishshortsms',[NoticeController::class,'savenPublishstaffshortsms']);
+
+
+
     });
 
     
