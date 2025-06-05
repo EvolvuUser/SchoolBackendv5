@@ -50,7 +50,7 @@ class PublishSms implements ShouldQueue
                 Log::info($parameters);
 
                 if ($student->phone_no) {
-                    $result = app('App\Http\Services\WhatsappService')->sendTextMessage(
+                    $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                         $student->phone_no,
                         $templateName,
                         $parameters
@@ -133,7 +133,7 @@ class PublishSms implements ShouldQueue
                 ]);
 
                 sendnotificationusinghttpv1([
-                    'token' => $token->token,
+                    'token' => 'f6mcFoEnRdaiM-k40KPGAV:APA91bE74OHr1tqWUHq6tXDpyjpKRaJ4awfEQv21WSub-pzZL0_Vf4PD-7isq6jzkx6j6mjBKpUzwMrCsreZa43RI65x5gkOM4ukB2dPOPpFNgqMUpdoJBw',
                     'notification' => [
                         'title' => 'Notice',
                         'description' => $notice->notice_desc

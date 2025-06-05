@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\App;
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SavePublishSms;
 use App\Jobs\PublishSms;
+use App\Jobs\StaffShortSMSsavePublish;
 
 class NoticeController extends Controller
 {
@@ -2936,4 +2937,243 @@ class NoticeController extends Controller
                }
             
         }
+
+        public function getdepartmentlist(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $departments = DB::select('Select * from department where academic_yr= ? ',[$customClaims]);
+                    return response()->json([
+                               'status'=>200,
+                               'data'=>$departments,
+                               'message'=>'Department list.',
+                               'success'=>true
+                               ]);
+
+               }
+               else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+        }
+
+        public function getTeacherlistByDepartment(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $department_id = $request->input('department_id');
+                    if ($department_id == 'N') {
+                    // All non-teaching staff including caretakers
+                    $query = DB::select("Select teacher.* from teacher where isDelete<>'Y' and teacher_id not in (select distinct(teacher_id) from subject where teacher_id<>0 and academic_yr='".$customClaims."')");
+                     } 
+                   elseif ($department_id == 'S') {
+                    $query = DB::select("Select teacher.* from teacher where isDelete<>'Y' and designation !='Caretaker' and teacher_id not in (select distinct(teacher_id) from subject where teacher_id<>0 and academic_yr='".$customClaims."')");
+                        
+                   } 
+                   else {
+                    $query = DB::select("SELECT distinct(a.teacher_id), b.name from subject a, teacher b,class c, department d WHERE b.isDelete<>'Y' and a.teacher_id=b.teacher_id and a.class_id=c.class_id and b.isDelete<>'Y' and c.department_id='".$department_id."' and d.academic_yr='".$customClaims."'");
+                   }
+                   
+                return response()->json([
+                               'status'=>200,
+                               'data'=>$query,
+                               'message'=>'Teacher list by department.',
+                               'success'=>true
+                               ]);
+
+                }
+               else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+
+        public function savenoticeforStaffSms(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    do {
+                        $unq = rand(1000, 9999);
+                    } while (DB::table('staff_notice')->where('unq_id', $unq)->exists());
+
+                    $nsmsdata = [
+                        'unq_id'       => $unq,
+                        'department_id'=> $request->input('department_id'),
+                        'subject'      => $request->input('subject'),
+                        'notice_desc'  => $request->input('notice_desc'),
+                        'notice_type'  => 'SMS',
+                        'created_by'   => $user->reg_id,
+                        'academic_yr'  => $customClaims,
+                        'publish'      => 'N',
+                        'notice_date'  => Carbon::now()->format('Y-m-d H:i:s'),
+                    ];
+
+                    $teacherIds = $request->input('teacher_id');
+                    // dd($teacherIds);
+                    if (!empty($teacherIds)) {
+                        foreach ($teacherIds as $teacherId) {
+                            $nsmsdata['teacher_id'] = $teacherId;
+                            DB::table('staff_notice')->insert($nsmsdata);
+                        }
+                    }
+
+                     return response()->json([
+                        'status'  =>200,
+                        'message' => 'New SMS notice created successfully!',
+                        'success' => true
+                    ]);
+
+
+                }
+               else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+      
+        public function getStaffnoticeList(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $notice_date = $request->input('notice_date');
+                    //  dd($notice_date);
+                    $query = DB::table('staff_notice')
+                                ->select(
+                                    'staff_notice.*',
+                                    'teacher.name',
+                                    'teacher.teacher_id',
+                                    'department.department_id',
+                                    'department.name as dept_name'
+                                )
+                                ->join('teacher', 'staff_notice.created_by', '=', 'teacher.teacher_id')
+                                ->join('department', 'staff_notice.department_id', '=', 'department.department_id')
+                                ->where('staff_notice.academic_yr', $customClaims)
+                                ->when($notice_date !== null && $notice_date !== '', function ($q) use ($notice_date) {
+                                    return $q->whereDate('notice_date', $notice_date);
+                                })
+                                ->groupBy('unq_id')
+                                ->orderBy('t_notice_id', 'ASC')
+                                ->get();
+                                return response()->json([
+                                    'status'=>200,
+                                    'data'=>$query,
+                                    'message'=>'Notice for staff shown successfully.',
+                                    'success'=>true
+                                ]);
+
+                }
+               else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+
+        public function savenPublishstaffshortsms(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    do {
+                        $unq = rand(1000, 9999);
+                    } while (DB::table('staff_notice')->where('unq_id', $unq)->exists());
+
+                    $nsmsdata = [
+                        'unq_id'       => $unq,
+                        'department_id'=> $request->input('department_id'),
+                        'subject'      => $request->input('subject'),
+                        'notice_desc'  => $request->input('notice_desc'),
+                        'notice_type'  => 'SMS',
+                        'created_by'   => $user->reg_id,
+                        'academic_yr'  => $customClaims,
+                        'publish'      => 'Y',
+                        'notice_date'  => Carbon::now()->format('Y-m-d H:i:s'),
+                    ];
+
+                    $teacherIds = $request->input('teacher_id');
+                    // dd($teacherIds);
+                    if (!empty($teacherIds)) {
+                        foreach ($teacherIds as $teacherId) {
+                            $nsmsdata['teacher_id'] = $teacherId;
+                            DB::table('staff_notice')->insert($nsmsdata);
+                        }
+                    }
+
+                    StaffShortSMSsavePublish::dispatch($unq, $nsmsdata);
+                    // SendStaffNoticeJob::dispatch($unq, $nsmsdata);
+
+                       return response()->json([
+                       'status'=>200,
+                       'data'=> $nsmsdata,
+                       'message'=>'Staff short sms saved and published.',
+                       'success'=>true
+
+                    ]);
+                                                                      
+                    }
+
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+
 }
