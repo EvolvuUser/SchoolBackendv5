@@ -13,16 +13,16 @@ use Carbon\Carbon;
 use App\Http\Services\SmsService;
 use App\Http\Services\WhatsAppService;
 
-class StaffShortSMSsavePublish implements ShouldQueue
+class StaffNoticeJobSavePublish implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     protected $unq;
-    protected $nsmsdata;
+    protected $noticeDataTemplate;
 
-    public function __construct($unq, $nsmsdata)
+    public function __construct($unq, $noticeDataTemplate)
     {
         $this->unq = $unq;
-        $this->nsmsdata = $nsmsdata;
+        $this->noticeDataTemplate = $noticeDataTemplate;
     }
 
     /**
@@ -30,7 +30,7 @@ class StaffShortSMSsavePublish implements ShouldQueue
      */
     public function handle(): void
     {
-       $staffnoticedata = DB::table('staff_notice')->where('unq_id', $this->unq)->get();
+        $staffnoticedata = DB::table('staff_notice')->where('unq_id', $this->unq)->get();
 
         foreach ($staffnoticedata as $staffnotice) {
 
@@ -42,7 +42,7 @@ class StaffShortSMSsavePublish implements ShouldQueue
             $phone_no = $teacherphone->phone;
             
             $templateName = 'staff_notice';
-            $parameters = [$this->nsmsdata['notice_desc']];
+            $parameters = [$this->noticeDataTemplate['notice_desc']];
 
             $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                 $phone_no,
@@ -55,7 +55,7 @@ class StaffShortSMSsavePublish implements ShouldQueue
             } else {
                 $wamid = $result['messages'][0]['id'];
                 $phone_no = $result['contacts'][0]['input'];
-                $message_type = 'staff_sms_notice';
+                $message_type = 'staff_notice';
 
                 DB::table('redington_webhook_details')->insert([
                     'wa_id' => $wamid,
@@ -77,30 +77,20 @@ class StaffShortSMSsavePublish implements ShouldQueue
             $leftmessages = DB::table('redington_webhook_details')
                 ->where('sms_sent', 'N')
                 ->where('status', 'failed')
-                ->where('message_type', 'staff_sms_notice')
+                ->where('message_type', 'staff_notice')
                 ->where('notice_id', $staffnotice->t_notice_id)
                 ->get();
 
             foreach ($leftmessages as $leftmessage) {
-
-                DB::table('staff_notice_sms_log')->insert([
+                DB::table('daily_sms_for_teacher')->insert([
                     'teacher_id' => $leftmessage->stu_teacher_id,
-                    'notice_id' => $leftmessage->notice_id,
-                    'phone_no' => $leftmessage->phone_no,
-                    'sms_date' => now()->toDateString(),
+                    'phone' => $leftmessage->phone_no,
+                    'homework' => 0,
+                    'notice' => 0,
+                    'note' => 0,
+                    'staff_notice' => 1,
+                    'sms_date' => now(),
                 ]);
-                $temp_id = '1107164450693700526';
-                $message = 'Dear Staff, '.$this->nsmsdata['notice_desc'].". Login @ https://sms.arnoldcentralschool.org for details.-EvolvU";
-                    $sms_status = app('App\Http\Services\SmsService')->sendSms($leftmessage->phone_no, $message, $temp_id);
-                    $messagestatus = $sms_status['data']['status'] ?? null;
-
-                    if ($messagestatus == "success") {
-                        DB::table('redington_webhook_details')->where('webhook_id', $leftmessage->webhook_id)->update(['sms_sent' => 'Y']);
-                        DB::table('staff_notice_sms_log')->where('notice_id',$leftmessage->notice_id)->update(['sms_status'=>'Success','sms_sent'=>'Y']);
-
-                        
-                    }
-
             }
         }
     }
