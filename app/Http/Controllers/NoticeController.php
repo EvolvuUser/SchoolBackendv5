@@ -23,6 +23,7 @@ use App\Http\Services\WhatsAppService;
 use App\Jobs\SavePublishSms;
 use App\Jobs\PublishSms;
 use App\Jobs\StaffShortSMSsavePublish;
+use App\Jobs\StaffNoticeJobSavePublish;
 
 class NoticeController extends Controller
 {
@@ -1562,7 +1563,7 @@ class NoticeController extends Controller
             // Prepare the notice data
             $noticeData = [
                 'subject' => $request->subject,
-                'notice_desc' =>"Dear Parent,".$request->notice_desc,
+                'notice_desc' =>$request->notice_desc,
                 'teacher_id' => $user->reg_id, // Assuming the teacher is authenticated
                 'notice_type' => 'Notice',
                 'academic_yr' => $customClaims, // Assuming academic year is stored in Session
@@ -2937,7 +2938,7 @@ class NoticeController extends Controller
                }
             
         }
-
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 04-06-2025
         public function getdepartmentlist(Request $request){
             try{
                 $user = $this->authenticateUser();
@@ -2967,7 +2968,7 @@ class NoticeController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
         }
-
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 04-06-2025
         public function getTeacherlistByDepartment(Request $request){
             try{
                 $user = $this->authenticateUser();
@@ -3010,7 +3011,7 @@ class NoticeController extends Controller
                }
 
         }
-
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 04-06-2025
         public function savenoticeforStaffSms(Request $request){
             try{
                 $user = $this->authenticateUser();
@@ -3065,7 +3066,7 @@ class NoticeController extends Controller
                }
 
         }
-      
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 04-06-2025
         public function getStaffnoticeList(Request $request){
             try{
                 $user = $this->authenticateUser();
@@ -3115,6 +3116,7 @@ class NoticeController extends Controller
 
         }
 
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 05-06-2025
         public function savenPublishstaffshortsms(Request $request){
             try{
                 $user = $this->authenticateUser();
@@ -3158,6 +3160,728 @@ class NoticeController extends Controller
                                                                       
                     }
 
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 05-06-2025
+        public function savestaffSaveNotice(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    // dd($request->all());
+                    do {
+                        $unq = rand(1000, 9999);
+                    } while (DB::table('staff_notice')->where('unq_id', $unq)->exists());
+
+                       $noticeDataTemplate = [
+                            'unq_id' => $unq,
+                            'department_id' => $request->department_id,
+                            'subject' => $request->subject,
+                            'notice_desc' => $request->notice_desc,
+                            'notice_type' => 'Notice',
+                            'created_by' => $user->reg_id,
+                            'academic_yr' => $customClaims,
+                            'publish' => 'N',
+                            'notice_date' => Carbon::now()->format('Y-m-d H:i:s'),
+                        ];
+                        // dd($request->hasFile('userfile'));
+                        $filenames = [];
+                        $datafiles = [];
+                        $uploadedFiles = [];
+                        if ($request->hasFile('userfile')) {
+                            // dd("Hello");
+                            foreach ($request->file('userfile') as $file) {
+                                $fileName = $file->getClientOriginalName();
+                                $tempPath = storage_path("app/public/temp_uploads/");
+                                if (!File::exists($tempPath)) {
+                                    File::makeDirectory($tempPath, 0777, true);
+                                }
+                                $file->move($tempPath, $fileName);
+                                $base64Content = base64_encode(file_get_contents($tempPath . $fileName));
+
+                                // Store in arrays
+                                $filenames[] = $fileName;
+                                $datafiles[] = $base64Content;
+                                $uploadedFiles[] = [
+                                    'name' => $fileName,
+                                    'path' => $tempPath . $fileName,
+                                ];
+                            }
+                        }
+
+                        // Now loop over teachers
+                        foreach ($request->teacher_checkboxname as $teacherId) {
+                            $noticeData = $noticeDataTemplate;
+                            $noticeData['teacher_id'] = $teacherId;
+                            $noticeId = DB::table('staff_notice')->insertGetId($noticeData);
+                            $docTypeFolder = 'teacher_notice';
+                            $uploadDate = '2025-06-05';
+                            $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+
+                            // Move files from temp to teacher_notice
+                            foreach ($uploadedFiles as $upload) {
+                                $destination = storage_path("app/public/teacher_notice/$noticeId/");
+                                if (!File::exists($destination)) {
+                                    File::makeDirectory($destination, 0777, true);
+                                }
+
+                                $finalPath = $destination . $upload['name'];
+                                // dd($finalPath);
+                                File::copy($upload['path'], $finalPath);
+
+                                DB::table('staff_notice_detail')->insert([
+                                    't_notice_id' => $noticeId,
+                                    'image_name' => $upload['name'],
+                                ]);
+                                
+                            }
+                        }
+
+                        foreach ($uploadedFiles as $upload) {
+                            File::delete($upload['path']);
+                        }
+
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'New notice created successfully!',
+                            'success' =>true
+                        ]);
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        public function deleteStaffShortSMSNotice(Request $request,$unq_id){
+              try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    // dd($unq_id);
+                    $notice = DB::table('staff_notice')->where('unq_id',$unq_id)->first();
+                    if($notice->notice_type == 'SMS'){
+                        $notice = DB::table('staff_notice')->where('unq_id',$unq_id)->delete();
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'Short SMS deleted successfully!',
+                            'success' =>true
+                        ]);
+                    }
+                    else
+                    {
+                        $notices = DB::table('staff_notice')->where('unq_id',$unq_id)->get();
+                        // dd($notice);
+                        foreach($notices as $notice){
+                        $noticeId = $notice->t_notice_id;
+                        $docTypeFolder = 'teacher_notice';
+                        $uploadDate = '2025-06-05';
+                        $notice_details = DB::table('staff_notice_detail')->where('t_notice_id',$noticeId)->get();
+                        // dd($notice_details);
+                        $noticeimagesCollection = collect($notice_details);
+                        $imageNames = $noticeimagesCollection->pluck('image_name')->toArray();
+                       
+                        $filename = $imageNames;
+                        $response = delete_uploaded_files_for_laravel($filename,$uploadDate, $docTypeFolder, $noticeId);
+                        
+
+                        $folderPath = storage_path('app/public/teacher_notice/'.$noticeId);
+
+                        if (File::exists($folderPath)) {
+                            File::deleteDirectory($folderPath);
+                        }
+
+                        $notice_details_delete = DB::table('staff_notice_detail')->where('t_notice_id',$noticeId)->delete();
+
+                        }
+                        $notices_delete = DB::table('staff_notice')->where('unq_id',$unq_id)->delete();
+
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'Teacher Notice deleted successfully!',
+                            'success' =>true
+                        ]);
+                    }
+
+
+
+                 }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        public function savestaffsavenPublishNotice(Request $request){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                     do {
+                        $unq = rand(1000, 9999);
+                    } while (DB::table('staff_notice')->where('unq_id', $unq)->exists());
+
+                       $noticeDataTemplate = [
+                            'unq_id' => $unq,
+                            'department_id' => $request->department_id,
+                            'subject' => $request->subject,
+                            'notice_desc' => $request->notice_desc,
+                            'notice_type' => 'Notice',
+                            'created_by' => $user->reg_id,
+                            'academic_yr' => $customClaims,
+                            'publish' => 'Y',
+                            'notice_date' => Carbon::now()->format('Y-m-d H:i:s'),
+                        ];
+                        // dd($request->hasFile('userfile'));
+                        $filenames = [];
+                        $datafiles = [];
+                        $uploadedFiles = [];
+                        if ($request->hasFile('userfile')) {
+                            foreach ($request->file('userfile') as $file) {
+                                $fileName = $file->getClientOriginalName();
+                                $tempPath = storage_path("app/public/temp_uploads/");
+                                if (!File::exists($tempPath)) {
+                                    File::makeDirectory($tempPath, 0777, true);
+                                }
+                                $file->move($tempPath, $fileName);
+                                $base64Content = base64_encode(file_get_contents($tempPath . $fileName));
+
+                                // Store in arrays
+                                $filenames[] = $fileName;
+                                $datafiles[] = $base64Content;
+                                $uploadedFiles[] = [
+                                    'name' => $fileName,
+                                    'path' => $tempPath . $fileName,
+                                ];
+                            }
+                        }
+
+                        // Now loop over teachers
+                        foreach ($request->teacher_checkboxname as $teacherId) {
+                            $noticeData = $noticeDataTemplate;
+                            $noticeData['teacher_id'] = $teacherId;
+                            $noticeId = DB::table('staff_notice')->insertGetId($noticeData);
+                            $docTypeFolder = 'teacher_notice';
+                            $uploadDate = '2025-06-05';
+                            $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+
+                            // Move files from temp to teacher_notice
+                            foreach ($uploadedFiles as $upload) {
+                                $destination = storage_path("app/public/teacher_notice/$noticeId/");
+                                if (!File::exists($destination)) {
+                                    File::makeDirectory($destination, 0777, true);
+                                }
+
+                                $finalPath = $destination . $upload['name'];
+                                // dd($finalPath);
+                                File::copy($upload['path'], $finalPath);
+
+                                DB::table('staff_notice_detail')->insert([
+                                    't_notice_id' => $noticeId,
+                                    'image_name' => $upload['name'],
+                                ]);
+                                
+                            }
+                        }
+
+                        foreach ($uploadedFiles as $upload) {
+                            File::delete($upload['path']);
+                        }
+
+                        StaffNoticeJobSavePublish::dispatch($unq, $noticeDataTemplate);
+
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'New notice created and published successfully!',
+                            'success' =>true
+                        ]);
+
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        public function updatestaffNoticeSMSPublish(Request $request,$unq){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $notices = DB::table('staff_notice')->where('unq_id',$unq)->first();
+                    if($notices->notice_type == 'SMS'){
+                        $noticedata = DB::table('staff_notice')->where('unq_id',$unq)->get();
+                        $firstNotice = $noticedata[0];
+
+                        $nsmsdata = [
+                            'unq_id'        => $firstNotice->unq_id,
+                            'department_id' => $firstNotice->department_id,
+                            'subject'       => $firstNotice->subject,
+                            'notice_desc'   => $firstNotice->notice_desc,
+                            'notice_type'   => 'SMS',
+                            'created_by'    => $firstNotice->created_by,
+                            'academic_yr'   => $firstNotice->academic_yr,
+                            'publish'       => $firstNotice->publish,
+                            'notice_date'   => $firstNotice->notice_date,
+                        ];
+                        // dd($nsmsdata);
+                        $smspublishupdate = DB::table('staff_notice')->where('unq_id',$unq)->update(['publish'=>'Y']);
+                        StaffShortSMSsavePublish::dispatch($unq, $nsmsdata);
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'Short sms published successfully!',
+                            'success' =>true
+                        ]);
+                    }
+                    else
+                    {
+                        $noticedata = DB::table('staff_notice')->where('unq_id',$unq)->get();
+                        $firstNotice = $noticedata[0];
+                        $noticeDataTemplate = [
+                            'unq_id'        => $firstNotice->unq_id,
+                            'department_id' => $firstNotice->department_id,
+                            'subject'       => $firstNotice->subject,
+                            'notice_desc'   => $firstNotice->notice_desc,
+                            'notice_type'   => $firstNotice->notice_type,
+                            'created_by'    => $firstNotice->created_by,
+                            'academic_yr'   => $firstNotice->academic_yr,
+                            'publish'       => $firstNotice->publish,
+                            'notice_date'   => $firstNotice->notice_date,
+                        ];
+                        
+                        $noticepublishupdate = DB::table('staff_notice')->where('unq_id',$unq)->update(['publish'=>'Y']);
+                        
+                        StaffNoticeJobSavePublish::dispatch($unq, $noticeDataTemplate);
+                        return response()->json([
+                            'status' =>200,
+                            'message' => 'Notice published successfully!',
+                            'success' =>true
+                        ]);
+
+                    }
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        public function getStaffNoticeData(Request $request,$unq_id){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                $globalVariables = App::make('global_variables');
+                $parent_app_url = $globalVariables['parent_app_url'];
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                    $notices = DB::table('staff_notice')->where('unq_id',$unq_id)->first();
+                    if($notices->notice_type == 'SMS'){
+                        $noticeData = DB::table('staff_notice')
+                                            ->select(
+                                                'staff_notice.unq_id',
+                                                'staff_notice.subject',
+                                                'staff_notice.notice_desc',
+                                                'staff_notice.notice_date',
+                                                'staff_notice.notice_type',
+                                                'staff_notice.academic_yr',
+                                                'staff_notice.publish',
+                                                'staff_notice.created_by',
+                                                'staff_notice.department_id',
+                                                DB::raw('GROUP_CONCAT(teacher.name ORDER BY teacher.name SEPARATOR ", ") as teacher_names')
+                                            )
+                                            ->join('teacher', 'staff_notice.teacher_id', '=', 'teacher.teacher_id')
+                                            ->where('staff_notice.unq_id', $unq_id)
+                                            ->groupBy(
+                                                'staff_notice.unq_id',
+                                                'staff_notice.subject',
+                                                'staff_notice.notice_desc',
+                                                'staff_notice.notice_date',
+                                                'staff_notice.notice_type',
+                                                'staff_notice.academic_yr',
+                                                'staff_notice.publish',
+                                                'staff_notice.created_by',
+                                                'staff_notice.department_id'
+                                            )
+                                            ->orderBy('staff_notice.t_notice_id', 'desc')
+                                            ->first();
+                                        return response()->json([
+                                            'status'=> 200,
+                                            'message'=>'Teacher Sms View Edit',
+                                            'data' =>$noticeData,
+                                            'success'=>true
+                                            ]);
+
+                    }
+                    else
+                    {
+                        $noticeData1 = DB::table('staff_notice')
+                                            ->select(
+                                                'staff_notice.unq_id',
+                                                'staff_notice.subject',
+                                                'staff_notice.notice_desc',
+                                                'staff_notice.notice_date',
+                                                'staff_notice.notice_type',
+                                                'staff_notice.academic_yr',
+                                                'staff_notice.publish',
+                                                'staff_notice.created_by',
+                                                'staff_notice.department_id',
+                                                DB::raw('GROUP_CONCAT(teacher.name ORDER BY teacher.name SEPARATOR ", ") as teacher_names')
+                                            )
+                                            ->join('teacher', 'staff_notice.teacher_id', '=', 'teacher.teacher_id')
+                                            ->where('staff_notice.unq_id', $unq_id)
+                                            ->groupBy(
+                                                'staff_notice.unq_id',
+                                                'staff_notice.subject',
+                                                'staff_notice.notice_desc',
+                                                'staff_notice.notice_date',
+                                                'staff_notice.notice_type',
+                                                'staff_notice.academic_yr',
+                                                'staff_notice.publish',
+                                                'staff_notice.created_by',
+                                                'staff_notice.department_id'
+                                            )
+                                            ->orderBy('staff_notice.t_notice_id', 'desc')
+                                            ->first();
+                    $noticeimages=DB::table('staff_notice')
+                                    ->where('unq_id',$unq_id)
+                                    ->join('staff_notice_detail','staff_notice_detail.t_notice_id','=','staff_notice.t_notice_id')
+                                    ->where('staff_notice.t_notice_id',$notices->t_notice_id)
+                                    ->select('staff_notice_detail.image_name','staff_notice_detail.t_notice_id')
+                                    ->get();
+                                 
+                    $imageUrls = []; 
+                    foreach($noticeimages as $image){
+                        $imageurl = ($codeigniter_app_url."uploads/teacher_notice/".$image->t_notice_id."/".$image->image_name);
+                        $imageUrls[] = $imageurl;
+                        
+                    }
+                    $noticeData['noticedata']= $noticeData1;
+                    $noticeData['noticeimages']=$noticeimages;
+                    $noticeData['imageurl'] = $imageUrls;
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Teacher Notice View Edit',
+                        'data' =>$noticeData,
+                        'success'=>true
+                        ]);
+
+
+                    }
+
+
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+        }
+
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        public function updatestaffSMSNotice(Request $request,$unq_id){
+            try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                $globalVariables = App::make('global_variables');
+                $parent_app_url = $globalVariables['parent_app_url'];
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
+                $notice_type = DB::table('staff_notice')->where('unq_id',$unq_id)->first();
+                if($notice_type->notice_type == "SMS"){
+                      $updatesmsnotice = DB::table('staff_notice')->where('unq_id',$unq_id)->get();
+                      foreach ($updatesmsnotice as $notice) {
+                        DB::table('staff_notice')
+                            ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
+                            ->update([
+                                'subject' => $request->subject, // Update the subject field (example)
+                                'notice_desc' => $request->notice_desc, 
+                                'notice_date' => now(), 
+                            ]);
+                    }
+                  
+                    $newsmsdata = DB::table('staff_notice')->where('unq_id',$unq_id)->get();
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Staff short sms updated.',
+                        'data' =>$newsmsdata,
+                        'success'=>true
+                        ]);
+
+                }
+                else
+                {
+                    $filePaths = $request->filenottobedeleted ?? [];
+                    $trimmedFilePaths = array_map(function($filePath) {
+                        return Str::replaceFirst('storage/app/public/teacher_notice/', '', $filePath);
+                    }, $filePaths);
+                    
+                    $filesToExclude = $trimmedFilePaths; // Should be an array of file names
+
+                    // If $request->filenottobedeleted is a comma-separated string, you may need to explode it into an array
+                    if (is_string($filesToExclude)) {
+                        $filesToExclude = explode(',', $filesToExclude); // Convert string to an array if necessary
+                    }
+                    if (empty($filesToExclude)) {
+                        $filesToExclude = [];
+                    }
+                    
+                    $updatesmsnotice = DB::table('staff_notice')->where('unq_id',$unq_id)->get();
+                    $uploadedFiles = $request->file('userfile');
+                    foreach($updatesmsnotice as $noticeid){
+                        $notice_detail = DB::table('staff_notice_detail')
+                                        ->where('t_notice_id', $noticeid->t_notice_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
+                                        ->get()
+                                        ->toArray();
+                                        // dd($notice_detail);
+                                        if(!is_null($uploadedFiles)){
+                                            $filenames = [];
+                                            $datafiles = [];
+                                    
+                                            foreach ($uploadedFiles as $file) {
+                                                $filenames[] = $file->getClientOriginalName();
+                                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                            }
+                                    
+                                            
+                                            $uploadDate = now()->format('d-m-Y');  // Get today's date
+                                            $docTypeFolder = 'teacher_notice';
+                                            $noticeId = $noticeid->t_notice_id;
+                                            
+                                            
+                                            // Call the helper function to upload the files
+                                            $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                            
+                        
+                                        }                                        
+                    }
+                    //  dd($notice_detail);
+                    
+                    $notice_detail = array_filter($notice_detail, function($value) {
+                        return !empty($value); // Remove empty arrays
+                    });
+                    
+                    
+                    $notice_detail = array_values($notice_detail);
+                    $imageNames = array_map(function ($item) {
+                        return $item->image_name;
+                    }, $notice_detail);
+                    
+                    // If you prefer to use Laravel collection's pluck method, you can convert to collection first:
+                    $noticeimagesCollection = collect($notice_detail);
+                    $imageNames = $noticeimagesCollection->pluck('image_name')->toArray();
+                    $uploadDate = '2025-02-23';
+                    $docTypeFolder='teacher_notice';
+                        foreach($updatesmsnotice as $noticeid){                          
+                          delete_uploaded_files_for_laravel ($imageNames,$uploadDate, $docTypeFolder, $noticeid->t_notice_id);
+                        }
+                    
+                      // Check if there are any notice details
+                    if ($notice_detail) {
+                        // Loop through each notice detail and delete the files
+                        foreach ($notice_detail as $row) {
+                            foreach($updatesmsnotice as $noticeid){
+                            $path = storage_path("app/public/teacher_notice/{$noticeid->t_notice_id}/{$row->image_name}");
+                            // Check if the file exists and delete it
+                            if (File::exists($path)) {
+                                File::delete($path); // Delete the file
+                            }
+                           }
+                        }
+                    }
+                    foreach($updatesmsnotice as $noticeid){
+                        $notice_detail = DB::table('staff_notice_detail')
+                                        ->where('t_notice_id', $noticeid->t_notice_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
+                                        ->delete();
+                    }
+                      foreach ($updatesmsnotice as $notice) {
+                        DB::table('staff_notice')
+                            ->where('unq_id', $notice->unq_id) // Find each notice by its unique ID
+                            ->update([
+                                'subject' => $request->subject, // Update the subject field (example)
+                                'notice_desc' => $request->notice_desc,
+                                'notice_date' => now(), 
+                            ]);
+                        }
+
+                    
+                    $uploadedFiles = $request->file('userfile');
+                    if(is_null($uploadedFiles)){
+                        return response()->json([
+                            'status'=> 200,
+                            'message'=>'Notice Updated Successfully.',
+                            'success'=>true
+                            ]);
+                    }
+                    $noticeids=DB::table('staff_notice')->where('unq_id',$unq_id)->get();
+                    $fileData = [];    
+                    $base64EncodedImages=[];
+                    $fileNames=[];
+
+
+                    if ($uploadedFiles) {
+                        foreach ($uploadedFiles as $file) {
+                            $fileName = $file->getClientOriginalName();
+                            $fileSize = $file->getSize();
+
+                            // 1. Store file information:
+                            $fileData[] = [
+                                'file' => $file,
+                                'fileName' => $fileName,
+                                'fileSize' => $fileSize,
+                            ];
+
+                            // 2. Generate Base64 encoding:
+                            try {
+                                $fileContents = file_get_contents($file->getRealPath()); // Get file contents
+
+                                if ($fileContents !== false) { // Check if file contents were read successfully
+                                    $base64Encoded = base64_encode($fileContents);
+                                    $base64EncodedImages[] = $base64Encoded;
+                                    $fileNames[] = $fileName;
+                                } else {
+                                    Log::error("Failed to read file contents for: " . $fileName);
+                                    // Handle the error as needed (e.g., skip this file)
+                                }
+
+
+                            } catch (\Exception $e) {
+                                Log::error("Base64 encoding failed: " . $e->getMessage() . " for file: " . $fileName);
+                                // Handle the error
+                            }
+                        }
+                    }
+
+                    // Now $base64EncodedImages and $fileNames contain the data
+
+                    foreach ($noticeids as $notice) {
+                        $noticeFolder = storage_path("app/public/teacher_notice/" . $notice->t_notice_id);
+
+                        if (!File::exists($noticeFolder)) {
+                            File::makeDirectory($noticeFolder, 0777, true);
+                        }
+
+                        foreach ($fileData as $index => $data) { // Use $index to access arrays
+                            $ImageName = $data['fileName'];
+                            $filePath = $noticeFolder . '/' . $ImageName;
+                            DB::table('staff_notice_detail')->insert([
+                                't_notice_id'  => $notice->t_notice_id,
+                                'image_name' => $ImageName,
+                                'file_size'  => $data['fileSize'],
+                            ]);
+
+                            if (isset($base64EncodedImages[$index])) { 
+                                try {
+                                    $decodedImage = base64_decode($base64EncodedImages[$index]);
+
+                                    if ($decodedImage !== false) { //Check if decoding successful
+                                        $fileSaved = file_put_contents($filePath, $decodedImage); // Save the decoded image
+                                        if($fileSaved === false){
+                                            Log::error("Failed to save decoded image: " . $ImageName . " in " . $noticeFolder);
+                                        }
+
+                                    } else {
+                                        Log::error("Base64 decoding failed for: " . $ImageName);
+                                    }
+                                } catch (\Exception $e) {
+                                    Log::error("Error saving decoded image: " . $e->getMessage() . " for file: " . $ImageName);
+                                }
+                            } else {
+                                Log::warning("No base64 data found for file: " . $ImageName);
+                            }
+
+                        }
+                    }
+                        return response()->json([
+                            'status'=> 200,
+                            'message'=>'Staff Notice Updated',
+                            'data' =>$updatesmsnotice,
+                            'success'=>true
+                            ]);
+
+                }
+
+                }
                 else
                  {
                     return response()->json([

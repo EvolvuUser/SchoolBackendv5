@@ -455,7 +455,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
         // Send the data to the external API
         try {
             $response = Http::post($url, $data); // Send the data to the external API
-
+            
             // Check if the response is successful
             if ($response->successful()) {
                 return $response->json(); // Return the response as JSON
