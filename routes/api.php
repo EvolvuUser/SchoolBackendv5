@@ -595,8 +595,21 @@
         Route::post('save_noticeforstaffsms',[NoticeController::class,'savenoticeforStaffSms']);
         Route::get('get_staffnoticelist',[NoticeController::class,'getStaffnoticeList']);
 
-         //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 05-06-2025
-         Route::post('save_staffsavenpublishshortsms',[NoticeController::class,'savenPublishstaffshortsms']);
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 05-06-2025
+        Route::post('save_staffsavenpublishshortsms',[NoticeController::class,'savenPublishstaffshortsms']);
+        Route::post('save_staffsavenotice',[NoticeController::class,'savestaffSaveNotice']);
+        //API for the Notice for Staff  Dev Name- Manish Kumar Sharma 06-06-2025
+        Route::delete('delete_staffshortsmsnotice/{unq_id}',[NoticeController::class,'deleteStaffShortSMSNotice']);
+        Route::post('save_staffsavenpublishnotice',[NoticeController::class,'savestaffsavenPublishNotice']);
+        Route::put('update_staffnoticesmspublish/{unq}',[NoticeController::class,'updatestaffNoticeSMSPublish']);
+        Route::get('get_staffnoticedata/{unq_id}',[NoticeController::class,'getStaffNoticeData']);
+        Route::post('update_staffsmsnotice/{unq_id}',[NoticeController::class,'updatestaffSMSNotice']);
+
+
+
+
+
+
 
 
 
