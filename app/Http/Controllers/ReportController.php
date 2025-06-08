@@ -1577,6 +1577,119 @@ class ReportController extends Controller
     }
 
 
+    public function getdiscrepancy_in_WL_payment_report(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $data = DB::table('worldline_payment_details as w')
+                            ->select(
+                                'w.*',
+                                DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_nos')
+                            )
+                            ->leftJoin('onlinefees_payment_record as o', 'o.cheque_no', '=', 'w.OrderId')
+                            ->whereColumn('w.Amount', '<>', 'w.WL_Amount')
+                            ->where('w.Status_code', 'S')
+                            ->whereNotNull('w.WL_Amount')
+                            ->where('w.academic_yr', $customClaims)
+                            ->groupBy('w.OrderId')
+                            ->get();
+                            return response([
+                                'status'=>200,
+                                'data'=>$data,
+                                'message'=>'WL discrepancy report.',
+                                'success'=>true
+                            ]);
+
+
+             }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+    public function getduplicatepaymentreportfinance(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $duplicatePayments = DB::table(DB::raw('(SELECT vf.student_id, vd.installment 
+                                        FROM view_fees_payment_record vf 
+                                        JOIN view_fees_payment_detail vd ON vf.fees_payment_id = vd.fees_payment_id 
+                                        WHERE vf.amount <> 0 
+                                        AND vf.isCancel <> "Y" 
+                                        AND vd.fee_type_id NOT IN (7,8)
+                                        AND vf.academic_yr = ?
+                                        GROUP BY vf.fees_payment_id, vf.amount, vd.installment) as X', [$customClaims]))
+                                    ->select('student_id', 'installment')
+                                    ->groupBy('student_id', 'installment')
+                                    ->havingRaw('COUNT(*) > 1')
+                                    ->get();
+
+                                $results = [];
+
+                                // Step 2: Get full details per duplicate
+                                foreach ($duplicatePayments as $item) {
+                                    $paymentDetails = DB::table('view_fees_payment_record as vf')
+                                        ->join('view_fees_payment_detail as vd', 'vf.fees_payment_id', '=', 'vd.fees_payment_id')
+                                        ->where('vf.student_id', $item->student_id)
+                                        ->where('vd.installment', $item->installment)
+                                        ->where('vf.amount', '<>', 0)
+                                        ->where('vf.isCancel', '<>', 'Y')
+                                        ->whereNotIn('vd.fee_type_id', [7, 8])
+                                        ->where('vf.academic_yr', $customClaims)
+                                        ->select('vf.student_id', 'vf.payment_date', 'vd.installment', 'vd.amount', 'vf.receipt_no')
+                                        ->get();
+
+                                    foreach ($paymentDetails as $detail) {
+                                        $results[] = [
+                                            'student_id'      => $detail->student_id,
+                                            'student_name'    => $this->getStudentName($detail->student_id),
+                                            'payment_date'    => date('d-m-Y', strtotime($detail->payment_date)),
+                                            'class_name'      => $this->getStudentClass($detail->student_id),
+                                            'installment'     => $detail->installment,
+                                            'amount'          => $detail->amount,
+                                            'receipt_no'      => $detail->receipt_no,
+                                        ];
+                                    }
+                                }
+
+                                return response()->json([
+                                    'status' => 'success',
+                                    'data' => $results,
+                                ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
+
 
 
 }

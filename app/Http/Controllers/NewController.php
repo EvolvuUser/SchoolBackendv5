@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\Validator;
 use DB;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class NewController extends Controller
 {
@@ -172,4 +173,287 @@ class NewController extends Controller
         }
 
      }
+
+     public function saveLeaveApplicationForallstaff(Request $request){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                     $leaveapplication = DB::table('leave_application')->insert([
+                        'staff_id'=>$request->staff_id,
+                        'leave_type_id'=>$request->leave_type_id,
+                        'leave_start_date'=>$request->leave_start_date,
+                        'leave_end_date'=>$request->leave_end_date,
+                        'no_of_days'=>$request->no_of_days,
+                        'approved_by'=>$user->reg_id,
+                        'status'=>'P',
+                        'reason_for_rejection'=>$request->approverscomment,
+                        'academic_yr'=>$customClaims
+                    ]);
+
+                    DB::table('leave_allocation')
+                        ->where('staff_id', $request->staff_id)
+                        ->where('leave_type_id', $request->leave_type_id)
+                        ->where('academic_yr', $customClaims)
+                        ->increment('leaves_availed', floatval($request->no_of_days));
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'New leave application is created!!!',
+                        'data' =>$leaveapplication,
+                        'success'=>true
+                    ]);                                         
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+     }
+
+     public function getLeaveApplicationData(Request $request){
+         try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    $leaveapplicationdata = DB::table('leave_application')
+                                                 ->join('teacher','teacher.teacher_id','=','leave_application.staff_id')
+                                                 ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
+                                                 ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
+                                                 ->where('leave_application.academic_yr',$customClaims)
+                                                 ->get();
+                                                 return response()->json([
+                                                    'status'=> 200,
+                                                    'message'=>'leave application list!!!',
+                                                    'data' =>$leaveapplicationdata,
+                                                    'success'=>true
+                                                ]);    
+
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function deleteLeaveApplicationPrincipal(Request $request,$id){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    $leaveApplication = DB::table('leave_application')->where('leave_app_id', $id)->first();
+
+                    if (!$leaveApplication) {
+                        return response()->json(['message' => 'Leave application not found.'], 404);
+                    }
+
+                    // Store required values before delete
+                    $staffId = $leaveApplication->staff_id;
+                    $leaveTypeId = $leaveApplication->leave_type_id;
+                    $noOfDays = floatval($leaveApplication->no_of_days);
+
+                    // Delete the leave application
+                    DB::table('leave_application')->where('leave_app_id', $id)->delete();
+
+                    // Update leave_allocation by subtracting no_of_days
+                    DB::table('leave_allocation')
+                        ->where('staff_id', $staffId)
+                        ->where('leave_type_id', $leaveTypeId)
+                        ->where('academic_yr', $customClaims)
+                        ->decrement('leaves_availed', $noOfDays);
+
+                    return response()->json([
+                        'status' =>200,
+                        'message' => 'Leave application deleted successfully.',
+                        'success' =>true
+                    
+                    ]);
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function updateLeaveApplicationCancel(Request $request,$id){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                     $leaveApplication = DB::table('leave_application')->where('leave_app_id', $id)->first();
+
+                    if (!$leaveApplication) {
+                        return response()->json(['message' => 'Leave application not found.'], 404);
+                    }
+
+                    $staffId = $leaveApplication->staff_id;
+                    $leaveTypeId = $leaveApplication->leave_type_id;
+                    $noOfDays = floatval($leaveApplication->no_of_days);
+
+                    // 1. Update status to 'C'
+                    DB::table('leave_application')
+                        ->where('leave_app_id', $id)
+                        ->update(['status' => 'C']);
+
+                    // 2. Decrement leaves_availed
+                    DB::table('leave_allocation')
+                        ->where('staff_id', $staffId)
+                        ->where('leave_type_id', $leaveTypeId)
+                        ->where('academic_yr', $customClaims)
+                        ->decrement('leaves_availed', $noOfDays);
+
+                        return response()->json([
+                        'status' =>200,
+                        'message' => 'Leave application cancelled successfully.',
+                        'success' =>true
+                        ]);
+
+                 }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function updateLeaveApplicationData(Request $request,$id){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    // dd($request->all());
+                    $leaveTypeId = $request->leave_type_id;
+                    $status = $request->status;
+                    $approvercomment = $request->approvercomment;
+                    // dd($leaveTypeId,$status,$approvercomment);
+                    $leaveapplication = DB::table('leave_application')->where('leave_app_id',$id)->first();
+                    $leavestatus = $leaveapplication->status;
+                    if($status == 'A'){
+                        if($leavestatus == 'A'){
+                            $leaveapplication1 = DB::table('leave_application')
+                                                    ->where('leave_app_id',$id)
+                                                    ->update([
+                                                        'leave_type_id'=>$leaveTypeId,
+                                                        'reason_for_rejection'=>$approvercomment
+                                                    ]);
+                                                     return response()->json([
+                                                        'status' =>200,
+                                                        'message' => 'Leave application updated successfully.',
+                                                        'success' =>true
+                                                        ]);
+
+                             }
+                             $leaveapplication1 = DB::table('leave_application')
+                                                    ->where('leave_app_id',$id)
+                                                    ->update([
+                                                        'leave_type_id'=>$leaveTypeId,
+                                                        'reason_for_rejection'=>$approvercomment,
+                                                        'status'=>$status
+                                                    ]);
+                                    DB::table('leave_allocation')
+                                            ->where('staff_id', $leaveapplication->staff_id)
+                                            ->where('leave_type_id', $leaveTypeId)
+                                            ->where('academic_yr', $customClaims)
+                                            ->increment('leaves_availed', floatval($leaveapplication->no_of_days));
+
+                                    return response()->json([
+                                                        'status' =>200,
+                                                        'message' => 'Leave application updated successfully.',
+                                                        'success' =>true
+                                                        ]);
+
+                    }
+                    else
+                    {
+                        $leaveapplication1 = DB::table('leave_application')
+                                                    ->where('leave_app_id',$id)
+                                                    ->update([
+                                                        'leave_type_id'=>$leaveTypeId,
+                                                        'reason_for_rejection'=>$approvercomment,
+                                                        'status'=>$status
+                                                    ]);
+                         return response()->json([
+                                            'status' =>200,
+                                            'message' => 'Leave application updated successfully.',
+                                            'success' =>true
+                                            ]);
+
+                    }
+
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+
+     }
+
+     private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
 }
