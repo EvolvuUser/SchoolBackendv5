@@ -3080,9 +3080,11 @@ class NoticeController extends Controller
                                     'teacher.name',
                                     'teacher.teacher_id',
                                     'department.department_id',
-                                    'department.name as dept_name'
+                                    'department.name as dept_name',
+                                    DB::raw('GROUP_CONCAT(teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names')
                                 )
                                 ->join('teacher', 'staff_notice.created_by', '=', 'teacher.teacher_id')
+                                ->join('teacher as teachernames','teachernames.teacher_id','=','staff_notice.teacher_id')
                                 ->join('department', 'staff_notice.department_id', '=', 'department.department_id')
                                 ->where('staff_notice.academic_yr', $customClaims)
                                 ->when($notice_date !== null && $notice_date !== '', function ($q) use ($notice_date) {
