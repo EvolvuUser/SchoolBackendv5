@@ -605,6 +605,23 @@
         Route::get('get_staffnoticedata/{unq_id}',[NoticeController::class,'getStaffNoticeData']);
         Route::post('update_staffsmsnotice/{unq_id}',[NoticeController::class,'updatestaffSMSNotice']);
 
+        //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
+        Route::post('save_leaveapplicatstaffprincipal',[NewController::class,'saveLeaveApplicationForallstaff']);
+        Route::get('get_leaveapplicationdata',[NewController::class,'getLeaveApplicationData']);
+        Route::delete('delete_leaveapplicationprincipal/{id}',[NewController::class,'deleteLeaveApplicationPrincipal']);
+        Route::put('update_leaveapplicationcancel/{id}',[NewController::class,'updateLeaveApplicationCancel']);
+        Route::put('update_leaveapplicationdata/{id}',[NewController::class,'updateLeaveApplicationData']);
+
+        //API for the Phase 1 Reports Dev Name- Manish Kumar Sharma
+        Route::get('get_discrepancy_in_WL_payment_report',[ReportController::class,'getdiscrepancy_in_WL_payment_report']);
+        Route::get('get_duplicatepaymentreportFinance',[ReportController::class,'getduplicatepaymentreportfinance']);
+
+
+
+
+
+
+
 
 
 
