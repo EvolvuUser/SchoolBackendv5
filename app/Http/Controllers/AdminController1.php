@@ -3291,13 +3291,14 @@ public function toggleActiveStudent($studentId)
 
                 // Update email ID as username preference
                 $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id','P')->first();
+                if($user){
                 $currentUserName = $user->user_id;
                 Log::info("Current Username is : {$currentUserName}");
                 Log::info("Student information updated for student ID: {$user}");
 
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
-                    if ($user) {
+                   
                         // Conditional logic for setting email/phone based on SetEmailIDAsUsername
                         $emailOrPhoneMapping = [
                             'Father'     => $parent->f_email,     // Father's email
