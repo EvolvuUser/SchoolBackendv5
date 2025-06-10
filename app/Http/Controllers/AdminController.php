@@ -3008,7 +3008,7 @@ public function toggleActiveStudent($studentId)
                 
             
                 // Preferences for SMS and email as username
-                'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+                'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
