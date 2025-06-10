@@ -608,7 +608,7 @@ class NewController extends Controller
 
                                      return response()->json([
                                             'status' => 200,
-                                            'date' =>$updateremark,
+                                            'data' =>$updateremark,
                                             'message'=> 'Remark and observation updated.',
                                             'success'=>true
                                         ]);
