@@ -448,6 +448,315 @@ class NewController extends Controller
 
      }
 
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2023
+     public function saveRemarkForTeacher(Request $request){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    // dd($request->all());
+                    $teacherids = $request->teacherid;
+                    $remarksubject = $request->remark_subject;
+                    $remark = $request->remark;
+                    $remarktype = $request->remark_type;
+
+                        foreach($teacherids as $teacherid){
+                            // dd($teacherid);
+                            DB::table('teachers_remark')->insert([
+                                'teachers_id' => $teacherid,
+                                'remark_subject'=>$remarksubject,
+                                'remark_desc'=>$remark,
+                                'remark_type'=>$remarktype,
+                                'remark_date'=>now(),
+                                'dataentry_by'=>$user->reg_id,
+                                'publish'=>'N',
+                                'acknowledge'=>'N',
+                                'academic_yr'=>$customClaims
+                            ]);
+                        }
+
+                        return response()->json([
+                            'status' => 200,
+                            'message'=> 'Remark and observation saved successfully.',
+                            'success'=>true
+                        ]);
+
+
+                }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function savenPublishRemarkForTeacher(Request $request){
+        try{
+                $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    $teacherids = $request->teacherid;
+                    $remarksubject = $request->remark_subject;
+                    $remark = $request->remark;
+                    $remarktype = $request->remark_type;
+
+                        foreach($teacherids as $teacherid){
+                            // dd($teacherid);
+                            DB::table('teachers_remark')->insert([
+                                'teachers_id' => $teacherid,
+                                'remark_subject'=>$remarksubject,
+                                'remark_desc'=>$remark,
+                                'remark_type'=>$remarktype,
+                                'remark_date'=>now(),
+                                'publish_date'=>now(),
+                                'dataentry_by'=>$user->reg_id,
+                                'publish'=>'Y',
+                                'acknowledge'=>'N',
+                                'academic_yr'=>$customClaims
+                            ]);
+                        }
+
+                        return response()->json([
+                            'status' => 200,
+                            'message'=> 'Remark and observation saved and published successfully.',
+                            'success'=>true
+                        ]);
+
+
+                 }
+                else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function getRemarkForTeacherList(Request $request){
+        try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $remarkslist = DB::select("SELECT * from(SELECT  tr .*, teacher.name, 0 as read_status
+        from teachers_remark tr JOIN teacher  on teacher.teacher_id=tr.teachers_id  WHERE tr.academic_yr = '".$customClaims."' and tr.t_remark_id   NOT IN (select t_remark_id from tremarks_read_log)
+        UNION SELECT  tr .*, teacher.name, 1 as read_status
+        from teachers_remark tr JOIN teacher  on teacher.teacher_id=tr.teachers_id  WHERE tr.academic_yr= '".$customClaims."' and tr.t_remark_id  IN (select t_remark_id from tremarks_read_log))as Z ORDER BY `t_remark_id` DESC");
+
+        // dd($remarkslist);
+                 return response()->json([
+                            'status' => 200,
+                            'date' =>$remarkslist,
+                            'message'=> 'Remark and observation list.',
+                            'success'=>true
+                        ]);
+
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function updateRemarkForTeacher(Request $request,$id){
+        try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                  $t_remark_id = $id;
+                  $remarksubject = $request->remarksubject;
+                  $remark = $request->remark;
+                //   dd( $t_remark_id,$remarksubject,$remark );
+                 $updateremark= DB::table('teachers_remark')
+                                    ->where('t_remark_id', $t_remark_id ) 
+                                    ->update([
+                                        'remark_subject'=>$remarksubject,
+                                        'remark_desc'=>$remark
+                                    ]);
+
+                                     return response()->json([
+                                            'status' => 200,
+                                            'date' =>$updateremark,
+                                            'message'=> 'Remark and observation updated.',
+                                            'success'=>true
+                                        ]);
+
+
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function deleteRemarkForTeacher(Request $request,$id){
+        try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                $exists = DB::table('teachers_remark')->where('t_remark_id', $id)->exists();
+
+                if (!$exists) {
+                    return response()->json([
+                        'status'=>404,
+                        'message' => 'Teacher remark not found.',
+                        'success' => false
+                    ], 404);
+                }
+
+                // Perform delete
+                DB::table('teachers_remark')->where('t_remark_id', $id)->delete();
+
+                return response()->json([
+                    'status'=>200,
+                    'message' => 'Teacher remark deleted successfully!',
+                    'success' => true
+                ]);
+
+
+              }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
+     public function updatePublishRemarkForTeacher(Request $request,$id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                // $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
+                // // dd($remarkdetails);
+                // $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
+                // // dd($teacherdetails);
+                // $teacherphoneno = $teacherdetails->phone;
+                // if($teacherphoneno){
+                //     $templateName = 'emergency_message';
+                //     $parameters =[$remarkdetails->remark_desc];
+                //     Log::info($teacherphoneno);
+                //     $result = $this->whatsAppService->sendTextMessage(
+                //         $teacherphoneno,
+                //         $templateName,
+                //         $parameters
+                //     );
+                //     Log::info("Failed message",$result);
+                //     if (isset($result['code']) && isset($result['message'])) {
+                //         // Handle rate limit error
+                //         Log::warning("Rate limit hit: Too many messages to same user", [
+                            
+                //         ]);
+                
+                //     } else {
+                //         // Proceed if no error
+                //         $wamid = $result['messages'][0]['id'];
+                //         $phone_no = $result['contacts'][0]['input'];
+                //         $message_type = 'teacher_remark';
+                
+                //         DB::table('redington_webhook_details')->insert([
+                //             'wa_id' => $wamid,
+                //             'phone_no' => $phone_no,
+                //             'stu_teacher_id' => $remarkdetails->teachers_id,
+                //             'notice_id' => $id,
+                //             'message_type' => $message_type,
+                //             'created_at' => now()
+                //         ]);
+                //     }
+
+                //     sleep(20);
+
+                    
+
+                // }
+                 
+                $publishteacherremark = DB::table('teachers_remark')
+                                            ->where('t_remark_id', $id ) 
+                                            ->update([
+                                                'publish'=>'Y',
+                                                'publish_date'=>now()
+                                            ]);
+
+                return response()->json([
+                    'status'=>200,
+                    'message' => 'Teacher remark published successfully!',
+                    'success' => true
+                ]);
+
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+
+     }
+
      private function authenticateUser()
     {
         try {
