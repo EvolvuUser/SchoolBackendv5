@@ -12787,13 +12787,13 @@ public function getAbsentStudentForToday(Request $request){
           $class_id = $request->input('class_id');
           $section_id = $request->input('section_id');
         //   dd($class_id,$section_id);
-          
+          $only_date = Carbon::today()->toDateString();
           $absentstudents = DB::table('attendance')
                                 ->join('student','student.student_id','=','attendance.student_id')
                                 ->join('class','class.class_id','=','attendance.class_id')
                                 ->join('section','section.section_id','=','attendance.section_id')
                                 ->where('attendance.attendance_status','1')
-                                ->where('only_date','2025-05-23')
+                                ->where('only_date',$only_date)
                                 ->where('student.isDelete','N')
                                 ->when($class_id, function ($query) use ($class_id) {
                                         return $query->where('attendance.class_id', $class_id);
@@ -12882,7 +12882,8 @@ public function getAbsentnonTeacherForToday(Request $request){
       $user = $this->authenticateUser();
       $customClaims = JWTAuth::getPayload()->get('academic_year');
       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-            $nonteacherabsent = DB::select("SELECT t.* FROM teacher AS t join user_master u WHERE t.teacher_id=u.reg_id and u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and t.employee_id NOT IN (select employee_id from teacher_attendance where DATE(punch_time) = '2025-01-31' ) AND t.isDelete = 'N';");
+            $only_date = Carbon::today()->toDateString();  
+            $nonteacherabsent = DB::select("SELECT t.* FROM teacher AS t join user_master u WHERE t.teacher_id=u.reg_id and u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and t.employee_id NOT IN (select employee_id from teacher_attendance where DATE(punch_time) = $only_date ) AND t.isDelete = 'N';");
             // dd($nonteacherabsent);
             return response()->json([
                         'status' =>200,
