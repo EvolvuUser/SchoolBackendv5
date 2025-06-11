@@ -24,6 +24,7 @@ use App\Jobs\SavePublishSms;
 use App\Jobs\PublishSms;
 use App\Jobs\StaffShortSMSsavePublish;
 use App\Jobs\StaffNoticeJobSavePublish;
+use App\Jobs\PublishNoticeJob;
 
 class NoticeController extends Controller
 {
@@ -1771,7 +1772,7 @@ class NoticeController extends Controller
                         }
     
                             
-                            dispatch(new \App\Jobs\PublishNoticeJob($unq, $customClaims));
+                            PublishNoticeJob::dispatch($unq, $customClaims);
                             return response()->json([
                                 'status'=> 200,
                                 'message'=>'Notice Saved and Published Successfully.',
