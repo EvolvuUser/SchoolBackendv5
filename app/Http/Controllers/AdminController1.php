@@ -3007,7 +3007,7 @@ public function toggleActiveStudent($studentId)
                 
             
                 // Preferences for SMS and email as username
-                'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+                'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
@@ -3291,13 +3291,14 @@ public function toggleActiveStudent($studentId)
 
                 // Update email ID as username preference
                 $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id','P')->first();
+                if($user){
                 $currentUserName = $user->user_id;
                 Log::info("Current Username is : {$currentUserName}");
                 Log::info("Student information updated for student ID: {$user}");
 
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
-                    if ($user) {
+                   
                         // Conditional logic for setting email/phone based on SetEmailIDAsUsername
                         $emailOrPhoneMapping = [
                             'Father'     => $parent->f_email,     // Father's email
@@ -7807,7 +7808,7 @@ public function getholidayList(){
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
                             ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') // Join with the users table
-                            ->where('user_master.role_id','A')
+                            ->where('user_master.role_id',$user->role_id)
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
                             ->get();

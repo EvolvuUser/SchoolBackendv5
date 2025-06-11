@@ -3008,7 +3008,7 @@ public function toggleActiveStudent($studentId)
                 
             
                 // Preferences for SMS and email as username
-                'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+                'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
@@ -3083,56 +3083,6 @@ public function toggleActiveStudent($studentId)
                 $validatedData['is_modify'] = 'Y';
             }
 
-            // Handle student image if provided
-            // if ($request->hasFile('student_image')) {
-            //     $image = $request->file('student_image');
-            //     $imageExtension = $image->getClientOriginalExtension();
-            //     $imageName = $studentId . '.' . $imageExtension;
-            //     $imagePath = public_path('uploads/student_image');
-
-            //     if (!file_exists($imagePath)) {
-            //         mkdir($imagePath, 0755, true);
-            //     }
-
-            //     $image->move($imagePath, $imageName);
-            //     $validatedData['image_name'] = $imageName;
-            //     Log::info("Image uploaded for student ID: {$studentId}");
-            // }
-            /*
-            //echo "msg7";
-            if ($request->has('image_name')) {
-                $newImageData = $request->input('image_name');
-            
-                if (!empty($newImageData)) {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
-                        $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
-                        $type = strtolower($type[1]); // jpg, png, gif
-            
-                        if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-                            throw new \Exception('Invalid image type');
-                        }
-            
-                        // Decode the image
-                        $newImageData = base64_decode($newImageData);
-                        if ($newImageData === false) {
-                            throw new \Exception('Base64 decode failed');
-                        }
-            
-                        // Generate a unique filename
-                        $imageName = $studentId . '.' . $type;
-                        $imagePath = public_path('storage/uploads/student_image/' . $imageName);
-            
-                        // Save the image file
-                        file_put_contents($imagePath, $newImageData);
-                        $validatedData['image_name'] = $imageName;
-            
-                        Log::info("Image uploaded for student ID: {$studentId}");
-                    } else {
-                        throw new \Exception('Invalid image data format');
-                    }
-                }
-            }
-            */
 
             $existingImageUrl = $student->image_name;
 
@@ -3193,46 +3143,7 @@ public function toggleActiveStudent($studentId)
     }
             }
 
-            // if ($request->has('image_name')) {
-            //     $imageData=$request->input('image_name');
-            //     if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
-            //     $imageData = substr($imageData, strpos($imageData, ',') + 1);
-            //     $type = strtolower($type[1]); // jpg, png, gif
-
-            //     // Validate image type
-            //     if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-            //         throw new \Exception('Invalid image type');
-            //     }
-
-            //     // Base64 decode the image
-            //     $imageData = base64_decode($imageData);
-            //     if ($imageData === false) {
-            //         throw new \Exception('Base64 decode failed');
-            //     }
-
-            //     // Define the filename and path to store the image
-            //     $filename = 'student_' . time() . '.' . $type;
-            //     $filePath = storage_path('app/public/student_images/' . $filename);
-
-            //     // Ensure the directory exists
-            //     $directory = dirname($filePath);
-            //     if (!is_dir($directory)) {
-            //         mkdir($directory, 0755, true);
-            //     }
-
-            //     // Save the image to the file system
-            //     if (file_put_contents($filePath, $imageData) === false) {
-            //         throw new \Exception('Failed to save image file');
-            //     }
-
-            //     // Store the filename in validated data
-            //     $validatedData['image_name'] = $filename;
-            // } else {
-            //     throw new \Exception('Invalid image data');
-            // }
-            // }
-            //echo "msg8";
-            // Include academic year in the update data
+            
             $validatedData['academic_yr'] = $academicYr;
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -3292,13 +3203,14 @@ public function toggleActiveStudent($studentId)
 
                 // Update email ID as username preference
                 $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id','P')->first();
+                if($user){
                 $currentUserName = $user->user_id;
                 Log::info("Current Username is : {$currentUserName}");
                 Log::info("Student information updated for student ID: {$user}");
 
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
-                    if ($user) {
+                    
                         // Conditional logic for setting email/phone based on SetEmailIDAsUsername
                         $emailOrPhoneMapping = [
                             'Father'     => $parent->f_email,     // Father's email
@@ -3307,7 +3219,6 @@ public function toggleActiveStudent($studentId)
                             'MotherMob'  => $parent->m_mobile,    // Mother's mobile
                         ];
                         
-                        // Check if the provided value exists in the mapping, otherwise use the default
                         $user->user_id = $emailOrPhoneMapping[$request->SetEmailIDAsUsername] ?? $request->SetEmailIDAsUsername;
 
                         Log::info($user->user_id);
@@ -3322,26 +3233,6 @@ public function toggleActiveStudent($studentId)
                         }
                     }
                 
-
-                // $apiData = [
-                //     'user_id' => '',
-                //     'short_name' => 'SACS',
-                // ];
-
-                // $oldEmailPreference = $user->user_id; // Store old email preference for comparison
-
-                // // Check if the email preference changed
-                // if ($oldEmailPreference != $apiData['user_id']) {
-                //     // Call the external API only if the email preference has changed
-                //     $response = Http::post('http://aceventura.in/demo/evolvuUserService/user_create_new', $apiData);
-                //     if ($response->successful()) {
-                //         Log::info("API call successful for student ID: {$studentId}");
-                //     } else {
-                //         Log::error("API call failed for student ID: {$studentId}");
-                //     }
-                // } else {
-                //     Log::info("Email preference unchanged for student ID: {$studentId}");
-                // }
             }
             
             return response()->json(['success' => 'Student and parent information updated successfully']);
@@ -7808,7 +7699,7 @@ public function getholidayList(){
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
                             ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') // Join with the users table
-                            ->where('user_master.role_id','A')
+                            ->where('user_master.role_id',$user->role_id)
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
                             ->get();
