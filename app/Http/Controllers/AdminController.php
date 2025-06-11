@@ -7699,7 +7699,7 @@ public function getholidayList(){
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
                             ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') // Join with the users table
-                            ->where('user_master.role_id','A')
+                            ->where('user_master.role_id',$user->role_id)
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
                             ->get();

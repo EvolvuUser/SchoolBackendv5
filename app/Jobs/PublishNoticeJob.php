@@ -18,13 +18,13 @@ class PublishNoticeJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $noticeIds;
-    protected $noticeDesc;
+    protected $unq;
+    protected $customClaims;
 
-    public function __construct(array $noticeIds, string $noticeDesc)
+    public function __construct($unq, $customClaims)
     {
-        $this->noticeIds = $noticeIds;
-        $this->noticeDesc = $noticeDesc;
+        $this->unq = $unq;
+        $this->customClaims = $customClaims;
     }
 
     /**
@@ -36,114 +36,128 @@ class PublishNoticeJob implements ShouldQueue
      */
     public function handle(): void
     {
-        foreach ($this->noticeIds as $noticeId) {
-            $notice = Notice::find($noticeId);
-            $classId = $notice->class_id;
+         Log::info("Hello");
 
+        $parentnotices = DB::table('notice')
+                           ->where('unq_id', $this->unq)
+                           ->where('academic_yr',$this->customClaims)
+                           ->get();
+         Log::info("Sms Information", [$parentnotices]);
+         foreach($parentnotices as $parentnotice){
             $students = DB::table('student as a')
-                ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
-                ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
-                ->where('a.class_id', $classId)
-                ->get();
+                            ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                            ->where('a.class_id', $parentnotice->class_id)
+                            ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+                            ->get();
+                            Log::info("Student Information", [$students]);
+                            foreach ($students as $student) {
+                            $templateName = 'emergency_message';
+                            $parameters = [$parentnotice->notice_desc];
+                            Log::info("TestCronJob JOB Failed AFter parameter Whatsapp Message");
 
-            foreach ($students as $student) {
-                if ($student->phone_no) {
-                    try {
-                        $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                            $student->phone_no,
-                            'emergency_message',
-                            [$this->noticeDesc]
-                        );
-                        if (isset($result['code']) && isset($result['message'])) {
-                            Log::warning("Rate limit hit", []);
-                        } else {
-                            DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $result['messages'][0]['id'],
-                            'phone_no' => $result['contacts'][0]['input'],
-                            'stu_teacher_id' => $student->student_id,
-                            'notice_id' => $noticeId,
-                            'message_type' => 'notice',
-                            'created_at' => now()
-                        ]);
+                            if ($student->phone_no) {
+                                $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
+                                    $student->phone_no,
+                                    $templateName,
+                                    $parameters
+                                );
 
+                                Log::info("Failed message", $result);
+
+                                if (isset($result['code']) && isset($result['message'])) {
+                                    Log::warning("Rate limit hit", []);
+                                } else {
+                                    $wamid = $result['messages'][0]['id'];
+                                    $phone_no = $result['contacts'][0]['input'];
+
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => $wamid,
+                                        'phone_no' => $phone_no,
+                                        'stu_teacher_id' => $student->student_id,
+                                        'notice_id' => $parentnotice->notice_id,
+                                        'message_type' => 'notice',
+                                        'created_at' => now()
+                                    ]);
+                                }
+                            }
                         }
+                        Log::info("TestCronJob JOB Failed AFter Sending Whatsapp Message");
+                        sleep(20); 
+                        $leftmessages = DB::table('redington_webhook_details')
+                                                    ->where('message_type','notice')
+                                                    ->where('status','failed')
+                                                    ->where('notice_id',$parentnotice->notice_id)
+                                                    ->where('sms_sent','N')
+                                                    ->get();
+                        foreach($leftmessages as $leftmessage){
+                                $parentidstudentdetails = DB::table('student')->where('student_id',$leftmessage->stu_teacher_id)->first();
+                                $parent_id = $parentidstudentdetails->parent_id;
+                                $smsdata = DB::table('daily_sms')
+                                            ->where('parent_id', $parent_id)
+                                            ->where('student_id', $leftmessage->stu_teacher_id)
+                                            ->get(); 
+                                // dd($smsdata);
+                                 $smsdatacount= count($smsdata);
+                                  if($smsdatacount=='0'){
+                                    $sdata = [
+                                        'parent_id' => $parent_id,
+                                        'student_id' => $leftmessage->stu_teacher_id,
+                                        'phone' => $leftmessage->phone_no,
+                                        'homework' => 0,
+                                        'remark' => 0,
+                                        'achievement' => 0,
+                                        'note' => 0,
+                                        'notice' => 1,
+                                        'sms_date' => now() // Laravel's `now()` function returns the current date and time
+                                    ];
+                                    
+                                    DB::table('daily_sms')->insert($sdata);
+                                  }
+                                  else{
+                                    $smsdata[0]->notice = 1 + $smsdata[0]->notice;
+                                    $smsdata[0]->sms_date = now();  // Laravel's `now()` helper for the current timestamp
+    
+                                    // Perform the update
+                                    DB::table('daily_sms')
+                                        ->where('parent_id', $smsdata[0]->parent_id)
+                                        ->where('student_id', $smsdata[0]->student_id)
+                                        ->update(['notice' => $smsdata[0]->notice,
+                                                 'sms_date' => $smsdata[0]->sms_date]);
+                                  }
+                                
+                            }
 
-                        
-                    } catch (\Exception $e) {
-                        \Log::error("WhatsApp failed: " . $e->getMessage());
-                    }
-                }
-            }
-
-            // Delay for WhatsApp rate limit
-            sleep(20);
-
-            // Fallback SMS
-            $failedMessages = DB::table('redington_webhook_details')
-                ->where('message_type', 'notice')
-                ->where('status', 'failed')
-                ->where('sms_sent', 'N')
-                ->where('notice_id',$noticeId)
-                ->get();
-
-            foreach ($failedMessages as $msg) {
-                $student = DB::table('student')->where('student_id', $msg->stu_teacher_id)->first();
-                $sms = DB::table('daily_sms')
-                    ->where('parent_id', $student->parent_id)
-                    ->where('student_id', $msg->stu_teacher_id)
-                    ->first();
-
-                if ($sms) {
-                    DB::table('daily_sms')
-                        ->where('parent_id', $student->parent_id)
-                        ->where('student_id', $msg->stu_teacher_id)
-                        ->update([
-                            'notice' => $sms->notice + 1,
-                            'sms_date' => now()
-                        ]);
-                } else {
-                    DB::table('daily_sms')->insert([
-                        'parent_id' => $student->parent_id,
-                        'student_id' => $msg->stu_teacher_id,
-                        'phone' => $msg->phone_no,
-                        'homework' => 0,
-                        'remark' => 0,
-                        'achievement' => 0,
-                        'note' => 0,
-                        'notice' => 1,
-                        'sms_date' => now()
-                    ]);
-                }
-            }
-
-            // Push Notifications
-            $tokens = DB::table('student as a')
-                ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
-                ->where('a.class_id', $classId)
-                ->where('b.login_type', 'P')
-                ->select('b.token', 'b.user_id', 'b.parent_teacher_id', 'a.parent_id', 'a.student_id')
-                ->get();
-
-            foreach ($tokens as $token) {
-                DB::table('daily_notifications')->insert([
-                    'student_id' => $token->student_id,
-                    'parent_id' => $token->parent_teacher_id,
-                    'homework_id' => 0,
-                    'remark_id' => 0,
-                    'notice_id' => $noticeId,
-                    'notes_id' => 0,
-                    'notification_date' => now()->toDateString(),
-                    'token' => $token->token,
-                ]);
-
-                sendnotificationusinghttpv1([
-                    'token' => $token->token,
-                    'notification' => [
-                        'title' => 'Notice',
-                        'description' => $this->noticeDesc
-                    ]
-                ]);
-            }
-        }
+                            $tokendata = DB::table('student as a')
+                                ->select('b.token', 'b.user_id', 'b.parent_teacher_id', 'b.login_type', 'a.parent_id', 'a.student_id')
+                                ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
+                                ->where('a.class_id', $parentnotice->class_id)
+                                ->where('b.login_type', 'P')
+                                ->get(); // Use get() to retrieve the results
+                                foreach ($tokendata as $token) {
+                                    $dailyNotification = [
+                                        'student_id' => $token->student_id,
+                                        'parent_id' => $token->parent_teacher_id,
+                                        'homework_id' => 0,
+                                        'remark_id' => 0,
+                                        'notice_id' => $parentnotice->notice_id,
+                                        'notes_id' => 0,
+                                        'notification_date' => now()->toDateString(), // Using Laravel's now() helper to get today's date
+                                        'token' => $token->token,
+                                    ];
+                                    $data = [
+                                        'token' => $token->token, // The user's token to send the notification
+                                        'notification' => [
+                                            'title' => 'Notice',
+                                            'description' => $parentnotice->notice_desc
+                                        ]
+                                    ];
+                                    sendnotificationusinghttpv1($data);
+                            
+                                    // Insert the data using DB facade
+                                    DB::table('daily_notifications')->insert($dailyNotification);
+                                }
+         }
+       
+        
     }
 }
