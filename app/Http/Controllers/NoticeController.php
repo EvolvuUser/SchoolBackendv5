@@ -2762,7 +2762,7 @@ class NoticeController extends Controller
                 if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                     $department_id = $request->input('department_id');
                     if ($department_id == 'N') {
-                    // All non-teaching staff including caretakers
+                        
                     $query = DB::select("Select teacher.* from teacher where isDelete<>'Y' and teacher_id not in (select distinct(teacher_id) from subject where teacher_id<>0 and academic_yr='".$customClaims."')");
                      } 
                    elseif ($department_id == 'S') {

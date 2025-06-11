@@ -6620,6 +6620,7 @@ public function saveLeaveAllocationforallStaff(Request $request){
                 ->select('student.isNew','student.first_name','contact_details.email_id','contact_details.m_emailid','user_master.user_id','user_master.password')
                 ->first();
         // dd($student);
+        if($student->email_id && $student->m_emailid && $student->user_id && $student->password && $student->isNew && $student->first_name){
         $f_emailid = $student->email_id;
         $m_emailid = $student->m_emailid;
         $user_id = $student->user_id;
@@ -6652,6 +6653,7 @@ public function saveLeaveAllocationforallStaff(Request $request){
                         ->subject('SACS Login Details');
             });
         }
+     }
     }
     return response()->json([
         'status' => '200',
@@ -7698,8 +7700,7 @@ public function getholidayList(){
         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
-                            ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') // Join with the users table
-                            ->where('user_master.role_id',$user->role_id)
+                            ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') 
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
                             ->get();
