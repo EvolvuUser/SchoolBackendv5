@@ -231,6 +231,7 @@ class NewController extends Controller
                                                  ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
                                                  ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
                                                  ->where('leave_application.academic_yr',$customClaims)
+                                                 ->orderBy('leave_app_id','desc')
                                                  ->get();
                                                  return response()->json([
                                                     'status'=> 200,
