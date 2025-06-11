@@ -1337,7 +1337,6 @@ class NoticeController extends Controller
                             return response()->json([
                                 'status'=> 200,
                                 'message'=>'Sms Published Successfully.',
-                                'data' => $updatesmsnotice,
                                 'success'=>true
                                 ]);
                 }
@@ -1684,6 +1683,7 @@ class NoticeController extends Controller
                         }
                         $uploadedFiles = $request->file('userfile');
                         if(is_null($uploadedFiles)){
+                            PublishNoticeJob::dispatch($unq, $customClaims);
                             return response()->json([
                                 'status'=> 200,
                                 'message'=>'Notice Saved and Published Successfully.',
