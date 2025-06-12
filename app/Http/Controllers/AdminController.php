@@ -3339,8 +3339,7 @@ public function checkUserId($studentId, $userId)
         } else {
             // If they are different, check if the userId exists in the UserMaster table
             $userExists = UserMaster::where('user_id', $userId)
-                ->where('role_id', 'P')
-                ->exists();
+                                ->exists();
 
             if ($userExists) {
                 // If the userId exists, return true
