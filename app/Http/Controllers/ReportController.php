@@ -1728,6 +1728,86 @@ class ReportController extends Controller
 
         return $class->class ?? '';
     }
+    //API for the Staff daily attendance report Dev Name- Manish Kumar Sharma 12-06-2025
+    public function getStaffDailyAttendanceReport(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $date = $request->input('date');
+                $presentstaff = DB::table('teacher_attendance as a')
+                                    ->select(
+                                        'a.employee_id',
+                                        DB::raw('DATE(a.punch_time) as date_part'),
+                                        DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
+                                        DB::raw('MAX(TIME(a.punch_time)) as punch_out_time'),
+                                        'b.name',
+                                        'b.tc_id',
+                                        'c.late_time'
+                                    )
+                                    ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+                                    ->join('late_time as c','c.tc_id','=','b.tc_id')
+                                    
+                                    ->whereDate('a.punch_time', '=', $date)
+                                    ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
+                                    ->havingRaw('MIN(TIME(a.punch_time)) <= c.late_time')
+                                    ->orderBy(DB::raw('DATE(a.punch_time)'))
+                                    ->orderBy('a.employee_id')
+                                    ->get();
+                                     
+                
+                $latestaff =  DB::table('teacher_attendance as a')
+                                    ->select(
+                                        'a.employee_id',
+                                        DB::raw('DATE(a.punch_time) as date_part'),
+                                        DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
+                                        DB::raw('MAX(TIME(a.punch_time)) as punch_out_time'),
+                                        'b.name',
+                                        'b.tc_id',
+                                        'c.late_time'
+                                    )
+                                    ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+                                    ->join('late_time as c','c.tc_id','=','b.tc_id')
+                                    
+                                    ->whereDate('a.punch_time', '=', $date)
+                                    ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
+                                    ->havingRaw('MIN(TIME(a.punch_time)) >= c.late_time')
+                                    ->orderBy(DB::raw('DATE(a.punch_time)'))
+                                    ->orderBy('a.employee_id')
+                                    ->get();
+                $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '$date' WHERE ta.employee_id IS NULL AND t.isDelete = 'N';");
+                // dd($absentstaff);
+                $staffattendance = [
+                    'present_staff'=> $presentstaff,
+                    'late_staff'=> $latestaff,
+                    'absent_staff'=> $absentstaff,
+                ];
+                return response()->json([
+                    'status'=>200,
+                    'message'=>'Staff daily attendance report.',
+                    'data'=>$staffattendance,
+                    'success'=>true
+                    ]);
+                  
+                //  dd($latestaff);
+
+             }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
 
 
 

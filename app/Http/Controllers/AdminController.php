@@ -6620,13 +6620,12 @@ public function saveLeaveAllocationforallStaff(Request $request){
                 ->select('student.isNew','student.first_name','contact_details.email_id','contact_details.m_emailid','user_master.user_id','user_master.password')
                 ->first();
         // dd($student);
-        if($student->email_id && $student->m_emailid && $student->user_id && $student->password && $student->isNew && $student->first_name){
-        $f_emailid = $student->email_id;
-        $m_emailid = $student->m_emailid;
-        $user_id = $student->user_id;
-        $password = $student->password;
-        $isNew = $student->isNew;
-        $first_name = $student->first_name;
+        $f_emailid = $student->email_id ?? null;
+        $m_emailid = $student->m_emailid ?? null;
+        $user_id = $student->user_id ?? null;
+        $isNew = $student->isNew ?? null;
+        $first_name = $student->first_name ?? null;
+        if($f_emailid && $m_emailid &&  $user_id  && $isNew && $first_name){
         // $decryptedPassword = Crypt::decrypt($password);
         // dd($decryptedPassword);
 
@@ -6786,6 +6785,9 @@ public function getLeavetypedata(Request $request,$staff_id){
                     $leaveApplication->status = 'Reject';   
                 } elseif ($leaveApplication->status === 'P') {
                     $leaveApplication->status = 'Approve';  
+                }
+                 elseif ($leaveApplication->status === 'C') {
+                    $leaveApplication->status = 'Cancelled';  
                 } else {
                     $leaveApplication->status = 'Unknown';  
                 }
@@ -7703,6 +7705,7 @@ public function getholidayList(){
                             ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id') 
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
+                            ->groupBy('holidaylist.holiday_id')
                             ->get();
     
             

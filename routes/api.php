@@ -612,18 +612,21 @@
         Route::put('update_leaveapplicationcancel/{id}',[NewController::class,'updateLeaveApplicationCancel']);
         Route::put('update_leaveapplicationdata/{id}',[NewController::class,'updateLeaveApplicationData']);
 
-        //API for the Phase 1 Reports Dev Name- Manish Kumar Sharma 07-06-2023
+        //API for the Phase 1 Reports Dev Name- Manish Kumar Sharma 07-06-2025
         Route::get('get_discrepancy_in_WL_payment_report',[ReportController::class,'getdiscrepancy_in_WL_payment_report']);
         Route::get('get_duplicatepaymentreportFinance',[ReportController::class,'getduplicatepaymentreportfinance']);
 
-        //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2023
+        //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
         Route::post('save_remarkforteacher',[NewController::class,'saveRemarkForTeacher']);
         Route::post('save_savenpublishremarkforteacher',[NewController::class,'savenPublishRemarkForTeacher']);
         Route::get('get_remarkforteacherlist',[NewController::class,'getRemarkForTeacherList']);
         Route::put('update_updateremarkforteacher/{t_remark_id}',[NewController::class,'updateRemarkForTeacher']);
         Route::delete('delete_remarkforteacher/{t_remark_id}',[NewController::class,'deleteRemarkForTeacher']);
         Route::put('update_publishremarkforteacher/{t_remark_id}',[NewController::class,'updatePublishRemarkForTeacher']);
-        
+
+        //API for the Staff daily attendance report Dev Name- Manish Kumar Sharma 12-06-2025
+        Route::get('get_staffdailyattendancereport',[ReportController::class,'getStaffDailyAttendanceReport']);
+
 
 
 

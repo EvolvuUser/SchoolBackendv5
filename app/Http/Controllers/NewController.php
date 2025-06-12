@@ -376,8 +376,8 @@ class NewController extends Controller
                     // dd($leaveTypeId,$status,$approvercomment);
                     $leaveapplication = DB::table('leave_application')->where('leave_app_id',$id)->first();
                     $leavestatus = $leaveapplication->status;
-                    if($status == 'A'){
-                        if($leavestatus == 'A'){
+                    if($status == 'P'){
+                        if($leavestatus == 'P'){
                             $leaveapplication1 = DB::table('leave_application')
                                                     ->where('leave_app_id',$id)
                                                     ->update([
