@@ -401,6 +401,7 @@ class NewController extends Controller
                                                     ->update([
                                                         'leave_type_id'=>$leaveTypeId,
                                                         'reason_for_rejection'=>$approvercomment,
+                                                        'approved_by'=>$user->reg_id,
                                                         'status'=>$status
                                                     ]);
                                     DB::table('leave_allocation')
