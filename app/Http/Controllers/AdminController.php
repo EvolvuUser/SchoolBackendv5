@@ -6781,7 +6781,7 @@ public function getLeavetypedata(Request $request,$staff_id){
                 } elseif ($leaveApplication->status === 'H') {
                     $leaveApplication->status = 'Hold';     
                 } elseif ($leaveApplication->status === 'R') {
-                    $leaveApplication->status = 'Reject';   
+                    $leaveApplication->status = 'Rejected';   
                 } elseif ($leaveApplication->status === 'P') {
                     $leaveApplication->status = 'Approve';  
                 }

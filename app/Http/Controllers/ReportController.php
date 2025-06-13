@@ -1777,10 +1777,16 @@ class ReportController extends Controller
                                     ->get();
                 $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '$date' WHERE ta.employee_id IS NULL AND t.isDelete = 'N';");
                 // dd($absentstaff);
+                $totalattendance = DB::select("SELECT a.employee_id, DATE(a.punch_time) AS date_part, MIN(TIME(a.punch_time)) AS punch_in_time, MAX(TIME(a.punch_time)) AS punch_out_time, b.name,b.tc_id FROM teacher_attendance AS a JOIN teacher AS b ON a.employee_id = b.employee_id WHERE DATE(a.punch_time) = '".$date."' GROUP BY a.employee_id, DATE(a.punch_time), b.name ORDER BY DATE(a.punch_time),a.employee_id;");
+
+                $totalattendancecount = count($totalattendance);
+                // dd($totalattendancecount);
+                $totalteacher = count(DB::table('teacher')->where('IsDelete','N')->get());
                 $staffattendance = [
                     'present_staff'=> $presentstaff,
                     'late_staff'=> $latestaff,
                     'absent_staff'=> $absentstaff,
+                    'total_attendance'=>$totalattendancecount."/".$totalteacher
                 ];
                 return response()->json([
                     'status'=>200,
