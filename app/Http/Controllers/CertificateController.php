@@ -1982,6 +1982,7 @@ class CertificateController extends Controller
                                    ->where('first_name',$studentinfo->first_name)
                                    ->where('academic_yr',$academic_yr)
                                    ->first();
+             
             
             $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
             if(is_null($checkstudentbonafide)){
@@ -1993,6 +1994,20 @@ class CertificateController extends Controller
                                     ->where('student_id',$studentinfoacademic->student_id)
                                     ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
                                     ->first();
+
+                $dob_in_words =  $studentinformation->dob;
+                $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+            
+                // Check if the date is valid
+                if ($dateTime === false) {
+                    return 'Invalid date format';
+                }
+                
+                // Format the date as 'Day Month Year'
+                $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+                
+                $dobinwords = $this->convertDateToWords($dateInWords);
+                $data['dobinwords']= $dobinwords;
 
             if(is_null($studentinformation)){
                 return response()->json([
