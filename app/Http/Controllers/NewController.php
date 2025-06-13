@@ -275,16 +275,20 @@ class NewController extends Controller
                     $staffId = $leaveApplication->staff_id;
                     $leaveTypeId = $leaveApplication->leave_type_id;
                     $noOfDays = floatval($leaveApplication->no_of_days);
-
-                    // Delete the leave application
-                    DB::table('leave_application')->where('leave_app_id', $id)->delete();
-
-                    // Update leave_allocation by subtracting no_of_days
-                    DB::table('leave_allocation')
+                    $status = $leaveApplication->status;
+                    if($status == 'P'){
+                        DB::table('leave_allocation')
                         ->where('staff_id', $staffId)
                         ->where('leave_type_id', $leaveTypeId)
                         ->where('academic_yr', $customClaims)
                         ->decrement('leaves_availed', $noOfDays);
+
+                    }
+
+                    // Delete the leave application
+                    DB::table('leave_application')->where('leave_app_id', $id)->delete();
+
+                    
 
                     return response()->json([
                         'status' =>200,
