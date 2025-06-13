@@ -2868,7 +2868,7 @@ class NoticeController extends Controller
                                     'department.department_id',
                                     'department.name as dept_name',
                                      DB::raw("CASE 
-                                                    WHEN staff_notice.department_id = 'N/S' THEN 'Non teaching staff' 
+                                                    WHEN staff_notice.department_id IN ('N', 'S') THEN 'Non teaching staff' 
                                                     ELSE department.name 
                                                 END as dept_name"),
                                         DB::raw('GROUP_CONCAT(teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names')
