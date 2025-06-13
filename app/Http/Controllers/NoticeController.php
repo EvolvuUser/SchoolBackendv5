@@ -74,7 +74,7 @@ class NoticeController extends Controller
     
             return response()->json([
                 'status'=> 200,
-                'message'=>'New Sms Created',
+                'message'=>'SMS saved successfully!',
                 'data' =>$noticeData,
                 'success'=>true
                 ]);
@@ -384,7 +384,7 @@ class NoticeController extends Controller
         SavePublishSms::dispatch($unq , $customClaims);
         return response()->json([
             'status'=> 200,
-            'message'=>'New Sms Created And Sended',
+            'message'=>'SMS saved and published successfully!',
             'data' =>$noticeData,
             'success'=>true
             ]);
@@ -748,7 +748,7 @@ class NoticeController extends Controller
                     $newsmsdata = DB::table('notice')->where('unq_id',$unq_id)->get();
                     return response()->json([
                         'status'=> 200,
-                        'message'=>'Sms Updated',
+                        'message'=>'SMS updated successfully!',
                         'data' =>$newsmsdata,
                         'success'=>true
                         ]);
@@ -865,7 +865,7 @@ class NoticeController extends Controller
                     if(is_null($uploadedFiles)){
                         return response()->json([
                             'status'=> 200,
-                            'message'=>'Notice Updated Successfully.',
+                            'message'=>'Notice updated successfully!',
                             'success'=>true
                             ]);
                     }
@@ -950,7 +950,7 @@ class NoticeController extends Controller
                     }
                         return response()->json([
                             'status'=> 200,
-                            'message'=>'Notice Updated',
+                            'message'=>'Notice updated successfully!',
                             'data' =>$updatesmsnotice,
                             'success'=>true
                             ]);
@@ -988,7 +988,7 @@ class NoticeController extends Controller
                     
                     return response()->json([
                         'status'=> 200,
-                        'message'=>'Sms Deleted Successfully.',
+                        'message'=>'SMS deleted successfully!',
                         'data' =>$deletedRows,
                         'success'=>true
                         ]);  
@@ -1030,7 +1030,7 @@ class NoticeController extends Controller
 
                     return response()->json([
                         'status'=> 200,
-                        'message'=>'Notice Deleted Successfully.',
+                        'message'=>'Notice deleted successfully!',
                         'data' =>$deletedRows,
                         'success'=>true
                         ]);
@@ -1321,7 +1321,7 @@ class NoticeController extends Controller
                     SavePublishSms::dispatch($unq_id,$customClaims);
                     return response()->json([
                         'status'=> 200,
-                        'message'=>'Sms Published Successfully.',
+                        'message'=>'SMS published successfully!',
                         'success'=>true
                         ]);
                 }
@@ -1336,7 +1336,7 @@ class NoticeController extends Controller
                             }
                             return response()->json([
                                 'status'=> 200,
-                                'message'=>'Sms Published Successfully.',
+                                'message'=>'Notice published successfully!',
                                 'success'=>true
                                 ]);
                 }
@@ -1512,7 +1512,7 @@ class NoticeController extends Controller
                     if(is_null($uploadedFiles)){
                         return response()->json([
                             'status'=> 200,
-                            'message'=>'Notice Saved Successfully.',
+                            'message'=>'Notice saved successfully!',
                             'data' => $noticeData,
                             'success'=>true
                             ]);
@@ -1603,7 +1603,7 @@ class NoticeController extends Controller
 
                         return response()->json([
                             'status'=> 200,
-                            'message'=>'Notice Saved Successfully.',
+                            'message'=>'Notice saved successfully!',
                             'data' => $noticeData,
                             'success'=>true
                             ]);
@@ -1686,7 +1686,7 @@ class NoticeController extends Controller
                             PublishNoticeJob::dispatch($unq, $customClaims);
                             return response()->json([
                                 'status'=> 200,
-                                'message'=>'Notice Saved and Published Successfully.',
+                                'message'=>'Notice saved and published successfully!',
                                 'data' => $noticeData,
                                 'success'=>true
                                 ]);
@@ -1775,7 +1775,7 @@ class NoticeController extends Controller
                             PublishNoticeJob::dispatch($unq, $customClaims);
                             return response()->json([
                                 'status'=> 200,
-                                'message'=>'Notice Saved and Published Successfully.',
+                                'message'=>'Notice saved and published successfully!',
                                 'data' => $noticeData,
                                 'success'=>true
                                 ]);
@@ -2762,7 +2762,7 @@ class NoticeController extends Controller
                 if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'){
                     $department_id = $request->input('department_id');
                     if ($department_id == 'N') {
-                        
+
                     $query = DB::select("Select teacher.* from teacher where isDelete<>'Y' and teacher_id not in (select distinct(teacher_id) from subject where teacher_id<>0 and academic_yr='".$customClaims."')");
                      } 
                    elseif ($department_id == 'S') {
@@ -2830,7 +2830,7 @@ class NoticeController extends Controller
 
                      return response()->json([
                         'status'  =>200,
-                        'message' => 'New SMS notice created successfully!',
+                        'message' => 'SMS saved successfully!',
                         'success' => true
                     ]);
 
@@ -2867,11 +2867,15 @@ class NoticeController extends Controller
                                     'teacher.teacher_id',
                                     'department.department_id',
                                     'department.name as dept_name',
-                                    DB::raw('GROUP_CONCAT(teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names')
-                                )
+                                     DB::raw("CASE 
+                                                    WHEN staff_notice.department_id = 'N/S' THEN 'Non teaching staff' 
+                                                    ELSE department.name 
+                                                END as dept_name"),
+                                        DB::raw('GROUP_CONCAT(teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names')
+                                    )
                                 ->join('teacher', 'staff_notice.created_by', '=', 'teacher.teacher_id')
                                 ->join('teacher as teachernames','teachernames.teacher_id','=','staff_notice.teacher_id')
-                                ->join('department', 'staff_notice.department_id', '=', 'department.department_id')
+                                ->leftJoin('department', 'staff_notice.department_id', '=', 'department.department_id')
                                 ->where('staff_notice.academic_yr', $customClaims)
                                 ->when($notice_date !== null && $notice_date !== '', function ($q) use ($notice_date) {
                                     return $q->whereDate('notice_date', $notice_date);
@@ -2941,7 +2945,7 @@ class NoticeController extends Controller
                        return response()->json([
                        'status'=>200,
                        'data'=> $nsmsdata,
-                       'message'=>'Staff short sms saved and published.',
+                       'message'=>'SMS saved and published successfully.',
                        'success'=>true
 
                     ]);
@@ -3046,7 +3050,7 @@ class NoticeController extends Controller
 
                         return response()->json([
                             'status' =>200,
-                            'message' => 'New notice created successfully!',
+                            'message' => 'Notice saved successfully!',
                             'success' =>true
                         ]);
 
@@ -3080,7 +3084,7 @@ class NoticeController extends Controller
                         $notice = DB::table('staff_notice')->where('unq_id',$unq_id)->delete();
                         return response()->json([
                             'status' =>200,
-                            'message' => 'Short SMS deleted successfully!',
+                            'message' => 'SMS deleted successfully!',
                             'success' =>true
                         ]);
                     }
@@ -3114,7 +3118,7 @@ class NoticeController extends Controller
 
                         return response()->json([
                             'status' =>200,
-                            'message' => 'Teacher Notice deleted successfully!',
+                            'message' => 'Notice deleted successfully!',
                             'success' =>true
                         ]);
                     }
@@ -3220,7 +3224,7 @@ class NoticeController extends Controller
 
                         return response()->json([
                             'status' =>200,
-                            'message' => 'New notice created and published successfully!',
+                            'message' => 'Notice saved and published successfully!',
                             'success' =>true
                         ]);
 
@@ -3271,7 +3275,7 @@ class NoticeController extends Controller
                         StaffShortSMSsavePublish::dispatch($unq, $nsmsdata);
                         return response()->json([
                             'status' =>200,
-                            'message' => 'Short sms published successfully!',
+                            'message' => 'SMS published successfully!',
                             'success' =>true
                         ]);
                     }
@@ -3469,7 +3473,7 @@ class NoticeController extends Controller
                     $newsmsdata = DB::table('staff_notice')->where('unq_id',$unq_id)->get();
                     return response()->json([
                         'status'=> 200,
-                        'message'=>'Staff short sms updated.',
+                        'message'=>'SMS updated successfully!',
                         'data' =>$newsmsdata,
                         'success'=>true
                         ]);
@@ -3577,7 +3581,7 @@ class NoticeController extends Controller
                     if(is_null($uploadedFiles)){
                         return response()->json([
                             'status'=> 200,
-                            'message'=>'Notice Updated Successfully.',
+                            'message'=>'Notice updated Successfully!',
                             'success'=>true
                             ]);
                     }
