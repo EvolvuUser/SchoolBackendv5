@@ -627,6 +627,9 @@
         //API for the Staff daily attendance report Dev Name- Manish Kumar Sharma 12-06-2025
         Route::get('get_staffdailyattendancereport',[ReportController::class,'getStaffDailyAttendanceReport']);
 
+        //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
+        Route::get('get_listforleaveapprove',[ReportController::class,'getListForleaveApprove']);
+
 
 
 
