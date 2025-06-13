@@ -186,6 +186,7 @@ class NewController extends Controller
                         'leave_end_date'=>$request->leave_end_date,
                         'no_of_days'=>$request->no_of_days,
                         'approved_by'=>$user->reg_id,
+                        'reason' =>$request->reason,
                         'status'=>'P',
                         'reason_for_rejection'=>$request->approverscomment,
                         'academic_yr'=>$customClaims
