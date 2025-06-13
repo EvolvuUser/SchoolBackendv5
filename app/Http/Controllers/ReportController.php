@@ -1815,6 +1815,46 @@ class ReportController extends Controller
 
     }
 
+    //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
+    public function getListForleaveApprove(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $statuses = ['A', 'H'];
+
+                $leaveApplications = DB::table('leave_application')
+                                        ->whereIn('status', $statuses)
+                                        ->orderBy('leave_app_id', 'DESC')
+                                        ->get()
+                                        ->toArray();
+
+                return response()->json([
+                    'status'=>200,
+                    'message'=>'Leave approve list!',
+                    'data'=>$leaveApplications,
+                    'success'=>true
+                    ]);
+                
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
 
 
 
