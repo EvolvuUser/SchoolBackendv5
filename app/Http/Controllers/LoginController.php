@@ -799,7 +799,7 @@ public function updateCsvData(Request $request, $section_id)
     //dd($header);
     // Define the CSV to database column mapping
     $columnMap = [
-        'student_id' => 'student_id',
+        '    student_id' => 'student_id',
         '*First Name' => 'first_name',
         'Mid name' => 'mid_name',
         'last name' => 'last_name',
