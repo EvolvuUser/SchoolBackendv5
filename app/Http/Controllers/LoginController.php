@@ -799,7 +799,7 @@ public function updateCsvData(Request $request, $section_id)
     //dd($header);
     // Define the CSV to database column mapping
     $columnMap = [
-        '    student_id' => 'student_id',
+        'student_id' => 'student_id',
         '*First Name' => 'first_name',
         'Mid name' => 'mid_name',
         'last name' => 'last_name',
@@ -832,6 +832,7 @@ public function updateCsvData(Request $request, $section_id)
 
     // Prepare an array to store invalid rows for reporting
     $invalidRows = [];
+    $successfulInserts = 0;
 
     // Fetch the class_id using the provided section_id
     $division = Division::find($section_id);
@@ -1080,6 +1081,7 @@ public function updateCsvData(Request $request, $section_id)
 
             // Commit the transaction
             DB::commit();
+            $successfulInserts++;
             $user_id_user_master = DB::table('user_master')->where('role_id','P')->where('reg_id',$parent->parent_id)->first();
             createUserInEvolvu($user_id_user_master->user_id);
         } catch (\Exception $e) {
@@ -1132,6 +1134,13 @@ public function updateCsvData(Request $request, $section_id)
         return response()->json([
             'message' => 'Some rows contained errors.',
             'invalid_rows' => $relativePath,
+        ], 422);
+    }
+
+    if ($successfulInserts === 0) {
+        return response()->json([
+            'message' => 'Students details rows are empty. Please check your CSV.',
+            'success' => false
         ], 422);
     }
 

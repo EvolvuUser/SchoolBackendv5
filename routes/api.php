@@ -629,6 +629,8 @@
 
         //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
         Route::get('get_listforleaveapprove',[ReportController::class,'getListForleaveApprove']);
+        Route::post('update_leaveapprovestatus/{id}',[ReportController::class,'updateLeaveApproveStatus']);
+
 
 
 
