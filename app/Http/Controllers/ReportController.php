@@ -1855,6 +1855,59 @@ class ReportController extends Controller
 
     }
 
+    //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
+    public function updateLeaveApproveStatus(Request $request,$id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $status = $request->status;
+                $approverscomment = $request->approverscomment;
+                DB::table('leave_application')
+                    ->where('leave_app_id', $id)
+                    ->update([
+                           'status'=>$status,
+                           'reason_for_rejection'=>$approverscomment,
+                           'approved_by'=>$user->reg_id
+                    ]);
+                    if($status == 'P'){
+                        $leaveinformation = DB::table('leave_application')
+                                               ->where('leave_app_id', $id)
+                                               ->first();
+
+
+                        DB::table('leave_allocation')
+                            ->where('staff_id', $leaveinformation->staff_id)
+                            ->where('leave_type_id', $leaveinformation->leave_type_id)
+                            ->increment('leaves_availed', $leaveinformation->no_of_days);
+                        
+                    }
+
+                    return response()->json([
+                    'status'=>200,
+                    'message'=>'Leave status changed!',
+                    'data'=>$leaveinformation,
+                    'success'=>true
+                    ]);
+
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+
+    }
+
 
 
 
