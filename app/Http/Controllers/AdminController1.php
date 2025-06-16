@@ -2139,7 +2139,8 @@ public function getStudentListBySection(Request $request)
     $query = Student::with(['parents', 'userMaster', 'getClass', 'getDivision'])
         ->where('academic_yr', $academicYr)
         ->distinct()
-        ->where('student.IsDelete', 'N');
+        ->where('student.IsDelete', 'N')
+        ->where('student.parent_id','!=',0);
 
     if ($sectionId) {
         $query->where('section_id', $sectionId);
@@ -2198,6 +2199,7 @@ public function getStudentListBySectionData(Request $request){
             $student = DB::table('student')
                 ->where('academic_yr',$academicYr)
                 ->where('isDelete','N')
+                ->where('parent_id','!=',0)
                 ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
                 ->get();
         }
@@ -2206,6 +2208,7 @@ public function getStudentListBySectionData(Request $request){
                          ->where('academic_yr',$academicYr)
                          ->where('isDelete','N')
                          ->where('section_id',$sectionId)
+                         ->where('parent_id','!=',0)
                          ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
                          ->get();
         }
@@ -7814,6 +7817,7 @@ public function getholidayList(){
                             ->where('holidaylist.academic_yr', $customClaims)
                             ->select('holidaylist.*', 'user_master.name as created_by_name') // Select the necessary columns
                             ->groupBy('holidaylist.holiday_id')
+                            ->orderBy('holiday_id','Desc')
                             ->get();
     
             
@@ -8039,6 +8043,7 @@ public function updateholidaylistCsv(Request $request){
         'To date(in dd-mm-yyyy format)' => 'to_date'
     ];
     $invalidRows = [];
+    $successfulInserts = 0;
     foreach ($rows as $rowIndex => $row) {
         // Skip empty rows
         if (empty(array_filter($row))) {
@@ -8110,6 +8115,7 @@ public function updateholidaylistCsv(Request $request){
         
                 DB::table('holidaylist')->insert($data);
                 DB::commit();
+                $successfulInserts++;
                  
                 
 
@@ -8146,6 +8152,12 @@ public function updateholidaylistCsv(Request $request){
             return response()->json([
                 'message' => 'Some rows contained errors.',
                 'invalid_rows' => $relativePath,
+            ], 422);
+        }
+        if ($successfulInserts === 0) {
+            return response()->json([
+                'message' => 'No valid holiday records were inserted. Please check your CSV.',
+                'success' => false
             ], 422);
         }
         return response()->json([
