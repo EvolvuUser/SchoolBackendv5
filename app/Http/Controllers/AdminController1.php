@@ -13012,6 +13012,82 @@ public function getCountNonApprovedLessonPlan(Request $request)
       } 
     
     }
+
+
+    //API for the Sending whatsapp messages to late teachers Dev Name- Manish Kumar Sharma 15-06-2025
+    public function sendWhatsappLateComing(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $teacherids = $request->teacher_id;
+                $message = $request->message;
+               
+                foreach($teacherids as $teacherid){
+                    $staffdetails = DB::table('teacher')->where('teacher_id',$teacherid)->first();
+                    $staffphone = $staffdetails->phone;
+                    // dd($staffphone);
+                    $templateName = 'emergency_message';
+                    $parameters =[$message];
+                    Log::info($staffphone);
+                    if($staffphone){
+                        $result = $this->whatsAppService->sendTextMessage(
+                                $staffphone,
+                                $templateName,
+                                $parameters
+                            );
+                            if (isset($result['code']) && isset($result['message'])) {
+                                // Handle rate limit error
+                                Log::warning("Rate limit hit: Too many messages to same user", [
+                                    
+                                ]);
+                        
+                            } else {
+                                // Proceed if no error
+                                $wamid = $result['messages'][0]['id'];
+                                $phone_no = $result['contacts'][0]['input'];
+                                $message_type = 'late_message_for_teacher';
+                        
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id' => $wamid,
+                                    'phone_no' => $phone_no,
+                                    'stu_teacher_id' => $teacherid,
+                                    'message_type' => $message_type,
+                                    'created_at' => now()
+                                ]);
+                            }
+                        
+                    
+                        
+                    }
+                    
+                     
+                    
+                }
+                
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Whatsapp sended successfully.',
+                    'success'=>true
+                        ]);
+                
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+        
+    }
     
 
 }

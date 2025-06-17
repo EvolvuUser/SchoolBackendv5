@@ -631,6 +631,9 @@
         Route::get('get_listforleaveapprove',[ReportController::class,'getListForleaveApprove']);
         Route::post('update_leaveapprovestatus/{id}',[ReportController::class,'updateLeaveApproveStatus']);
 
+        //API for the Sending whatsapp messages to late teachers Dev Name- Manish Kumar Sharma 15-06-2025
+        Route::post('send_whatsapplatecoming',[AdminController::class,'sendWhatsappLateComing']);
+
 
 
 
