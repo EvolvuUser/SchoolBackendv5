@@ -1994,9 +1994,10 @@ class CertificateController extends Controller
                                     ->where('student_id',$studentinfoacademic->student_id)
                                     ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
                                     ->first();
+            $data['studentinformationclass'] = $studentinformation->classname;
 
-                $dob_in_words =  $studentinformation->dob;
-                $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+            $dob_in_words =  $studentinformation->dob;
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
             
                 // Check if the date is valid
                 if ($dateTime === false) {
@@ -2491,6 +2492,7 @@ class CertificateController extends Controller
                                     ->where('student_id',$data['leavingcertificatesingle']->stud_id)
                                     ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
                                     ->first();  
+            $data['studentinformationclass'] = $studentinformation->classname;
             
                 if($studentinformation->classname==11 || $studentinformation->classname==12){
                     $result = DB::table('subjects_higher_secondary_studentwise AS shs')

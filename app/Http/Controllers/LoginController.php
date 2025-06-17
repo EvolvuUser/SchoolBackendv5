@@ -1031,6 +1031,24 @@ public function updateCsvData(Request $request, $section_id)
             $parent = Parents::where('f_mobile', $parentData['f_mobile'])->first();
             if (!$parent) {
                 $parent = Parents::create($parentData);
+                DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?)', [
+                    $student->parent_id,                
+                    $studentData['father_mobile'],
+                    $studentData['father_email'],
+                    $studentData['mother_email']  // sms_consent
+                ]);
+
+                // Insert data into user_master table (skip if already exists)
+                DB::table('user_master')->updateOrInsert(
+                    ['user_id' => $studentData['father_email']],
+                    [
+                        'name' => $studentData['father_name'],
+                        'password' => bcrypt('arnolds'),
+                        'reg_id' => $parent->parent_id,
+                        'role_id' => 'P',
+                        'IsDelete' => 'N',
+                    ]
+                );
             }
 
 
@@ -1060,24 +1078,6 @@ public function updateCsvData(Request $request, $section_id)
             $student->created_by = $user->reg_id;
             $student->save();
             
-             DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid) VALUES (?, ?, ?, ?)', [
-                    $student->parent_id,                
-                    $studentData['father_mobile'],
-                    $studentData['father_email'],
-                    $studentData['mother_email']  // sms_consent
-                ]);
-
-            // Insert data into user_master table (skip if already exists)
-            DB::table('user_master')->updateOrInsert(
-                ['user_id' => $studentData['father_email']],
-                [
-                    'name' => $studentData['father_name'],
-                    'password' => 'arnolds',
-                    'reg_id' => $parent->parent_id,
-                    'role_id' => 'P',
-                    'IsDelete' => 'N',
-                ]
-            );
 
             // Commit the transaction
             DB::commit();

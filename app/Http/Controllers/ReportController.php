@@ -1825,7 +1825,10 @@ class ReportController extends Controller
 
                 $leaveApplications = DB::table('leave_application')
                                         ->whereIn('status', $statuses)
+                                        ->join('teacher','teacher.teacher_id','=','leave_application.staff_id')
+                                        ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
                                         ->orderBy('leave_app_id', 'DESC')
+                                        ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
                                         ->get()
                                         ->toArray();
 
