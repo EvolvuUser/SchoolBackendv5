@@ -630,6 +630,7 @@
         //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
         Route::get('get_listforleaveapprove',[ReportController::class,'getListForleaveApprove']);
         Route::post('update_leaveapprovestatus/{id}',[ReportController::class,'updateLeaveApproveStatus']);
+        Route::get('get_count_of_approveleave',[ReportController::class,'getCountofApproveLeave']);
 
         //API for the Sending whatsapp messages to late teachers Dev Name- Manish Kumar Sharma 15-06-2025
         Route::post('send_whatsapplatecoming',[AdminController::class,'sendWhatsappLateComing']);
@@ -740,6 +741,8 @@ Route::post('save_newpasswordforgot',[AdminController::class,'generateNewPasswor
 Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages']);
 
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
+
+Route::post('whatsapp_messages_for_not_approving_lesson',[ReportController::class,'whatsappmessagesfornotapprovinglessonplan']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

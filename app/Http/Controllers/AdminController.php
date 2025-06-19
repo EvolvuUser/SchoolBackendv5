@@ -1554,6 +1554,8 @@ public function storeStaff(Request $request)
                 // Define the filename and path to store the image
                 $filename = $incrementid . '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
+                $doc_type_folder = 'teacher_image';
+                
 
                 // Ensure the directory exists
                 $directory = dirname($filePath);
@@ -1565,6 +1567,10 @@ public function storeStaff(Request $request)
                 if (file_put_contents($filePath, $imageData) === false) {
                     throw new \Exception('Failed to save image file');
                 }
+
+                $fileContent = file_get_contents($filePath);           // Get the file content
+                $base64File = base64_encode($fileContent); 
+                upload_teacher_profile_image_into_folder($incrementid,$filename,$doc_type_folder,$base64File);
 
                 // Store the filename in validated data
                 $validatedData['teacher_image_name'] = $filename;
@@ -1585,9 +1591,31 @@ public function storeStaff(Request $request)
             ], 500);
         }
 
+        $firstname = explode(' ', trim($validatedData['name']))[0];
+        Log::info("First Name", ['value' => $firstname]);
+        $user_id = strtolower($firstname . "@arnolds");
+        Log::info("First Name userid", ['value' => $user_id]);
+        $checkuserid = DB::table('user_master')
+                            ->where('user_id',$user_id)
+                            ->exists();
+        if($checkuserid == true){
+            $user_id = strtolower(str_replace(' ', '', $validatedData['name']) . "@arnolds");
+            $checkuseridforfullname =  DB::table('user_master')
+                                            ->where('user_id',$user_id)
+                                            ->exists();
+                                            if($checkuseridforfullname == true){
+                                                 return response()->json([
+                                                    'status' =>400,
+                                                    'message' => 'Userid is created using staff name, please use a different name to create user id.',
+                                                    'success'=>false
+                                                ]);
+                                                
+                                            }
+            Log::info("Full name userid", ['value' => $user_id]);
+        }
         // Create User record
         $user = UserMaster::create([
-            'user_id' => $validatedData['email'],
+            'user_id' => $user_id,
             'name' => $validatedData['name'],
             'password' => Hash::make('arnolds'),
             'reg_id' => $teacher->teacher_id,
@@ -1605,19 +1633,16 @@ public function storeStaff(Request $request)
         }
 
         // Send welcome email
-        // Mail::to($validatedData['email'])->send(new WelcomeEmail($user->email, 'arnolds'));
+        Mail::to($validatedData['email'])->send(new WelcomeEmail($user_id, 'arnolds'));
 
         // Call external API
         $response = createStaffUser($user->user_id, $validatedData['role']);
 
         if ($response->successful()) {
             DB::commit(); // Commit the transaction
-            $doc_type_folder = 'teacher_image';
-            $fileContent = file_get_contents($filePath);           // Get the file content
-            $base64File = base64_encode($fileContent); 
-            upload_teacher_profile_image_into_folder($incrementid,$filename,$doc_type_folder,$base64File);
+            
             return response()->json([
-                'message' => 'Teacher and user created successfully!',
+                'message' => 'Staff created. Your user id is '.$user_id.' and password is arnolds.',
                 'teacher' => $teacher,
                 'user' => $user,
                 'external_api_response' => $response->json(),
@@ -1830,9 +1855,12 @@ if ($request->has('teacher_image_name')) {
         // Update user associated with the teacher
         $user = User::where('reg_id', $teacher->teacher_id)->first();
         if($user){
-            $user->name = $validatedData['name'];
-            $user->user_id = $validatedData['email'];
-            $user->save();
+            DB::table('user_master')
+                ->where('reg_id', $teacher->teacher_id)
+                ->whereNotIn('role_id', ['S', 'P', 'M'])
+                ->update([
+                    'name' =>$validatedData['name']
+                ]);
         }
 
         // if ($user) {
@@ -1898,8 +1926,10 @@ public function deleteStaff($id)
             
             $deletestaff = delete_staff_user_id($user_id, $role);
             if ($user) {
-                $user->IsDelete = 'Y';
-                $user->save();
+                DB::table('user_master')
+                    ->where('reg_id', $id)
+                    ->whereNotIn('role_id', ['S', 'P'])
+                    ->delete();
             }
 
             return response()->json([
@@ -5650,7 +5680,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             'm_adhar_no' => 'nullable|string|max:14',
         
             // Preferences for SMS and email as username
-            'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
+            'SetToReceiveSMS' => 'nullable|string',
             'SetEmailIDAsUsername' => 'nullable|string',
             // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
         ]);
@@ -5777,6 +5807,9 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                         if (file_put_contents($filePath, $newImageData) === false) {
                             throw new \Exception('Failed to save image file');
                         }
+                        $fileContent = file_get_contents($filePath);           // Get the file content
+                        $base64File = base64_encode($fileContent); 
+                        upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
         
                         // Update the validated data with the new filename
                         $validatedData['image_name'] = $filename;
@@ -5788,7 +5821,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     $validatedData['image_name'] = $student->image_name;
                 }
             }
-                    }
+        }
         //Log::info("Message 2 {$validatedData['isModify']} ");
         // Handle student image if provided
         // if ($request->hasFile('student_image')) {
@@ -5897,46 +5930,48 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                 
                 Log::info("Message 6 parentId: {$parentId} "); 
                 
-                $user = new UserMaster();
-                $user->user_id = $validatedData['f_email'];
-                $user->name = $validatedData['father_name'];
-                $user->password = bcrypt('arnolds'); 
-                $user->reg_id = $parentId;
-                $user->role_id = 'P';
-                $user->save();
                 
                 
-                $user = UserMaster::where('reg_id', $parentId)->where('role_id','P')->first();
+                
+                // $user = UserMaster::where('reg_id', $parentId)->where('role_id','P')->first();
                 Log::info("Student information updated for parent ID: {$parentId}");
 
                 // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
 
-                if ($user) {
+                
                     switch ($request->SetEmailIDAsUsername) {
                         case 'Father':
-                            $user->user_id = $parent->f_email; 
+                            $user_id = $parent->f_email; 
                             break;
                     
                         case 'Mother':
-                            $user->user_id = $parent->m_emailid; 
+                            $user_id = $parent->m_emailid; 
                             break;
                     
                         case 'FatherMob':
-                            $user->user_id = $parent->f_mobile; 
+                            $user_id = $parent->f_mobile; 
                             break;
                     
                         case 'MotherMob':
-                            $user->user_id = $parent->m_mobile;
+                            $user_id = $parent->m_mobile;
                             break;
                     
                         default:
-                            $user->user_id = $request->SetEmailIDAsUsername; // If the value is anything else
+                            $user_id = $request->SetEmailIDAsUsername; // If the value is anything else
                             break;
                     }
+                   
+                    $user = new UserMaster();
+                    $user->user_id = $user_id;
+                    $user->name = $validatedData['father_name'];
+                    $user->password = bcrypt('arnolds'); 
+                    $user->reg_id = $parentId;
+                    $user->role_id = 'P';
+                    $user->save();
                     createUserInEvolvu($user->user_id);
                     if($studentAcademicYr == get_active_academic_year()){
                     $templateName = 'send_user_id';
-                    $parameters =[$validatedData['first_name'],$user->user_id];
+                    $parameters =[$validatedData['first_name'],$user_id];
                 
                     $result = $this->whatsAppService->sendTextMessage(
                         $phoneNo,
@@ -5949,17 +5984,16 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                                 $validatedData['m_emailid'] ?? null,
                             ]);
                             
-                            $messageemail = "Dear Parent,Welcome to St.Arnold's Central School's online application.'".$validatedData['first_name']."' is registered in the application. Your user id is ".$user->user_id." and password is arnolds.The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at https://sms.arnoldcentralschool.org .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards,SACS Support";
+                            $messageemail = "Dear Parent,Welcome to St.Arnold's Central School's online application.'".$validatedData['first_name']."' is registered in the application. Your user id is ".$user_id." and password is arnolds.The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at https://sms.arnoldcentralschool.org .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards,SACS Support";
                             Mail::raw($messageemail, function ($mail) use ($recipients) {
                                 $mail->to($recipients)
                                      ->subject("SACS-Login Details");
                             });
                     }
-                    $user->save();
                     
                     Log::info("User Data saved in if");
                     
-                }
+                
         }else{
             Log::info("Parent Id: {$parentId}");
             // Update parent details if provided
@@ -6079,7 +6113,7 @@ SACS Support";
         $student->update($validatedData);
         $student->updated_by = $user->reg_id;
         $student->save();
-        $user_id = "S" . str_pad($param2, 4, "0", STR_PAD_LEFT);
+        $user_id = "S" . str_pad($studentId, 4, "0", STR_PAD_LEFT);
 
         DB::table('user_master')->insert([
             'user_id' => $user_id,
@@ -6088,9 +6122,7 @@ SACS Support";
             'reg_id' => $studentId,
             'role_id' => 'S',
         ]);
-        $fileContent = file_get_contents($filePath);           // Get the file content
-        $base64File = base64_encode($fileContent); 
-        upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$base64File);
+        
         Log::info("Finally Student information updated for student ID: {$studentId}");
 
         return response()->json(['success' => 'Student and parent information updated successfully']);
@@ -12745,16 +12777,70 @@ public function getAbsentStudentForToday(Request $request){
       } 
     
 }
+
 //API for the Absent Teacher  Dev Name- Manish Kumar Sharma 19-05-2025
 public function getAbsentTeacherForToday(Request $request){
     try{       
       $user = $this->authenticateUser();
       $customClaims = JWTAuth::getPayload()->get('academic_year');
       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-          $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '2025-01-31' JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE ta.employee_id IS NULL AND t.isDelete = 'N' AND u.role_id IN ('T', 'L');");
+          $date = $request->input('date');
+        //   dd($date);
+          
+          $presentlate = DB::select("SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_in,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out, lt.late_time ,'N' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
+            t.isDelete = 'N' AND u.role_id IN ('T', 'L') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')<= lt.late_time 
+            UNION
+            SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out,lt.late_time , 'Y' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
+            t.isDelete = 'N' AND u.role_id IN ('T', 'L') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')> lt.late_time;");
+            // dd($presentlate);
+            
+            foreach ($presentlate as $entry) {
+                $classSections = DB::table('subject')
+                                ->join('class', 'class.class_id', '=', 'subject.class_id')
+                                ->join('section', 'section.section_id', '=', 'subject.section_id')
+                                ->where('subject.academic_yr', $customClaims)
+                                ->where('subject.teacher_id',$entry->teacher_id)
+                                ->select(
+                                    'subject.class_id','subject.section_id',
+                                    DB::raw("CONCAT(class.name, '-', section.name) as class_section")
+                                )
+                                ->distinct()
+                                ->pluck('class_section');
+                
+            
+                        if ($classSections->isNotEmpty()) {
+                            $entry->class_section = implode(', ', $classSections->toArray());
+                        } else {
+                            $entry->class_section = '';
+                        }
+            }
+
+          $absentstaff = DB::select("SELECT t.teacher_id, t.name, t.phone, 'Leave applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id WHERE t.isDelete = 'N' AND u.role_id IN ('T', 'L') and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') UNION
+SELECT t.teacher_id, t.name, t.phone, 'Leave not applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE t.isDelete = 'N' AND u.role_id IN ('T', 'L') and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P');");
+       foreach ($absentstaff as $entryabsent) {
+                $classSectionsabsent = DB::table('subject')
+                                ->join('class', 'class.class_id', '=', 'subject.class_id')
+                                ->join('section', 'section.section_id', '=', 'subject.section_id')
+                                ->where('subject.academic_yr', $customClaims)
+                                ->where('subject.teacher_id',$entryabsent->teacher_id)
+                                ->select(
+                                    'subject.class_id','subject.section_id',
+                                    DB::raw("CONCAT(class.name, '-', section.name) as class_section")
+                                )
+                                ->distinct()
+                                ->pluck('class_section');
+                
+            
+                        if ($classSectionsabsent->isNotEmpty()) {
+                            $entryabsent->class_section = implode(', ', $classSectionsabsent->toArray());
+                        } else {
+                            $entryabsent->class_section = '';
+                        }
+            }
           
           $lateabsent = [
-               'absent_staff'=>$absentstaff
+               'absent_staff'=>$absentstaff,
+               'present_late'=>$presentlate
                
               ];
           
@@ -12790,12 +12876,24 @@ public function getAbsentnonTeacherForToday(Request $request){
       $user = $this->authenticateUser();
       $customClaims = JWTAuth::getPayload()->get('academic_year');
       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-            $only_date = Carbon::today()->toDateString();
-            $nonteacherabsent = DB::select("SELECT t.* FROM teacher AS t join user_master u WHERE t.teacher_id=u.reg_id and u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and t.employee_id NOT IN (select employee_id from teacher_attendance where DATE(punch_time) = $only_date ) AND t.isDelete = 'N';");
+            $date = $request->input('date');  
+            $nonteacherpresent = DB::select("SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out, lt.late_time ,'N' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
+t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')<= lt.late_time 
+UNION
+SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out,lt.late_time , 'Y' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
+t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')> lt.late_time;");
+
+
+            $nonteacherabsent = DB::select("SELECT t.teacher_id, t.name,t.designation, t.phone, 'Leave applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') UNION
+SELECT t.teacher_id, t.name, t.designation, t.phone, 'Leave not applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P');");
             // dd($nonteacherabsent);
+            $nonteacher = [
+                'nonteacher_present'=>$nonteacherpresent,
+                'nonteacher_absent'=>$nonteacherabsent
+                ];
             return response()->json([
                         'status' =>200,
-                        'data'=>$nonteacherabsent,
+                        'data'=>$nonteacher,
                         'message' => 'Absent non teachers.',
                         'success'=>true
                         
@@ -12917,10 +13015,10 @@ public function getCountNonApprovedLessonPlan(Request $request)
                
                 foreach($teacherids as $teacherid){
                     $staffdetails = DB::table('teacher')->where('teacher_id',$teacherid)->first();
-                    $staffphone = $staffdetails->phone;
+                    $staffphone = $staffdetails->phone ?? null;
                     // dd($staffphone);
                     $templateName = 'emergency_message';
-                    $parameters =[$message];
+                    $parameters =[ucwords(strtolower($staffdetails->name)).",".$message];
                     Log::info($staffphone);
                     if($staffphone){
                         $result = $this->whatsAppService->sendTextMessage(

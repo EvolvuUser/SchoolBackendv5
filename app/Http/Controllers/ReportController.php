@@ -6,10 +6,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use App\Http\Services\WhatsAppService;
 
 
 class ReportController extends Controller
 {
+    protected $whatsAppService;
+
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
     //Reports Dev Name - Manish Kumar Sharma 01-03-2025
      public function getClassofNewStudent(Request $request){
         try{
@@ -1870,13 +1878,19 @@ class ReportController extends Controller
                     ->where('leave_app_id', $id)
                     ->update([
                            'status'=>$status,
-                           'reason_for_rejection'=>$approverscomment,
-                           'approved_by'=>$user->reg_id
+                           'reason_for_rejection'=>$approverscomment
                     ]);
                     if($status == 'P'){
                         $leaveinformation = DB::table('leave_application')
                                                ->where('leave_app_id', $id)
                                                ->first();
+                     DB::table('leave_application')
+                            ->where('leave_app_id', $id)
+                            ->update([
+                                   'status'=>$status,
+                                   'reason_for_rejection'=>$approverscomment,
+                                   'approved_by'=>$user->reg_id
+                            ]);
 
 
                         DB::table('leave_allocation')
@@ -1889,7 +1903,6 @@ class ReportController extends Controller
                     return response()->json([
                     'status'=>200,
                     'message'=>'Leave status changed!',
-                    'data'=>$leaveinformation,
                     'success'=>true
                     ]);
 
@@ -1909,6 +1922,108 @@ class ReportController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
             }
 
+    }
+
+    //API for the Approve leave Dev Name- Manish Kumar Sharma 13-06-2025
+    public function getCountofApproveLeave(Request $request){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                $statuses = ['A', 'H'];
+
+                $leaveApplications = DB::table('leave_application')
+                                        ->whereIn('status', $statuses)
+                                        ->join('teacher','teacher.teacher_id','=','leave_application.staff_id')
+                                        ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
+                                        ->orderBy('leave_app_id', 'DESC')
+                                        ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
+                                        ->get()
+                                        ->toArray();
+                $leaveapplication = count($leaveApplications);
+
+                return response()->json([
+                    'status'=>200,
+                    'message'=>'Leave approve count!',
+                    'data'=>$leaveapplication,
+                    'success'=>true
+                    ]);
+                
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+        
+    }
+
+    public function whatsappmessagesfornotapprovinglessonplan(Request $request){
+        ini_set('max_execution_time', 3600);
+        $academicYear = DB::table('settings')->where('active','Y')->value('academic_yr');
+        $nextMonday = Carbon::now()->next(Carbon::MONDAY)->format('d-m-Y');
+         
+         $lessonplanteachers = DB::select("SELECT group_concat(' ',c.name ,' ', sc.name,' ', sm.name), s.teacher_id, t.name, t.phone FROM subject s, teacher t, class c, section sc, subject_master sm WHERE s.teacher_id=t.teacher_id and s.class_id=c.class_id and s.section_id=sc.section_id and s.sm_id=sm.sm_id and s.academic_yr='$academicYear' and concat(s.class_id, s.section_id, s.sm_id, s.teacher_id) not in (select concat(class_id, section_id, subject_id, reg_id) from lesson_plan where SUBSTRING_INDEX(week_date,' /',1)='$nextMonday') and s.sm_id not in (select sm_id from subjects_excluded_from_curriculum) group by s.teacher_id;");
+        //  dd($lessonplanteachers);
+         print_r($lessonplanteachers);
+        //  dd("Hello");
+         foreach($lessonplanteachers as $lessonplanteacher){
+             $teacherid = $lessonplanteacher->teacher_id ?? null;
+             $pendingclasses = $lessonplanteacher->pending_classes ?? null;
+             $teachername = $lessonplanteacher->name ?? null;
+             $phoneno = $lessonplanteacher->phone ?? null;
+             $message = ucwords(strtolower($teachername)).", your lesson plan for ".$pendingclasses." is pending for the next week";
+            //  dd($message);
+             $templateName = 'emergency_message';
+                    $parameters =[$message];
+                    Log::info($phoneno);
+                    if($phoneno){
+                        $result = $this->whatsAppService->sendTextMessage(
+                                $phoneno,
+                                $templateName,
+                                $parameters
+                            );
+                            if (isset($result['code']) && isset($result['message'])) {
+                                // Handle rate limit error
+                                Log::warning("Rate limit hit: Too many messages to same user", [
+                                    
+                                ]);
+                        
+                            } else {
+                                // Proceed if no error
+                                $wamid = $result['messages'][0]['id'];
+                                $phone_no = $result['contacts'][0]['input'];
+                                $message_type = 'pending_lesson_message_for_teacher';
+                        
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id' => $wamid,
+                                    'phone_no' => $phone_no,
+                                    'stu_teacher_id' => $teacherid,
+                                    'message_type' => $message_type,
+                                    'created_at' => now()
+                                ]);
+                            }
+                    }
+             
+            //  dd($pendingclasses);
+         }
+         
+         return response()->json([
+                    'status'=>200,
+                    'message'=>'Whatsapp messages for the pending lesson plan sended successfully.!',
+                    'data'=>$lessonplanteachers,
+                    'success'=>true
+                    ]);
+        
     }
 
 
