@@ -82,7 +82,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->only('user_id', 'password');
-        // $remember_me = $request->rememberme;
+        $remember_me = $request->rememberme;
 
         try {
             
@@ -103,14 +103,14 @@ class AuthController extends Controller
                    ]);
                 }
 
-                // if ($remember_me == 'true') {
-                //     // e.g. 1 week in minutes
-                //     JWTAuth::factory()->setTTL(60 * 24 * 7);
-                // } else {
-                //     // Default e.g. 1 hour
-                //     // dd("Hello from else");
-                //     JWTAuth::factory()->setTTL(1);
-                // }
+                if ($remember_me == 'true') {
+                    // e.g. 1 week in minutes
+                    JWTAuth::factory()->setTTL(60 * 24 * 7);
+                } else {
+                    // Default e.g. 1 hour
+                    // dd("Hello from else");
+                    JWTAuth::factory()->setTTL( 60 * 24 );
+                }
             if (!$user) {
 
                 Log::warning('Username is not valid:', $credentials);
