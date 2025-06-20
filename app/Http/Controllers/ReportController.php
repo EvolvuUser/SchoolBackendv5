@@ -1837,6 +1837,7 @@ class ReportController extends Controller
                                         ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
                                         ->orderBy('leave_app_id', 'DESC')
                                         ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
+                                        ->where('leave_application.academic_yr',$customClaims)
                                         ->get()
                                         ->toArray();
 
@@ -1938,6 +1939,7 @@ class ReportController extends Controller
                                         ->join('leave_type_master','leave_type_master.leave_type_id','=','leave_application.leave_type_id')
                                         ->orderBy('leave_app_id', 'DESC')
                                         ->select('leave_application.*','teacher.name as teachername','leave_type_master.name as leavetypename')
+                                        ->where('leave_application.academic_yr',$customClaims)
                                         ->get()
                                         ->toArray();
                 $leaveapplication = count($leaveApplications);
@@ -1972,16 +1974,19 @@ class ReportController extends Controller
         $academicYear = DB::table('settings')->where('active','Y')->value('academic_yr');
         $nextMonday = Carbon::now()->next(Carbon::MONDAY)->format('d-m-Y');
          
-         $lessonplanteachers = DB::select("SELECT group_concat(' ',c.name ,' ', sc.name,' ', sm.name), s.teacher_id, t.name, t.phone FROM subject s, teacher t, class c, section sc, subject_master sm WHERE s.teacher_id=t.teacher_id and s.class_id=c.class_id and s.section_id=sc.section_id and s.sm_id=sm.sm_id and s.academic_yr='$academicYear' and concat(s.class_id, s.section_id, s.sm_id, s.teacher_id) not in (select concat(class_id, section_id, subject_id, reg_id) from lesson_plan where SUBSTRING_INDEX(week_date,' /',1)='$nextMonday') and s.sm_id not in (select sm_id from subjects_excluded_from_curriculum) group by s.teacher_id;");
+         $lessonplanteachers = DB::select("SELECT group_concat(' ',c.name ,' ', sc.name,' ', sm.name) as pending_classes, s.teacher_id, t.name, t.phone FROM subject s, teacher t, class c, section sc, subject_master sm WHERE s.teacher_id=t.teacher_id AND t.isDelete = 'N' and s.class_id=c.class_id and s.section_id=sc.section_id and s.sm_id=sm.sm_id and s.academic_yr='$academicYear' and concat(s.class_id, s.section_id, s.sm_id, s.teacher_id) not in (select concat(class_id, section_id, subject_id, reg_id) from lesson_plan where SUBSTRING_INDEX(week_date,' /',1)='$nextMonday') and s.sm_id not in (select sm_id from subjects_excluded_from_curriculum) group by s.teacher_id;");
         //  dd($lessonplanteachers);
-         print_r($lessonplanteachers);
         //  dd("Hello");
          foreach($lessonplanteachers as $lessonplanteacher){
              $teacherid = $lessonplanteacher->teacher_id ?? null;
              $pendingclasses = $lessonplanteacher->pending_classes ?? null;
              $teachername = $lessonplanteacher->name ?? null;
              $phoneno = $lessonplanteacher->phone ?? null;
-             $message = ucwords(strtolower($teachername)).", your lesson plan for ".$pendingclasses." is pending for the next week";
+             $parts = explode(' ', trim($teachername));
+            $firstname = $parts[0] ?? '';
+            $lastname = $parts[count($parts) - 1] ?? '';
+             $message = ucwords(strtolower($firstname . ' ' . $lastname)).", your lesson plan for".$pendingclasses." is pending for the next week";
+             Log::info("WhatsApp lesson plan message: " . $message);
             //  dd($message);
              $templateName = 'emergency_message';
                     $parameters =[$message];
