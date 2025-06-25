@@ -4856,6 +4856,7 @@ public function getAllNewStudentListForRegister(Request $request){
     $studentList = Student::with('getClass', 'getDivision')
                             ->where('parent_id','0')
                             ->where('IsDelete','N')
+                            ->where('isNew','Y')
                             ->where('academic_yr',$customClaims)
                             ->distinct()
                             ->get();
@@ -8981,6 +8982,244 @@ public function getTeacherIdCard(Request $request){
         return implode('/', (array)$subjects);
     }
     //Timetable Dev Name - Manish Kumar Sharma 27-02-2025
+    // public function viewclassTimetable(Request $request,$class_id,$section_id){
+    //     try{
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+    //               $timetables = DB::table('timetable')
+    //                                 ->where('class_id', $class_id)
+    //                                 ->where('section_id', $section_id)
+    //                                 ->where('academic_yr', $customClaims)
+    //                                 ->orderBy('t_id')
+    //                                 ->get();
+                    
+                                           
+    //                 if(count($timetables)==0){
+                        
+    //                     return response()->json([
+    //                         'status'=> 400,
+    //                         'message'=>'Timetable is not created for this class.',
+    //                         'success'=>false
+    //                         ]);
+            
+    //                 }
+    //             //   dd($timetable);
+    //              // Initialize an array to hold data for each day
+    //         $monday = [];
+    //         $tuesday = [];
+    //         $wednesday = [];
+    //         $thursday = [];
+    //         $friday = [];
+    //         $saturday = [];
+
+    //         // Iterate over the timetables and separate them by day
+    //         foreach ($timetables as $timetable) {
+    //             // For Monday
+    //             if ($timetable->monday) {
+    //                 $subjectIdmonday = null;
+    //                 $teacherIdmonday = null;
+                    
+    //                 if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
+    //                 list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+    //                 }
+    //                 $monday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
+    //                 ];
+    //             }
+    //             if (empty($timetable->monday)) {
+                    
+    //                 $monday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+
+    //             // For Tuesday
+    //             if ($timetable->tuesday) {
+    //                 $subjectIdtuesday = null;
+    //                 $teacherIdtuesday = null;
+                    
+    //                 if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
+    //                 list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+    //                 }
+    //                 $tuesday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
+    //                 ];
+    //             }
+    //             if (empty($timetable->tuesday)) {
+                    
+    //                 $tuesday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+
+    //             // For Wednesday
+    //             if ($timetable->wednesday) {
+    //                 $subjectIdwednesday = null;
+    //                 $teacherIdwednesday = null;
+                    
+    //                 if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
+    //                 list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+    //                 }
+    //                 $wednesday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
+    //                 ];
+    //             }
+                
+    //             if (empty($timetable->wednesday)) {
+                    
+    //                 $wednesday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+
+    //             // For Thursday
+    //             if ($timetable->thursday) {
+    //                 $subjectIdthursday = null;
+    //                 $teacherIdthursday = null;
+                    
+    //                 if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
+    //                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+    //                 }
+    //                 $thursday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
+    //                 ];
+    //             }
+                
+    //             if (empty($timetable->thursday)) {
+                    
+    //                 $thursday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+
+    //             // For Friday
+    //             if ($timetable->friday) {
+    //                 $subjectIdfriday = null;
+    //                 $teacherIdfriday = null;
+                    
+    //                 if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
+    //                 list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+    //                 }
+    //                 $friday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
+    //                 ];
+    //             }
+                
+    //             if (empty($timetable->friday)) {
+                    
+    //                 $friday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+
+    //             // For Saturday
+    //             if ($timetable->saturday) {
+    //                 $subjectIdsaturday = null;
+    //                 $teacherIdsaturday = null;
+                    
+    //                 if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
+    //                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+    //                 }
+    //                 $saturday[] = [
+    //                     'time_in' => $timetable->sat_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->sat_out,
+    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
+    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
+    //                 ];
+    //             }
+    //             $saturdayperiodcount = DB::table('classwise_period_allocation')
+    //                                       ->where('academic_yr',$customClaims)
+    //                                       ->where('section_id',$section_id)
+    //                                       ->where('class_id',$class_id)
+    //                                       ->select('sat')
+    //                                       ->first();
+                
+    //             if (is_null($timetable->saturday)&&$timetable->period_no<=$saturdayperiodcount->sat) {
+                    
+    //                 $saturday[] = [
+    //                     'time_in' => $timetable->time_in,
+    //                     'period_no'=>$timetable->period_no,
+    //                     'time_out' => $timetable->time_out,
+    //                     'subject' => null,
+    //                     'teacher' => null,
+    //                 ];
+    //             }
+    //         }
+    //         $weeklySchedule = [
+    //             'Monday' => $monday,
+    //             'Tuesday' => $tuesday,
+    //             'Wednesday' => $wednesday,
+    //             'Thursday' => $thursday,
+    //             'Friday' => $friday,
+    //             'Saturday' => $saturday,
+    //         ];
+            
+    //               return response()->json([
+    //                 'status' =>200,
+    //                 'data'=>$weeklySchedule,
+    //                 'message' => 'View Timetable!',
+    //                 'success'=>true
+    //             ]);
+
+    //         }
+    //         else{
+    //             return response()->json([
+    //                 'status'=> 401,
+    //                 'message'=>'This User Doesnot have Permission for the Deleting of Data',
+    //                 'data' =>$user->role_id,
+    //                 'success'=>false
+    //                     ]);
+    //             }
+    
+    //         }
+    //         catch (Exception $e) {
+    //         \Log::error($e); 
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //         } 
+
+    // }
     public function viewclassTimetable(Request $request,$class_id,$section_id){
         try{
             $user = $this->authenticateUser();
@@ -9016,18 +9255,31 @@ public function getTeacherIdCard(Request $request){
             foreach ($timetables as $timetable) {
                 // For Monday
                 if ($timetable->monday) {
-                    $subjectIdmonday = null;
-                    $teacherIdmonday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
-                    list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $monday[] = [
                         'time_in' => $timetable->time_in,
-                        'period_no'=>$timetable->period_no,
+                        'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 if (empty($timetable->monday)) {
@@ -9043,18 +9295,31 @@ public function getTeacherIdCard(Request $request){
 
                 // For Tuesday
                 if ($timetable->tuesday) {
-                    $subjectIdtuesday = null;
-                    $teacherIdtuesday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
-                    list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $tuesday[] = [
                         'time_in' => $timetable->time_in,
-                        'period_no'=>$timetable->period_no,
+                        'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 if (empty($timetable->tuesday)) {
@@ -9070,18 +9335,31 @@ public function getTeacherIdCard(Request $request){
 
                 // For Wednesday
                 if ($timetable->wednesday) {
-                    $subjectIdwednesday = null;
-                    $teacherIdwednesday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
-                    list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $wednesday[] = [
                         'time_in' => $timetable->time_in,
-                        'period_no'=>$timetable->period_no,
+                        'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 
@@ -9098,18 +9376,31 @@ public function getTeacherIdCard(Request $request){
 
                 // For Thursday
                 if ($timetable->thursday) {
-                    $subjectIdthursday = null;
-                    $teacherIdthursday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
-                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $thursday[] = [
                         'time_in' => $timetable->time_in,
-                        'period_no'=>$timetable->period_no,
+                        'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 
@@ -9126,18 +9417,31 @@ public function getTeacherIdCard(Request $request){
 
                 // For Friday
                 if ($timetable->friday) {
-                    $subjectIdfriday = null;
-                    $teacherIdfriday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
-                    list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $friday[] = [
                         'time_in' => $timetable->time_in,
-                        'period_no'=>$timetable->period_no,
+                        'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 
@@ -9154,18 +9458,31 @@ public function getTeacherIdCard(Request $request){
 
                 // For Saturday
                 if ($timetable->saturday) {
-                    $subjectIdsaturday = null;
-                    $teacherIdsaturday = null;
+                    $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
-                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
+                    
                     $saturday[] = [
-                        'time_in' => $timetable->sat_in,
-                        'period_no'=>$timetable->period_no,
-                        'time_out' => $timetable->sat_out,
-                        'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
-                        'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
                     ];
                 }
                 $saturdayperiodcount = DB::table('classwise_period_allocation')
@@ -9260,6 +9577,23 @@ public function getTeacherIdCard(Request $request){
                 ->get();
             //    dd($teachers);
             return $teachers;
+        }
+
+        public function getTeacherByTeacherIddd( $teacher_id)
+        {
+            // dd($class_id,$section_id,$subname);
+            $teacher = DB::table('teacher')
+                        ->select('name')
+                        ->where('teacher_id', $teacher_id)
+                        ->first();
+                
+                    if ($teacher && !empty($teacher->name)) {
+                        // Extract first word (first name) and convert to CamelCase
+                        $firstName = explode(' ', trim($teacher->name))[0];
+                        return ucfirst(strtolower($firstName));
+                    }
+                
+                    return null;
         }
         
         public function getSubjectnameBySubjectId( $subject_id)
@@ -10586,7 +10920,265 @@ public function getTeacherIdCard(Request $request){
         }
 
          //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025
-         public function getTimetableByClassSection($class_id,$section_id){
+    //      public function getTimetableByClassSection($class_id,$section_id){
+    //         try{       
+    //            $user = $this->authenticateUser();
+    //            $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+    //                $timetables = DB::table('timetable')
+    //                                ->where('class_id', $class_id)
+    //                                ->where('section_id', $section_id)
+    //                                ->where('academic_yr', $customClaims)
+    //                                ->orderBy('t_id')
+    //                                ->get();
+                   
+                                          
+    //                if(count($timetables)==0){
+                       
+    //                    $monday = [];
+    //                    $tuesday = [];
+    //                    $wednesday = [];
+    //                    $thursday = [];
+    //                    $friday = [];
+    //                    $saturday = [];
+    //                    $classwiseperiod = DB::table('classwise_period_allocation')
+    //                                          ->where('class_id',$class_id)
+    //                                          ->where('section_id',$section_id)
+    //                                          ->where('academic_yr',$customClaims)
+    //                                          ->first();
+                                             
+    //                                          if($classwiseperiod === null){
+    //                                              return response()->json([
+    //                                                'status' =>400,
+    //                                                'message' => 'Classwise Period Allocation is not done.',
+    //                                                'success'=>false
+    //                                            ]);
+    //                                          }
+                                                 
+                                             
+    //                    $monfrilectures = $classwiseperiod->{'mon-fri'};
+    //                    for($i=1;$i<=$monfrilectures;$i++){
+    //                        $monday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+    //                        $tuesday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i ,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+    //                        $wednesday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i ,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+    //                        $thursday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i ,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+    //                        $friday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+                           
+    //                    }
+    //                    $satlectures=$classwiseperiod->sat;
+    //                    for($i=1;$i<=$satlectures;$i++){
+    //                        $saturday[] = [
+    //                            'time_in' => null,
+    //                            'period_no'=>$i,
+    //                            'time_out' => null,
+    //                            'subject' => null,
+    //                            'teacher' => null,
+    //                        ];
+                           
+    //                    }
+                       
+                       
+                       
+    //                    $weeklySchedule = [
+    //                         'mon_fri'=>$monfrilectures,
+    //                         'sat'=>$satlectures,
+    //                        'Monday' => $monday,
+    //                        'Tuesday' => $tuesday,
+    //                        'Wednesday' => $wednesday,
+    //                        'Thursday' => $thursday,
+    //                        'Friday' => $friday,
+    //                        'Saturday' => $saturday,
+    //                    ];
+                       
+                                             
+                                       
+                       
+    //                   return response()->json([
+    //                        'status' =>200,
+    //                        'data'=>$weeklySchedule,
+    //                        'message' => 'View Timetable!',
+    //                        'success'=>true
+    //                    ]);
+           
+    //                }
+    //        $monday = [];
+    //        $tuesday = [];
+    //        $wednesday = [];
+    //        $thursday = [];
+    //        $friday = [];
+    //        $saturday = [];
+
+    //        foreach ($timetables as $timetable) {
+    //            if ($timetable->monday) {
+    //                $subjectIdmonday = null;
+    //                 $teacherIdmonday = null;
+                    
+    //                 if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
+    //                 list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+    //                 }
+    //                $monday[] = [
+    //                    'time_in' => $timetable->time_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->time_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
+    //                ];
+    //            }
+
+    //            if ($timetable->tuesday) {
+    //                $subjectIdtuesday = null;
+    //                 $teacherIdtuesday = null;
+                    
+    //                 if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
+    //                 list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+    //                 }
+    //                $tuesday[] = [
+    //                    'time_in' => $timetable->time_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->time_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
+    //                ];
+    //            }
+
+    //            if ($timetable->wednesday) {
+    //                $subjectIdwednesday = null;
+    //                 $teacherIdwednesday = null;
+                    
+    //                 if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
+    //                 list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+    //                 }
+    //                $wednesday[] = [
+    //                    'time_in' => $timetable->time_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->time_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
+    //                ];
+    //            }
+
+    //            if ($timetable->thursday) {
+    //                $subjectIdthursday = null;
+    //                 $teacherIdthursday = null;
+                    
+    //                 if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
+    //                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+    //                 }
+    //                $thursday[] = [
+    //                    'time_in' => $timetable->time_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->time_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
+    //                ];
+    //            }
+
+    //            if ($timetable->friday) {
+    //                $subjectIdfriday = null;
+    //                 $teacherIdfriday = null;
+                    
+    //                 if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
+    //                 list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+    //                 }
+    //                $friday[] = [
+    //                    'time_in' => $timetable->time_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->time_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
+    //                ];
+    //            }
+
+    //            if ($timetable->saturday) {
+    //                $subjectIdsaturday = null;
+    //                 $teacherIdsaturday = null;
+                    
+    //                 if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
+    //                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+    //                 }
+    //                $saturday[] = [
+    //                    'time_in' => $timetable->sat_in,
+    //                    'period_no'=>$timetable->period_no,
+    //                    'time_out' => $timetable->sat_out,
+    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
+    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
+    //                ];
+    //            }
+    //        }
+           
+    //         $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
+    //         $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
+            
+            
+    //        $weeklySchedule = [
+    //            'mon_fri'=>$lastMondayPeriodNo->{'mon-fri'},
+    //            'sat'=>$lastSaturdayPeriodNo->sat,
+    //            'Monday' => $monday,
+    //            'Tuesday' => $tuesday,
+    //            'Wednesday' => $wednesday,
+    //            'Thursday' => $thursday,
+    //            'Friday' => $friday,
+    //            'Saturday' => $saturday,
+    //        ];
+           
+    //              return response()->json([
+    //                'status' =>200,
+    //                'data'=>$weeklySchedule,
+    //                'message' => 'View Timetable!',
+    //                'success'=>true
+    //            ]);
+                   
+                   
+    //            }
+    //            else{
+    //                return response()->json([
+    //                    'status'=> 401,
+    //                    'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+    //                    'data' =>$user->role_id,
+    //                    'success'=>false
+    //                        ]);
+    //                }
+       
+    //            }
+    //            catch (Exception $e) {
+    //            \Log::error($e); 
+    //            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //            } 
+           
+    //    }
+
+    //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025 updated on 24-06-2025
+    public function getTimetableByClassSection($class_id,$section_id){
             try{       
                $user = $this->authenticateUser();
                $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -10705,100 +11297,179 @@ public function getTeacherIdCard(Request $request){
            $saturday = [];
 
            foreach ($timetables as $timetable) {
+            //   dd("Hello");
                if ($timetable->monday) {
-                   $subjectIdmonday = null;
-                    $teacherIdmonday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
-                    list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $monday[] = [
-                       'time_in' => $timetable->time_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
-                   ];
+                    
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
 
                if ($timetable->tuesday) {
-                   $subjectIdtuesday = null;
-                    $teacherIdtuesday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
-                    list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $tuesday[] = [
-                       'time_in' => $timetable->time_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
-                   ];
+                    
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
 
                if ($timetable->wednesday) {
-                   $subjectIdwednesday = null;
-                    $teacherIdwednesday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
-                    list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $wednesday[] = [
-                       'time_in' => $timetable->time_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
-                   ];
+                    
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
 
                if ($timetable->thursday) {
-                   $subjectIdthursday = null;
-                    $teacherIdthursday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
-                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $thursday[] = [
-                       'time_in' => $timetable->time_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
-                   ];
+                    
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
 
                if ($timetable->friday) {
-                   $subjectIdfriday = null;
-                    $teacherIdfriday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
-                    list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $friday[] = [
-                       'time_in' => $timetable->time_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->time_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
-                   ];
+                    
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
 
                if ($timetable->saturday) {
-                   $subjectIdsaturday = null;
-                    $teacherIdsaturday = null;
+                   $subjects = [];
+                    $teachers = [];
                     
-                    if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
-                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                    
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
                     }
-                   $saturday[] = [
-                       'time_in' => $timetable->sat_in,
-                       'period_no'=>$timetable->period_no,
-                       'time_out' => $timetable->sat_out,
-                       'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
-                       'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
-                   ];
+                    
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
                }
            }
            
@@ -10844,11 +11515,1419 @@ public function getTeacherIdCard(Request $request){
        }
 
        //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 04-04-2025
-       public function saveTimetableAllotment(Request $request){
+    //    public function saveTimetableAllotment(Request $request){
+    //     try{       
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+    //              $timetablerequest = $request->all();
+    //              $timetabledata = $timetablerequest['timetable_data'];
+    //              $teacherId =  $timetablerequest['teacher_id'];
+    //              $periodUsed = $timetablerequest['period_used'];
+    //              DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
+    //              foreach ($timetabledata as $timetable){
+                     
+    //                   $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
+    //                   if(is_null($timetabledata5)){
+    //                       $timetabledata1 = $timetable['subjects'];
+    //                          $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
+    //                              $monfrilectures =  $classwiseperiod->{'mon-fri'};
+    //                              for($i=1;$i<=$monfrilectures;$i++){
+    //                                  $inserttimetable = DB::table('timetable')->insert([
+    //                                                          'date'=>Carbon::now()->format('Y-m-d H:i:s'),
+    //                                                          'class_id' => $timetable['class_id'],
+    //                                                          'section_id' => $timetable['section_id'],
+    //                                                          'academic_yr'=>$customClaims,
+    //                                                          'period_no'=>$i,
+    //                                                      ]);
+                                     
+                                     
+    //                              }
+    //                          foreach ($timetabledata1 as $timetabledata2){
+                                 
+    //                              if($timetabledata2['day']== 'Monday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Tuesday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Wednesday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Thursday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Friday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Saturday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                          }
+                          
+    //                   }
+    //                   else{
+    //                       $timetabledata1 = $timetable['subjects'];
+    //                  foreach ($timetabledata1 as $timetabledata2){
+                         
+    //                      if($timetabledata2['day']== 'Monday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('monday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                 $subjectIdmonday = null;
+    //                                 $teacherIdmonday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
+    //                                  list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
+    //                                  $teacheridforexistingsubject = $teacherIdmonday;
+    //                                 }
+                                   
+    //                             }
+                                
+                                                        
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Tuesday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('tuesday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                 $subjectIdtuesday = null;
+    //                                 $teacherIdtuesday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
+    //                                  list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
+    //                                  $teacheridforexistingsubject = $teacherIdtuesday;
+    //                                 }
+                                   
+    //                             }
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Wednesday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('wednesday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                  $subjectIdwednesday = null;
+    //                                 $teacherIdwednesday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
+    //                                     list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
+    //                                     $teacheridforexistingsubject = $teacherIdwednesday;
+    //                                 }
+                                   
+    //                             }
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Thursday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('thursday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                 $subjectIdthursday = null;
+    //                                 $teacherIdthursday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
+    //                                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
+    //                                  $teacheridforexistingsubject = $teacherIdthursday;
+    //                                 }
+                                   
+    //                             }
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+                                      
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Friday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('friday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                 $subjectIdfriday = null;
+    //                                 $teacherIdfriday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
+    //                                  list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
+    //                                  $teacheridforexistingsubject = $teacherIdfriday;
+    //                                 }
+                                   
+    //                             }
+                                
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+                                
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Saturday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              $timetablesubject = DB::table('timetable')
+    //                                                     ->select('saturday')
+    //                                                     ->where('class_id',$timetable['class_id'])
+    //                                                     ->where('section_id',$timetable['section_id'])
+    //                                                     ->where('academic_yr', $customClaims)
+    //                                                     ->where('period_no', $timetabledata4['period_no'])
+    //                                                     ->first();
+                                
+    //                             if(is_null($timetablesubject)){
+    //                                  $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             }
+    //                             else{
+    //                                 $subjectIdsaturday = null;
+    //                                 $teacherIdsaturday = null;
+    //                                 $teacheridforexistingsubject = null;
+                                    
+    //                                 if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
+    //                                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
+    //                                  $teacheridforexistingsubject = $teacherIdsaturday;
+    //                                 }
+                                    
+                                   
+    //                             }
+                                
+    //                             if(is_null($teacheridforexistingsubject)){
+    //                                 // dd("Hello");
+    //                                         DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                    
+    //                             }
+    //                             elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                                 DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             }
+    //                             else{
+    //                                 DB::table('teachers_period_allocation')
+    //                                     ->where('teacher_id', $teacheridforexistingsubject)
+    //                                     ->where('academic_yr', $customClaims)
+    //                                     ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                                 DB::table('timetable')
+    //                                          ->where('class_id', $timetable['class_id'])
+    //                                          ->where('section_id', $timetable['section_id'])
+    //                                          ->where('academic_yr', $customClaims)
+    //                                          ->where('period_no', $timetabledata4['period_no'])
+    //                                          ->update([
+    //                                              'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                          ]);
+                                    
+    //                             }
+                                        
+    //                          }
+                             
+    //                      }
+    //                  }
+                          
+    //                   }
+                     
+                     
+    //              }
+    //              return response()->json([
+    //             'status' =>200,
+    //             'message' => 'Timetable Saved Successfully!',
+    //             'success'=>true
+    //            ]);
+                 
+                
+    //         }
+    //         else{
+    //             return response()->json([
+    //                 'status'=> 401,
+    //                 'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+    //                 'data' =>$user->role_id,
+    //                 'success'=>false
+    //                     ]);
+    //             }
+    
+    //         }
+    //         catch (Exception $e) {
+    //         \Log::error($e); 
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //         } 
+        
+    // }
+
+    // public function saveTimetableAllotment(Request $request){
+    //     try{       
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+    //             // dd("Hello");
+    //              $timetablerequest = $request->all();
+    //              $timetabledata = $timetablerequest['timetable_data'];
+    //              $teacherId =  $timetablerequest['teacher_id'];
+    //              $periodUsed = $timetablerequest['period_used'];
+    //              DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
+    //              foreach ($timetabledata as $timetable){
+                     
+    //                   $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
+    //                   if(is_null($timetabledata5)){
+    //                       $timetabledata1 = $timetable['subjects'];
+    //                          $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
+    //                              $monfrilectures =  $classwiseperiod->{'mon-fri'};
+    //                              for($i=1;$i<=$monfrilectures;$i++){
+    //                                  $inserttimetable = DB::table('timetable')->insert([
+    //                                                          'date'=>Carbon::now()->format('Y-m-d H:i:s'),
+    //                                                          'class_id' => $timetable['class_id'],
+    //                                                          'section_id' => $timetable['section_id'],
+    //                                                          'academic_yr'=>$customClaims,
+    //                                                          'period_no'=>$i,
+    //                                                      ]);
+                                     
+                                     
+    //                              }
+    //                          foreach ($timetabledata1 as $timetabledata2){
+                                 
+    //                              if($timetabledata2['day']== 'Monday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Tuesday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                       if (isset($timetabledata4['subject']['id'])){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                       }
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Wednesday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                       if (isset($timetabledata4['subject']['id'])){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                       }
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Thursday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                       if (isset($timetabledata4['subject']['id'])){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                       }
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Friday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                       if (isset($timetabledata4['subject']['id'])){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                       }
+    //                                  }
+                                     
+    //                              }
+    //                              elseif($timetabledata2['day']=='Saturday'){
+    //                                  $timetabledata3 = $timetabledata2['periods'];
+    //                                  foreach ($timetabledata3 as $timetabledata4){
+    //                                       if (isset($timetabledata4['subject']['id'])){
+    //                                             DB::table('timetable')
+    //                                                  ->where('class_id', $timetable['class_id'])
+    //                                                  ->where('section_id', $timetable['section_id'])
+    //                                                  ->where('academic_yr', $customClaims)
+    //                                                  ->where('period_no', $timetabledata4['period_no'])
+    //                                                  ->update([
+    //                                                      'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+    //                                                  ]);
+    //                                       }
+    //                                  }
+                                     
+    //                              }
+    //                          }
+                          
+    //                   }
+    //                   else{
+    //                       $timetabledata1 = $timetable['subjects'];
+                          
+    //                  foreach ($timetabledata1 as $timetabledata2){
+                         
+    //                      if($timetabledata2['day']== 'Monday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+                             
+    //                          foreach ($timetabledata3 as $timetabledata4){
+                                 
+    //                              if (isset($timetabledata4['subject']['id'])){
+    //                                  $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         // Override existing value
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->monday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'monday' => $finalValue,
+    //                                         ]);
+                                 
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('monday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     $subjectIdmonday = null;
+    //                             //     $teacherIdmonday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
+    //                             //      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
+    //                             //      $teacheridforexistingsubject = $teacherIdmonday;
+    //                             //     }
+                                   
+    //                             // }
+                                
+                                                        
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+    //                            }
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Tuesday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              if (isset($timetabledata4['subject']['id'])){
+    //                                  $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->tuesday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'tuesday' => $finalValue,
+    //                                         ]);
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('tuesday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     $subjectIdtuesday = null;
+    //                             //     $teacherIdtuesday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
+    //                             //      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
+    //                             //      $teacheridforexistingsubject = $teacherIdtuesday;
+    //                             //     }
+                                   
+    //                             // }
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+                                
+    //                          }
+    //                         }
+    //                      }
+    //                      elseif($timetabledata2['day']=='Wednesday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                             if (isset($timetabledata4['subject']['id'])){
+    //                             $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->wednesday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'wednesday' => $finalValue,
+    //                                         ]);
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('wednesday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //      $subjectIdwednesday = null;
+    //                             //     $teacherIdwednesday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
+    //                             //         list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
+    //                             //         $teacheridforexistingsubject = $teacherIdwednesday;
+    //                             //     }
+                                   
+    //                             // }
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+    //                             }
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Thursday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                             if (isset($timetabledata4['subject']['id'])){
+    //                                 $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->thursday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'thursday' => $finalValue,
+    //                                         ]);
+                                    
+    //                             }
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('thursday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     $subjectIdthursday = null;
+    //                             //     $teacherIdthursday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
+    //                             //     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
+    //                             //      $teacheridforexistingsubject = $teacherIdthursday;
+    //                             //     }
+                                   
+    //                             // }
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+                                      
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Friday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                             if (isset($timetabledata4['subject']['id'])){
+    //                                 $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->friday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'friday' => $finalValue,
+    //                                         ]);
+                                    
+    //                             }
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('friday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     $subjectIdfriday = null;
+    //                             //     $teacherIdfriday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
+    //                             //      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
+    //                             //      $teacheridforexistingsubject = $teacherIdfriday;
+    //                             //     }
+                                   
+    //                             // }
+                                
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+                                
+    //                          }
+                             
+    //                      }
+    //                      elseif($timetabledata2['day']=='Saturday'){
+    //                          $timetabledata3 = $timetabledata2['periods'];
+    //                          foreach ($timetabledata3 as $timetabledata4){
+    //                              if (isset($timetabledata4['subject']['id'])){
+    //                                 $existing = DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->first();
+                                    
+    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+    //                                     if ($timetabledata4['override'] === 'Y') {
+    //                                         $finalValue = $newValue;
+    //                                         // dd($finalValue);
+    //                                     } else {
+    //                                         // Append to existing value (if any)
+    //                                         $currentMonday = $existing->saturday ?? '';
+    //                                         $finalValue = $currentMonday
+    //                                             ? $currentMonday . ',' . $newValue
+    //                                             : $newValue;
+    //                                     }
+                                    
+    //                                     DB::table('timetable')
+    //                                         ->where('class_id', $timetable['class_id'])
+    //                                         ->where('section_id', $timetable['section_id'])
+    //                                         ->where('academic_yr', $customClaims)
+    //                                         ->where('period_no', $timetabledata4['period_no'])
+    //                                         ->update([
+    //                                             'saturday' => $finalValue,
+    //                                         ]);
+                                    
+    //                             }
+    //                             //  $timetablesubject = DB::table('timetable')
+    //                             //                         ->select('saturday')
+    //                             //                         ->where('class_id',$timetable['class_id'])
+    //                             //                         ->where('section_id',$timetable['section_id'])
+    //                             //                         ->where('academic_yr', $customClaims)
+    //                             //                         ->where('period_no', $timetabledata4['period_no'])
+    //                             //                         ->first();
+                                
+    //                             // if(is_null($timetablesubject)){
+    //                             //      $teacheridforexistingsubject=null;
+                                   
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     $subjectIdsaturday = null;
+    //                             //     $teacherIdsaturday = null;
+    //                             //     $teacheridforexistingsubject = null;
+                                    
+    //                             //     if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
+    //                             //     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
+    //                             //      $teacheridforexistingsubject = $teacherIdsaturday;
+    //                             //     }
+                                    
+                                   
+    //                             // }
+                                
+    //                             // if(is_null($teacheridforexistingsubject)){
+    //                             //     // dd("Hello");
+    //                             //             DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                    
+    //                             // }
+    //                             // elseif($teacheridforexistingsubject == $teacherId){
+                                   
+    //                             //     DB::table('timetable')
+    //                             //                      ->where('class_id', $timetable['class_id'])
+    //                             //                      ->where('section_id', $timetable['section_id'])
+    //                             //                      ->where('academic_yr', $customClaims)
+    //                             //                      ->where('period_no', $timetabledata4['period_no'])
+    //                             //                      ->update([
+    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //                      ]);
+                                                     
+                                                     
+                                    
+                                    
+    //                             // }
+    //                             // else{
+    //                             //     DB::table('teachers_period_allocation')
+    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
+    //                             //         ->where('academic_yr', $customClaims)
+    //                             //         ->decrement('periods_used', 1); 
+                                    
+                                    
+    //                             //     DB::table('timetable')
+    //                             //              ->where('class_id', $timetable['class_id'])
+    //                             //              ->where('section_id', $timetable['section_id'])
+    //                             //              ->where('academic_yr', $customClaims)
+    //                             //              ->where('period_no', $timetabledata4['period_no'])
+    //                             //              ->update([
+    //                             //                  'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+    //                             //              ]);
+                                    
+    //                             // }
+                                        
+    //                          }
+                             
+    //                       }
+    //                     }
+                          
+    //                   }
+                     
+                     
+    //              }
+    //              return response()->json([
+    //             'status' =>200,
+    //             'message' => 'Timetable Saved Successfully!',
+    //             'success'=>true
+    //            ]);
+                 
+                
+    //         }
+    //         else{
+    //             return response()->json([
+    //                 'status'=> 401,
+    //                 'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+    //                 'data' =>$user->role_id,
+    //                 'success'=>false
+    //                     ]);
+    //             }
+    
+    //         }
+    //         catch (Exception $e) {
+    //         \Log::error($e); 
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //         } 
+        
+    // }
+
+    public function saveTimetableAllotment(Request $request){
         try{       
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                // dd("Hello");
                  $timetablerequest = $request->all();
                  $timetabledata = $timetablerequest['timetable_data'];
                  $teacherId =  $timetablerequest['teacher_id'];
@@ -10891,6 +12970,7 @@ public function getTeacherIdCard(Request $request){
                                  elseif($timetabledata2['day']=='Tuesday'){
                                      $timetabledata3 = $timetabledata2['periods'];
                                      foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
                                                 DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
                                                      ->where('section_id', $timetable['section_id'])
@@ -10899,12 +12979,14 @@ public function getTeacherIdCard(Request $request){
                                                      ->update([
                                                          'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
+                                          }
                                      }
                                      
                                  }
                                  elseif($timetabledata2['day']=='Wednesday'){
                                      $timetabledata3 = $timetabledata2['periods'];
                                      foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
                                                 DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
                                                      ->where('section_id', $timetable['section_id'])
@@ -10913,12 +12995,14 @@ public function getTeacherIdCard(Request $request){
                                                      ->update([
                                                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
+                                          }
                                      }
                                      
                                  }
                                  elseif($timetabledata2['day']=='Thursday'){
                                      $timetabledata3 = $timetabledata2['periods'];
                                      foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
                                                 DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
                                                      ->where('section_id', $timetable['section_id'])
@@ -10927,12 +13011,14 @@ public function getTeacherIdCard(Request $request){
                                                      ->update([
                                                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
+                                          }
                                      }
                                      
                                  }
                                  elseif($timetabledata2['day']=='Friday'){
                                      $timetabledata3 = $timetabledata2['periods'];
                                      foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
                                                 DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
                                                      ->where('section_id', $timetable['section_id'])
@@ -10941,12 +13027,14 @@ public function getTeacherIdCard(Request $request){
                                                      ->update([
                                                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
+                                          }
                                      }
                                      
                                  }
                                  elseif($timetabledata2['day']=='Saturday'){
                                      $timetabledata3 = $timetabledata2['periods'];
                                      foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
                                                 DB::table('timetable')
                                                      ->where('class_id', $timetable['class_id'])
                                                      ->where('section_id', $timetable['section_id'])
@@ -10955,6 +13043,7 @@ public function getTeacherIdCard(Request $request){
                                                      ->update([
                                                          'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
                                                      ]);
+                                          }
                                      }
                                      
                                  }
@@ -10963,228 +13052,356 @@ public function getTeacherIdCard(Request $request){
                       }
                       else{
                           $timetabledata1 = $timetable['subjects'];
+                          
                      foreach ($timetabledata1 as $timetabledata2){
                          
                          if($timetabledata2['day']== 'Monday'){
                              $timetabledata3 = $timetabledata2['periods'];
+                             
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('monday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                 
+                                 if (isset($timetabledata4['subject']['id'])){
+                                     $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            // Override existing value
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->monday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // // Append to existing value (if any)
+                                            // $currentMonday = $existing->monday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'monday' => $finalValue,
+                                            ]);
+                                 
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('monday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                    $subjectIdmonday = null;
-                                    $teacherIdmonday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //     $subjectIdmonday = null;
+                                //     $teacherIdmonday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
-                                     list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
-                                     $teacheridforexistingsubject = $teacherIdmonday;
-                                    }
+                                //     if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
+                                //      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
+                                //      $teacheridforexistingsubject = $teacherIdmonday;
+                                //     }
                                    
-                                }
+                                // }
                                 
                                                         
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
-                                }
+                                // }
+                               }
                              }
                              
                          }
                          elseif($timetabledata2['day']=='Tuesday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('tuesday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                 if (isset($timetabledata4['subject']['id'])){
+                                     $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->tuesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->tuesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'tuesday' => $finalValue,
+                                            ]);
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('tuesday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                    $subjectIdtuesday = null;
-                                    $teacherIdtuesday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //     $subjectIdtuesday = null;
+                                //     $teacherIdtuesday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
-                                     list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
-                                     $teacheridforexistingsubject = $teacherIdtuesday;
-                                    }
+                                //     if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
+                                //      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
+                                //      $teacheridforexistingsubject = $teacherIdtuesday;
+                                //     }
                                    
-                                }
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // }
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
-                                }
+                                // }
+                                
                              }
-                             
+                            }
                          }
                          elseif($timetabledata2['day']=='Wednesday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('wednesday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                if (isset($timetabledata4['subject']['id'])){
+                                $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->wednesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->wednesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'wednesday' => $finalValue,
+                                            ]);
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('wednesday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                     $subjectIdwednesday = null;
-                                    $teacherIdwednesday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //      $subjectIdwednesday = null;
+                                //     $teacherIdwednesday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
-                                        list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-                                        $teacheridforexistingsubject = $teacherIdwednesday;
-                                    }
+                                //     if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
+                                //         list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
+                                //         $teacheridforexistingsubject = $teacherIdwednesday;
+                                //     }
                                    
-                                }
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // }
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
+                                // }
                                 }
                              }
                              
@@ -11192,74 +13409,116 @@ public function getTeacherIdCard(Request $request){
                          elseif($timetabledata2['day']=='Thursday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('thursday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                if (isset($timetabledata4['subject']['id'])){
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->thursday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->thursday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'thursday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('thursday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                    $subjectIdthursday = null;
-                                    $teacherIdthursday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //     $subjectIdthursday = null;
+                                //     $teacherIdthursday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
-                                    list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
-                                     $teacheridforexistingsubject = $teacherIdthursday;
-                                    }
+                                //     if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
+                                //     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
+                                //      $teacheridforexistingsubject = $teacherIdthursday;
+                                //     }
                                    
-                                }
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // }
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
-                                }
+                                // }
                                       
                              }
                              
@@ -11267,75 +13526,117 @@ public function getTeacherIdCard(Request $request){
                          elseif($timetabledata2['day']=='Friday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('friday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                if (isset($timetabledata4['subject']['id'])){
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->friday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->friday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'friday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('friday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                    $subjectIdfriday = null;
-                                    $teacherIdfriday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //     $subjectIdfriday = null;
+                                //     $teacherIdfriday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
-                                     list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
-                                     $teacheridforexistingsubject = $teacherIdfriday;
-                                    }
+                                //     if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
+                                //      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
+                                //      $teacheridforexistingsubject = $teacherIdfriday;
+                                //     }
                                    
-                                }
+                                // }
                                 
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
-                                }
+                                // }
                                 
                              }
                              
@@ -11343,81 +13644,123 @@ public function getTeacherIdCard(Request $request){
                          elseif($timetabledata2['day']=='Saturday'){
                              $timetabledata3 = $timetabledata2['periods'];
                              foreach ($timetabledata3 as $timetabledata4){
-                                 $timetablesubject = DB::table('timetable')
-                                                        ->select('saturday')
-                                                        ->where('class_id',$timetable['class_id'])
-                                                        ->where('section_id',$timetable['section_id'])
-                                                        ->where('academic_yr', $customClaims)
-                                                        ->where('period_no', $timetabledata4['period_no'])
-                                                        ->first();
+                                 if (isset($timetabledata4['subject']['id'])){
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->saturday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->saturday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'saturday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                //  $timetablesubject = DB::table('timetable')
+                                //                         ->select('saturday')
+                                //                         ->where('class_id',$timetable['class_id'])
+                                //                         ->where('section_id',$timetable['section_id'])
+                                //                         ->where('academic_yr', $customClaims)
+                                //                         ->where('period_no', $timetabledata4['period_no'])
+                                //                         ->first();
                                 
-                                if(is_null($timetablesubject)){
-                                     $teacheridforexistingsubject=null;
+                                // if(is_null($timetablesubject)){
+                                //      $teacheridforexistingsubject=null;
                                    
                                     
-                                }
-                                else{
-                                    $subjectIdsaturday = null;
-                                    $teacherIdsaturday = null;
-                                    $teacheridforexistingsubject = null;
+                                // }
+                                // else{
+                                //     $subjectIdsaturday = null;
+                                //     $teacherIdsaturday = null;
+                                //     $teacheridforexistingsubject = null;
                                     
-                                    if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
-                                    list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
-                                     $teacheridforexistingsubject = $teacherIdsaturday;
-                                    }
+                                //     if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
+                                //     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
+                                //      $teacheridforexistingsubject = $teacherIdsaturday;
+                                //     }
                                     
                                    
-                                }
+                                // }
                                 
-                                if(is_null($teacheridforexistingsubject)){
-                                    // dd("Hello");
-                                            DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                // if(is_null($teacheridforexistingsubject)){
+                                //     // dd("Hello");
+                                //             DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                     
-                                }
-                                elseif($teacheridforexistingsubject == $teacherId){
+                                // }
+                                // elseif($teacheridforexistingsubject == $teacherId){
                                    
-                                    DB::table('timetable')
-                                                     ->where('class_id', $timetable['class_id'])
-                                                     ->where('section_id', $timetable['section_id'])
-                                                     ->where('academic_yr', $customClaims)
-                                                     ->where('period_no', $timetabledata4['period_no'])
-                                                     ->update([
-                                                         'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                                     ]);
+                                //     DB::table('timetable')
+                                //                      ->where('class_id', $timetable['class_id'])
+                                //                      ->where('section_id', $timetable['section_id'])
+                                //                      ->where('academic_yr', $customClaims)
+                                //                      ->where('period_no', $timetabledata4['period_no'])
+                                //                      ->update([
+                                //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //                      ]);
                                                      
                                                      
                                     
                                     
-                                }
-                                else{
-                                    DB::table('teachers_period_allocation')
-                                        ->where('teacher_id', $teacheridforexistingsubject)
-                                        ->where('academic_yr', $customClaims)
-                                        ->decrement('periods_used', 1); 
+                                // }
+                                // else{
+                                //     DB::table('teachers_period_allocation')
+                                //         ->where('teacher_id', $teacheridforexistingsubject)
+                                //         ->where('academic_yr', $customClaims)
+                                //         ->decrement('periods_used', 1); 
                                     
                                     
-                                    DB::table('timetable')
-                                             ->where('class_id', $timetable['class_id'])
-                                             ->where('section_id', $timetable['section_id'])
-                                             ->where('academic_yr', $customClaims)
-                                             ->where('period_no', $timetabledata4['period_no'])
-                                             ->update([
-                                                 'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                             ]);
+                                //     DB::table('timetable')
+                                //              ->where('class_id', $timetable['class_id'])
+                                //              ->where('section_id', $timetable['section_id'])
+                                //              ->where('academic_yr', $customClaims)
+                                //              ->where('period_no', $timetabledata4['period_no'])
+                                //              ->update([
+                                //                  'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                //              ]);
                                     
-                                }
+                                // }
                                         
                              }
                              
-                         }
-                     }
+                          }
+                        }
                           
                       }
                      
@@ -12725,10 +15068,13 @@ public function generateNewPassword(Request $request)
        ]);
 
        if ($updated) {
+           $loginUrl = in_array($roleId, ['A', 'M'])
+            ? 'https://sacs.evolvu.in'
+            : 'https://sms.arnoldcentralschool.org';
            $emailContent = "
-               Dear Parent,<br/><br/>
+               Dear EvolvU User,<br/><br/>
                The password for login id <strong>{$userId}</strong> has been reset to <strong>{$newPassword}</strong><br>
-               Login at <a href='https://sms.arnoldcentralschool.org/'>https://sms.arnoldcentralschool.org/</a><br><br/>
+               Login at <a href='{$loginUrl}'>{$loginUrl}/</a><br><br/>
                Please READ THE INSTRUCTION on login page and refer to the help once you login into the application.<br/><br/>
                Make sure your email id and mobile number are correctly added into profile.<br/><br/>
                Regards,<br/>
