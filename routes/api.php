@@ -530,7 +530,7 @@
 
         //Timetable Edit Teacherwise Dev Name- Manish Kumar Sharma 07-04-2025
         Route::get('get_teacherlistbyperiodallocation',[AdminController::class,'getTeacherlistByperiodallocation']);
-        Route::get('get_edittimetablebyclasssection/{class_id}/{section_id}',[AdminController::class,'getEditTimetableClassSection']);
+        Route::get('get_edittimetablebyclasssection/{class_id}/{section_id}/{teacher_id}',[AdminController::class,'getEditTimetableClassSection']);
 
         //API for All Student List with Class Name Dev Name- Manish Kumar Sharma 09-04-2025
         Route::get('get_allstudentwithclass',[StudentController::class,'getallStudentWithClass']);
