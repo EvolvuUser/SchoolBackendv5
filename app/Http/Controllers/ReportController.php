@@ -1985,7 +1985,7 @@ class ReportController extends Controller
              $parts = explode(' ', trim($teachername));
             $firstname = $parts[0] ?? '';
             $lastname = $parts[count($parts) - 1] ?? '';
-             $message = ucwords(strtolower($firstname . ' ' . $lastname)).", your lesson plan for".$pendingclasses." is pending for the next week";
+             $message = "Tr. ".ucwords(strtolower($firstname . ' ' . $lastname)).", your lesson plan of this week for".$pendingclasses." is not yet submitted";
              Log::info("WhatsApp lesson plan message: " . $message);
             //  dd($message);
              $templateName = 'emergency_message';
