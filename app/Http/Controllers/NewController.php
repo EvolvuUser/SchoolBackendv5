@@ -173,7 +173,7 @@ class NewController extends Controller
         }
 
      }
-
+     //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
      public function saveLeaveApplicationForallstaff(Request $request){
         try{
                 $user = $this->authenticateUser();
@@ -236,7 +236,7 @@ class NewController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
      }
-
+     //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
      public function getLeaveApplicationData(Request $request){
          try{
                 $user = $this->authenticateUser();
@@ -275,7 +275,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
      public function deleteLeaveApplicationPrincipal(Request $request,$id){
         try{
                 $user = $this->authenticateUser();
@@ -331,7 +331,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
      public function updateLeaveApplicationCancel(Request $request,$id){
         try{
                 $user = $this->authenticateUser();
@@ -398,7 +398,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Leave Application for all staff Dev Name- Manish Kumar Sharma 06-06-2025
      public function updateLeaveApplicationData(Request $request,$id){
         try{
                 $user = $this->authenticateUser();
@@ -537,7 +537,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
      public function savenPublishRemarkForTeacher(Request $request){
         try{
                 $user = $this->authenticateUser();
@@ -589,7 +589,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
      public function getRemarkForTeacherList(Request $request){
         try{
              $user = $this->authenticateUser();
@@ -626,7 +626,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
      public function updateRemarkForTeacher(Request $request,$id){
         try{
              $user = $this->authenticateUser();
@@ -669,7 +669,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
      public function deleteRemarkForTeacher(Request $request,$id){
         try{
              $user = $this->authenticateUser();
@@ -713,7 +713,7 @@ class NewController extends Controller
                }
 
      }
-
+     //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
      public function updatePublishRemarkForTeacher(Request $request,$id){
          try{
              $user = $this->authenticateUser();
@@ -792,6 +792,529 @@ class NewController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
 
+     }
+     //API for the service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function saveServiceTypeTicket(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                  $servicename = $request->input('servicename');
+                  $role_id = $request->input('role_id');
+                  $description = $request->input('description');
+                  $requiresappointment = $request->input('requiresappointment');
+                  DB::table('service_type')->insert([
+                      'service_name'=>$servicename,
+                      'role_id'=>$role_id,
+                      'description'=>$description,
+                      'RequiresAppointment'=>$requiresappointment
+                      ]);
+                  return response()->json([
+                    'status'=>200,
+                    'message' => 'New service_type created!',
+                    'success' => true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+         
+     }
+     //API for the service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function getServiceTypeTicket(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                  $servicetypelist = DB::table('service_type')->get();
+                  return response()->json([
+                    'status'=>200,
+                    'data'=>$servicetypelist,
+                    'message' => 'Service type list.',
+                    'success' => true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function deleteServiceTypeTicket(Request $request,$service_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 DB::table('service_type')->where('service_id',$service_id)->delete();
+                 return response()->json([
+                    'status'=>200,
+                    'message' => 'Service type deleted!',
+                    'success' => true
+                ]);
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+         
+     }
+      //API for the service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+      public function updateServiceTypeTicket(Request $request,$service_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $servicename = $request->input('servicename');
+                 $role_id = $request->input('role_id');
+                 $description = $request->input('description');
+                 $requiresappointment = $request->input('requiresappointment');
+                 DB::table('service_type')
+                    ->where('service_id', $service_id)
+                    ->update([
+                        'service_name' => $servicename,
+                        'role_id' => $role_id,
+                        'description' => $description,
+                        'RequiresAppointment' => $requiresappointment
+                    ]);
+                 return response()->json([
+                    'status'=>200,
+                    'message' => 'Service type updated!',
+                    'success' => true
+                ]);
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+         
+     }
+     //API for the sub service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function savesubServiceTypeTicket(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                  $subservicename = $request->input('subservicename');
+                  $service_id = $request->input('service_id');
+                  DB::table('sub_service_type')->insert([
+                      'name'=>$subservicename,
+                      'service_id'=>$service_id
+                      ]);
+                  return response()->json([
+                    'status'=>200,
+                    'message' => 'New sub service type created!',
+                    'success' => true
+                ]);
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the sub service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function getsubServiceTypeTicket(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                  $subservicelist = DB::table('sub_service_type')
+                                        ->join('service_type', 'service_type.service_id', '=', 'sub_service_type.service_id')
+                                        ->select('sub_service_type.*', 'service_type.*')
+                                        ->get()
+                                        ->toArray(); 
+                      return response()->json([
+                        'status'=>200,
+                        'data'=>$subservicelist,
+                        'message' => 'Sub service list!',
+                        'success' => true
+                    ]);
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the sub service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function deletesubServiceTypeTicket(Request $request,$sub_servicetype_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                //  dd("Hello");
+                 DB::table('sub_service_type')->where('sub_servicetype_id',$sub_servicetype_id)->delete();
+                 return response()->json([
+                    'status'=>200,
+                    'message' => 'Sub service type deleted!',
+                    'success' => true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the sub service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function updatesubServiceTypeTicket(Request $request,$sub_servicetype_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 
+                 $subservicename = $request->input('subservicename');
+                 $service_id = $request->input('service_id');
+                 DB::table('sub_service_type')
+                    ->where('sub_servicetype_id', $sub_servicetype_id)
+                    ->update([
+                        'name' => $subservicename,
+                        'service_id' => $service_id
+                    ]);
+                 return response()->json([
+                    'status'=>200,
+                    'message' => 'Sub service type updated!',
+                    'success' => true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the appointment window ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function saveAppointmentWindow(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $data = [
+                        'role_id' => $request->input('role'),
+                        'class_id' => $request->input('class'),
+                        'week' => $request->input('week'),
+                        'time_from' => $request->input('time_from'),
+                        'time_to' => $request->input('time_to'),
+                        'weekday' => $request->has('weekday')
+                            ? implode(',', $request->input('weekday'))
+                            : '',
+                    ];
+                DB::table('appointment_window')->insert($data);
+                return response()->json([
+                    'status'=>200,
+                    'message' => 'Save appointment window!',
+                    'success' => true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the appointment window ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function getAppointmentWindowList(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                //  dd("Hello");
+                 $data = DB::table('appointment_window as a')
+                            ->join('role_master as r', 'r.role_id', '=', 'a.role_id')
+                            ->join('class as c', 'c.class_id', '=', 'a.class_id')
+                            ->select('a.*', 'r.name as rn', 'c.name as cn')
+                            ->get();
+                    
+                        return response()->json([
+                            'status'=>200,
+                            'data'=>$data,
+                            'message'=>'Appointment window list!',
+                            'success'=>true
+                            ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the appointment window ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function deleteAppointmentWindow(Request $request,$aw_id){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                //  dd("Hello");
+                 DB::table('appointment_window')->where('aw_id',$aw_id)->delete();
+                 return response()->json([
+                    'status'=>200,
+                    'message' => 'Appointment window deleted!',
+                    'success' => true
+                ]);
+                 
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the appointment window ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function updateAppointmentWindow(Request $request,$aw_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $data = [
+                    'role_id' => $request->input('role'),
+                    'class_id' => $request->input('class'),
+                    'week' => $request->input('week'),
+                    'time_from' => $request->input('time_from'),
+                    'time_to' => $request->input('time_to'),
+                    'weekday' => $request->has('weekday')
+                        ? implode(',', $request->input('weekday'))
+                        : '',
+                ];
+                $updated = DB::table('appointment_window')
+                            ->where('aw_id', $aw_id)
+                            ->update($data);
+                            
+                return response()->json([
+                    'status'=>200,
+                    'message' => 'Appointment window updated!',
+                    'success' => true
+                ]);
+                
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     //API for the ticket report ticket Dev Name- Manish Kumar Sharma 24-06-2025
+     public function getTicketReport(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                $status = $request->input('status');
+                $fromDate = $request->input('from_date');
+                $toDate = $request->input('to_date');
+            
+                $query = DB::table('ticket')
+                    ->select(
+                        'ticket.raised_on',
+                        'ticket.status',
+                        'service_type.service_name',
+                        'student.class_id',
+                        'student.section_id',
+                        'student.first_name',
+                        'student.mid_name',
+                        'student.last_name',
+                        'class.name as classname',
+                        'section.name as sectionname',
+                        'parent.father_name as createdby'
+                    )
+                    ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+                    ->join('student', 'student.student_id', '=', 'ticket.student_id')
+                    ->join('class','class.class_id','=','student.class_id')
+                    ->join('section','section.section_id','=','student.section_id')
+                    ->join('parent','parent.parent_id','=','student.parent_id');
+            
+                if (!empty($status)) {
+                    $query->where('ticket.status', $status);
+                }
+            
+                if (!empty($fromDate)) {
+                    $query->whereDate('ticket.raised_on', '>=', date('Y-m-d', strtotime($fromDate)));
+                }
+            
+                if (!empty($toDate)) {
+                    $query->whereDate('ticket.raised_on', '<=', date('Y-m-d', strtotime($toDate)));
+                }
+            
+                $ticketData = $query->orderByDesc('ticket.raised_on')->get();
+                
+                return response()->json([
+                        'status'=>200,
+                        'data' => $ticketData,
+                        'message' => 'Ticket list report!',
+                        'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
      }
 
      private function authenticateUser()
