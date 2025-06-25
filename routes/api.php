@@ -635,6 +635,30 @@
         //API for the Sending whatsapp messages to late teachers Dev Name- Manish Kumar Sharma 15-06-2025
         Route::post('send_whatsapplatecoming',[AdminController::class,'sendWhatsappLateComing']);
 
+        //API for the Teacher attendance monthly report Dev Name- Manish Kumar Sharma 23-06-2025
+        Route::get('get_teachermonthlyattendancereport/{month}',[ReportController::class, 'getTeacherAttendanceMonthlyReport']);
+
+        //API for the service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+        Route::post('save_servicetypeticket',[NewController::class,'saveServiceTypeTicket']);
+        Route::get('get_servicetypeticket',[NewController::class,'getServiceTypeTicket']);
+        Route::delete('delete_servicetypeticket/{service_id}',[NewController::class,'deleteServiceTypeTicket']);
+        Route::put('update_servicetypeticket/{service_id}',[NewController::class,'updateServiceTypeTicket']);
+
+        //API for the sub service type ticket Dev Name- Manish Kumar Sharma 24-06-2025
+        Route::post('save_subservicetypeticket',[NewController::class,'savesubServiceTypeTicket']);
+        Route::get('get_subservicetypeticket',[NewController::class,'getsubServiceTypeTicket']);
+        Route::delete('delete_subservicetypeticket/{sub_servicetype_id}',[NewController::class,'deletesubServiceTypeTicket']);
+        Route::put('update_subservicetypeticket/{sub_servicetype_id}',[NewController::class,'updatesubServiceTypeTicket']);
+
+        //API for the appointment window ticket Dev Name- Manish Kumar Sharma 24-06-2025
+        Route::post('save_appointmentwindow',[NewController::class,'saveAppointmentWindow']);
+        Route::get('get_appointmentwindowlist',[NewController::class,'getAppointmentWindowList']);
+        Route::delete('delete_appointmentwindow/{aw_id}',[NewController::class,'deleteAppointmentWindow']);
+        Route::put('update_appointmentwindow/{aw_id}',[NewController::class,'updateAppointmentWindow']);
+
+        //API for the ticket report ticket Dev Name- Manish Kumar Sharma 24-06-2025
+        Route::get('get_ticketreport',[NewController::class,'getTicketReport']);
+
 
 
 

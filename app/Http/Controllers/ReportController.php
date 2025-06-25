@@ -1584,7 +1584,7 @@ class ReportController extends Controller
 
     }
 
-
+    //API for the Phase 1 Reports Dev Name- Manish Kumar Sharma 07-06-2025
     public function getdiscrepancy_in_WL_payment_report(Request $request){
         try{
             $user = $this->authenticateUser();
@@ -1627,7 +1627,7 @@ class ReportController extends Controller
             }
 
     }
-
+    //API for the Phase 1 Reports Dev Name- Manish Kumar Sharma 07-06-2025
     public function getduplicatepaymentreportfinance(Request $request){
         try{
             $user = $this->authenticateUser();
@@ -2029,6 +2029,92 @@ class ReportController extends Controller
                     'success'=>true
                     ]);
         
+    }
+
+    //API for the Teacher attendance monthly report Dev Name- Manish Kumar Sharma 15-06-2025
+    public function getTeacherAttendanceMonthlyReport(Request $request,$month){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                 $teachers = DB::table('teacher')->where('isDelete', 'N')->get(); // Replace with actual active condition
+                         // You can fetch this from DB if needed
+
+                        list($startYear, $endYear) = explode('-', $customClaims);
+                        
+                        // Determine the correct year for this month
+                        $year = ($month >= 4) ? $startYear : $endYear;
+                        $report = [];
+                    
+                        foreach ($teachers as $teacher) {
+                            $teacherReport = [
+                                'teacher_id' => $teacher->teacher_id,
+                                'name' => $teacher->name,
+                                'days' => []
+                            ];
+                    
+                            for ($day = 1; $day <= 31; $day++) {
+                                $d = str_pad($day, 2, '0', STR_PAD_LEFT);
+                                $m = str_pad($month, 2, '0', STR_PAD_LEFT);
+                                $adate = "$year-$m-$d";
+                    
+                                $inTime = $this->getPunchInTime($teacher->teacher_id, $adate);
+                                $outTime = $this->getPunchOutTime($teacher->teacher_id, $adate);
+                    
+                                $teacherReport['days'][] = [
+                                    'date' => $adate,
+                                    'in' => $inTime,
+                                    'out' => $outTime,
+                                ];
+                            }
+                    
+                            $report[] = $teacherReport;
+                        }
+                    
+                        return response()->json([
+                            'status' => true,
+                            'month' => $month,
+                            'year' => $year,
+                            'report' => $report
+                        ]);
+                
+                
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the get teacher attendance monthly report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+        
+    }
+    //API for the Teacher attendance monthly report Dev Name- Manish Kumar Sharma 15-06-2025
+    protected function getPunchInTime($teacherId, $date)
+    {
+        return DB::table('teacher_attendance as a')
+            ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+            ->whereDate('a.punch_time', $date)
+            ->where('b.teacher_id', $teacherId)
+            ->selectRaw('MIN(TIME(a.punch_time)) as punch_in_time')
+            ->value('punch_in_time');
+    }
+    //API for the Teacher attendance monthly report Dev Name- Manish Kumar Sharma 15-06-2025
+    protected function getPunchOutTime($teacherId, $date)
+    {
+        return DB::table('teacher_attendance as a')
+            ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+            ->whereDate('a.punch_time', $date)
+            ->where('b.teacher_id', $teacherId)
+            ->selectRaw('MAX(TIME(a.punch_time)) as punch_out_time')
+            ->value('punch_out_time');
     }
 
 
