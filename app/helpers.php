@@ -732,3 +732,95 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             return null;
         }
     }
+    //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
+    function getTicketListForRespondent($role, $reg_id)
+    {
+        if (in_array($role, ['A', 'M', 'U'])) {
+            $tickets = DB::table('ticket')
+                ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name')
+                ->join('student','student.student_id','=','ticket.student_id')
+                ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+                ->where('service_type.role_id', $role)
+                ->orderBy('raised_on', 'DESC')
+                ->get();
+    
+        } elseif ($role === 'T') {
+            $tickets = DB::table('ticket')
+                ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name')
+                ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+                ->join('student', 'student.student_id', '=', 'ticket.student_id')
+                ->join('class_teachers', function ($join) {
+                    $join->on('class_teachers.class_id', '=', 'student.class_id')
+                         ->on('class_teachers.section_id', '=', 'student.section_id');
+                })
+                ->where('service_type.role_id', $role)
+                ->where('class_teachers.teacher_id', $reg_id)
+                ->orderBy('raised_on', 'DESC')
+                ->get();
+        } else {
+            $tickets = collect(); // return empty collection if role doesn't match
+        }
+    
+        return $tickets->toArray();
+    }
+
+    function getTicketListViewInfo($ticket_id)
+    {
+        return DB::table('ticket')
+            ->select(
+                'ticket.*',
+                'service_type.service_name',
+                'service_type.RequiresAppointment',
+                'student.*',
+                'class.name as classname',
+                'section.name as sectionname'
+            )
+            ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+            ->join('student', 'student.student_id', '=', 'ticket.student_id')
+            ->join('class','class.class_id','=','student.class_id')
+            ->join('section','section.section_id','=','student.section_id')
+            ->where('ticket.ticket_id', $ticket_id)
+            ->get()
+            ->toArray();
+    }
+
+    function updateStatusforTicketList()
+    {
+        return DB::table('ticket_status_master')->get()->toArray();
+    }
+
+    function getTicketComments($ticket_id)
+    {
+        $globalVariables = App::make('global_variables');
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    
+        $teacherComments = DB::table('ticket_comments as t')
+            ->select('t.*', 'teacher.name', 'd.image_name')
+            ->join('teacher', 'teacher.teacher_id', '=', 't.commented_by')
+            ->leftJoin('ticket_detail as d', 'd.ticket_comment_id', '=', 't.ticket_comment_id')
+            ->where('t.ticket_id', $ticket_id);
+    
+        $parentComments = DB::table('ticket_comments as t')
+            ->select('t.*', 'parent.father_name as name', 'd.image_name')
+            ->join('parent', 'parent.parent_id', '=', 't.commented_by')
+            ->leftJoin('ticket_detail as d', 'd.ticket_comment_id', '=', 't.ticket_comment_id')
+            ->where('t.ticket_id', $ticket_id)
+            ->where('t.login_type', 'P');
+    
+        $comments = $teacherComments
+            ->union($parentComments)
+            ->orderByDesc('ticket_comment_id')
+            ->get();
+    
+        // Append full image URL
+        $comments = $comments->map(function ($comment) use ($codeigniter_app_url) {
+            if (!empty($comment->image_name)) {
+                $comment->image_url = $codeigniter_app_url . 'uploads/ticket/' . $comment->ticket_id . '/' . $comment->ticket_comment_id . '/' . $comment->image_name;
+            } else {
+                $comment->image_url = null;
+            }
+            return $comment;
+        });
+    
+        return $comments->toArray();
+    }

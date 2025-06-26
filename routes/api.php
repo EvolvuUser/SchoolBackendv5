@@ -659,6 +659,17 @@
         //API for the ticket report ticket Dev Name- Manish Kumar Sharma 24-06-2025
         Route::get('get_ticketreport',[NewController::class,'getTicketReport']);
 
+        //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
+        Route::get('get_ticketlist',[NewController::class,'getTicketList']);
+        Route::get('get_ticketinformation/{ticket_id}',[NewController::class,'getTicketInformationByTicketId']);
+        Route::get('get_statusesforticketlist',[NewController::class,'getStatusesForTicket']);
+        Route::get('get_appointmenttimelist/{class_id}',[NewController::class,'getAppointmentTimeList']);
+        Route::get('get_commentticketlist/{ticket_id}',[NewController::class,'getCommentTicketList']);
+        Route::post('save_ticketinformation/{ticket_id}',[NewController::class,'saveTicketInformation']);
+
+        //API for the timetable view classwise Dev Name- Manish Kumar Sharma 26-06-2025
+        Route::get('get_timetableviewbyteacher/{class_id}/{section_id}/{teacher_id}',[AdminController::class,'Timetableviewbyteacherid']);
+
 
 
 

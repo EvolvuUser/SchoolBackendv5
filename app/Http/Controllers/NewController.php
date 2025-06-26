@@ -8,6 +8,8 @@ use App\Models\Teacher;
 use Illuminate\Support\Facades\Validator;
 use DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Carbon;
+use DateTime;
 
 class NewController extends Controller
 {
@@ -1297,6 +1299,288 @@ class NewController extends Controller
                         'message' => 'Ticket list report!',
                         'success'=>true
                     ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
+     public function getTicketList(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 
+                 $data=getTicketListForRespondent($user->role_id,$user->reg_id);
+                 return response()->json([
+                        'status'=>200,
+                        'data' => $data,
+                        'message' => 'Ticket list!',
+                        'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
+     public function getTicketInformationByTicketId(Request $request,$ticket_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                $data =  getTicketListViewInfo($ticket_id);
+                return response()->json([
+                        'status'=>200,
+                        'data' => $data,
+                        'message' => 'Ticket information!',
+                        'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
+     public function getStatusesForTicket(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $data = updateStatusforTicketList();
+                 return response()->json([
+                        'status'=>200,
+                        'data' => $data,
+                        'message' => 'Ticket status for ticket list!',
+                        'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+
+     public function getAppointmentTimeList(Request $request,$class_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $currentDate = Carbon::now()->format('d-M-Y');
+
+                // Fetch appointment window data
+                $windows = DB::table('appointment_window')
+                    ->select('week', 'weekday', 'time_from', 'time_to')
+                    ->where('role_id', $user->role_id)
+                    ->where('class_id', $class_id)
+                    ->get();
+            
+                $response = [];
+            
+                foreach ($windows as $row) {
+                    $week = $row->week;
+                    $weekdays = explode(',', $row->weekday);
+                    $timeFrom = Carbon::parse($row->time_from)->format('h:i a');
+                    $timeTo = Carbon::parse($row->time_to)->format('h:i a');
+            
+                    foreach ($weekdays as $index => $day) {
+                        // Build date string like "first Monday of Jun"
+                        $baseDate = "$week $day of " . date('M');
+                        $formattedDate = date("d-M-Y", strtotime($baseDate));
+            
+                        // If past date, move to next month
+                        if (strtotime($formattedDate) < strtotime($currentDate)) {
+                            $date = (new DateTime($formattedDate))
+                                ->modify("$week $day of next month")
+                                ->format('d-M-Y');
+                        } else {
+                            $date = $formattedDate;
+                        }
+            
+                        $display = "$date $timeFrom to $timeTo";
+            
+                        $response[] = [
+                            'date' => $date,
+                            'time_from' => $timeFrom,
+                            'time_to' => $timeTo,
+                            'display' => $display,
+                            'value' => $display, // for form value or frontend use
+                            'index' => $index
+                        ];
+                    }
+                }
+            
+                return response()->json([
+                    'status' => 200,
+                    'data' => $response,
+                    'message'=>'Appointment time!',
+                    'success'=>true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     public function getCommentTicketList(Request $request,$ticket_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $data =getTicketComments($ticket_id);
+                 return response()->json([
+                    'status' => 200,
+                    'data' => $data,
+                    'message'=>'Comment list!',
+                    'success'=>true
+                ]);
+                 
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     public function saveTicketInformation(Request $request,$ticket_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 DB::beginTransaction();
+
+                try {
+                     $status = $request->status;
+                    
+                        // Update ticket status
+                        DB::table('ticket')->where('ticket_id', $ticket_id)
+                            ->update(['status' => $status]);
+                
+                    //   dd($request->all());
+                        // Create the comment
+                        $comment = DB::table('ticket_comments')->insertGetId([
+                            'ticket_id' => $ticket_id,
+                            'login_type' => $user->role_id,
+                            'comment' => $request->comment,
+                            'status' => $request->status,
+                            'appointment_date_time' => $request->appointment_date_time,
+                            'commented_by' => $user->reg_id,
+                        ]);
+                        // dd($comment);
+                
+                        // Handle file upload
+                        if ($request->hasFile('fileupload')) {
+                            $file = $request->file('fileupload');
+                            $filename = $file->getClientOriginalName();
+                
+                            $path = "ticket/{$ticket_id}/{$comment}/";
+                            $storedPath = $file->storeAs("public/{$path}", $filename);
+                
+                            DB::table('ticket_detail')->insert([
+                                'ticket_id' => $ticket_id,
+                                'ticket_comment_id' => $comment,
+                                'image_name' => $filename,
+                            ]);
+                        }
+                
+                        DB::commit();
+                        return response()->json([
+                            'status' => 200,
+                            'message'=>'Data created successfully!',
+                            'success'=>true
+                        ]);
+                
+                        // return redirect()->route('ticket.list')->with('ticket_message', 'Data created successfully!');
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        report($e);
+                        return back()->withErrors('Something went wrong.')->withInput();
+                    }
                  
              }
              else
