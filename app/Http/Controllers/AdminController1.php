@@ -9588,9 +9588,18 @@ public function getTeacherIdCard(Request $request){
                         ->first();
                 
                     if ($teacher && !empty($teacher->name)) {
-                        // Extract first word (first name) and convert to CamelCase
-                        $firstName = explode(' ', trim($teacher->name))[0];
-                        return ucfirst(strtolower($firstName));
+                        $nameParts = explode(' ', trim($teacher->name));
+                    
+                        // List of titles to skip
+                        $titlesToSkip = ['Mr.', 'Ms.', 'Mrs.', 'Miss', 'Fr.', 'Dr.'];
+                    
+                        // Loop through parts and find the first non-title word
+                        foreach ($nameParts as $part) {
+                            if (!in_array($part, $titlesToSkip)) {
+                                $firstName = ucfirst(strtolower($part));
+                                return $firstName;
+                            }
+                        }
                     }
                 
                     return null;
@@ -17005,6 +17014,386 @@ public function getCountNonApprovedLessonPlan(Request $request)
             }
         
     }
+
+    //API for the timetable view classwise Dev Name- Manish Kumar Sharma 26-06-2025
+    public function Timetableviewbyteacherid($class_id,$section_id,$teacher_id){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $timetables = DB::table('timetable')
+                                   ->where('class_id', $class_id)
+                                   ->where('section_id', $section_id)
+                                   ->where('academic_yr', $customClaims)
+                                   ->orderBy('t_id')
+                                   ->get();
+                   
+                                          
+                   if(count($timetables)==0){
+                       
+                       $monday = [];
+                       $tuesday = [];
+                       $wednesday = [];
+                       $thursday = [];
+                       $friday = [];
+                       $saturday = [];
+                       $classwiseperiod = DB::table('classwise_period_allocation')
+                                             ->where('class_id',$class_id)
+                                             ->where('section_id',$section_id)
+                                             ->where('academic_yr',$customClaims)
+                                             ->first();
+                                             
+                                             if($classwiseperiod === null){
+                                                 return response()->json([
+                                                   'status' =>400,
+                                                   'message' => 'Classwise Period Allocation is not done.',
+                                                   'success'=>false
+                                               ]);
+                                             }
+                                                 
+                                             
+                       $monfrilectures = $classwiseperiod->{'mon-fri'};
+                       for($i=1;$i<=$monfrilectures;$i++){
+                           $monday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $tuesday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $wednesday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $thursday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i ,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           $friday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           
+                       }
+                       $satlectures=$classwiseperiod->sat;
+                       for($i=1;$i<=$satlectures;$i++){
+                           $saturday[] = [
+                               'time_in' => null,
+                               'period_no'=>$i,
+                               'time_out' => null,
+                               'subject_id'=>null,
+                               'subject' => null,
+                               'teacher' => null,
+                           ];
+                           
+                       }
+                       
+                       
+                       
+                       $weeklySchedule = [
+                            'mon_fri'=>$monfrilectures,
+                            'sat'=>$satlectures,
+                           'Monday' => $monday,
+                           'Tuesday' => $tuesday,
+                           'Wednesday' => $wednesday,
+                           'Thursday' => $thursday,
+                           'Friday' => $friday,
+                           'Saturday' => $saturday,
+                       ];
+                       
+                                             
+                                       
+                       
+                      return response()->json([
+                           'status' =>200,
+                           'data'=>$weeklySchedule,
+                           'message' => 'View Timetable!',
+                           'success'=>true
+                       ]);
+           
+                   }
+           $monday = [];
+           $tuesday = [];
+           $wednesday = [];
+           $thursday = [];
+           $friday = [];
+           $saturday = [];
+           
+
+           foreach ($timetables as $timetable) {
+               $subjectIdmonday = null;
+               $subjectIdtuesday = null;
+               $subjectIdwednesday = null;
+               $subjectIdthursday = null;
+               $subjectIdfriday = null;
+               $subjectIdsaturday = null;
+               
+               if ($timetable->monday) {
+                   $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdmonday = $subjectId;
+                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                            
+                        }
+                    }
+                    
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdmonday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+
+               if ($timetable->tuesday) {
+                    $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdtuesday = $subjectId;
+                                 $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                        
+                                $subjects[] = ['subject_name' => $subjectName];
+                                $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                           
+                        }
+                    }
+                    
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdtuesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+
+               if ($timetable->wednesday) {
+                   $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdwednesday = $subjectId;
+                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                    
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                            
+                        }
+                    }
+                    
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdwednesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+
+               if ($timetable->thursday) {
+                   $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdthursday = $subjectId;
+                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                        
+                                $subjects[] = ['subject_name' => $subjectName];
+                                $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                            
+                        }
+                    }
+                    
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdthursday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+
+               if ($timetable->friday) {
+                   $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdfriday = $subjectId;
+                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                        
+                                $subjects[] = ['subject_name' => $subjectName];
+                                $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                            
+                        }
+                    }
+                    
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdfriday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+
+               if ($timetable->saturday) {
+                   $subjects = [];
+                    $teachers = [];
+                    
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+                    
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdsaturday = $subjectId;
+                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                        
+                                $subjects[] = ['subject_name' => $subjectName];
+                                $teachers[] = ['t_name' => $teacherName];
+                            }
+                    
+                            
+                        }
+                    }
+                    
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdsaturday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+               }
+           }
+           
+            $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first(); 
+            $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first();
+            
+            
+           $weeklySchedule = [
+               'mon_fri'=>$lastMondayPeriodNo->{'mon-fri'},
+               'sat'=>$lastSaturdayPeriodNo->sat,
+               'Monday' => $monday,
+               'Tuesday' => $tuesday,
+               'Wednesday' => $wednesday,
+               'Thursday' => $thursday,
+               'Friday' => $friday,
+               'Saturday' => $saturday,
+           ];
+           
+                 return response()->json([
+                   'status' =>200,
+                   'data'=>$weeklySchedule,
+                   'message' => 'View Timetable!',
+                   'success'=>true
+               ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
     
 
 }
