@@ -434,6 +434,37 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
         }
     }
 
+    function ticket_files_for_laravel($ticketid, $commentid, $fileupload)
+    {
+        // API URL
+        $globalVariables = App::make('global_variables');
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url . 'index.php/TicketApi/upload_files_for_ticket_laravel';
+    
+        try {
+            // Send file using multipart/form-data
+            $response = Http::attach(
+                    'fileupload',                     // name of form field
+                    file_get_contents($fileupload),  // file contents
+                    $fileupload->getClientOriginalName() // file name
+                )
+                ->asMultipart() // ensure form-data format
+                ->post($url, [
+                    'ticket_id' => $ticketid,
+                    'comment_id' => $commentid,
+                ]);
+            // dd($response);
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json();
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()];
+            }
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
+
     function delete_uploaded_files_for_laravel ($filename,$uploadDate, $docTypeFolder, $noticeId)
     {
         $globalVariables = App::make('global_variables');

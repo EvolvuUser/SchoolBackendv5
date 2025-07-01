@@ -1494,6 +1494,7 @@ class NewController extends Controller
          
      }
 
+     //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
      public function getCommentTicketList(Request $request,$ticket_id){
          try{
              $user = $this->authenticateUser();
@@ -1526,7 +1527,7 @@ class NewController extends Controller
                }
          
      }
-
+     //API for the ticket list Dev Name- Manish Kumar Sharma 25-06-2025
      public function saveTicketInformation(Request $request,$ticket_id){
          try{
              $user = $this->authenticateUser();
@@ -1537,12 +1538,11 @@ class NewController extends Controller
                 try {
                      $status = $request->status;
                     
-                        // Update ticket status
+                       
                         DB::table('ticket')->where('ticket_id', $ticket_id)
                             ->update(['status' => $status]);
                 
-                    //   dd($request->all());
-                        // Create the comment
+                    
                         $comment = DB::table('ticket_comments')->insertGetId([
                             'ticket_id' => $ticket_id,
                             'login_type' => $user->role_id,
@@ -1557,7 +1557,7 @@ class NewController extends Controller
                         if ($request->hasFile('fileupload')) {
                             $file = $request->file('fileupload');
                             $filename = $file->getClientOriginalName();
-                
+                            $codeigniter = ticket_files_for_laravel($ticket_id,$comment,$file);
                             $path = "ticket/{$ticket_id}/{$comment}/";
                             $storedPath = $file->storeAs("public/{$path}", $filename);
                 
@@ -1599,6 +1599,1536 @@ class NewController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
          
+     }
+
+     public function updateTimetableAllotment(Request $request){
+         try{       
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                // dd("Hello");
+                 $timetablerequest = $request->all();
+                 $timetabledata = $timetablerequest['timetable_data'];
+                 $teacherId =  $timetablerequest['teacher_id'];
+                 $periodUsed = $timetablerequest['period_used'];
+                  DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
+                 foreach ($timetabledata as $timetable){
+                     
+                      $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
+                      if(is_null($timetabledata5)){
+                        //   DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
+                          $timetabledata1 = $timetable['subjects'];
+                             $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
+                                 $monfrilectures =  $classwiseperiod->{'mon-fri'};
+                                 for($i=1;$i<=$monfrilectures;$i++){
+                                     $inserttimetable = DB::table('timetable')->insert([
+                                                             'date'=>Carbon::now()->format('Y-m-d H:i:s'),
+                                                             'class_id' => $timetable['class_id'],
+                                                             'section_id' => $timetable['section_id'],
+                                                             'academic_yr'=>$customClaims,
+                                                             'period_no'=>$i,
+                                                         ]);
+                                     
+                                     
+                                 }
+                             foreach ($timetabledata1 as $timetabledata2){
+                                 
+                                 if($timetabledata2['day']== 'Monday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                         if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                         }
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Tuesday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                          }
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Wednesday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                          }
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Thursday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                          }
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Friday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                          }
+                                     }
+                                     
+                                 }
+                                 elseif($timetabledata2['day']=='Saturday'){
+                                     $timetabledata3 = $timetabledata2['periods'];
+                                     foreach ($timetabledata3 as $timetabledata4){
+                                          if (isset($timetabledata4['subject']['id'])){
+                                                DB::table('timetable')
+                                                     ->where('class_id', $timetable['class_id'])
+                                                     ->where('section_id', $timetable['section_id'])
+                                                     ->where('academic_yr', $customClaims)
+                                                     ->where('period_no', $timetabledata4['period_no'])
+                                                     ->update([
+                                                         'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
+                                                     ]);
+                                          }
+                                     }
+                                     
+                                 }
+                             }
+                          
+                      }
+                      else{
+                          $timetabledata1 = $timetable['subjects'];
+                          
+                     foreach ($timetabledata1 as $timetabledata2){
+                         
+                         if($timetabledata2['day']== 'Monday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->monday ?? '';
+                                                $finalValue = $currentValue; 
+                                                
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'monday' => $finalValue,
+                                                    ]);
+                                                    if(isset($timetabledata4['subject']['id'])) {
+                                                        $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            // Override existing value
+                                            $currentMonday = $existing->monday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                          
+
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->monday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // // Append to existing value (if any)
+                                            // $currentMonday = $existing->monday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'monday' => $finalValue,
+                                            ]);
+                                                        
+                                                    }
+                                        
+                                    }
+                                    elseif (isset($timetabledata4['subject']['id'])) {
+                                        $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            // Override existing value
+                                            $currentMonday = $existing->monday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                          
+
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->monday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    
+                                                }
+                                            }
+                                            
+                                            // // Append to existing value (if any)
+                                            // $currentMonday = $existing->monday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'monday' => $finalValue,
+                                            ]);
+                                    }
+                                 
+                                 
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Tuesday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->tuesday ?? '';
+                                                $finalValue = $currentValue;
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'tuesday' => $finalValue,
+                                                    ]);
+                                                    if(isset($timetabledata4['subject']['id'])){
+                                                        $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->tuesday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherId) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherId;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            
+                                            $currentMonday = $existing->tuesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->tuesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'tuesday' => $finalValue,
+                                            ]);
+                                                        
+                                                    }
+                                     
+    
+                                } elseif (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->tuesday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->tuesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->tuesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'tuesday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                 
+                            }
+                         }
+                         elseif($timetabledata2['day']=='Wednesday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->wednesday ?? '';
+                                                $finalValue = $currentValue;
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'wednesday' => $finalValue,
+                                                    ]);
+                                                    if(isset($timetabledata4['subject']['id'])) {
+                                                        $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->wednesday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->wednesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->wednesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'wednesday' => $finalValue,
+                                            ]);
+                                                        
+                                                        
+                                                    }
+    
+                                } elseif (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->wednesday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->wednesday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->wednesday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'wednesday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Thursday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->thursday ?? '';
+                                                $finalValue = $currentValue;
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'thursday' => $finalValue,
+                                                    ]);
+                                                    
+                                                if(isset($timetabledata4['subject']['id'])) {
+                                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->thursday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            }  
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->thursday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->thursday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'thursday' => $finalValue,
+                                            ]);
+                                                    
+                                                    
+                                                }
+    
+                                } elseif (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->thursday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            }  
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->thursday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->thursday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'thursday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                
+                                      
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Friday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->friday ?? '';
+                                                $finalValue = $currentValue;
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'friday' => $finalValue,
+                                                    ]);
+                                         if(isset($timetabledata4['subject']['id'])) {
+                                             $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->friday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            }  
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->friday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->friday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'friday' => $finalValue,
+                                            ]);
+                                             
+                                         }
+    
+                                } elseif (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->friday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            }  
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->friday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->friday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'friday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                
+                                
+                             }
+                             
+                         }
+                         elseif($timetabledata2['day']=='Saturday'){
+                             $timetabledata3 = $timetabledata2['periods'];
+                             foreach ($timetabledata3 as $timetabledata4){
+                                 if (!empty($timetabledata4['subjectRemove'])) {
+                                     $existing = DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->first();
+                                                
+                                                $currentValue = $existing->saturday ?? '';
+                                                $finalValue = $currentValue;
+                                                $removeSubjectId = $timetabledata4['subjectRemove'];
+                                                $toRemove = $removeSubjectId . '^' . $teacherId;
+                                            
+                                                $entries = array_filter(explode(',', $currentValue));
+                                                $updatedEntries = [];
+                                            
+                                                foreach ($entries as $entry) {
+                                                    if ($entry !== $toRemove) {
+                                                        $updatedEntries[] = $entry;
+                                                    } else {
+                                                        // Decrement periods_used for removed teacher
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->decrement('periods_used', 1);
+                                                    }
+                                                }
+                                            
+                                                $finalValue = implode(',', $updatedEntries);
+                                            
+                                                // update timetable table
+                                                DB::table('timetable')
+                                                    ->where('class_id', $timetable['class_id'])
+                                                    ->where('section_id', $timetable['section_id'])
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->where('period_no', $timetabledata4['period_no'])
+                                                    ->update([
+                                                        'saturday' => $finalValue,
+                                                    ]);
+                                                    
+                                                if(isset($timetabledata4['subject']['id'])) {
+                                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->saturday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            $currentMonday = $existing->saturday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->saturday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'saturday' => $finalValue,
+                                            ]);
+                                                    
+                                                    
+                                                    
+                                                }
+    
+                                } elseif (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->first();
+                                    
+                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    
+                                        if ($timetabledata4['override'] === 'Y') {
+                                            $currentMonday = $existing->saturday ?? '';
+                                            $teacherIds = [];
+
+                                            $entries = explode(',', $currentMonday);
+                                            
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                                    $teacherIds[] = $teacherIdd;
+                                                }
+                                            }
+                                            if (($key = array_search($teacherId, $teacherIds)) !== false) {
+                                                unset($teacherIds[$key]);
+                                                // Optional: reindex array if needed
+                                                $teacherIds = array_values($teacherIds);
+                                            }
+                                            
+                                            foreach ($teacherIds as $teacherperiodused) {
+                                                DB::table('teachers_period_allocation')
+                                                    ->where('teacher_id', $teacherperiodused)
+                                                    ->where('academic_yr', $customClaims)
+                                                    ->decrement('periods_used', 1);
+                                            } 
+                                            $finalValue = $newValue;
+                                            // dd($finalValue);
+                                        } else {
+                                            DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                            $currentMonday = $existing->saturday ?? '';
+                                            $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                            if (in_array($newValue, $valuesArray)) {
+                                                // Do nothing if value already exists
+                                                $finalValue = $currentMonday;
+                                            } else {
+                                                $finalValue = $currentMonday
+                                                    ? $currentMonday . ',' . $newValue
+                                                    : $newValue;
+                                            }
+                                            
+                                            $entries = explode(',', $currentMonday);
+                                            $teacherIds = [];
+
+                                            foreach ($entries as $entry) {
+                                                if (str_contains($entry, '^')) {
+                                                    list($subjectId, $teacherIdd) = explode('^', $entry);
+                                            
+                                                    if (in_array($teacherId, $teacherIds)) {
+                                                        // ✅ Teacher ID already seen → increment periods_used by 1
+                                                        DB::table('teachers_period_allocation')
+                                                            ->where('teacher_id', $teacherId)
+                                                            ->where('academic_yr', $customClaims)
+                                                            ->increment('periods_used', 1);
+                                                    } else {
+                                                        // First time seeing this teacherId → store it
+                                                        $teacherIds[] = $teacherIdd;
+                                                    }
+                                                }
+                                            }
+                                            // Append to existing value (if any)
+                                            // $currentMonday = $existing->saturday ?? '';
+                                            // $finalValue = $currentMonday
+                                            //     ? $currentMonday . ',' . $newValue
+                                            //     : $newValue;
+                                        }
+                                    
+                                        DB::table('timetable')
+                                            ->where('class_id', $timetable['class_id'])
+                                            ->where('section_id', $timetable['section_id'])
+                                            ->where('academic_yr', $customClaims)
+                                            ->where('period_no', $timetabledata4['period_no'])
+                                            ->update([
+                                                'saturday' => $finalValue,
+                                            ]);
+                                    
+                                }
+                                
+                                        
+                             }
+                             
+                          }
+                        }
+                          
+                      }
+                     
+                     
+                 }
+                 $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+                    // Get all teacher IDs from teachers_period_allocation
+                    $teacherIds = DB::table('teachers_period_allocation')
+                                    ->pluck('teacher_id')
+                                    ->unique()
+                                    ->toArray();
+                    
+                    $rows = DB::table('timetable')->get();
+                    
+                    // Initialize an array to keep track of count per teacher
+                    $teacherCounts = array_fill_keys($teacherIds, 0);
+                    
+                    // Loop through timetable and count matching entries for each teacher
+                    foreach ($rows as $row) {
+                        foreach ($days as $day) {
+                            $value = $row->$day;
+                    
+                            if (!empty($value) && str_contains($value, '^')) {
+                                $entries = explode(',', $value);
+                    
+                                foreach ($entries as $entry) {
+                                    if (str_contains($entry, '^')) {
+                                        list($subjectId, $entryTeacherId) = explode('^', $entry);
+                    
+                                        if (in_array($entryTeacherId, $teacherIds)) {
+                                            $teacherCounts[$entryTeacherId] += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Now update periods_used for each teacher based on counts
+                    foreach ($teacherCounts as $teacherId => $count) {
+                        DB::table('teachers_period_allocation')
+                            ->where('teacher_id', $teacherId)
+                            ->where('academic_yr', $customClaims)
+                            ->update(['periods_used' => $count]);
+                    }
+                 return response()->json([
+                'status' =>200,
+                'message' => 'Timetable Saved Successfully!',
+                'success'=>true
+               ]);
+                 
+                
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
      }
 
      private function authenticateUser()

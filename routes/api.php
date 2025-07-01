@@ -525,7 +525,7 @@
         Route::get('get_teacherperioddata',[AdminController::class,'getTeacherPeriodData']);
         Route::get('get_teachersubjectbyclass',[AdminController::class,'getTeacherSubjectByClass']);
         Route::get('get_teacherslistbyperiod',[AdminController::class,'getTeacherListByPeriod']);
-        Route::get('get_timetablebyclasssection/{class_id}/{section_id}',[AdminController::class,'getTimetableByClassSection']);
+        Route::get('get_timetablebyclasssection/{class_id}/{section_id}/{teacher_id}',[AdminController::class,'getTimetableByClassSection']);
         Route::post('save_timetableallotment',[AdminController::class,'saveTimetableAllotment']);
 
         //Timetable Edit Teacherwise Dev Name- Manish Kumar Sharma 07-04-2025
@@ -669,6 +669,11 @@
 
         //API for the timetable view classwise Dev Name- Manish Kumar Sharma 26-06-2025
         Route::get('get_timetableviewbyteacher/{class_id}/{section_id}/{teacher_id}',[AdminController::class,'Timetableviewbyteacherid']);
+        Route::post('update_timetableforclass',[NewController::class,'updateTimetableAllotment']);
+
+        // Api for the Sibling Unmapping Dev Name - Mahima Chaudhari 26-06-2025
+        Route::get('get_studentwithSiblings', [SubstituteTeacher::class, 'getStudentsListwithSibling']);
+        Route::post('update_studentwithsibling/{id}', [SubstituteTeacher::class, 'saveUnmappingSibling']);
 
 
 
@@ -777,7 +782,7 @@ Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages
 
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 
-Route::post('whatsapp_messages_for_not_approving_lesson',[ReportController::class,'whatsappmessagesfornotapprovinglessonplan']);
+Route::get('whatsapp_messages_for_not_approving_lesson',[ReportController::class,'whatsappmessagesfornotapprovinglessonplan']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);
