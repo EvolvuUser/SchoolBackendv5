@@ -12,6 +12,12 @@ use Carbon\Carbon;
 use App\Mail\SubstituteTeacherNotification;
 use App\Models\LateTime;
 use Illuminate\Validation\Rule;
+use App\Models\Student;
+use Illuminate\Support\Facades\App;
+use App\Models\ContactDetails;
+use App\Models\UserMaster;
+use App\Models\Parents;
+use Illuminate\Support\Facades\Http;
 
 class SubstituteTeacher extends Controller
 {
@@ -629,6 +635,258 @@ class SubstituteTeacher extends Controller
                 "message" => "Failed to send notification.",
                 "success" => false,
             ]);
+        }
+    }
+
+    public function getStudentsListwithSibling(Request $request)
+    {
+        set_time_limit(300);
+        $section_id = $request->section_id;
+        $student_id = $request->student_id;
+        $reg_no = $request->reg_no;
+
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        $query = Student::query();
+        $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+        if ($section_id && $reg_no) {
+            $query->where('section_id', $section_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($student_id && $reg_no) {
+            $query->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($section_id && $student_id && $reg_no) {
+            $query->where('section_id', $section_id)
+                ->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($section_id && $student_id) {
+            $query->where('student_id', $student_id)
+                ->where('section_id', $section_id)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($section_id) {
+            $query->where('section_id', $section_id)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($student_id) {
+            $query->where('student_id', $student_id)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($reg_no) {
+            $query->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Please provide at least one search condition.',
+            ], 400);
+        }
+
+        $students = $query->get();
+
+        if ($students->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No student found matching the search criteria.',
+            ], 404);
+        }
+
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+        // Enhance each student and attach siblings
+        $students->each(function ($student) use ($academicYr, $parent_app_url, $codeigniter_app_url) {
+            $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+            $student->image_name = !empty($student->image_name) ? $concatprojecturl . $student->image_name : '';
+
+            $contactDetails = ContactDetails::find($student->parent_id);
+            $student->SetToReceiveSMS = $contactDetails?->phone_no ?? '';
+
+            $userMaster = UserMaster::where('role_id', 'P')
+                ->where('reg_id', $student->parent_id)
+                ->first();
+            $student->SetEmailIDAsUsername = $userMaster?->user_id ?? '';
+
+            // Fetch and attach siblings for this student
+            $siblings = Student::with(['parents', 'userMaster', 'getClass', 'getDivision'])
+                ->where('parent_id', $student->parent_id)
+                ->where('student_id', '!=', $student->student_id) // exclude self
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->get();
+
+            // Add image and contact details to each sibling
+            $siblings->each(function ($sibling) use ($codeigniter_app_url) {
+                $imgPath = $codeigniter_app_url . 'uploads/student_image/';
+                $sibling->image_name = !empty($sibling->image_name) ? $imgPath . $sibling->image_name : '';
+
+                $contactDetails = ContactDetails::find($sibling->parent_id);
+                $sibling->SetToReceiveSMS = $contactDetails?->phone_no ?? '';
+
+                $userMaster = UserMaster::where('role_id', 'P')
+                    ->where('reg_id', $sibling->parent_id)
+                    ->first();
+                $sibling->SetEmailIDAsUsername = $userMaster?->user_id ?? '';
+            });
+
+            $student->siblings = $siblings;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'students' => $students,
+        ]);
+    }
+
+    public function saveUnmappingSibling(Request $request, $id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            if ($user->role_id !== 'U') {
+                return response()->json([
+                    'status' => 403,
+                    'message' => 'This is Unauthorized for another user.',
+                    'success' => true
+                ]);
+            }
+
+            $studentId = $id;
+            if (!$studentId) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Student ID is required.',
+                    'success' => false
+                ]);
+            }
+
+            $changedData = false;
+
+            if ($request->filled('parent_id2')) {
+                // assign to parent_id2
+                $parentId = $request->input('parent_id2');
+                $changedData = Student::where('student_id', $studentId)
+                    ->update(['parent_id' => $parentId]) > 0;
+            } else if ($request->filled('parent_id')) {
+                // Case: reactivate and assign existing parent
+                $existingParentId = $request->input('parent_id');
+
+                $changedData = Student::where('student_id', $studentId)
+                    ->update(['parent_id' => $existingParentId]) > 0;
+
+                UserMaster::where('reg_id', $existingParentId)
+                    ->where('role_id', 'P')
+                    ->update(['IsDelete' => 'N']);
+
+                Parents::where('parent_id', $existingParentId)
+                    ->update(['IsDelete' => 'N']);
+
+                $deletedContact = DB::table('deleted_contact_details')
+                    ->where('id', $existingParentId)->first();
+
+                if ($deletedContact) {
+                    DB::table('contact_details')->insert([
+                        'id' => $deletedContact->id,
+                        'phone_no' => $deletedContact->phone_no,
+                        'email_id' => $deletedContact->email_id,
+                        'm_emailid' => $deletedContact->m_emailid
+                    ]);
+
+                    DB::table('deleted_contact_details')->where('id', $existingParentId)->delete();
+                }
+            } else {
+                // Case: create new parent + user + contact and assign
+                $f_mobile = $request->input('f_mobile');
+                $m_mobile = $request->input('m_mobile');
+                $f_email = $request->input('f_email');
+                $m_email = $request->input('m_email');
+
+                // Check for duplicates in contact_details
+                $duplicate = DB::table('contact_details')
+                    ->where(function ($query) use ($f_mobile, $m_mobile, $f_email, $m_email) {
+                        $query->where('phone_no', $f_mobile)
+                            ->orWhere('phone_no', $m_mobile)
+                            ->orWhere('email_id', $f_email)
+                            ->orWhere('m_emailid', $m_email);
+                    })->exists();
+
+                if ($duplicate) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Duplicate mobile number or email found in contact details.',
+                        'success' => false
+                    ]);
+                }
+
+                $parentData = [
+                    'father_name' => trim($request->input('father_name')),
+                    'f_email' => $f_email,
+                    'f_mobile' => $f_mobile,
+                    'mother_name' => trim($request->input('mother_name')),
+                    'm_mobile' => $m_mobile,
+                    'm_emailid' => $m_email,
+                    'IsDelete' => 'N'
+                ];
+                $parentId = DB::table('parent')->insertGetId($parentData);
+
+                $userId = $request->input('user_id');
+
+                // Create user if not exists
+                $existingUser = UserMaster::where('user_id', $userId)->first();
+                if (!$existingUser) {
+                    UserMaster::create([
+                        'user_id' => $userId,
+                        'name' => $request->input('father_name'),
+                        'password' => bcrypt('arnolds'),
+                        'reg_id' => $parentId,
+                        'role_id' => 'P'
+                    ]);
+
+                    // Send to external EVOLVU service
+                    $evolvuPayload = json_encode([
+                        'user_id' => $userId,
+                        'school_id' => '1'
+                    ]);
+
+                    Http::withHeaders(['Content-Type' => 'application/json'])
+                        ->post(config('externalapis.EVOLVU_URL') . '/user_create_post', $evolvuPayload);
+                }
+
+                // Add contact details
+                $phone = $f_mobile ?: $m_mobile;
+                DB::table('contact_details')->insert([
+                    'id' => $parentId,
+                    'phone_no' => $phone,
+                    'email_id' => $f_email,
+                    'm_emailid' => $m_email
+                ]);
+
+                $changedData = Student::where('student_id', $studentId)
+                    ->update(['parent_id' => $parentId]) > 0;
+            }
+
+            // Final success response
+            if ($changedData) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Student unmapped successfully.'
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Student update failed or no changes detected.'
+                ]);
+            }
+        } catch (Exception $e) {
+            \Log::error('Unmapping sibling error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Internal Server Error'
+            ], 500);
         }
     }
     
