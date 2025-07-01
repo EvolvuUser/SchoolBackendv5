@@ -11127,7 +11127,8 @@ public function getTeacherIdCard(Request $request){
     //    }
 
      //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025 updated on 24-06-2025
-    public function getTimetableByClassSection($class_id,$section_id){
+    //Timetable Teacherwise  Dev Name- Manish Kumar Sharma 01-04-2025 updated on 24-06-2025
+    public function getTimetableByClassSection($class_id,$section_id,$teacher_id){
             try{       
                $user = $this->authenticateUser();
                $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -11169,6 +11170,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11176,6 +11178,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i ,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11183,6 +11186,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i ,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11190,6 +11194,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i ,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11197,6 +11202,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11208,6 +11214,7 @@ public function getTeacherIdCard(Request $request){
                                'time_in' => null,
                                'period_no'=>$i,
                                'time_out' => null,
+                               'subject_id'=>null,
                                'subject' => null,
                                'teacher' => null,
                            ];
@@ -11246,6 +11253,12 @@ public function getTeacherIdCard(Request $request){
            $saturday = [];
 
            foreach ($timetables as $timetable) {
+               $subjectIdmonday = null;
+               $subjectIdtuesday = null;
+               $subjectIdwednesday = null;
+               $subjectIdthursday = null;
+               $subjectIdfriday = null;
+               $subjectIdsaturday = null;
             //   dd("Hello");
                if ($timetable->monday) {
                    $subjects = [];
@@ -11261,6 +11274,9 @@ public function getTeacherIdCard(Request $request){
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdmonday = $subjectId;
+                            }
                     
                             $subjects[] = ['subject_name' => $subjectName];
                             $teachers[] = ['t_name' => $teacherName];
@@ -11271,6 +11287,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdmonday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];
@@ -11287,6 +11304,9 @@ public function getTeacherIdCard(Request $request){
                     foreach ($entries as $entry) {
                         if (str_contains($entry, '^')) {
                             list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdtuesday = $subjectId;
+                            }
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
@@ -11300,6 +11320,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdtuesday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];
@@ -11316,6 +11337,9 @@ public function getTeacherIdCard(Request $request){
                     foreach ($entries as $entry) {
                         if (str_contains($entry, '^')) {
                             list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdwednesday = $subjectId;
+                            }
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
@@ -11329,6 +11353,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdwednesday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];
@@ -11345,6 +11370,9 @@ public function getTeacherIdCard(Request $request){
                     foreach ($entries as $entry) {
                         if (str_contains($entry, '^')) {
                             list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdthursday = $subjectId;
+                            }
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
@@ -11358,6 +11386,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdthursday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];
@@ -11374,6 +11403,9 @@ public function getTeacherIdCard(Request $request){
                     foreach ($entries as $entry) {
                         if (str_contains($entry, '^')) {
                             list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdfriday = $subjectId;
+                            }
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
@@ -11387,6 +11419,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdfriday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];
@@ -11403,6 +11436,9 @@ public function getTeacherIdCard(Request $request){
                     foreach ($entries as $entry) {
                         if (str_contains($entry, '^')) {
                             list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdsaturday = $subjectId;
+                            }
                     
                             $subjectName = $this->getSubjectnameBySubjectId($subjectId);
                             $teacherName = $this->getTeacherByTeacherIddd($teacherId);
@@ -11416,6 +11452,7 @@ public function getTeacherIdCard(Request $request){
                         'time_in' => $timetable->time_in,
                         'period_no' => $timetable->period_no,
                         'time_out' => $timetable->time_out,
+                        'subject_id'=>$subjectIdsaturday,
                         'subject' => $subjects,
                         'teacher' => $teachers,
                     ];

@@ -1972,7 +1972,7 @@ class ReportController extends Controller
     public function whatsappmessagesfornotapprovinglessonplan(Request $request){
         ini_set('max_execution_time', 3600);
         $academicYear = DB::table('settings')->where('active','Y')->value('academic_yr');
-        $nextMonday = Carbon::now()->next(Carbon::MONDAY)->format('d-m-Y');
+        $nextMonday = Carbon::now()->startOfWeek()->format('d-m-Y');
          
          $lessonplanteachers = DB::select("SELECT group_concat(' ',c.name ,' ', sc.name,' ', sm.name) as pending_classes, s.teacher_id, t.name, t.phone FROM subject s, teacher t, class c, section sc, subject_master sm WHERE s.teacher_id=t.teacher_id AND t.isDelete = 'N' and s.class_id=c.class_id and s.section_id=sc.section_id and s.sm_id=sm.sm_id and s.academic_yr='$academicYear' and concat(s.class_id, s.section_id, s.sm_id, s.teacher_id) not in (select concat(class_id, section_id, subject_id, reg_id) from lesson_plan where SUBSTRING_INDEX(week_date,' /',1)='$nextMonday') and s.sm_id not in (select sm_id from subjects_excluded_from_curriculum) group by s.teacher_id;");
         //  dd($lessonplanteachers);
