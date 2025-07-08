@@ -81,7 +81,6 @@ function sendnotificationusinghttpv1($data){
             ];
         }
 
-        Log::info("Nofification response",$result);
 
         // Decode the response from Firebase
         $response = json_decode($result, true);
@@ -92,7 +91,6 @@ function sendnotificationusinghttpv1($data){
                 'success' => false
             ]);
         }
-        Log::info("Nofification response",$response);
 
         // If Firebase response is valid, return the notification ID or other relevant information
         return response()->json([
@@ -413,15 +411,15 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             'upload_date' => $uploadDate,
             'doc_type_folder' => $docTypeFolder,
             'notice_id' => $noticeId,
-            'filename' => $filename,  // Dynamic filenames passed as argument
-            'datafile' => $datafile,  // Dynamic base64 encoded files passed as argument
+            'filename' => $filename,  
+            'datafile' => $datafile, 
         ];
 
 
         // Send the data to the external API
         try {
             $response = Http::post($url, $data); // Send the data to the external API
-
+            
             // Check if the response is successful
             if ($response->successful()) {
                 return $response->json(); // Return the response as JSON
@@ -773,7 +771,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
                 ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
                 ->where('service_type.role_id', $role)
                 ->orderBy('raised_on', 'DESC')
-                ->get();
+                ->get()
+                ->map(function ($ticket) {
+                    $ticket->description = strip_tags($ticket->description); // Remove HTML tags
+                    return $ticket;
+                });
     
         } elseif ($role === 'T') {
             $tickets = DB::table('ticket')
@@ -787,7 +789,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
                 ->where('service_type.role_id', $role)
                 ->where('class_teachers.teacher_id', $reg_id)
                 ->orderBy('raised_on', 'DESC')
-                ->get();
+                ->get()
+                ->map(function ($ticket) {
+                    $ticket->description = strip_tags($ticket->description); // Remove HTML tags
+                    return $ticket;
+                });
         } else {
             $tickets = collect(); // return empty collection if role doesn't match
         }
@@ -812,7 +818,10 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             ->join('section','section.section_id','=','student.section_id')
             ->where('ticket.ticket_id', $ticket_id)
             ->get()
-            ->toArray();
+            ->map(function ($ticket) {
+                    $ticket->description = strip_tags($ticket->description); // Remove HTML tags
+                    return $ticket;
+                });
     }
 
     function updateStatusforTicketList()
@@ -854,4 +863,16 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
         });
     
         return $comments->toArray();
+    }
+
+
+    function getTokenDataParentId($student_id)
+    {
+        return DB::table('student as a')
+            ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
+            ->where('a.student_id', $student_id)
+            ->where('b.login_type', 'P')
+            ->select('b.token', 'b.user_id', 'b.parent_teacher_id', 'b.login_type', 'a.parent_id', 'a.student_id')
+            ->get()
+            ->toArray(); 
     }
