@@ -87,7 +87,7 @@ class AuthController extends Controller
         try {
             
             $userrole = UserMaster::where('user_id', $credentials['user_id'])
-                        ->whereIn('role_id', ['A', 'M'])
+                        ->whereIn('role_id', ['A', 'M','U','T'])
                         ->first();
             if($userrole){
 
@@ -125,6 +125,7 @@ class AuthController extends Controller
                 Log::warning('Invalid password for user:', $credentials);
                 return response()->json(['error' => 'Invalid password'], 401);
             }
+            if($userrole->role_id != 'U' && $userrole->role_id != 'T'){
             $url = config('externalapis.EVOLVU_URL').'/validate_staff_user';
 
             $response = Http::asMultipart()->post($url, [
@@ -142,7 +143,6 @@ class AuthController extends Controller
             } else {
                 dd("No database configuration for the given short_name");
             }
-
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
 
             $customClaims = [
@@ -153,13 +153,38 @@ class AuthController extends Controller
                 'school_name'=> $schoolName
 
             ];
-
             $token = JWTAuth::claims($customClaims)->fromUser($user);
 
             Log::info('Token created successfully:', ['token' => $token]);
 
             return response()->json(['token' => $token
                                 ,'user' => $user,'userdetails'=>$customClaims]);
+            
+            }
+            else{
+            $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
+            $schoolName = Setting::where('active', 'Y')->first()->institute_name;
+            $customClaims = [
+                'role_id' => $user->role_id,
+                'reg_id' => $user->reg_id,
+                'academic_year' => $academic_yr,
+                'school_name'=>$schoolName
+                
+
+            ];
+            $token = JWTAuth::claims($customClaims)->fromUser($user);
+
+            Log::info('Token created successfully:', ['token' => $token]);
+
+            return response()->json(['token' => $token
+                                ,'user' => $user,'userdetails'=>$customClaims]);
+                
+            }
+            
+
+            
+
+            
                 
             }
             else{

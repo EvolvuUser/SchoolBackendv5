@@ -112,7 +112,8 @@
         Route::get('/show_roles', [RoleController::class, 'showRoles']);
         Route::get('/show_access/{roleId}', [RoleController::class, 'showAccess']);
         Route::post('/update_access/{roleId}', [RoleController::class, 'updateAccess']);
-        Route::get('/navmenulist', [RoleController::class, 'navMenulist']);      
+        Route::get('/navmenulist', [RoleController::class, 'navMenulist']);
+        Route::get('/navmenulisttest', [RoleController::class, 'navMenulisttest']);        
 
 
         // Menus Model Routes 
@@ -674,6 +675,34 @@
         // Api for the Sibling Unmapping Dev Name - Mahima Chaudhari 26-06-2025
         Route::get('get_studentwithSiblings', [SubstituteTeacher::class, 'getStudentsListwithSibling']);
         Route::post('update_studentwithsibling/{id}', [SubstituteTeacher::class, 'saveUnmappingSibling']);
+
+        // Api for the Remark and observation for students Dev Name - Manish Kumar Sharma 03-07-2025
+        Route::post('save_remarkobservationforstudents', [NewController::class,'saveRemarkObservationForStudents']);
+        Route::get('get_remarklistforstudents', [NewController::class,'getRemarkObservationListForStudents']);
+        Route::delete('delete_remarkforstudent/{remark_id}', [NewController::class,'deleteRemarkObservationForStudents']);
+        Route::put('update_publishremarkforstudent/{remark_id}', [NewController::class,'updatepublishRemarkObservationForStudent']);
+        Route::get('get_subject_alloted_to_teacher_by_class/{class_id}/{section_id}', [NewController::class,'getSubjectAllotedToTeacherByClass']);
+        Route::get('get_subjectbyclasssection/{class_id}/{section_id}', [NewController::class,'getSubjectByClassSection']);
+        Route::post('update_remarkforstudent/{remark_id}', [NewController::class,'updateRemarkObservationForStudent']);
+        
+        // Api for the allot special role for students Dev Name - Manish Kumar Sharma 04-07-2025
+        Route::post('save_allotspecialrole', [NewController::class,'saveAllotSpecialRole']);
+        Route::get('get_allotspecialrolelist',[NewController::class,'getSpecialrolelist']);
+        Route::delete('delete_allotspecialrole/{special_role_id}',[NewController::class,'deleteSpecialrolelist']);
+        Route::get('get_specialrole',[NewController::class,'getSpecialRole']);
+        Route::put('update_allotspecialrole/{special_role_id}',[NewController::class,'updateallotspecialrole']);
+        Route::get('get_allstaff_without_caretaker',[NewController::class,'getAllStaffwithoutCaretaker']);
+        
+        // Api for the substitute class teacher Dev Name - Manish Kumar Sharma 07-07-2025
+        Route::post('save_classteachersubstitute',[NewController::class,'saveClassTeacherSubstitute']);
+        Route::get('get_classteachers',[NewController::class,'getClassTeachers']);
+        Route::get('get_nonclassteachers',[NewController::class,'getNonClassTeachers']);
+        Route::get('get_substitute_classteacherlist',[NewController::class,'getsubstituteClassTeacherList']);
+        Route::put('update_classteachersubstitute/{class_substitute_id}',[NewController::class,'updateClassTeacherSubstitute']);
+        Route::delete('delete_substituteclassteacher/{class_substitute_id}',[NewController::class,'deleteSubstituteClassTeacher']);
+        
+        // Api for the finance fees category Dev Name - Manish Kumar Sharma 07-07-2025
+        Route::get('get_feescategory',[NewController::class,'getFeesCategory']);
 
 
 

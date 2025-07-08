@@ -10,9 +10,18 @@ use DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Carbon;
 use DateTime;
+use Illuminate\Support\Facades\App;
+use App\Http\Services\WhatsAppService;
+use Illuminate\Support\Str;
 
 class NewController extends Controller
 {
+    protected $whatsAppService;
+
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
     public function getCaretakerList(){
         $caretakerlist = Teacher::where('designation', '=', 'Caretaker')
         ->get();
@@ -540,7 +549,58 @@ class NewController extends Controller
 
      }
      //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
-     public function savenPublishRemarkForTeacher(Request $request){
+    //  public function savenPublishRemarkForTeacher(Request $request){
+    //     try{
+    //             $user = $this->authenticateUser();
+    //             $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+    //                 $teacherids = $request->teacherid;
+    //                 $remarksubject = $request->remark_subject;
+    //                 $remark = $request->remark;
+    //                 $remarktype = $request->remark_type;
+
+    //                     foreach($teacherids as $teacherid){
+    //                         // dd($teacherid);
+    //                         DB::table('teachers_remark')->insert([
+    //                             'teachers_id' => $teacherid,
+    //                             'remark_subject'=>$remarksubject,
+    //                             'remark_desc'=>$remark,
+    //                             'remark_type'=>$remarktype,
+    //                             'remark_date'=>now(),
+    //                             'publish_date'=>now(),
+    //                             'dataentry_by'=>$user->reg_id,
+    //                             'publish'=>'Y',
+    //                             'acknowledge'=>'N',
+    //                             'academic_yr'=>$customClaims
+    //                         ]);
+    //                     }
+
+    //                     return response()->json([
+    //                         'status' => 200,
+    //                         'message'=> 'Remark and observation saved and published successfully.',
+    //                         'success'=>true
+    //                     ]);
+
+
+    //              }
+    //             else
+    //              {
+    //                 return response()->json([
+    //                     'status'=> 401,
+    //                     'message'=>'This User Doesnot have Permission for the getting of department list.',
+    //                     'data' =>$user->role_id,
+    //                     'success'=>false
+    //                     ]);
+    //                 }
+
+    //            }
+    //           catch (Exception $e) {
+    //             \Log::error($e); // Log the exception
+    //             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //            }
+
+    //  }
+    public function savenPublishRemarkForTeacher(Request $request){
         try{
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -552,7 +612,7 @@ class NewController extends Controller
 
                         foreach($teacherids as $teacherid){
                             // dd($teacherid);
-                            DB::table('teachers_remark')->insert([
+                            $id=DB::table('teachers_remark')->insertGetId([
                                 'teachers_id' => $teacherid,
                                 'remark_subject'=>$remarksubject,
                                 'remark_desc'=>$remark,
@@ -563,7 +623,58 @@ class NewController extends Controller
                                 'publish'=>'Y',
                                 'acknowledge'=>'N',
                                 'academic_yr'=>$customClaims
-                            ]);
+                              ]);
+                            $teacherdetails = DB::table('teacher')->where('teacher_id',$teacherid)->first();
+                            //   dd($teacherdetails);
+                            if ($teacherdetails && isset($teacherdetails->name)) {
+                                $fullName = $teacherdetails->name;
+                            
+                                // Remove known prefixes
+                                $cleaned = preg_replace('/\b(Mr\.?|Mrs\.?|Miss\.?|Ms\.?|Fr\.?|Dr\.?)\b\.?\s*/i', '', $fullName);
+                            
+                                // Split into words and keep first + last only
+                                $parts = preg_split('/\s+/', trim($cleaned));
+                                $first = $parts[0] ?? '';
+                                $last = end($parts);
+                            
+                                // Convert to CamelCase
+                                $teacherNameCamel = ucfirst(strtolower($first)) . ' ' . ucfirst(strtolower($last));
+                            }
+                            //  dd($teacherNameCamel);
+                            $teacherphoneno = $teacherdetails->phone;
+                            if($teacherphoneno){
+                                $templateName = 'emergency_message';
+                                $parameters =[$teacherNameCamel.", ".$remark];
+                                // Log::info($teacherphoneno);
+                                $result = $this->whatsAppService->sendTextMessage(
+                                    $teacherphoneno,
+                                    $templateName,
+                                    $parameters
+                                );
+                                // Log::info("Failed message",$result);
+                                if (isset($result['code']) && isset($result['message'])) {
+                                    // Handle rate limit error
+                                    Log::warning("Rate limit hit: Too many messages to same user", [
+                                        
+                                    ]);
+                            
+                                } else {
+                                    // Proceed if no error
+                                    $wamid = $result['messages'][0]['id'];
+                                    $phone_no = $result['contacts'][0]['input'];
+                                    $message_type = 'teacher_remark';
+                            
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => $wamid,
+                                        'phone_no' => $phone_no,
+                                        'stu_teacher_id' => $teacherid,
+                                        'notice_id' => $id,
+                                        'message_type' => $message_type,
+                                        'created_at' => now()
+                                    ]);
+                                }
+            
+                            }
                         }
 
                         return response()->json([
@@ -716,53 +827,156 @@ class NewController extends Controller
 
      }
      //API for the Remark and observation for teachers Dev Name- Manish Kumar Sharma 09-06-2025
-     public function updatePublishRemarkForTeacher(Request $request,$id){
+    //  public function updatePublishRemarkForTeacher(Request $request,$id){
+    //      try{
+    //          $user = $this->authenticateUser();
+    //          $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //          if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+    //             $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
+    //             // dd($remarkdetails);
+    //             $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
+    //             //  dd($teacherdetails);
+    //             if ($teacherdetails && isset($teacherdetails->name)) {
+    //                 $fullName = $teacherdetails->name;
+                
+    //                 // Remove known prefixes
+    //                 $cleaned = preg_replace('/\b(Mr\.?|Mrs\.?|Miss\.?|Ms\.?|Fr\.?|Dr\.?)\b\.?\s*/i', '', $fullName);
+                
+    //                 // Split into words and keep first + last only
+    //                 $parts = preg_split('/\s+/', trim($cleaned));
+    //                 $first = $parts[0] ?? '';
+    //                 $last = end($parts);
+                
+    //                 // Convert to CamelCase
+    //                 $teacherNameCamel = ucfirst(strtolower($first)) . ' ' . ucfirst(strtolower($last));
+    //             }
+    //             // dd($teacherNameCamel);
+    //             $teacherphoneno = $teacherdetails->phone;
+    //             if($teacherphoneno){
+    //                 $templateName = 'emergency_message';
+    //                 $parameters =[$teacherNameCamel.",".$remarkdetails->remark_desc];
+    //                 // Log::info($teacherphoneno);
+    //                 $result = $this->whatsAppService->sendTextMessage(
+    //                     $teacherphoneno,
+    //                     $templateName,
+    //                     $parameters
+    //                 );
+    //                 // Log::info("Failed message",$result);
+    //                 if (isset($result['code']) && isset($result['message'])) {
+    //                     // Handle rate limit error
+    //                     Log::warning("Rate limit hit: Too many messages to same user", [
+                            
+    //                     ]);
+                
+    //                 } else {
+    //                     // Proceed if no error
+    //                     $wamid = $result['messages'][0]['id'];
+    //                     $phone_no = $result['contacts'][0]['input'];
+    //                     $message_type = 'teacher_remark';
+                
+    //                     DB::table('redington_webhook_details')->insert([
+    //                         'wa_id' => $wamid,
+    //                         'phone_no' => $phone_no,
+    //                         'stu_teacher_id' => $remarkdetails->teachers_id,
+    //                         'notice_id' => $id,
+    //                         'message_type' => $message_type,
+    //                         'created_at' => now()
+    //                     ]);
+    //                 }
+
+    //             }
+                 
+    //             $publishteacherremark = DB::table('teachers_remark')
+    //                                         ->where('t_remark_id', $id ) 
+    //                                         ->update([
+    //                                             'publish'=>'Y',
+    //                                             'publish_date'=>now()
+    //                                         ]);
+
+    //             return response()->json([
+    //                 'status'=>200,
+    //                 'message' => 'Teacher remark published successfully!',
+    //                 'success' => true
+    //             ]);
+
+    //          }
+    //          else
+    //              {
+    //                 return response()->json([
+    //                     'status'=> 401,
+    //                     'message'=>'This User Doesnot have Permission for the getting of department list.',
+    //                     'data' =>$user->role_id,
+    //                     'success'=>false
+    //                     ]);
+    //                 }
+
+    //            }
+    //           catch (Exception $e) {
+    //             \Log::error($e); // Log the exception
+    //             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //            }
+
+    //  }
+
+    public function updatePublishRemarkForTeacher(Request $request,$id){
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
              if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
-                // $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
-                // // dd($remarkdetails);
-                // $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
-                // // dd($teacherdetails);
-                // $teacherphoneno = $teacherdetails->phone;
-                // if($teacherphoneno){
-                //     $templateName = 'emergency_message';
-                //     $parameters =[$remarkdetails->remark_desc];
-                //     Log::info($teacherphoneno);
-                //     $result = $this->whatsAppService->sendTextMessage(
-                //         $teacherphoneno,
-                //         $templateName,
-                //         $parameters
-                //     );
-                //     Log::info("Failed message",$result);
-                //     if (isset($result['code']) && isset($result['message'])) {
-                //         // Handle rate limit error
-                //         Log::warning("Rate limit hit: Too many messages to same user", [
+                //  dd("Hello");
+                $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
+                // dd($remarkdetails);
+                $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
+                //  dd($teacherdetails);
+                if ($teacherdetails && isset($teacherdetails->name)) {
+                    $fullName = $teacherdetails->name;
+                
+                    // Remove known prefixes
+                    $cleaned = preg_replace('/\b(Mr\.?|Mrs\.?|Miss\.?|Ms\.?|Fr\.?|Dr\.?)\b\.?\s*/i', '', $fullName);
+                
+                    // Split into words and keep first + last only
+                    $parts = preg_split('/\s+/', trim($cleaned));
+                    $first = $parts[0] ?? '';
+                    $last = end($parts);
+                
+                    // Convert to CamelCase
+                    $teacherNameCamel = ucfirst(strtolower($first)) . ' ' . ucfirst(strtolower($last));
+                }
+                // dd($teacherNameCamel);
+                $teacherphoneno = $teacherdetails->phone;
+                if($teacherphoneno){
+                    $templateName = 'emergency_message';
+                    $parameters =[$teacherNameCamel.", ".$remarkdetails->remark_desc];
+                    // Log::info($teacherphoneno);
+                    $result = $this->whatsAppService->sendTextMessage(
+                        $teacherphoneno,
+                        $templateName,
+                        $parameters
+                    );
+                    // Log::info("Failed message",$result);
+                    if (isset($result['code']) && isset($result['message'])) {
+                        // Handle rate limit error
+                        Log::warning("Rate limit hit: Too many messages to same user", [
                             
-                //         ]);
+                        ]);
                 
-                //     } else {
-                //         // Proceed if no error
-                //         $wamid = $result['messages'][0]['id'];
-                //         $phone_no = $result['contacts'][0]['input'];
-                //         $message_type = 'teacher_remark';
+                    } else {
+                        // Proceed if no error
+                        $wamid = $result['messages'][0]['id'];
+                        $phone_no = $result['contacts'][0]['input'];
+                        $message_type = 'teacher_remark';
                 
-                //         DB::table('redington_webhook_details')->insert([
-                //             'wa_id' => $wamid,
-                //             'phone_no' => $phone_no,
-                //             'stu_teacher_id' => $remarkdetails->teachers_id,
-                //             'notice_id' => $id,
-                //             'message_type' => $message_type,
-                //             'created_at' => now()
-                //         ]);
-                //     }
+                        DB::table('redington_webhook_details')->insert([
+                            'wa_id' => $wamid,
+                            'phone_no' => $phone_no,
+                            'stu_teacher_id' => $remarkdetails->teachers_id,
+                            'notice_id' => $id,
+                            'message_type' => $message_type,
+                            'created_at' => now()
+                        ]);
+                    }
 
-                //     sleep(20);
-
-                    
-
-                // }
+                }
                  
                 $publishteacherremark = DB::table('teachers_remark')
                                             ->where('t_remark_id', $id ) 
@@ -1556,7 +1770,11 @@ class NewController extends Controller
                         // Handle file upload
                         if ($request->hasFile('fileupload')) {
                             $file = $request->file('fileupload');
-                            $filename = $file->getClientOriginalName();
+                            $originalName = $file->getClientOriginalName();
+                            $nameOnly = pathinfo($originalName, PATHINFO_FILENAME);
+                            $extension = $file->getClientOriginalExtension();
+                            $safeName = str_replace(' ', '_', $nameOnly);
+                            $filename = $safeName.'.'.$extension;
                             $codeigniter = ticket_files_for_laravel($ticket_id,$comment,$file);
                             $path = "ticket/{$ticket_id}/{$comment}/";
                             $storedPath = $file->storeAs("public/{$path}", $filename);
@@ -3129,6 +3347,1091 @@ class NewController extends Controller
             \Log::error($e); 
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
             } 
+     }
+
+     public function saveRemarkObservationForStudents(Request $request){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             $savepublish = $request->input('save_publish');
+             if($savepublish == 'N'){
+                 $files = $request->file('userfile', []);
+                $studentIds = $request->student_id;
+            
+                foreach ($studentIds as $index => $studentId) {
+                    $remark_type = $request->filled('observation') ? 'Observation' : 'Remark';
+
+                    $insertData = [
+                        'remark_type'     => $remark_type,
+                        'remark_desc'     => $request->input('remark_desc'),
+                        'remark_subject'  => $request->input('remark_subject'),
+                        'class_id'        => $request->input('class_id'),
+                        'section_id'      => $request->input('section_id'),
+                        'subject_id'      => $request->input('subject_id'),
+                        'teacher_id'      => $user->reg_id,
+                        'academic_yr'     => $customClaims,
+                        'remark_date'     => \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d'),
+                        'publish'         => 'N',
+                        'acknowledge'     => 'N',
+                        'student_id'      => $studentId,
+                    ];
+                    
+                     $remarkId = DB::table('remark')->insertGetId($insertData);
+                     $filenames = [];
+                    $datafiles = [];
+                    
+                    $uploadDate = now()->format('d-m-Y'); // Today's date
+                    $docTypeFolder = 'remark';            // Document type folder
+                    $noticeId = $remarkId; // If notice ID is available
+                        foreach ($files as $file) {
+                            if ($file && $file->isValid()) {
+                                $filename = $file->getClientOriginalName();
+                                $folder = 'remark/' . \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d') . '/' . $studentId;
+                                $path = $file->storeAs($folder, $filename, 'public');
+                                $filesize = $file->getSize();
+                                $filenames[] = $filename;
+                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                // dd($datafiles);
+                                DB::table('remark_detail')->insert([
+                                    'remark_id'  => $remarkId,
+                                    'image_name' => $filename,
+                                    'file_size'  => $filesize,
+                                ]);
+                            }
+                    }
+                    
+                    $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                    // dd($response);
+                }
+                
+                return response()->json([
+                    'status' =>200,
+                    'message' => 'Remark Saved Successfully!',
+                    'success'=>true
+                   ]);
+                 
+             }
+             else{
+                $files = $request->file('userfile', []);
+                $studentIds = $request->student_id;
+            
+                foreach ($studentIds as $index => $studentId) {
+                    $remark_type = $request->filled('observation') ? 'Observation' : 'Remark';
+
+                    $insertData = [
+                        'remark_type'     => $remark_type,
+                        'remark_desc'     => $request->input('remark_desc'),
+                        'remark_subject'  => $request->input('remark_subject'),
+                        'class_id'        => $request->input('class_id'),
+                        'section_id'      => $request->input('section_id'),
+                        'subject_id'      => $request->input('subject_id'),
+                        'teacher_id'      => $user->reg_id,
+                        'academic_yr'     => $customClaims,
+                        'remark_date'     => \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d'),
+                        'publish_date'=> \Carbon\Carbon::today()->toDateString(), 
+                        'publish'         => 'Y',
+                        'acknowledge'     => 'N',
+                        'student_id'      => $studentId,
+                    ];
+                    
+                     $remarkId = DB::table('remark')->insertGetId($insertData);
+
+                        foreach ($files as $file) {
+                            if ($file && $file->isValid()) {
+                                $filename = $file->getClientOriginalName();
+                                $folder = 'remark/' . \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d') . '/' . $studentId;
+                                $path = $file->storeAs($folder, $filename, 'public');
+                                $filesize = $file->getSize();
+                
+                                DB::table('remark_detail')->insert([
+                                    'remark_id'  => $remarkId,
+                                    'image_name' => $filename,
+                                    'file_size'  => $filesize,
+                                ]);
+                            }
+                        
+                    }
+                    $studentcontactdata = DB::table('student as a')
+                                ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                                ->where('a.student_id', $studentId)
+                                ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+                                ->first();
+                    $phone = $studentcontactdata->phone_no;
+                    if($phone){
+                        $templateName = 'emergency_message';
+                        $parameters =["Parent,".$request->input('remark_desc')];
+                    
+                        $result = $this->whatsAppService->sendTextMessage(
+                            $phone,
+                            $templateName,
+                            $parameters
+                        );
+                        if (isset($result['code']) && isset($result['message'])) {
+                                            Log::warning("Rate limit hit", []);
+                        } 
+                        else {
+                            DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => $result['messages'][0]['id'] ?? null,
+                                        'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                                        'stu_teacher_id' => $studentId,
+                                        'notice_id' => $remarkId,
+                                        'message_type' => 'remarkforstudent',
+                                        'created_at' => now()
+                                    ]);
+                            
+                        }
+                        
+                    }
+                    $tokenData = getTokenDataParentId($studentId);
+                    // dd($tokenData);
+            
+                    foreach ($tokenData as $item) {
+                        if (!empty($item->token)) {
+                            // DB::table('daily_notifications')->insert([
+                            //     'student_id'        => $item->student_id,
+                            //     'parent_id'         => $item->parent_teacher_id,
+                            //     'homework_id'       => 0,
+                            //     'remark_id'         => $remark_id,
+                            //     'notice_id'         => 0,
+                            //     'notes_id'          => 0,
+                            //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
+                            //     'token'             => $item->token,
+                            // ]);
+                        }
+                        $data = [
+                            'token' => $item->token, // FCM token of parent/student device
+                            'notification' => [
+                                'title' => 'Remark',
+                                'description' =>$request->input('remark_desc'),
+                            ]
+                        ];
+                    
+                      sendnotificationusinghttpv1($data);
+                    }
+                }
+                sleep(10);
+                return response()->json([
+                    'status' =>200,
+                    'message' => 'Remark saved and published successfully!',
+                    'success'=>true
+                   ]);
+                 
+             }
+                
+             
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
+         
+     }
+     
+     
+     public function getRemarkObservationListForStudents(Request $request){
+      try{
+         $globalVariables = App::make('global_variables');
+         $parent_app_url = $globalVariables['parent_app_url'];
+         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $remarks = DB::table('remark')
+                        ->join('class', 'class.class_id', '=', 'remark.class_id')
+                        ->join('section', 'section.section_id', '=', 'remark.section_id')
+                        ->join('student', 'student.student_id', '=', 'remark.student_id')
+                        ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'remark.subject_id')
+                        ->where('remark.academic_yr', $customClaims)
+                        ->where('remark.teacher_id', $user->reg_id)
+                        ->where('remark.isDelete', 'N')
+                        ->select(
+                            'remark.*',
+                            'class.name as classname',
+                            'section.name as sectionname',
+                            'student.first_name',
+                            'student.mid_name',
+                            'student.last_name',
+                            'subject_master.name as subjectname'
+                        )
+                        ->get();
+
+                        // Step 2: Fetch all remark_detail entries related to these remarks
+                        $remarkIds = $remarks->pluck('remark_id')->toArray();
+                        
+                        $files = DB::table('remark_detail')
+                            ->whereIn('remark_id', $remarkIds)
+                            ->get()
+                            ->groupBy('remark_id');
+                        
+                        // Step 3: Attach multiple file URLs to each remark
+                        $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+                            $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
+                        
+                            $remark->files = collect($files[$remark->remark_id] ?? [])->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+                                return [
+                                    'image_name' => $file->image_name,
+                                    'file_size'  => $file->file_size,
+                                    'file_url'   => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
+                                ];
+                            });
+                        
+                            return $remark;
+                        });
+                            return response()->json([
+                    'status' =>200,
+                    'data'=>$remarks,
+                    'message' => 'Remark list!',
+                    'success'=>true
+                   ]);
+        }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
+     }
+     
+     public function deleteRemarkObservationForStudents(Request $request,$remark_id){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    
+        
+        $remark = DB::table('remark')->where('remark_id', $remark_id)->first();
+    
+        if ($remark && $remark->publish === 'Y') {
+            
+            DB::table('remark')->where('remark_id', $remark_id)->update([
+                'isDelete' => 'Y'
+            ]);
+        } else {
+            
+            DB::table('remark_detail')->where('remark_id', $remark_id)->delete();
+            DB::table('remark')->where('remark_id', $remark_id)->delete();
+        }
+    
+        return response()->json([
+                    'status' =>200,
+                    'message' => 'Remark deleted successfully!',
+                    'success'=>true
+                   ]);
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        } 
+         
+     }
+     
+     public function updatepublishRemarkObservationForStudent(Request $request,$remark_id){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         DB::table('remark')
+            ->where('remark_id', $remark_id)
+            ->update([
+                'publish'      => 'Y',
+                'publish_date' => now()->toDateString(), // 'Y-m-d' format
+            ]);
+            
+        $remarkdata = DB::table('remark')->where('remark_id',$remark_id)->first();
+            
+        $studentcontactdata = DB::table('student as a')
+                                ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                                ->where('a.student_id', $remarkdata->student_id)
+                                ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+                                ->first(); 
+        // dd($studentcontactdata);
+        $phone = $studentcontactdata->phone_no;
+        if($phone){
+            $templateName = 'emergency_message';
+            $parameters =[$remarkdata->remark_desc];
+        
+            $result = $this->whatsAppService->sendTextMessage(
+                $phone,
+                $templateName,
+                $parameters
+            );
+            if (isset($result['code']) && isset($result['message'])) {
+                                Log::warning("Rate limit hit", []);
+            } 
+            else {
+                DB::table('redington_webhook_details')->insert([
+                            'wa_id' => $result['messages'][0]['id'] ?? null,
+                            'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                            'stu_teacher_id' => $remarkdata->student_id,
+                            'notice_id' => $remarkdata->remark_id,
+                            'message_type' => 'remarkforstudent',
+                            'created_at' => now()
+                        ]);
+                
+            }
+            
+        }
+        
+        $tokenData = getTokenDataParentId($remarkdata->student_id);
+        // dd($tokenData);
+
+        foreach ($tokenData as $item) {
+            if (!empty($item->token)) {
+                // DB::table('daily_notifications')->insert([
+                //     'student_id'        => $item->student_id,
+                //     'parent_id'         => $item->parent_teacher_id,
+                //     'homework_id'       => 0,
+                //     'remark_id'         => $remark_id,
+                //     'notice_id'         => 0,
+                //     'notes_id'          => 0,
+                //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
+                //     'token'             => $item->token,
+                // ]);
+            }
+            $data = [
+                'token' => $item->token, // FCM token of parent/student device
+                'notification' => [
+                    'title' => 'Remark',
+                    'description' => $remarkdata->remark_desc,
+                ]
+            ];
+        
+          sendnotificationusinghttpv1($data);
+        }
+        
+        
+        $failedsms = DB::table('redington_webhook_details')
+                        ->where('notice_id',$remarkdata->remark_id)
+                        ->where('stu_teacher_id',$remarkdata->student_id)
+                        ->where('sms_sent','N')
+                        ->where('message_type','remarkforstudent')
+                        ->where('status','failed')
+                        ->first();
+        if($failedsms){
+            $smsData = DB::table('daily_sms')
+                    ->where('parent_id', $studentcontactdata->parent_id)
+                    ->where('student_id', $remarkdata->student_id)
+                    ->first();
+                
+                if (!$smsData) {
+                    // Insert new record
+                    DB::table('daily_sms')->insert([
+                        'student_id'   => $remarkdata->student_id,
+                        'parent_id'    => $studentcontactdata->parent_id,
+                        'phone'        => $phone,
+                        'homework'     => 0,
+                        'remark'       => 1,
+                        'notice'       => 0,
+                        'note'         => 0,
+                        'achievement'  => 0,
+                        'sms_date'     => now()->format('Y-m-d H:i:s'),
+                    ]);
+                } else {
+                    // Update existing record (increment remark)
+                    DB::table('daily_sms')
+                        ->where('parent_id', $studentcontactdata->parent_id)
+                        ->where('student_id', $remarkdata->student_id)
+                        ->update([
+                            'remark'   => $smsData->remark + 1,
+                            'sms_date' => now()->format('Y-m-d H:i:s'),
+                        ]);
+                }
+            
+        }
+        
+        
+        
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        } 
+     }
+     
+     public function updateRemarkObservationForStudent(Request $request,$remark_id){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             //  dd("Hello");
+             $remarksubject = $request->remark_subject;
+             $remarkdesc = $request->remark_desc;
+             $remarkType = $request->remark_type ? 'Observation' : 'Remark';
+             $remarktypeexist = DB::table('remark')
+                                    ->where('remark_id', $remark_id)
+                                    ->first();
+            // dd($remarktypeexist);
+            $date = Carbon::parse($remarktypeexist->remark_date)->toDateString();
+            // dd($date);
+             if($remarkType == 'Observation'){
+            
+             DB::table('remark')
+            ->where('remark_id', $remark_id)
+            ->update([
+                'remark_desc'      => $remarkdesc,
+                'remark_subject' => $remarksubject, 
+                'remark_type'   =>$remarkType
+            ]);
+            return response()->json([
+                    'status' =>200,
+                    'message' => 'Remark updated successfully!',
+                    'success'=>true
+                   ]);
+            
+            }
+            $filePaths = $request->filenottobedeleted ?? [];
+            $trimmedFilePaths = array_map(function($filePath) use ($remarktypeexist, $remark_id,$date) {
+                return Str::replaceFirst('storage/app/public/remark/' . $date . '/' . $remark_id . '.', '', $filePath);
+            }, $filePaths);
+            
+            $filesToExclude = $trimmedFilePaths; 
+
+            if (is_string($filesToExclude)) {
+                $filesToExclude = explode(',', $filesToExclude);
+            }
+            if (empty($filesToExclude)) {
+                $filesToExclude = [];
+            }
+            $uploadedFiles = $request->file('userfile');
+            $updateremark = DB::table('remark')->where('remark_id',$remark_id)->get();
+            foreach($updateremark as $remarkupdate){
+                        $notice_detail = DB::table('remark_detail')
+                                        ->where('remark_id', $remarkupdate->remark_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
+                                        ->get()
+                                        ->toArray();
+                                        if(!is_null($uploadedFiles)){
+                                            $filenames = [];
+                                            $datafiles = [];
+                                    
+                                            foreach ($uploadedFiles as $file) {
+                                                $filenames[] = $file->getClientOriginalName();
+                                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                            }
+                                    
+                                            
+                                            $uploadDate = now()->format('d-m-Y');  // Get today's date
+                                            $docTypeFolder = 'remark';
+                                            $noticeId = $remarkupdate->remark_id;
+                                            
+                                            
+                                            // Call the helper function to upload the files
+                                            $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                            
+                        
+                                        }                                        
+                    }
+                    $notice_detail = array_filter($notice_detail, function($value) {
+                        return !empty($value); // Remove empty arrays
+                    });
+                    
+                    
+                    $notice_detail = array_values($notice_detail);
+                    $imageNames = array_map(function ($item) {
+                        return $item->image_name;
+                    }, $notice_detail);
+                    
+                    // If you prefer to use Laravel collection's pluck method, you can convert to collection first:
+                    $noticeimagesCollection = collect($notice_detail);
+                    $imageNames = $noticeimagesCollection->pluck('image_name')->toArray();
+                    $uploadDate = '2025-02-23';
+                    $docTypeFolder='teacher_notice';
+                        // foreach($updatesmsnotice as $noticeid){                          
+                        //   delete_uploaded_files_for_laravel ($imageNames,$uploadDate, $docTypeFolder, $noticeid->t_notice_id);
+                        // }
+                    
+                      // Check if there are any notice details
+                    if ($notice_detail) {
+                        // Loop through each notice detail and delete the files
+                        foreach ($notice_detail as $row) {
+                            foreach($updateremark as $noticeid){
+                            $path = storage_path("app/public/teacher_notice/{$date}/{$noticeid->remark_id}/{$row->image_name}");
+                            // dd($path);
+                            // Check if the file exists and delete it
+                            if (File::exists($path)) {
+                                File::delete($path); // Delete the file
+                            }
+                           }
+                        }
+                    }
+                    foreach($updateremark as $noticeid){
+                        $notice_detail = DB::table('remark_detail')
+                                        ->where('remark_id', $noticeid->remark_id)
+                                        ->whereNotIn('image_name', $filesToExclude)
+                                        ->delete();
+                    }
+                    foreach ($updateremark as $notice) {
+                        DB::table('remark')
+                            ->where('remark_id', $notice->remark_id) // Find each notice by its unique ID
+                            ->update([
+                                'remark_desc'      => $remarkdesc,
+                                'remark_subject' => $remarksubject, 
+                                'remark_type'   =>$remarkType
+                            ]);
+                        }
+
+                    
+                    $uploadedFiles = $request->file('userfile');
+                    if(is_null($uploadedFiles)){
+                        return response()->json([
+                            'status'=> 200,
+                            'message'=>'Remark updated Successfully!',
+                            'success'=>true
+                            ]);
+                    }
+                    
+                    
+                    return response()->json([
+                            'status'=> 200,
+                            'message'=>'Remark updated successfully!',
+                            'success'=>true
+                            ]);
+            // dd($filesToExclude);
+            
+            
+         
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            } 
+         
+     }
+     
+     public function getSubjectAllotedToTeacherByClass(Request $request,$class_id,$section_id){
+        
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $subjects = DB::table('subject')
+                        ->select('subject.*', 'subject_master.*') // or be specific with columns
+                        ->join('subject_master', 'subject.sm_id', '=', 'subject_master.sm_id')
+                        ->where('subject.class_id', $class_id)
+                        ->where('subject.section_id', $section_id)
+                        ->where('subject.teacher_id', $user->reg_id)
+                        ->where('subject.academic_yr', $customClaims)
+                        ->orderBy('subject.class_id', 'asc')
+                        ->orderBy('subject.section_id', 'asc')
+                        ->get()
+                        ->toArray();
+                        return response()->json([
+                            'status' =>200,
+                            'data'=>$subjects,
+                            'message' => 'Subject by class section teacher!',
+                            'success'=>true
+                           ]);
+         
+     }
+     
+     public function getSubjectByClassSection(Request $request,$class_id,$section_id){
+        //  dd($class_id,$section_id);
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $subjects = DB::table('subject')
+                        ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                        ->select('subject_master.sm_id', 'subject_master.name')
+                        ->where('subject.class_id', $class_id)
+                        ->where('subject.academic_yr', $customClaims)
+                        ->where('subject.section_id', 'like', "%{$section_id}%") // handles `like` as in CodeIgniter
+                        ->distinct()
+                        ->orderBy('subject.class_id', 'asc')
+                        ->orderBy('subject.section_id', 'asc')
+                        ->orderBy('subject_master.name', 'asc')
+                        ->get();
+                        
+                        return response()->json([
+                    'status' =>200,
+                    'data'=>$subjects,
+                    'message' => 'Subject by class section!',
+                    'success'=>true
+                   ]);
+
+         
+     }
+     
+     public function saveAllotSpecialRole(Request $request){
+          try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacherId    = $request->teacher_id;
+         $departmentId = $request->department_id;
+         $role         = $request->role;
+    
+        
+            $existing = DB::table('department_special_role')
+                ->where('teacher_id', $teacherId)
+                ->where('department_id', $departmentId)
+                ->where('academic_yr', $customClaims)
+                ->exists();
+    
+            if ($existing) {
+                return response()->json([
+                    'status' =>400,
+                    'message' => 'Special Role is already allotted for this Department!',
+                    'success'=>false
+                   ]);
+            }
+    
+            DB::table('department_special_role')->insert([
+                'teacher_id'    => $teacherId,
+                'department_id' => $departmentId,
+                'role'          => $role,
+                'academic_yr'   => $customClaims,
+            ]);
+            
+            return response()->json([
+                    'status' =>200,
+                    'message' => 'Special Role allotment done!',
+                    'success'=>true
+                   ]);
+         
+          }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        } 
+         
+     }
+     
+     public function getSpecialrolelist(Request $request){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $specialrolelist = DB::table('department_special_role')
+                                 ->join('department','department.department_id','=','department_special_role.department_id')
+                                 ->join('teacher','teacher.teacher_id','=','department_special_role.teacher_id')
+                                 ->select('department_special_role.*','teacher.name as teachername','department.name as departmentname')
+                                 ->where('department_special_role.academic_yr',$customClaims)
+                                 ->get();
+         return response()->json([
+                    'status' =>200,
+                    'data'=>$specialrolelist,
+                    'message' => 'Special Role list!',
+                    'success'=>true
+                   ]);
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        } 
+         
+     }
+     
+     public function deleteSpecialrolelist(Request $request,$special_role_id){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         $deletespecialrole = DB::table('department_special_role')->where('special_role_id',$special_role_id)->delete();
+         return response()->json([
+                    'status' =>200,
+                    'message' => 'Special Role deleted successfully!',
+                    'success'=>true
+                   ]);
+         
+         
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+         
+     }
+     
+     public function getSpecialRole(Request $request){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $specialroles = DB::table('special_role_master')->get();
+         return response()->json([
+                    'status' =>200,
+                    'data'=>$specialroles,
+                    'message' => 'Role list!',
+                    'success'=>true
+                   ]);
+         
+         
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+         
+     }
+     
+     public function updateallotspecialrole(Request $request,$special_role_id){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         
+         DB::table('department_special_role')
+                ->where('special_role_id', $special_role_id)
+                ->update([
+                    'teacher_id' => $request->teacher_id,
+                    'role'       => $request->role,
+                ]);
+                
+                return response()->json([
+                    'status' =>200,
+                    'message' => 'Special Role updated successfully!',
+                    'success'=>true
+                   ]);
+         
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+         
+         
+     }
+     
+     public function getAllStaffwithoutCaretaker(Request $request){
+         try{
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         
+         $teacherlist = DB::table('teacher')->where('isDelete','N')->where('designation','!=','Caretaker')->get();
+                
+                return response()->json([
+                    'status' =>200,
+                    'data'=>$teacherlist,
+                    'message' => 'Staff list!',
+                    'success'=>true
+                   ]);
+         
+         
+         }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+         
+     }
+     
+     public function saveClassTeacherSubstitute(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $class_teacher_id = $request->input('class_teacher_id');
+                 $sub_teacher_id = $request->input('sub_teacher_id');
+                 $start_date = $request->input('start_date');
+                 $end_date = $request->input('end_date');
+                 $class = DB::table('class_teachers')
+                            ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
+                            ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
+                            ->where('class_teachers.teacher_id', $class_teacher_id)
+                            ->where('class_teachers.academic_yr', $customClaims)
+                            ->select('class.name as classname', 'section.name as sectionname')
+                            ->first();
+                //  dd($class);
+                
+                        if ($class) {
+                            $classSec = $class->classname . '-' . $class->sectionname;
+                            // dd($classSec);
+                
+                            DB::table('class_teacher_substitute')->insert([
+                                'class_teacher_id' => $class_teacher_id,
+                                'teacher_id'       => $sub_teacher_id,
+                                'start_date'       => $start_date,
+                                'end_date'         => $end_date,
+                                'academic_yr'      => $customClaims,
+                            ]);
+                            
+                            return response()->json([
+                                'status' =>200,
+                                'message' => 'A substitute teacher is appointed for class '.$classSec.'.!',
+                                'success'=>true
+                               ]);
+                            
+                        }
+                        
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getClassTeachers(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $classteachers = DB::table('class_teachers')
+                                    ->join('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
+                                    ->where('class_teachers.academic_yr', $customClaims)
+                                    ->orderBy('class_teachers.class_id', 'ASC')
+                                    ->select('class_teachers.*', 'teacher.teacher_id', 'teacher.name')
+                                    ->get()
+                                    ->toArray();
+                                    
+                                    return response()->json([
+                                        'status' =>200,
+                                        'data' => $classteachers,
+                                        'message' => 'Class teachers list!',
+                                        'success'=>true
+                                       ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getNonClassTeachers(Request $request){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $roles = ['T', 'L'];
+
+                $subquery = DB::table('class_teachers')
+                    ->select('teacher_id')
+                    ->where('academic_yr', $customClaims);
+            
+                $nonclassteachers =  DB::table('teacher')
+                                        ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+                                        ->whereNotIn('teacher.teacher_id', $subquery)
+                                        ->whereIn('user_master.role_id', $roles)
+                                        ->select('teacher.*', 'user_master.role_id') 
+                                        ->get()
+                                        ->toArray();
+                                        
+                                         return response()->json([
+                                        'status' =>200,
+                                        'data' => $nonclassteachers,
+                                        'message' => 'Non class teachers list!',
+                                        'success'=>true
+                                       ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+                 
+            
+         
+     }
+     
+     public function getsubstituteClassTeacherList(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $substituteTeacherList = DB::table('class_teacher_substitute')
+                                            ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
+                                            ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')       
+                                            ->where('class_teacher_substitute.academic_yr', $customClaims)
+                                            ->select(
+                                                'class_teacher_substitute.*',
+                                                'main_teacher.name as class_teacher_name',
+                                                'sub_teacher.name as substitute_teacher_name'
+                                            )
+                                            ->get();
+                                              return response()->json([
+                                                    'status' =>200,
+                                                    'data' => $substituteTeacherList,
+                                                    'message' => 'Substitute class teachers list!',
+                                                    'success'=>true
+                                                   ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function updateClassTeacherSubstitute(Request $request,$class_substitute_id){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $class_teacher_id = $request->input('class_teacher_id');
+                $sub_teacher_id = $request->input('sub_teacher_id');
+                $start_date = $request->input('start_date');
+                $end_date = $request->input('end_date');
+            
+                $class = DB::table('class_teachers')
+                    ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
+                    ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
+                    ->where('class_teachers.teacher_id', $class_teacher_id)
+                    ->where('class_teachers.academic_yr', $customClaims)
+                    ->select('class.name as classname', 'section.name as sectionname')
+                    ->first();
+            
+                if ($class) {
+                    $classSec = $class->classname . '-' . $class->sectionname;
+            
+                    // Perform update
+                    $updated = DB::table('class_teacher_substitute')
+                        ->where('academic_yr', $customClaims)
+                        ->update([
+                            'class_teacher_id'=>$class_teacher_id,
+                            'teacher_id'  => $sub_teacher_id,
+                            'start_date'  => $start_date,
+                            'end_date'    => $end_date,
+                        ]);
+            
+                    
+                        return response()->json([
+                            'status' => 200,
+                            'message' => 'Substitute teacher updated for class ' . $classSec . '!',
+                            'success' => true
+                        ]);
+                    
+                }
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function deleteSubstituteClassTeacher(Request $request,$class_substitute_id){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $deleted = DB::table('class_teacher_substitute')
+                            ->where('class_substitute_id', $class_substitute_id)
+                            ->delete();
+                            
+                            return response()->json([
+                            'status' => 200,
+                            'message' => 'A substitute teacher is deleted!',
+                            'success' => true
+                        ]);
+                            
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getFeesCategory(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $feescategory = DB::table('fees_category')
+                                        ->join('fees_category_detail', 'fees_category_detail.fees_category_id', '=', 'fees_category.fees_category_id')
+                                        ->join('class', 'class.class_id', '=', 'fees_category_detail.class_concession')
+                                        ->where('fees_category.academic_yr', $customClaims)
+                                        ->groupBy('fees_category.fees_category_id') 
+                                        ->orderBy('fees_category.fees_category_id', 'ASC')
+                                        ->select(
+                                            'fees_category.fees_category_id',
+                                            'fees_category.name',
+                                            'fees_category.academic_yr',
+                                            DB::raw('GROUP_CONCAT(class.name SEPARATOR ", ") as classnames')
+                                        )
+                                        ->get()
+                                        ->toArray();
+                                    return response()->json([
+                                        'status' => 200,
+                                        'data'=>$feescategory,
+                                        'message' => 'Fees Category!',
+                                        'success' => true
+                                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
      }
 
      private function authenticateUser()
