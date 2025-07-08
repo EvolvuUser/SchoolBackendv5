@@ -134,8 +134,14 @@ class RoleController extends Controller
 
     public function showRoles()
     {
-        $data = Role::all();
-        return response()->json($data);
+        $rolesQuery = DB::table('role_master')
+        ->select('role_id', 'name','is_active', DB::raw("'role' as type"));
+
+        $specialRolesQuery = DB::table('special_role_master')
+            ->select('sp_role_id', 'name','is_active', DB::raw("'special_role' as type"));
+        
+        $unionQuery = $rolesQuery->union($specialRolesQuery)->get();
+        return response()->json($unionQuery);
     }
 
     public function showAccess($role_id) {
@@ -183,28 +189,69 @@ class RoleController extends Controller
 
     public function navMenulist(Request $request)
 {
-    // $roleId = 3;
+    
     $user = $this->authenticateUser();
     $roleId = $user->role_id;
 
-    // Get the menu IDs from RolesAndMenu where role_id is the specified value
+    
     $assignedMenuIds = RolesAndMenu::where('role_id', $roleId)
         ->pluck('menu_id')
         ->toArray();
 
-    // Get the parent menus where parent_id is 0 and order by sequence
+    
     $parentMenus = Menu::where('parent_id', 0)
         ->whereIn('menu_id', $assignedMenuIds)
         ->orderBy('sequence')
         ->get(['menu_id', 'name', 'url']);
 
-    // Prepare the final response structure
+    
     $menuList = $parentMenus->map(function ($parentMenu) use ($assignedMenuIds) {
         return [
             'menu_id' => $parentMenu->menu_id,
             'name' => $parentMenu->name,
             'url' => $parentMenu->url,
             'sub_menus' => $this->getSubMenus($parentMenu->menu_id, $assignedMenuIds)
+        ];
+    });
+
+    return response()->json($menuList);
+}
+
+public function navMenulisttest(Request $request)
+{
+    // $roleId = 3;
+    $user = $this->authenticateUser();
+    $roleId = $user->role_id;
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
+    $roleIds = DB::table('department_special_role')
+                   ->where('teacher_id',$user->reg_id)
+                   ->where('academic_yr',$customClaims)
+                   ->pluck('role')
+                   ->toArray();
+    $assignedMenuIdsss = RolesAndMenu::whereIn('role_id', $roleIds)
+    ->pluck('menu_id')
+    ->unique()
+    ->toArray();
+
+    
+    $assignedMenuIds = RolesAndMenu::where('role_id', $roleId)
+        ->pluck('menu_id')
+        ->toArray();
+
+    $mergedMenuIds = array_unique(array_merge($assignedMenuIdsss, $assignedMenuIds));
+    
+    $parentMenus = Menu::where('parent_id', 0)
+        ->whereIn('menu_id', $mergedMenuIds)
+        ->orderBy('sequence')
+        ->get(['menu_id', 'name', 'url']);
+
+    
+    $menuList = $parentMenus->map(function ($parentMenu) use ($mergedMenuIds) {
+        return [
+            'menu_id' => $parentMenu->menu_id,
+            'name' => $parentMenu->name,
+            'url' => $parentMenu->url,
+            'sub_menus' => $this->getSubMenus($parentMenu->menu_id, $mergedMenuIds)
         ];
     });
 

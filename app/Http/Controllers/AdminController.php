@@ -2231,7 +2231,7 @@ public function getStudentListBySectionData(Request $request){
                 ->where('academic_yr',$academicYr)
                 ->where('isDelete','N')
                 ->where('parent_id','!=',0)
-                ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
+                ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id')
                 ->get();
         }
         else{
@@ -2240,7 +2240,7 @@ public function getStudentListBySectionData(Request $request){
                          ->where('isDelete','N')
                          ->where('section_id',$sectionId)
                          ->where('parent_id','!=',0)
-                         ->select('student.student_id','student.first_name','student.mid_name','student.last_name')
+                         ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id')
                          ->get();
         }
          
@@ -2408,14 +2408,41 @@ public function getStudentsList(Request $request){
 
 public function getStudentByGRN($reg_no)
 {
-    $student = Student::with(['parents.user', 'getClass', 'getDivision'])
-        ->where('reg_no', $reg_no)
-        ->first();
-
-    if (!$student) {
-        return response()->json(['error' => 'Student not found'], 404);
-    }     
-    return response()->json(['student' => [$student]]);
+     try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $student = Student::with(['parents.user', 'getClass', 'getDivision'])
+                ->where('reg_no', $reg_no)
+                ->where('academic_yr',$customClaims)
+                ->first();
+        
+            if (!$student) {
+                return response()->json(['error' => 'Student not found'], 404);
+            }     
+            $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+            $student->student_image_url = $student->image_name
+                ? $concatprojecturl . $student->image_name
+                : null;
+            return response()->json(['student' => [$student]]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Leaving Certificate Report.',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
 }
 
 

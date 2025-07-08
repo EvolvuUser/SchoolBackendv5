@@ -747,7 +747,7 @@ class SubstituteTeacher extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id !== 'U') {
+            if ($user->role_id !== 'A') {
                 return response()->json([
                     'status' => 403,
                     'message' => 'This is Unauthorized for another user.',
@@ -767,12 +767,12 @@ class SubstituteTeacher extends Controller
             $changedData = false;
 
             if ($request->filled('parent_id2')) {
-                // assign to parent_id2
+
                 $parentId = $request->input('parent_id2');
                 $changedData = Student::where('student_id', $studentId)
                     ->update(['parent_id' => $parentId]) > 0;
             } else if ($request->filled('parent_id')) {
-                // Case: reactivate and assign existing parent
+
                 $existingParentId = $request->input('parent_id');
 
                 $changedData = Student::where('student_id', $studentId)
@@ -804,24 +804,28 @@ class SubstituteTeacher extends Controller
                 $m_mobile = $request->input('m_mobile');
                 $f_email = $request->input('f_email');
                 $m_email = $request->input('m_email');
+                $userIdInput = $request->input('user_id');
 
-                // Check for duplicates in contact_details
-                $duplicate = DB::table('contact_details')
-                    ->where(function ($query) use ($f_mobile, $m_mobile, $f_email, $m_email) {
-                        $query->where('phone_no', $f_mobile)
-                            ->orWhere('phone_no', $m_mobile)
-                            ->orWhere('email_id', $f_email)
-                            ->orWhere('m_emailid', $m_email);
-                    })->exists();
+                // Resolve user_id if it's a keyword
+                if ($userIdInput === 'f_email') {
+                    $userId = $f_email;
+                } elseif ($userIdInput === 'm_email') {
+                    $userId = $m_email;
+                } else {
+                    $userId = $userIdInput;
+                }
 
-                if ($duplicate) {
+                // Check if user_id already exists
+                $existingUser = UserMaster::where('user_id', $userId)->first();
+                if ($existingUser) {
                     return response()->json([
-                        'status' => 'error',
-                        'message' => 'Duplicate mobile number or email found in contact details.',
-                        'success' => false
+                        'status' => 409,
+                        'success' => false,
+                        'message' => 'Userid already exists. Do you want to you use existing parent data?.'
                     ]);
                 }
 
+                // Continue with parent creation
                 $parentData = [
                     'father_name' => trim($request->input('father_name')),
                     'f_email' => $f_email,
@@ -833,28 +837,17 @@ class SubstituteTeacher extends Controller
                 ];
                 $parentId = DB::table('parent')->insertGetId($parentData);
 
-                $userId = $request->input('user_id');
+                // Create user since we already checked it doesn't exist
+                UserMaster::create([
+                    'user_id' => $userId,
+                    'name' => $request->input('father_name'),
+                    'password' => bcrypt('arnolds'),
+                    'reg_id' => $parentId,
+                    'role_id' => 'P'
+                ]);
 
-                // Create user if not exists
-                $existingUser = UserMaster::where('user_id', $userId)->first();
-                if (!$existingUser) {
-                    UserMaster::create([
-                        'user_id' => $userId,
-                        'name' => $request->input('father_name'),
-                        'password' => bcrypt('arnolds'),
-                        'reg_id' => $parentId,
-                        'role_id' => 'P'
-                    ]);
-
-                    // Send to external EVOLVU service
-                    $evolvuPayload = json_encode([
-                        'user_id' => $userId,
-                        'school_id' => '1'
-                    ]);
-
-                    Http::withHeaders(['Content-Type' => 'application/json'])
-                        ->post(config('externalapis.EVOLVU_URL') . '/user_create_post', $evolvuPayload);
-                }
+                // Send to external EVOLVU service
+                createUserInEvolvu($userId);
 
                 // Add contact details
                 $phone = $f_mobile ?: $m_mobile;
@@ -865,9 +858,12 @@ class SubstituteTeacher extends Controller
                     'm_emailid' => $m_email
                 ]);
 
+                // Update student with parent_id
                 $changedData = Student::where('student_id', $studentId)
                     ->update(['parent_id' => $parentId]) > 0;
             }
+
+
 
             // Final success response
             if ($changedData) {
