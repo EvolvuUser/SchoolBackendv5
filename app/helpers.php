@@ -876,3 +876,82 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             ->get()
             ->toArray(); 
     }
+
+    function getFeesCategoryStudentAllotment($class_id, $section_id, $acd_yr)
+    {
+        $directAllotment = DB::table('fees_student_category as a')
+            ->join('student as b', function ($join) {
+                $join->on('a.student_id', '=', 'b.student_id')
+                     ->on('a.academic_yr', '=', 'b.academic_yr');
+            })
+            ->join('fees_category','fees_category.fees_category_id','=','a.fees_category_id')
+            ->where('b.class_id', $class_id)
+            ->where('b.section_id', $section_id)
+            ->where('a.academic_yr', $acd_yr)
+            ->select('a.student_id', 'a.fees_category_id', 'b.first_name', 'b.last_name', 'b.roll_no','fees_category.name as feecategoryname');
+    
+        // Second query: Indirect allotment via fees_category_detail (excluding already allotted)
+        $indirectAllotment = DB::table('student as a')
+            ->join('fees_category_detail as b', function ($join) {
+                $join->on('a.class_id', '=', 'b.class_concession')
+                     ->on('a.academic_yr', '=', 'b.academic_yr');
+            })
+            ->join('fees_category','fees_category.fees_category_id','=','b.fees_category_id')
+            ->where('b.class_concession', $class_id)
+            ->where('a.class_id', $class_id)
+            ->where('a.section_id', $section_id)
+            ->where('a.academic_yr', $acd_yr)
+            ->whereNotIn('a.student_id', function ($query) use ($class_id, $section_id, $acd_yr) {
+                $query->select('student_id')
+                    ->from('fees_student_category')
+                    ->where('class_id', $class_id)
+                    ->where('section_id', $section_id)
+                    ->where('academic_yr', $acd_yr);
+            })
+            ->select('a.student_id', 'b.fees_category_id', 'a.first_name', 'a.last_name', 'a.roll_no','fees_category.name as feecategoryname')
+            ->groupBy('a.roll_no');
+    
+        // Union of both queries
+        $result = $directAllotment
+            ->union($indirectAllotment)
+            ->orderBy('roll_no')
+            ->get();
+    
+        return $result->toArray();
+    }
+
+    function getFeesAllotment($acd_yr)
+    {
+        return DB::table('fees_allotment')
+            ->where('academic_yr', $acd_yr)
+            ->orderBy('fees_category_id', 'asc')
+            ->get()
+            ->toArray();
+    }
+    
+     function getFeesCategoryName($fees_category_id, $acd_yr)
+    {
+        return DB::table('fees_category')
+            ->where('fees_category_id', $fees_category_id)
+            ->where('academic_yr', $acd_yr)
+            ->value('name'); // Returns scalar (like CI foreach-return)
+    }
+    
+     function getAdmissionFee($fee_allotment_id, $acd_yr)
+    {
+        return DB::table('fees_allotment_detail')
+            ->where('fee_allotment_id', $fee_allotment_id)
+            ->where('installment', 1)
+            ->where('fee_type_id', 1)
+            ->where('academic_yr', $acd_yr)
+            ->value('amount') ?? 0.00;
+    }
+     function getInstallmentAmount($fee_allotment_id, $installment, $acd_yr)
+    {
+        return DB::table('fees_allotment_detail')
+            ->where('fee_allotment_id', $fee_allotment_id)
+            ->where('installment', $installment)
+            ->where('fee_type_id', '<>', 1)
+            ->where('academic_yr', $acd_yr)
+            ->sum('amount') ?? 0.00;
+    }
