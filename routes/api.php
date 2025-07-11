@@ -704,6 +704,24 @@
         // Api for the finance fees category Dev Name - Manish Kumar Sharma 07-07-2025
         Route::get('get_feescategory',[NewController::class,'getFeesCategory']);
 
+        // Api for the Fee category student allotment Dev Name - Manish Kumar Sharma 08-07-2025
+        Route::get('get_feescategorystudentallotmentview',[NewController::class,'getFeesCategoryStudentAllotmentView']);
+        
+        //Api for the Fee Category Dev Name - Manish Kumar Sharma 08-07-2025
+        Route::get('get_feescategoryallotmentview',[NewController::class,'getFeesCategoryAllotmentView']);
+        Route::get('get_feescategoryallotmentinstallment',[NewController::class,'getFeesCategoryAllotmentInstallment']);
+        Route::get('get_feescategoryinstallmentdropdown/{fees_category_id}/{selected?}',[NewController::class,'getFeesCategoryInstallmentDropdown']);
+        
+        //Api for the downloading of ticket comment file Dev Name - Manish Kumar Sharma 09-07-2025
+        Route::get('downloadticketfiles/{ticket_id}/{comment_id}/{name}',[NewController::class,'downloadTicketFiles']);
+        
+        //Api for the downloading of ticket comment file Dev Name - Manish Kumar Sharma 09-07-2025
+        Route::get('get_sendsmsforfeespendingdata/{class_id}/{installment}',[NewController::class,'getSendSMSForFeesPendingData']);
+        Route::post('send_sendsmsforfeespending',[NewController::class,'SendSMSForFeesPending']);
+        
+        //Reports Staff Leave Report Dev Name-Mahima Suryakant Chaudhari 10-07-2025
+        Route::get('getstaffleavereport', [ReportController::class, 'getStaffLeaveReport']);
+
 
 
 
