@@ -13,6 +13,9 @@ use DateTime;
 use Illuminate\Support\Facades\App;
 use App\Http\Services\WhatsAppService;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\File;
+use App\Jobs\SendOutstandingFeeSmsJob;
 
 class NewController extends Controller
 {
@@ -4432,6 +4435,438 @@ class NewController extends Controller
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
          
+     }
+
+      public function getFeesCategoryStudentAllotmentView(Request $request){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $section_id = $request->input('section_id');
+                //  dd($section_id);
+                 $class_id = DB::table('section')
+                                 ->where('section_id',$section_id)
+                                 ->first();
+                                //  dd($class_id);
+                 $data = getFeesCategoryStudentAllotment($class_id->class_id,$section_id,$customClaims);
+                 return response()->json([
+                                        'status' => 200,
+                                        'data'=>$data,
+                                        'message' => 'Fees category student allotment view!',
+                                        'success' => true
+                                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getFeesCategoryAllotmentView(Request $request){
+          try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $allotments = getFeesAllotment($customClaims);
+
+                $result = [];
+            
+                foreach ($allotments as $row) {
+                    $feeAllotmentId = $row->fee_allotment_id;
+                    $categoryName = getFeesCategoryName($row->fees_category_id, $customClaims);
+                    $admissionFee = getAdmissionFee($feeAllotmentId, $customClaims);
+                    $installment1 = getInstallmentAmount($feeAllotmentId, 1, $customClaims);
+                    $installment2 = getInstallmentAmount($feeAllotmentId, 2, $customClaims);
+                    $installment3 = getInstallmentAmount($feeAllotmentId, 3, $customClaims);
+            
+                    $total = floatval($admissionFee) + floatval($installment1) + floatval($installment2) + floatval($installment3);
+            
+                    $result[] = [
+                        'category'      => $categoryName,
+                        'admission_fee'=> round($admissionFee, 2),
+                        'installment_1'=> round($installment1, 2),
+                        'installment_2'=> round($installment2, 2),
+                        'installment_3'=> round($installment3, 2),
+                        'total'        => round($total, 2),
+                    ];
+                }
+            
+                return response()->json([
+                    'status' => 200,
+                    'data' => $result,
+                    'message'=>'Fees category allotment view!',
+                    'success' => true
+                    
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getFeesCategoryAllotmentInstallment(Request $request){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $feeAllotmentId = $request->input('fee_allotment_id');
+                $installment = $request->input('installment');
+            
+                
+                $dueDate = DB::table('fees_allotment_detail')
+                    ->where('fee_allotment_id', $feeAllotmentId)
+                    ->where('installment', $installment)
+                    ->where('academic_yr',$customClaims)
+                    ->value('due_date');
+            
+                
+                $hasPayment = DB::table('fees_payment_record')
+                    ->where('fee_allotment_id', $feeAllotmentId)
+                    ->where('academic_yr', $customClaims)
+                    ->where('isCancel', '<>', 'Y')
+                    ->exists();
+            
+                $readonly = $hasPayment;
+            
+                
+                $feeTypes = DB::table('fee_type_master')->get();
+            
+                
+                $feeData = [];
+                $total = 0.00;
+                $index = 0;
+            
+                foreach ($feeTypes as $type) {
+                    // $amount = DB::table('fees_allotment as a')
+                    //             ->join('fees_allotment_detail as b', function ($join) {
+                    //                 $join->on('a.fee_allotment_id', '=', 'b.fee_allotment_id')
+                    //                      ->on('a.academic_yr', '=', 'b.academic_yr');
+                    //             })
+                    //             ->where('b.fee_allotment_id', $feeAllotmentId)
+                    //             ->where('b.installment', $installment)
+                    //             ->where('a.academic_yr', $customClaims)
+                    //             ->where('bfee_type_id', $type->fee_type_id)
+                    //             ->select('a.*', 'b.installment', DB::raw('SUM(b.amount) as installment_fees'))
+                    //             ->groupBy('b.installment')
+                    //             ->value('amount') ?? 0.00;
+                    $amount = DB::table('fees_allotment_detail')
+                        ->where('fee_allotment_id', $feeAllotmentId)
+                        ->where('installment', $installment)
+                        ->where('fee_type_id', $type->fee_type_id)
+                        ->value('amount') ?? 0.00;
+            
+                    $total += floatval($amount);
+                    $index++;
+            
+                    $feeData[] = [
+                        'index'        => $index,
+                        'fee_type_id'  => $type->fee_type_id,
+                        'name'         => $type->name,
+                        'amount'       => round($amount, 2),
+                    ];
+                }
+            
+                // Final response
+                return response()->json([
+                    'status' => 200,
+                    'data' => [
+                        'due_date'     => $dueDate ? date('d-m-Y', strtotime($dueDate)) : null,
+                        'readonly'     => $readonly,
+                        'fee_details'  => $feeData,
+                        'total'        => round($total, 2),
+                        'count_types'  => $index,
+                    ],
+                    'message'=>'Fees category allotment installment!',
+                    'success'=>true
+                ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+     }
+     
+     public function getFeesCategoryInstallmentDropdown(Request $request,$feesCategoryId, $selected = null){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 $options = [];
+
+                for ($i = 1; $i <= 3; $i++) {
+                    $data = DB::table('fees_allotment as a')
+                                ->join('fees_allotment_detail as b', function ($join) {
+                                    $join->on('a.fee_allotment_id', '=', 'b.fee_allotment_id')
+                                         ->on('a.academic_yr', '=', 'b.academic_yr');
+                                })
+                                ->where('a.fees_category_id', $feesCategoryId)
+                                ->where('b.installment', $i)
+                                ->where('a.academic_yr', $customClaims)
+                                ->select('a.*', 'b.installment', DB::raw('SUM(b.amount) as installment_fees'))
+                                ->groupBy('b.installment')
+                                ->first();
+                    // // $data = DB::table('fees_allotment_detail')
+                    // //     ->join('fees_allotment','fees_allotment.fee_allotment_id','=','fees_allotment_detail.fee_allotment_id')
+                    // //     ->where('fees_allotment_detail.fee_allotment_id', $feesCategoryId)
+                    // //     ->where('fees_allotment_detail.installment', $i)
+                    // //     ->where('fees_allotment_detail.academic_yr',$customClaims)
+                    // //     ->where('fees_allotment_detail.academic_yr','=','fees_allotment.academic_yr')
+                    // //     ->select('fees_allotment_detail.installment', DB::raw('SUM(amount) as installment_fees'))
+                    // //     ->groupBy('fees_allotment_detail.installment')
+                    // //     ->first();
+                    //   dd($data);
+                    
+                        $options[] = [
+                            'value'    => $data->installment,
+                            'label'    => "Installment no. {$data->installment} ({$data->installment_fees})",
+                            'fee_allotment_id'=>$data->fee_allotment_id
+                        ];
+                   
+                }
+            
+                return response()->json([
+                    'status' => 200,
+                    'data' => $options,
+                    'message'=>'Fees category installment dropdown!',
+                    'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function downloadTicketFiles(Request $request,$ticket_id,$comment_id,$name){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                //  dd($ticket_id,$comment_id,$name);
+                $globalVariables = App::make('global_variables');
+                $parent_app_url = $globalVariables['parent_app_url'];
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+                // $filePath = public_path('uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name);
+                // dd($filePath);
+               if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+                        $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+                    } else {
+                        $filePath ='/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+                    }
+                //  dd($filePath);
+                //  dd($filePath);
+                // $file = fopen($filePath, 'r');
+                
+                if (File::exists($filePath)) {
+                    // Get MIME type (example: image/png, application/pdf, etc.)
+                    $mime = File::mimeType($filePath);
+            
+                    return response()->file($filePath, [
+                        'Content-Type' => $mime,
+                        'Content-Disposition' => 'inline; filename="' . $name . '"'
+                    ]);
+                }
+            
+                return response()->json(['error' => 'File not found.'], 404);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+     
+     public function getSendSMSForFeesPendingData(Request $request,$class_id,$installment){
+         try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                
+                
+                  $results = DB::select("SELECT student_installment,s.student_id, s.installment, fees_category_name, first_name, last_name, roll_no, section_id, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount,(installment_fees - COALESCE(SUM(d.amount), 0) ) AS pending_fee FROM view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE s.academic_yr = '".$customClaims."' and s.class_id=".$class_id." and s.installment<>4 and s.installment like '".$installment."%' AND due_date < CURDATE() AND s.student_installment NOT IN (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '".$customClaims."' and a.class_id=".$class_id." and installment like '".$installment."%') GROUP BY s.student_id, s.installment UNION SELECT concat(f.student_id,'^',b.installment) as student_installment,f.student_id AS student_id, b.installment AS installment,b.category_name as fees_category_name, first_name, last_name, roll_no, section_id, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession, SUM(f.fees_paid) AS paid_amount,(installment_fees - COALESCE(SUM(c.amount), 0) - SUM(f.fees_paid)) AS pending_fee FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment JOIN student e ON f.student_id=e.student_id WHERE b.installment<>4 and f.academic_yr = '".$customClaims."'  and f.class_id=".$class_id." and f.installment like '".$installment."%' GROUP BY f.installment, c.installment HAVING (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)");
+                  foreach($results as $result){
+                      $contactData = DB::table('student as a')
+                            ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                            ->where('a.student_id', $result->student_id)
+                            ->select('b.phone_no', 'b.email_id')
+                            ->first();
+                    
+                        $result->phone_no = $contactData->phone_no ?? '';
+                        $concession = DB::select(
+                                "SELECT SUM(amount) as installment_concession 
+                                 FROM fee_concession_details 
+                                 WHERE student_id = ? 
+                                 AND installment LIKE ? 
+                                 AND academic_yr = ? 
+                                 GROUP BY installment",
+                                [$result->student_id, $installment . '%', $customClaims]
+                            );
+                                        // dd( isset($concession[0]) ? $concession[0]->installment_concession : 0, $result->student_id);
+                       $result->actualinstallmentamt = $result->installment_fees - (isset($concession[0]) ? $concession[0]->installment_concession : 0);
+                       $smssent=DB::table('sms_log_for_outstanding_fees')
+                                    ->where('student_id', $result->student_id)
+                                    ->where('installment','like', $installment)
+                                    ->where('academic_yr', $customClaims)
+                                    ->first();
+                                    // dd($smssent);
+                        
+                        $result->smscount = $smssent->count_of_sms ?? null;
+                        $result->smslogid = $smssent->sms_log_id ?? null;
+                        $result->smssentdates = isset($result->smslogid)
+                                ? DB::table('sms_log_for_outstanding_fees_details')
+                                    ->select('date_sms_sent')
+                                    ->where('sms_log_id', $result->smslogid)
+                                    ->orderBy('date_sms_sent', 'asc')
+                                    ->get()
+                                    ->toArray()
+                                : null;
+                        $classname = DB::table('section')
+                                        ->join('class','class.class_id','=','section.class_id')
+                                        ->where('section.section_id', $result->section_id)
+                                        ->select(DB::raw("CONCAT(class.name, ' ', section.name) as classname"))
+                                        ->first();
+                        $result->classname = $classname->classname;
+                         $lastsmsdate = DB::table('sms_log_for_outstanding_fees')
+                                ->where('student_id', $result->student_id)
+                                ->where('installment','like', $installment)
+                                ->where('academic_yr', $customClaims)
+                                ->first();
+                            
+                            if ($lastsmsdate && $lastsmsdate->date_last_sms_sent) {
+                                $lastsmsdate= \Carbon\Carbon::parse($lastsmsdate->date_last_sms_sent)->format('d-m-Y');
+                            }
+                            else{
+                                $lastsmsdate= null;
+                                
+                            }
+                            // dd($lastsmsdate);
+                        $result->lastsmsdate = $lastsmsdate;
+                            
+                            
+                        
+    
+                      
+                  }
+                  return response()->json([
+                    'status' => 200,
+                    'data' => $results,
+                    'message'=>'Fee outstanding fees data!',
+                    'success'=>true
+                    ]);
+                 
+             }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
+         
+     }
+
+     public function SendSMSForFeesPending(Request $request){
+        try{
+             $user = $this->authenticateUser();
+             $customClaims = JWTAuth::getPayload()->get('academic_year');
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+              $studentid_installment = $request->studentid_installment;
+              $message = $request->message;
+              SendOutstandingFeeSmsJob::dispatch($studentid_installment,$customClaims,$message);
+
+              return response()->json([
+                    'status' => 200,
+                    'message'=>'Fee outstanding messages sent!',
+                    'success'=>true
+                    ]);
+            }
+             else
+                 {
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the getting of department list.',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                        ]);
+                    }
+
+               }
+              catch (Exception $e) {
+                \Log::error($e); // Log the exception
+                return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+               }
      }
 
      private function authenticateUser()

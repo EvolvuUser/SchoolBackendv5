@@ -2117,6 +2117,93 @@ class ReportController extends Controller
             ->value('punch_out_time');
     }
 
+     public function getStaffLeaveReport(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
+                // if (!in_array($user->role_id, ['U', 'T', 'M', 'A'])) {
+                //     return response()->json([
+                //         'status' => 401,
+                //         'message' => 'Unauthorized access',
+                //         'success' => false
+                //     ]);
+                // }
+
+                $staff_id = $request->input('staff_id');
+                $from_date = $request->input('from_date');
+                $to_date = $request->input('to_date');
+
+                // Step 1: Get all leave types
+                $leave_types = DB::table('leave_type_master')->pluck('name', 'leave_type_id');
+
+                // Step 2: Get staff list
+                $staff_query = DB::table('teacher')->select('teacher_id', 'name')->where('isDelete', 'N');
+                if (!empty($staff_id)) {
+                    $staff_query->where('teacher_id', $staff_id);
+                }
+                $staffList = $staff_query->get();
+
+                $result = [];
+
+                // Step 3: For each staff and each leave type, calculate leaves
+                foreach ($staffList as $staff) {
+                    $staffData = [
+                        'staff_id' => $staff->teacher_id,
+                        'staff_name' => $staff->name,
+                        'leaves' => [],
+                        'total' => 0
+                    ];
+
+                    foreach ($leave_types as $leave_type_id => $leave_type_name) {
+                        $query = DB::table('leave_application')
+                            ->where('staff_id', $staff->teacher_id)
+                            ->where('leave_type_id', $leave_type_id)
+                            ->where('academic_yr', $academic_year)
+                            ->where('status', 'P');
+
+                        if (!empty($from_date)) {
+                            $query->whereDate('leave_start_date', '>=', date('Y-m-d', strtotime($from_date)));
+                        }
+
+                        if (!empty($to_date)) {
+                            $query->whereDate('leave_end_date', '<=', date('Y-m-d', strtotime($to_date)));
+                        }
+
+                        $count = $query->sum('no_of_days') ?? 0;
+
+                        $staffData['leaves'][$leave_type_name] = (float) $count;
+                        $staffData['total'] += (float) $count;
+                    }
+
+                    $result[] = $staffData;
+                }
+
+                return response()->json([
+                    'status' => 200,
+                    'success' => true,
+                    'leave_types' => array_values($leave_types->toArray()),
+                    'data' => $result
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'This User Doesnot have Permission for the Balance Leave Report',
+                    'data' => $user->role_id,
+                    'success' => false
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
 
 
