@@ -955,3 +955,29 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             ->where('academic_yr', $acd_yr)
             ->sum('amount') ?? 0.00;
     }
+
+    function getLpClassNamesByUnqId($unqId, $academicYear)
+    {
+        return DB::table('lesson_plan as a')
+            ->join('class as b', 'a.class_id', '=', 'b.class_id')
+            ->join('section as c', 'a.section_id', '=', 'c.section_id')
+            ->select('b.name as class_name', 'c.name as sec_name')
+            ->where('a.unq_id', $unqId)
+            ->where('a.academic_yr', $academicYear)
+            ->orderBy('a.class_id')
+            ->get()
+            ->map(function ($item) {
+                return $item->class_name . ' ' . $item->sec_name;
+            })
+            ->implode(', ');
+    }
+
+    function checkTeacherRemarkViewed($t_remark_id, $teacher_id)
+    {
+        $exists = DB::table('tremarks_read_log')
+            ->where('t_remark_id', $t_remark_id)
+            ->where('teachers_id', $teacher_id)
+            ->exists();
+
+        return $exists ? 'Y' : 'N';
+    }
