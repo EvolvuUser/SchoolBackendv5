@@ -722,6 +722,18 @@
         //Reports Staff Leave Report Dev Name-Mahima Suryakant Chaudhari 10-07-2025
         Route::get('getstaffleavereport', [ReportController::class, 'getStaffLeaveReport']);
 
+        //Reports Lesson Plan Status Report Dev Name-Manish Kumar Sharma 14-07-2025
+        Route::get('get_lesson_plan_status_report',[ReportController::class,'getLessonPlanStatusReport']);
+        
+        //Reports Lesson Plan Summarised Report Dev Name - Manish Kumar Sharma 14-07-2025
+        Route::get('get_lesson_plan_summarised_report',[ReportController::class,'getLessonPlanSummarisedReport']);
+        
+        //Reports Lesson Plan detailed Report Dev Name - Manish Kumar Sharma 14-07-2025
+        Route::get('get_lesson_plan_detailed_report',[ReportController::class,'getLessonPlanDetailedReport']);
+
+        // Api for Teacher Remark Report Dev Name - Mahima Chaudhari 14-07-2025
+        Route::get('getteacherremarkreport', [ReportController::class, 'teachersRemarkReport']);
+
 
 
 

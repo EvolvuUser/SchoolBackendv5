@@ -2204,6 +2204,288 @@ class ReportController extends Controller
         }
     }
 
+    //Reports Lesson Plan Status Report Dev Name-Manish Kumar Sharma 14-07-2025
+    public function getLessonPlanStatusReport(Request $request){
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $teacherId = $request->input('teacher_id');
+            $classId = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $status = $request->input('status');
+            $query = DB::table('lesson_plan')
+                        ->select(
+                            'lesson_plan.*',
+                            'class.name as classname',
+                            'section.name as secname',
+                            'subject_master.name as subname',
+                            'chapters.name as chaptername'
+                        )
+                        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                        ->where('chapters.isDelete', '!=', 'Y')
+                        ->where('lesson_plan.reg_id', $teacherId)
+                        ->where('lesson_plan.academic_yr', $academic_year);
+                
+                    if (!empty($classId)) {
+                        $query->where('lesson_plan.class_id', $classId)
+                              ->where('lesson_plan.section_id', $sectionId);
+                    }
+                
+                    if (!empty($status)) {
+                        $query->where('lesson_plan.status', $status);
+                    }
+                    $result =  $query->get()->toArray();
+                    return response()->json([
+                    'status'=>200,
+                    'message'=>'Lesson plan status report!',
+                    'data'=>$result,
+                    'success'=>true
+                    ]);
+            
+            
+         }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+     //Reports Lesson Plan Summarised Report Dev Name - Manish Kumar Sharma 14-07-2025
+    public function getLessonPlanSummarisedReport(Request $request){
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $staffId = $request->input('teacher_id');
+            $week = $request->input('week');
+             $query = DB::table('lesson_plan')
+                        ->select(
+                            'lesson_plan.*',
+                            'class.name as classname',
+                            'section.name as secname',
+                            'subject_master.name as subname',
+                            'chapters.chapter_no',
+                            'chapters.name as chaptername',
+                            'chapters.sub_subject',
+                            'teacher.name as teachername'
+                        )
+                        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                        ->join('teacher','teacher.teacher_id','=','lesson_plan.reg_id')
+                        ->where('chapters.isDelete', '!=', 'Y')
+                        ->where('lesson_plan.academic_yr', $academic_year)
+                        ->orderByDesc('lesson_plan.lesson_plan_id')
+                        ->groupBy('lesson_plan.unq_id');
+                
+                    if (!empty($staffId)) {
+                        $query->where('lesson_plan.reg_id', $staffId);
+                    }
+                
+                    if (!empty($week)) {
+                        $query->where('lesson_plan.week_date', $week);
+                    }
+                
+                    $lessonPlans = $query->get()->toArray();
+                    foreach ($lessonPlans as &$plan) {
+                        $plan = (array) $plan; 
+                        $plan['classnames'] = getLpClassNamesByUnqId($plan['unq_id'], $academic_year);
+                    }
+                    
+                     return response()->json([
+                    'status'=>200,
+                    'message'=>'Lesson plan summarised report!',
+                    'data'=>$lessonPlans,
+                    'success'=>true
+                    ]);
+            
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+    //Reports Lesson Plan detailed Report Dev Name - Manish Kumar Sharma 14-07-2025
+    public function getLessonPlanDetailedReport(Request $request){
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $staffId = $request->query('staff_id');
+            $week = $request->query('week');
+            $query = DB::table('lesson_plan')
+        ->select(
+            'lesson_plan.*',
+            'class.name as classname',
+            'section.name as secname',
+            'subject_master.name as subname',
+            'chapters.chapter_no',
+            'chapters.name as chaptername',
+            'chapters.sub_subject',
+            'teacher.name as teachername'
+        )
+        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+        ->join('teacher', 'teacher.teacher_id', '=', 'lesson_plan.reg_id')
+        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+        ->where('chapters.isDelete', '!=', 'Y')
+        ->where('lesson_plan.academic_yr', $academic_year)
+        ->orderByDesc('lesson_plan.lesson_plan_id')
+        ->groupBy('lesson_plan.unq_id');
+
+        if (!empty($staffId)) {
+            $query->where('lesson_plan.reg_id', $staffId);
+        }
+    
+        if (!empty($week)) {
+            $query->where('lesson_plan.week_date', $week);
+        }
+    
+        $lessonPlans = $query->get();
+    
+        foreach ($lessonPlans as $plan) {
+            $plan->class_names = DB::table('lesson_plan as a')
+                ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                ->select('b.name as class_name', 'c.name as sec_name')
+                ->where('a.academic_yr', $academic_year)
+                ->where('a.unq_id', $plan->unq_id)
+                ->orderBy('a.class_id')
+                ->get()
+                ->map(fn ($x) => $x->class_name . ' ' . $x->sec_name)
+                ->implode(', ');
+        }
+    
+        // Step 3: Attach static headings
+        $nonDailyHeadings = DB::table('lesson_plan_heading')
+            ->where('change_daily', '!=', 'Y')
+            ->orderBy('sequence')
+            ->get();
+    
+        $dailyHeadings = DB::table('lesson_plan_heading')
+            ->where('change_daily', '=', 'Y')
+            ->orderBy('sequence')
+            ->get();
+    
+        // Step 4: Attach headings and descriptions
+        foreach ($lessonPlans as $plan) {
+            // Non-daily content
+            $plan->non_daily = [];
+            foreach ($nonDailyHeadings as $heading) {
+                $desc = DB::table('lesson_plan_details')
+                    ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
+                    ->where('lesson_plan_id', $plan->lesson_plan_id)
+                    ->value('description');
+                $plan->non_daily[] = [
+                    'heading' => $heading->name,
+                    'description' => explode(PHP_EOL, $desc ?? '')
+                ];
+            }
+    
+            $plan->daily_changes = [];
+            foreach ($dailyHeadings as $heading) {
+                $entries = DB::table('lesson_plan_details')
+                    ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
+                    ->where('lesson_plan_id', $plan->lesson_plan_id)
+                    ->get();
+    
+                $headingData = [
+                    'heading' => $heading->name,
+                    'entries' => []
+                ];
+                
+                foreach ($entries as $entry) {
+                    $headingData['entries'][] = [
+                        'start_date' => $entry->start_date == '0000-00-00' ? '' : date('d-m-Y', strtotime($entry->start_date)),
+                        'description' => explode(PHP_EOL, $entry->description ?? '')
+                    ];
+                }
+                
+                $plan->daily_changes[] = $headingData;
+            }
+        }
+    
+        return response()->json([
+            'status'=>200,
+            'message'=>'Lesson plan detailed report!',
+            'data'=>$lessonPlans,
+            'success'=>true
+        ]);
+            
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+
+    public function teachersRemarkReport(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+        if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
+
+            $date = $request->input('date');
+            $staff_id = $request->input('staff_id');
+
+            $query = DB::table('teachers_remark as tr')
+                ->join('teacher', 'teacher.teacher_id', '=', 'tr.teachers_id')
+                ->select('tr.*', 'teacher.name')
+                ->where('tr.academic_yr', 'like', '%');
+
+            if (!empty($date)) {
+                $query->where(DB::raw("DATE_FORMAT(tr.remark_date, '%d-%m-%Y')"), '=', $date);
+            }
+
+            if (!empty($staff_id)) {
+                $query->where('tr.teachers_id', $staff_id);
+            }
+
+            $query->orderByDesc('tr.t_remark_id');
+            $remarks = $query->get();
+
+
+            $remarks = $remarks->map(function ($row) {
+                $row->published = ($row->remark_type === 'Remark' && $row->publish === 'Y') ? 'Yes' : 'No';
+                $row->acknowledged = ($row->remark_type === 'Remark' && $row->acknowledge === 'Y') ? 'Yes' : 'No';
+                $row->viewed = ($row->remark_type === 'Remark' && checkTeacherRemarkViewed($row->t_remark_id, $row->teachers_id) === 'Y') ? 'Yes' : 'No';
+                $row->formatted_date = $row->publish_date && $row->publish_date !== '0000-00-00'
+                    ? \Carbon\Carbon::parse($row->publish_date)->format('d-m-Y')
+                    : \Carbon\Carbon::parse($row->remark_date)->format('d-m-Y');
+                return $row;
+            });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Teachers Remarks Data Successfully',
+                'success' => true,
+                'data' => $remarks,
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'This User Doesnot have Permission for the Balance Leave Report',
+                'data' => $user->role_id,
+                'success' => false
+            ]);
+        }
+    }
+
 
 
 
