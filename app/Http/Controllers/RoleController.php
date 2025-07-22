@@ -144,9 +144,47 @@ class RoleController extends Controller
         return response()->json($unionQuery);
     }
 
+    // public function showAccess($role_id) {
+    //     $role = Role::find($role_id);
+    //     $menuList = Menu::all(); 
+
+    //     $assignedMenuIds = RolesAndMenu::where('role_id', $role_id)
+    //                                   ->pluck('menu_id')
+    //                                   ->toArray();
+
+    //     return response()->json([
+    //         'role' => $role,
+    //         'menuList' => $menuList,
+    //         'assignedMenuIds' => $assignedMenuIds, 
+    //     ]);
+    // }
+
+    //Updated on 15-07-2025 by manish kumar sharma
     public function showAccess($role_id) {
         $role = Role::find($role_id);
-        $menuList = Menu::all(); 
+        $menuList = DB::select("WITH RECURSIVE menu_paths AS (
+        SELECT
+            menu_id,
+            name,
+            parent_id,
+            name AS full_path
+        FROM menus
+        WHERE parent_id = 0
+
+        UNION ALL
+
+        -- Recursive case: join children to their parents
+        SELECT
+            m.menu_id,
+            m.name,
+            m.parent_id,
+            CONCAT(mp.full_path, '/', m.name) AS full_path
+        FROM menus m
+        JOIN menu_paths mp ON m.parent_id = mp.menu_id
+    )
+
+    SELECT * FROM menu_paths
+    ORDER BY full_path;"); 
 
         $assignedMenuIds = RolesAndMenu::where('role_id', $role_id)
                                       ->pluck('menu_id')

@@ -4272,6 +4272,19 @@ class NewController extends Controller
                                                 'sub_teacher.name as substitute_teacher_name'
                                             )
                                             ->get();
+                                            foreach ($substituteTeacherList as $substituteTeacher){
+                                                 $class = DB::table('class_teachers')
+                                                              ->join('class','class.class_id','=','class_teachers.class_id')
+                                                              ->join('section','section.section_id','=','class_teachers.section_id')
+                                                              ->where('class_teachers.teacher_id',$substituteTeacher->class_teacher_id)
+                                                              ->where('class_teachers.academic_yr',$customClaims)
+                                                              ->select('class.class_id','section.section_id','class.name as classname','section.name as sectionname')
+                                                              ->first();
+                                                  $substituteTeacher->class_id = $class->class_id ?? null;
+                                                    $substituteTeacher->classname = $class->classname ?? null;
+                                                    $substituteTeacher->section_id = $class->section_id ?? null;
+                                                    $substituteTeacher->sectionname = $class->sectionname ?? null;
+                                            }
                                               return response()->json([
                                                     'status' =>200,
                                                     'data' => $substituteTeacherList,
@@ -4322,6 +4335,7 @@ class NewController extends Controller
                     // Perform update
                     $updated = DB::table('class_teacher_substitute')
                         ->where('academic_yr', $customClaims)
+                        ->where('class_substitute_id', $class_substitute_id)
                         ->update([
                             'class_teacher_id'=>$class_teacher_id,
                             'teacher_id'  => $sub_teacher_id,
@@ -4867,6 +4881,31 @@ class NewController extends Controller
                 \Log::error($e); // Log the exception
                 return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
                }
+     }
+     
+     public function getTeacherAllSubjects(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacherId = $request->input('teacher_id');
+            $excludedSubjectIds = DB::table('subjects_excluded_from_curriculum')
+                                        ->pluck('sm_id')
+                                        ->toArray();
+            $subjectdata = DB::table('subject')
+                        ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                        ->where('subject.teacher_id', $teacherId)
+                        ->where('subject.academic_yr', $customClaims)
+                        ->whereNotIn('subject.sm_id', $excludedSubjectIds)
+                        ->select('subject_master.name as subjectname', 'subject.*')
+                        ->groupBy('subject.sm_id') // Add all selected columns if using groupBy
+                        ->get();
+                               
+                               return response()->json([
+                                    'status'=>200,
+                                    'data'=>$subjectdata,
+                                    'message' => 'Subject Data.',
+                                    'success' =>true
+                                ]); 
+         
      }
 
      private function authenticateUser()

@@ -981,3 +981,15 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         return $exists ? 'Y' : 'N';
     }
+    
+    function getAcademicYearFrom()
+    {
+        $setting = DB::table('settings')->where('active', 'Y')->first();
+        return $setting ? $setting->academic_yr_from : null;
+    }
+    
+    function getAcademicYearTo()
+    {
+        $setting = DB::table('settings')->where('active', 'Y')->first();
+        return $setting ? $setting->academic_yr_to : null;
+    }

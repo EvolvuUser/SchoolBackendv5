@@ -733,6 +733,42 @@
 
         // Api for Teacher Remark Report Dev Name - Mahima Chaudhari 14-07-2025
         Route::get('getteacherremarkreport', [ReportController::class, 'teachersRemarkReport']);
+        
+        // Api for Teacher Remark Report Dev Name - Mahima Chaudhari 15-07-2025
+        Route::get('getstaffyearwiseattendancereport', [ReportController::class, 'getStaffDetailedYearwiseAttendance']);
+        
+        // Api for View Daily Attendance monthwise Report Dev Name - Manish Kumar Sharma 15-07-2025
+        Route::get('get_studentdailyattendancemonthwise', [ReportController::class, 'getStudentDailyAttendanceMonthwise']);
+        
+        // Api for View Daily Attendance monthwise Report Dev Name - Manish Kumar Sharma 15-07-2025
+        Route::get('get_teacherallsubjects', [NewController::class, 'getTeacherAllSubjects']);
+        
+        //Api for Attendance marking status Report Dev Name - Manish Kumar Sharma 15-07-2025
+        Route::get('get_attendancemarkingstatus', [ReportController::class, 'getAttendanceMarkingStatus']);
+        
+        //Api for homework status Report Dev Name - Manish Kumar Sharma 18-07-2025
+        Route::get('get_homeworkstatusreport', [ReportController::class, 'getHomeworkStatusReport']);
+        
+        //Api for homework status Report Dev Name - Manish Kumar Sharma 18-07-2025
+         Route::get('get_teachersbyclassidsectionid',[ReportController::class,'getTeachersByClassSection']);
+         Route::get('get_homeworknotassignedreport',[ReportController::class,'getHomeworkNotAssignedReport']);
+        
+        
+        // Api for Classwise Homework Details Report Dev Name - Mahima Chaudhari 19-07-2025
+        Route::get('getclasswisehomeworkreport', [ReportController::class, 'getClasswiseHomework']);
+        
+        // Api for Classwise Report marks report Report Dev Name - Manish Kumar Sharma 21-07-2025
+        Route::get('get_classwisereportcardmarksreport', [ReportController::class, 'getClasswiseReportCardMarksReport']);
+        
+        // Api for Classwise Report marks report Report Dev Name - Manish Kumar Sharma 21-07-2025
+        Route::get('get_classwisemarksreport', [ReportController::class, 'getClasswiseMarksReport']);
+        
+        
+        
+        
+        
+        
+        
 
 
 
