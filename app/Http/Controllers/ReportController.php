@@ -8,6 +8,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Http\Services\WhatsAppService;
+use Carbon\CarbonPeriod;
 
 
 class ReportController extends Controller
@@ -2263,6 +2264,7 @@ class ReportController extends Controller
             $academic_year = JWTAuth::getPayload()->get('academic_year');
             $staffId = $request->input('teacher_id');
             $week = $request->input('week');
+            $subjectId = $request->input('subject_id');
              $query = DB::table('lesson_plan')
                         ->select(
                             'lesson_plan.*',
@@ -2290,6 +2292,9 @@ class ReportController extends Controller
                 
                     if (!empty($week)) {
                         $query->where('lesson_plan.week_date', $week);
+                    }
+                    if (!empty($subjectId)) {
+                        $query->where('lesson_plan.subject_id', $subjectId);
                     }
                 
                     $lessonPlans = $query->get()->toArray();
@@ -2485,8 +2490,1134 @@ class ReportController extends Controller
             ]);
         }
     }
+    
+    public function getStaffDetailedYearwiseAttendance(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academic_year = JWTAuth::getPayload()->get('academic_year');
 
+        if (in_array($user->role_id, ['A', 'T', 'M', 'U'])) {
 
+            $fromDate = getAcademicYearFrom();
+            $toDate = getAcademicYearTo();
 
+            $month = $request->input('month');
+            $staffId = $request->input('staff_id'); // This is teacher.teacher_id
 
+            $query = DB::table('teacher_attendance as a')
+                ->select(
+                    'a.employee_id',
+                    DB::raw('COUNT(DISTINCT DATE(a.punch_time)) AS attend_cnt'),
+                    DB::raw('MONTHNAME(a.punch_time) AS month_name'),
+                    'b.name',
+                    'b.tc_id',
+                    'b.teacher_id'
+                )
+                ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+                ->whereDate('a.punch_time', '>=', $fromDate)
+                ->whereDate('a.punch_time', '<=', $toDate);
+
+            // Optional filter: teacher name
+            if (!empty($teacherName)) {
+                $query->where('b.name', 'like', '%' . $teacherName . '%');
+            }
+
+            // Optional filter: month (number or name)
+            if (!empty($month)) {
+                if (is_numeric($month)) {
+                    $query->whereMonth('a.punch_time', $month);
+                } else {
+                    $query->whereRaw('MONTHNAME(a.punch_time) = ?', [$month]);
+                }
+            }
+
+            // Optional filter: staff_id (which is teacher.teacher_id)
+            if (!empty($staffId)) {
+                $query->where('b.teacher_id', $staffId);
+            }
+
+            $attendance = $query
+                ->groupBy('a.employee_id', DB::raw('MONTHNAME(a.punch_time)'))
+                ->orderBy('a.employee_id')
+                ->orderBy(DB::raw('MONTH(a.punch_time)'))
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Staff Yearwise Attendance Data Retrieved Successfully',
+                'success' => true,
+                'data' => $attendance,
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'This User Does Not Have Permission for the Staff Yearwise Attendance Report',
+                'data' => $user->role_id,
+                'success' => false
+            ]);
+        }
+    }
+    
+    public function getStudentDailyAttendanceMonthwise(Request $request){
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $classId = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $monthYear = $request->input('month_year');
+            $academicYear = $academic_year;
+
+        try {
+            // Parse month and year
+            [$month, $year] = explode('-', $monthYear);
+            $monthName = Carbon::createFromFormat('m', $month)->format('F');
+            
+            // Check if data exists for this month
+            $workingDays = DB::table('attendance')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->whereRaw("MONTHNAME(only_date) = ?", [$monthName])
+                ->where('academic_yr', $academicYear)
+                ->groupBy('student_id')
+                ->selectRaw('COUNT(*) as workingdays_count')
+                ->get()
+                ->max('workingdays_count') ?? 0;
+
+            if ($workingDays === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No data available'
+                ]);
+            }
+
+            // Get class and section names
+            $className = DB::table('class')->where('class_id', $classId)->value('name') ?? 'Unknown Class';
+            $sectionName = DB::table('section')->where('section_id', $sectionId)->value('name') ?? 'Unknown Section';
+
+            // Get academic year settings
+            $academicSettings = DB::table('settings')
+                ->where('academic_yr', $academicYear)
+                ->first();
+
+            // Generate date range for the month
+            $startDate = Carbon::createFromFormat('F Y', $monthName . ' ' . $year)->startOfMonth();
+            $endDate = $startDate->copy()->endOfMonth();
+            
+            $dateRange = [];
+            $currentDate = $startDate->copy();
+            
+            while ($currentDate <= $endDate) {
+                $dateRange[] = [
+                    'date' => $currentDate->format('d-m-Y'),
+                    'day' => $currentDate->format('D'),
+                    'formatted_date' => $currentDate->format('d-m-y'),
+                    'db_date' => $currentDate->format('Y-m-d')
+                ];
+                $currentDate->addDay();
+            }
+
+            // Get all attendance data for the month
+            $dates = array_column($dateRange, 'db_date');
+            $attendanceData = DB::table('attendance as a')
+                ->join('student as s', 'a.student_id', '=', 's.student_id')
+                ->where('a.class_id', $classId)
+                ->where('a.section_id', $sectionId)
+                ->whereIn('a.only_date', $dates)
+                ->where('a.academic_yr', $academicYear)
+                ->select('a.student_id', 'a.only_date', 'a.attendance_status', 's.first_name', 's.last_name', 's.roll_no', 's.isDelete')
+                ->get()
+                ->groupBy('student_id');
+
+            // Get students with their monthly attendance summary
+            $students = DB::table('student as s')
+                ->join('attendance as a', 's.student_id', '=', 'a.student_id')
+                ->where('a.class_id', $classId)
+                ->where('a.section_id', $sectionId)
+                ->whereRaw("MONTHNAME(a.only_date) = ?", [$monthName])
+                ->where('a.academic_yr', $academicYear)
+                ->groupBy('s.student_id')
+                ->selectRaw('s.student_id, s.first_name, s.last_name, s.roll_no, s.isDelete, SUM(IF(a.attendance_status = 0, 1, 0)) as present_count')
+                ->orderBy('s.roll_no')
+                ->get();
+            // dd($students);
+
+            // Process student data
+            $processedStudents = [];
+            $dailyTotals = [
+                'present' => array_fill(0, count($dateRange), 0),
+                'absent' => array_fill(0, count($dateRange), 0)
+            ];
+
+            foreach ($students as $student) {
+                $studentAttendance = $attendanceData->get($student->student_id) ?? collect();
+                
+                $studentData = [
+                    'student_id' => $student->student_id,
+                    'name' => trim($student->first_name . ' ' . $student->last_name),
+                    'roll_no' => $student->isDelete === 'Y' ? 'Left' : $student->roll_no,
+                    'is_deleted' => $student->isDelete === 'Y',
+                    'daily_attendance' => [],
+                    'present_days' => 0,
+                    'absent_days' => 0,
+                    'working_days'=>0
+                ];
+
+                // Process daily attendance
+                foreach ($dateRange as $index => $dateInfo) {
+                    $dayAttendance = $studentAttendance->where('only_date', $dateInfo['db_date'])->first();
+                    $duplicateMarker = $this->hasDuplicateAttendance($student->student_id, $dateInfo['date']); // 'd-m-Y'
+                    $entry = [
+                        'date' => $dateInfo['date'],
+                        'status' => '',
+                        'duplicate' => false
+                    ];
+                    
+                    if ($dayAttendance) {
+                        if ($dayAttendance->attendance_status == 0) {
+                            $entry['status'] = 'P';
+                            $studentData['present_days']++;
+                            $dailyTotals['present'][$index]++;
+                            $studentData['working_days']++;
+                        } else {
+                             $entry['status'] = 'A';
+                            $studentData['absent_days']++;
+                            $dailyTotals['absent'][$index]++;
+                            $studentData['working_days']++;
+                        }
+                         if ($duplicateMarker === '*') {
+                        $entry['duplicate'] = true;
+                    }
+                    } else {
+                         $entry['status'] = '';
+                    }
+                   
+                     $studentData['daily_attendance'][] = $entry;
+                 }
+
+                // Calculate previous attendance and cumulative data
+                if ($academicSettings) {
+                    // dd(end($dateRange)['db_date']);
+                    $endOfMonth = Carbon::parse(end($dateRange)['db_date']); // Convert string to Carbon object
+                    $endOfPrevMonth = $endOfMonth->copy()->subMonthNoOverflow()->endOfMonth()->format('Y-m-d');
+                                    // dd($endOfPrevMonth);
+                    //  dd($endOfPrevMonth,$endOfMonth);
+                    $totalWorkingDataTillMonth = DB::table('attendance')
+                                ->where('student_id', $student->student_id)
+                                ->where('only_date', '>=', $academicSettings->academic_yr_from)
+                                ->where('only_date', '<=', $endOfMonth)
+                                ->selectRaw('
+                                    SUM(IF(attendance_status = 0, 1, 0)) as total_present_days,
+                                    SUM(IF(attendance_status = 1, 1, 0)) as total_absent_days,
+                                    SUM(IF(attendance_status IN (0, 1), 1, 0)) as total_present_absent_days_till_month
+                                ')
+                                ->first();
+                                                
+                                                // dd($totalWorkingDataTillMonth);
+                        
+                    $prevAttendance = DB::table('attendance')
+                        ->where('student_id', $student->student_id)
+                        ->where('only_date', '>=', $academicSettings->academic_yr_from)
+                        ->where('only_date', '<=', $endOfPrevMonth)
+                        ->selectRaw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days')
+                        ->first();
+                        // dd($prevAttendance);
+                    
+                    $studentData['prev_attendance'] = (int)$prevAttendance->total_present_days ?? 0;
+                    $studentData['total_attendance'] = $studentData['present_days'] + $studentData['prev_attendance'];
+                    $studentData['total_working_days_till_month']=(int)$totalWorkingDataTillMonth->total_present_absent_days_till_month ?? 0;
+                    
+                    
+                    $cumulativeAbsent = DB::table('attendance')
+                        ->where('student_id', $student->student_id)
+                        ->where('only_date', '>=', $academicSettings->academic_yr_from)
+                        ->where('only_date', '<=', $endOfMonth)
+                        ->selectRaw('SUM(attendance_status) as total_absent_days')
+                        ->first();
+                    
+                    $studentData['cumulative_absent_days'] = $cumulativeAbsent->total_absent_days ?? 0;
+                } else {
+                    $studentData['prev_attendance'] = 0;
+                    $studentData['total_attendance'] = $studentData['present_days'];
+                    $studentData['cumulative_absent_days'] = 0;
+                }
+
+                $processedStudents[] = $studentData;
+            }
+
+            $totalPresentDays = array_sum(array_column($processedStudents, 'present_days'));
+            $totalAbsentDays = array_sum(array_column($processedStudents, 'absent_days'));
+            $totalPrevAttendance = array_sum(array_column($processedStudents, 'prev_attendance'));
+            $totalAttendance = array_sum(array_column($processedStudents, 'total_attendance'));
+            $totalCumulativeAbsentDays = array_sum(array_column($processedStudents, 'cumulative_absent_days'));
+            $totalwokingdays = array_sum(array_column($processedStudents, 'working_days'));
+            $totalwokingdaystillmonth = array_sum(array_column($processedStudents, 'total_working_days_till_month'));
+            $totalPrevAbsentDays = 0;
+            if ($academicSettings) {
+                $endOfMonth = end($dateRange)['db_date'];
+                $prevAbsent = DB::table('attendance')
+                    ->where('class_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->where('only_date', '>=', $academicSettings->academic_yr_from)
+                    ->where('only_date', '<=', $endOfPrevMonth)
+                    ->selectRaw('SUM(IF(attendance_status = 1, 1, 0)) as total_absent_days')
+                    ->first();
+                
+                $totalPrevAbsentDays = $prevAbsent->total_absent_days ?? 0;
+            }
+
+            // Calculate daily totals
+            $dailyTotal = [];
+            for ($i = 0; $i < count($dateRange); $i++) {
+                $dailyTotal[] = $dailyTotals['present'][$i] + $dailyTotals['absent'][$i];
+            }
+
+            // Prepare response
+            $response = [
+                'success' => true,
+                'data' => [
+                    'class_name' => $className,
+                    'section_name' => $sectionName,
+                    'month_name' => $monthName,
+                    'year' => $year,
+                    'academic_year' => $academicYear,
+                    'date_range' => array_map(function($date) {
+                        unset($date['db_date']); 
+                        return $date;
+                    }, $dateRange),
+                    'students' => $processedStudents,
+                    'totals' => [
+                        'daily_present' => $dailyTotals['present'],
+                        'daily_absent' => $dailyTotals['absent'],
+                        'daily_total' => $dailyTotal,
+                        'total_present_days' => $totalPresentDays,
+                        'total_absent_days' => $totalAbsentDays,
+                        'total_present_absent_days'=>$totalPresentDays + $totalAbsentDays,
+                        'total_prev_attendance' => $totalPrevAttendance,
+                        'total_previous_attendance' => $totalPrevAttendance+$totalPrevAbsentDays,
+                        'total_prev_absent_days' => (int) $totalPrevAbsentDays,
+                        'total_cumulative_absent_days' => $totalCumulativeAbsentDays,
+                        'total_attendance' => $totalAttendance,
+                        'grand_total_absent_attendance'=>$totalAbsentDays+$totalPrevAbsentDays,
+                        'grand_total_attendance' => $totalPresentDays + $totalAbsentDays + $totalPrevAttendance + $totalPrevAbsentDays,
+                        'total_working_days_for_this_month'=>$totalwokingdays,
+                        'total_working_days_till_month'=>$totalwokingdaystillmonth
+                    ]
+                ],
+                'status'=>200
+                
+            ];
+
+            return response()->json($response);
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error generating attendance report',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    private function hasDuplicateAttendance($studentId, $date)
+    {
+        return DB::table('attendance')
+            ->where('student_id', $studentId)
+            ->whereRaw("DATE_FORMAT(only_date, '%d-%m-%Y') = ?", [$date])
+            ->count() > 1 ? '*' : '';
+    }
+    
+    public function getAttendanceMarkingStatus(Request $request){
+        $user = $this->authenticateUser();
+        $academic_year = JWTAuth::getPayload()->get('academic_year');
+        $section = $request->input('section');
+        $date    = $request->input('date');
+        $acd_yr  = $academic_year;
+        if($section=='all'){
+        $dept1="'Primary','Secondary'";
+        }else{
+            $dept1 = "'$section'";
+        }
+
+    $rows = DB::select("
+        select department.*, class.class_id, class.name as class_name, 
+               section.section_id, section.name as sec_name 
+        from department, class, section 
+        where department.department_id = class.department_id 
+        and class.class_id = section.class_id 
+        and department.name IN ($dept1) 
+        and department.academic_yr = '$acd_yr'
+    ");
+    
+    
+
+        $report = [];
+
+        foreach ($rows as $row) {
+            $teacherInfo = DB::table('class_teachers')
+                ->where('class_id', $row->class_id)
+                ->where('section_id', $row->section_id)
+                ->first();
+
+            $mainTeacherId = $teacherInfo->teacher_id ?? null;
+            $mainTeacher   = $mainTeacherId
+                ? DB::table('teacher')->where('teacher_id', $mainTeacherId)->value('name')
+                : null;
+
+            $substitute = DB::table('class_teacher_substitute as sub')
+                ->join('teacher as t', 'sub.teacher_id', 't.teacher_id')
+                ->where('sub.class_teacher_id', $mainTeacherId)
+                ->where('sub.academic_yr', $acd_yr)
+                ->whereDate('sub.start_date', '<=', $date)
+                ->whereDate('sub.end_date', '>=', $date)
+                ->select('sub.teacher_id', 't.name')
+                ->first();
+
+            $subteacherName = $substitute->name ?? null;
+
+            // 4️⃣ Check who marked attendance on this date
+            $att = DB::table('attendance as a')
+                ->join('student as st', 'a.student_id', 'st.student_id')
+                ->where('a.class_id', $row->class_id)
+                ->where('a.section_id', $row->section_id)
+                ->where('a.academic_yr', $acd_yr)
+                ->whereDate('a.only_date', $date)
+                ->select(DB::raw('COUNT(*) as attendance_count'), 'a.teacher_id')
+                ->first();
+
+            $markedBy = ($att->attendance_count ?? 0) > 0
+                ? DB::table('teacher')->where('teacher_id', $att->teacher_id)->value('name')
+                : null;
+
+            $marked = ($att->attendance_count ?? 0) > 0 ? 'Y' : 'N';
+
+            $report[] = [
+                'class_section'        => "{$row->class_name}-{$row->sec_name}",
+                'class_teacher'        => $mainTeacher,
+                'substitute_teacher'   => $subteacherName,
+                'attendance_marked_by' => $markedBy,
+                'marked'               => $marked,
+            ];
+        }
+
+        return response()->json([
+            'date'     => $date,
+            'academic_yr' => $acd_yr,
+            'report'   => $report,
+        ]);
+        
+    }
+    
+    public function getHomeworkStatusReport(Request $request){
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        try {
+            $classId = $request->input('class_id');
+            // dd($class_id);
+            $className = DB::table('class')->where('class_id', $classId)->value('name');
+            $subjects = DB::table('subject as s')
+            ->distinct()
+            ->join('subject_master as sm', 's.sm_id', 'sm.sm_id')
+            ->where('sm.subject_type','!=','Social')
+            ->where('s.class_id', $classId)
+            ->where('s.academic_yr', $academicYear)
+            ->select('sm.sm_id', 'sm.name')
+            ->orderBy('sm.sm_id')
+            ->get();
+
+        // Get sections for the class
+        $sections = DB::table('section')
+            ->where('class_id', $classId)
+            ->where('academic_yr', $academicYear)
+            ->orderBy('name')
+            ->get();
+
+        // Compile report data
+        $data = [];
+
+        foreach ($sections as $section) {
+            $row = [
+                'class_name' =>$className."-". $section->name,
+                'subjects'     => []
+            ];
+
+            foreach ($subjects as $subj) {
+                // Last homework date
+                $lastHomework = DB::table('homework')
+                    ->where('class_id', $classId)
+                    ->where('section_id', $section->section_id)
+                    ->where('sm_id', $subj->sm_id)
+                    ->where('publish', 'Y')
+                    ->max('publish_date'); 
+
+                // Teacher name
+                $teacher = DB::table('subject as s')
+                    ->join('teacher', 's.teacher_id', 'teacher.teacher_id')
+                    ->where('s.class_id', $classId)
+                    ->where('s.section_id', $section->section_id)
+                    ->where('s.sm_id', $subj->sm_id)
+                    ->value('teacher.name');
+
+                $row['subjects'][] = [
+                    'subject_name'      => $subj->name,
+                    'last_homework_date'=> $lastHomework ? date('d-m-Y', strtotime($lastHomework)) : null,
+                    'status'            => $lastHomework ? 'Last HW on ' . date('d-m-Y', strtotime($lastHomework)) : 'No HW',
+                    'status_color'      => $lastHomework ? 'black' : 'red',
+                    'teacher_name'      => $teacher ? "($teacher)" : ''
+                ];
+            }
+
+            $data[] = $row;
+        }
+        $report['data'] = $data;
+        $report['subjects']=$subjects;
+        
+        
+
+        return response()->json([
+            'status'  =>200,
+            'data'  => $report,
+            'success' =>true
+        ]);
+            
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+    
+    public function getTeachersByClassSection(Request $request){
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        try {
+            $classId = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $teachersaccordingtoclass = DB::table('subject')
+                                            ->join('teacher','teacher.teacher_id','=','subject.teacher_id')
+                                            ->where('subject.class_id',$classId)
+                                            ->where('subject.section_id',$sectionId)
+                                            ->select('teacher.name as teachername','subject.teacher_id')
+                                            ->distinct()
+                                            ->get();
+                                             return response()->json([
+                                                'status'  =>200,
+                                                'message'=>'Teacher list by class and section.',
+                                                'data'  => $teachersaccordingtoclass,
+                                                'success' =>true
+                                            ]);
+            
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+    
+    
+    public function getClasswiseHomework(Request $request)
+    {
+        try {
+
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
+            //     $classId = $request->query('class_id');
+            //     $sectionId = $request->query('section_id');
+            //     $date = $request->query('date'); // format: YYYY-MM-DD
+
+            //     if (!$classId || !$sectionId) {
+            //         return response()->json([
+            //             'status' => false,
+            //             'message' => 'class_id and section_id are required',
+            //         ], 400);
+            //     }
+
+            //     $query = DB::table('homework')
+            //         ->join('class', 'class.class_id', '=', 'homework.class_id')
+            //         ->join('section', 'section.section_id', '=', 'homework.section_id')
+            //         ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
+            //         ->join('teacher', 'teacher.teacher_id', '=', 'homework.teacher_id')
+            //         ->select(
+            //             'homework.*',
+            //             'class.name as class_name',
+            //             'subject_master.name as sub_name',
+            //             'section.section_id',
+            //             'section.name as sec_name',
+            //             'teacher.name as tec_name',
+            //             'teacher.teacher_id'
+            //         )
+            //         ->where('homework.class_id', $classId)
+            //         ->where('homework.section_id', $sectionId)
+            //         ->where('homework.publish', 'Y')
+            //         ->when($date, function ($query, $date) {
+            //             return $query->whereDate('homework.publish_date', $date);
+            //         })
+            //         ->orderByDesc('homework.publish_date')
+            //         ->get();
+
+            //     return response()->json([
+            //         'status' => 200,
+            //         'message' => 'Homework Classwise Details Report Successfully',
+            //         'success' => true,
+            //         'data' => $query,
+            //     ]);
+            // } 
+
+            if (in_array($user->role_id, ['A', 'T', 'M', 'U'])) {
+                $sectionId = $request->query('section_id');
+                $classId = $request->query('class_id'); // optional
+                $date = $request->query('date'); // optional
+
+                if (!$sectionId) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'section_id is required',
+                    ], 400);
+                }
+
+                $query = DB::table('homework')
+                    ->join('class', 'class.class_id', '=', 'homework.class_id')
+                    ->join('section', 'section.section_id', '=', 'homework.section_id')
+                    ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
+                    ->join('teacher', 'teacher.teacher_id', '=', 'homework.teacher_id')
+                    ->select(
+                        'homework.*',
+                        'class.name as class_name',
+                        'subject_master.name as sub_name',
+                        'section.section_id',
+                        'section.name as sec_name',
+                        'teacher.name as tec_name',
+                        'teacher.teacher_id'
+                    )
+                    ->where('subject_master.subject_type','!=','Social')
+                    ->where('homework.section_id', $sectionId)
+                    ->where('homework.publish', 'Y')
+                    ->when($classId, function ($query, $classId) {
+                        return $query->where('homework.class_id', $classId);
+                    })
+                    ->when($date, function ($query, $date) {
+                        return $query->whereDate('homework.publish_date', $date);
+                    })
+                    ->orderByDesc('homework.publish_date')
+                    ->get();
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Homework Classwise Details Report Successfully',
+                    'success' => true,
+                    'data' => $query,
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'This User Does Not Have Permission for the Staff Yearwise Attendance Report',
+                    'data' => $user->role_id,
+                    'success' => false
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getHomeworkNotAssignedReport(Request $request){
+        try {
+
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $classId   = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $teacherId = $request->input('teacher_id'); // optional
+            $daterange = $request->input('daterange');
+            // dd($classId,$sectionId,$daterange);
+        
+
+        $dates = explode(' / ', $daterange); // format: "2025-07-10 - 2025-07-19"
+        if (count($dates) !== 2) {
+            return response()->json(['error' => 'daterange format should be "YYYY-MM-DD / YYYY-MM-DD"'], 400);
+        }
+
+        try {
+            $startDate = Carbon::parse(trim($dates[0]));
+            $endDate   = Carbon::parse(trim($dates[1]));
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid date range format'], 400);
+        }
+
+        $subjectsQuery = DB::table('subject')
+            ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+            ->select('subject_master.sm_id', 'subject_master.name')
+            ->where('subject_master.subject_type','!=','Social')
+            ->where('subject.class_id', $classId)
+            ->where('subject.section_id', $sectionId)
+            ->where('subject.academic_yr', $academicYr);
+
+        if ($teacherId) {
+            $subjectsQuery->where('subject.teacher_id', $teacherId);
+        }
+
+        $subjects = $subjectsQuery->distinct()->orderBy('subject_master.name', 'asc')->get();
+
+        $workdays = [];
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            if ($current->isWeekday()) {
+                $workdays[] = $current->toDateString();
+            }
+            $current->addDay();
+        }
+
+        $missingHomework = [];
+
+        foreach ($subjects as $subject) {
+            $missingDates = [];
+        
+            foreach ($workdays as $date) {
+                $count = DB::table('homework')
+                    ->where('class_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->where('sm_id', $subject->sm_id)
+                    ->where('publish_date', $date)
+                    ->where('publish', 'Y')
+                    ->count();
+        
+                if ($count === 0) {
+                    $missingDates[] = Carbon::parse($date)->format('d-m-Y');
+                }
+            }
+        
+            $className = DB::table('class')->where('class_id', $classId)->value('name');
+            $sectionName = DB::table('section')->where('section_id', $sectionId)->value('name');
+            if (!empty($missingDates)) {
+                $missingHomework[] = [
+                    'classname' => $className."-".$sectionName,
+                    'teacher_id'  => $teacherId ?? null,
+                    'subject'     => $subject->name,
+                    'dates'       => $missingDates
+                ];
+            }
+        }
+        
+        return response()->json([
+            'status'=>200,
+            'data' => $missingHomework,
+            'message'=>'Missing homework report!',
+            'success'=>true
+            ]);
+            
+            
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+    
+    // public function getClasswiseReportCardMarksReport(Request $request){
+        
+
+    //         $user = $this->authenticateUser();
+    //         $academicYr = JWTAuth::getPayload()->get('academic_year');
+    //         $classId   = $request->input('class_id');
+    //         $sectionId = $request->input('section_id');
+    //         $academicYear = '2024-2025';
+    
+    //         if (!$classId || !$sectionId || !$academicYear) {
+    //             return response()->json(['message' => 'Missing required parameters.'], 400);
+    //         }
+
+        
+    //         // 1. Get subject list
+    //         $subjects = DB::table('subjects_on_report_card as a')
+    //             ->join('subjects_on_report_card_master as b', 'a.sub_rc_master_id', '=', 'b.sub_rc_master_id')
+    //             ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
+    //             ->where('a.class_id', $classId)
+    //             ->where('a.academic_yr', $academicYear)
+    //             ->orderBy('a.class_id')
+    //             ->orderBy('b.sequence')
+    //             ->distinct()
+    //             ->get();
+
+    //         // 2. Get students
+    //         $students = DB::table('student as a')
+    //             ->leftJoin('parent as b', 'a.parent_id', '=', 'b.parent_id')
+    //             ->join('user_master as c', 'a.parent_id', '=', 'c.reg_id')
+    //             ->join('class as d', 'a.class_id', '=', 'd.class_id')
+    //             ->join('section as e', 'a.section_id', '=', 'e.section_id')
+    //             ->leftJoin('house as f', 'a.house', '=', 'f.house_id')
+    //             ->where([
+    //                 ['a.IsDelete', 'N'],
+    //                 ['a.academic_yr', $academicYear],
+    //                 ['a.class_id', $classId],
+    //                 ['a.section_id', $sectionId],
+    //                 ['c.role_id', 'P']
+    //             ])
+    //             ->orderBy('a.roll_no')
+    //             ->orderBy('a.reg_no')
+    //             ->select('a.*', 'd.name as class_name', 'e.name as section_name', 'f.house_name')
+    //             ->get();
+
+    //         $reportData = [];
+
+    //         foreach ($students as $student) {
+    //             $studentReport = [
+    //                 'roll_no'   => $student->roll_no,
+    //                 'reg_no'    => $student->reg_no,
+    //                 'class_div' => $student->class_name . $student->section_name,
+    //                 'name'      => trim("{$student->first_name} {$student->mid_name} {$student->last_name}"),
+    //                 'subjects'  => []
+    //             ];
+
+    //             foreach ($subjects as $subject) {
+    //                 $exams = DB::table('allot_mark_headings')
+    //                     ->join('exam', 'allot_mark_headings.exam_id', '=', 'exam.exam_id')
+    //                     ->where('allot_mark_headings.sm_id', $subject->sub_rc_master_id)
+    //                     ->where('allot_mark_headings.class_id', $classId)
+    //                     ->where('allot_mark_headings.academic_yr', $academicYear)
+    //                     ->select('exam.exam_id', 'exam.name')
+    //                     ->distinct()
+    //                     ->orderBy('exam.start_date')
+    //                     ->get();
+
+    //                 $subjectData = [
+    //                     'subject_name' => $subject->name,
+    //                     'exams' => []
+    //                 ];
+
+    //                 foreach ($exams as $exam) {
+    //                     $marksHeadings = DB::table('allot_mark_headings')
+    //                         ->join('marks_headings', 'allot_mark_headings.marks_headings_id', '=', 'marks_headings.marks_headings_id')
+    //                         ->where([
+    //                             ['allot_mark_headings.exam_id', $exam->exam_id],
+    //                             ['allot_mark_headings.class_id', $classId],
+    //                             ['allot_mark_headings.sm_id', $subject->sub_rc_master_id],
+    //                             ['allot_mark_headings.academic_yr', $academicYear],
+    //                         ])
+    //                         ->orderBy('marks_headings.sequence')
+    //                         ->select('marks_headings.name', 'allot_mark_headings.highest_marks')
+    //                         ->get();
+
+    //                     $studentMarks = DB::table('student_marks')
+    //                         ->where([
+    //                             ['exam_id', $exam->exam_id],
+    //                             ['subject_id', $subject->sub_rc_master_id],
+    //                             ['student_id', $student->student_id],
+    //                             ['academic_yr', $academicYear],
+    //                             ['publish', 'Y']
+    //                         ])
+    //                         ->first();
+
+    //                     $obtainedMarks = [];
+    //                     $totalObtained = 0;
+
+    //                     if ($studentMarks) {
+    //                         $marksData = json_decode($studentMarks->reportcard_marks, true);
+    //                         foreach ($marksHeadings as $heading) {
+    //                             $mark = $marksData[$heading->name] ?? '';
+    //                             $obtainedMarks[] = [
+    //                                 'heading' => $heading->name,
+    //                                 'obtained' => (float)$mark,
+    //                                 'max' => $heading->highest_marks
+    //                             ];
+    //                             if (is_numeric($mark)) {
+    //                                 $totalObtained += (float)$mark;
+    //                             }
+    //                         }
+    //                     } else {
+    //                         foreach ($marksHeadings as $heading) {
+    //                             $obtainedMarks[] = [
+    //                                 'heading' => $heading->name,
+    //                                 'obtained' => '',
+    //                                 'max' => $heading->highest_marks
+    //                             ];
+    //                         }
+    //                     }
+
+    //                     $subjectData['exams'][] = [
+    //                         'exam_name' => $exam->name,
+    //                         'marks'     => $obtainedMarks,
+    //                         'total'     => count($marksHeadings) > 1 ? $totalObtained : null
+    //                     ];
+    //                 }
+
+    //                 $studentReport['subjects'][] = $subjectData;
+    //             }
+
+    //             $reportData[] = $studentReport;
+    //         }
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'message' => 'Classwise report card marks generated successfully.',
+    //             'data' => $reportData,
+    //             'success' => true
+    //         ]);
+    //     }
+    
+    public function getClasswiseReportCardMarksReport(Request $request){
+        
+
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $classId   = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $academicYear = '2024-2025';
+        
+        $classname = DB::table('class')->where('class_id',$classId)->where('academic_yr',$academicYear)->value('name');
+       
+
+        $subjectsRaw = DB::table('subjects_on_report_card as a')
+            ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id','=', 'm.sub_rc_master_id')
+            ->where('a.class_id', $classId)
+            ->where('a.academic_yr', $academicYear)
+            ->distinct()
+            ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
+            ->orderBy('m.sequence')
+            ->get();
+
+        $headings = [];
+        foreach ($subjectsRaw as $subject) {
+            $exams = DB::table('allot_mark_headings as am')
+                ->join('exam', 'am.exam_id','=', 'exam.exam_id')
+                ->where('am.sm_id', $subject->subject_id)
+                ->where('am.class_id', $classId)
+                ->where('am.academic_yr', $academicYear)
+                ->distinct()
+                ->select('exam.exam_id', 'exam.name')
+                ->orderBy('exam.start_date')
+                ->get();
+
+            $examArr = [];
+            foreach ($exams as $exam) {
+                $marksHeads = DB::table('allot_mark_headings as am2')
+                    ->join('marks_headings as mh', 'am2.marks_headings_id','=', 'mh.marks_headings_id')
+                    ->where('am2.exam_id', $exam->exam_id)
+                    ->where('am2.sm_id', $subject->subject_id)
+                    ->where('am2.class_id', $classId)
+                    ->where('am2.academic_yr', $academicYear)
+                    ->orderBy('mh.sequence')
+                    ->select('mh.name as heading_name', 'am2.highest_marks')
+                    ->get();
+
+                $totalMax = $marksHeads->sum('highest_marks');
+                $examArr[] = [
+                    'exam_id'      => $exam->exam_id,
+                    'exam_name'    => $exam->name,
+                    'mark_headings'=> $marksHeads,
+                    'show_total'   => $marksHeads->count() > 1,
+                    'total_max'    => $marksHeads->count() > 1 ? $totalMax : null,
+                ];
+            }
+
+            $headings[] = [
+                'subject_id'   => $subject->subject_id,
+                'subject_name' => $subject->subject_name,
+                'exams'        => $examArr,
+            ];
+        }
+
+        $students = DB::table('student as s')
+            ->join('class as c','s.class_id','=', 'c.class_id')
+            ->join('section as sec','s.section_id','=', 'sec.section_id')
+            ->where('s.academic_yr', $academicYear)
+            ->where('s.class_id', $classId)
+            ->where('s.section_id', $sectionId)
+            ->where('s.IsDelete','N')
+            ->orderBy('s.roll_no')
+            ->select('s.student_id','s.roll_no','s.reg_no',
+                     DB::raw("CONCAT(s.first_name,' ',s.mid_name,' ',s.last_name) as name"),
+                     DB::raw("CONCAT(c.name, sec.name) as class_div"))
+            ->get();
+
+        $data = [];
+        foreach ($students as $st) {
+            $marksNested = [];
+
+            foreach ($headings as $sub) {
+                $subId = $sub['subject_id'];
+                $marksNested[$subId] = [];
+
+                foreach ($sub['exams'] as $exam) {
+                    $examId = $exam['exam_id'];
+
+                    $row = DB::table('student_marks')
+                        ->where([
+                            ['exam_id',      $examId],
+                            ['subject_id',   $subId],
+                            ['student_id',   $st->student_id],
+                            ['academic_yr',  $academicYear],
+                            ['publish',      'Y'],
+                        ])
+                        ->first();
+
+                    $rowMarks = $row ? json_decode($row->reportcard_marks, true) : [];
+
+                    $examMarks = [];
+                    foreach ($exam['mark_headings'] as $mh) {
+                        $name = $mh->heading_name;
+                        $examMarks[$name] = $rowMarks[$name] ?? '';
+                    }
+
+                    if ($exam['show_total']) {
+                        $total = array_reduce($examMarks, fn($sum, $val) =>
+                            is_numeric($val) ? $sum + $val : $sum, 0);
+                        $examMarks['Total'] = $total;
+                    }
+
+                    $marksNested[$subId][$examId] = $examMarks;
+                }
+            }
+
+            $data[] = [
+                'roll_no'   => $st->roll_no,
+                'reg_no'    => $st->reg_no,
+                'class_div' => $st->class_div,
+                'name'      => $st->name,
+                'marks'     => $marksNested,
+            ];
+        }
+
+        return response()->json([
+            'status'   => 200,
+            'message'  => 'Structured report fetched successfully.',
+            'success'  => true,
+            'headings' => $headings,
+            'data'     => $data,
+        ]);
+        }
+        
+        public function getClasswiseMarksReport(Request $request){
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $classId   = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $academicYear = '2024-2025';
+            $subjectsRaw = DB::table('subjects_on_report_card as a')
+                ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id','=', 'm.sub_rc_master_id')
+                ->where('a.class_id', $classId)
+                ->where('a.academic_yr', $academicYear)
+                ->distinct()
+                ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
+                ->orderBy('m.sequence')
+                ->get();
+    
+            $headings = [];
+            foreach ($subjectsRaw as $subject) {
+                $exams = DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE sm_id = ".$subject->subject_id." AND class_id = ".$classId." AND allot_mark_headings.academic_yr = '".$academicYear."' order by exam.start_date");
+                // dd($exams);
+    
+                $examArr = [];
+                foreach ($exams as $exam) {
+                    $marksHeads = DB::table('allot_mark_headings as am2')
+                        ->join('marks_headings as mh', 'am2.marks_headings_id','=', 'mh.marks_headings_id')
+                        ->where('am2.exam_id', $exam->exam_id)
+                        ->where('am2.sm_id', $subject->subject_id)
+                        ->where('am2.class_id', $classId)
+                        ->where('am2.academic_yr', $academicYear)
+                        ->orderBy('mh.sequence')
+                        ->select('mh.name as heading_name', 'am2.highest_marks','am2.marks_headings_id')
+                        ->get();
+                        // dd($marksHeads);
+    
+                    $totalMax = $marksHeads->sum('highest_marks');
+                    $examArr[] = [
+                        'exam_id'      => $exam->exam_id,
+                        'exam_name'    => $exam->name,
+                        'mark_headings'=> $marksHeads,
+                    ];
+                }
+    
+                $headings[] = [
+                    'subject_id'   => $subject->subject_id,
+                    'subject_name' => $subject->subject_name,
+                    'exams'        => $examArr,
+                ];
+            }
+    
+            $students = DB::select("select distinct(a.student_id),a.class_id, a.section_id, b.first_name,b.mid_name,b.last_name,b.roll_no,b.reg_no from student_marks a, student b where a.class_id=".$classId." and a.section_id=".$sectionId." and a.academic_yr='".$academicYear."' and a.student_id=b.student_id order by b.roll_no,b.reg_no");
+            
+    
+            $data = [];
+            foreach ($students as $st) {
+                $marksNested = [];
+    
+                foreach ($headings as $sub) {
+                    $subId = $sub['subject_id'];
+                    $marksNested[$subId] = [];
+    
+                    foreach ($sub['exams'] as $exam) {
+                        $examId = $exam['exam_id'];
+    
+                        $row = DB::table('student_marks')
+                            ->where([
+                                ['exam_id',      $examId],
+                                ['subject_id',   $subId],
+                                ['student_id',   $st->student_id],
+                                ['academic_yr',  $academicYear],
+                                ['publish',      'Y'],
+                            ])
+                            ->first();
+    
+                        $rowMarks = $row ? json_decode($row->mark_obtained, true) : [];
+                        // dd($rowMarks);
+    
+                        $examMarks = [];
+                        // dd($exam);
+                        foreach ($exam['mark_headings'] as $mh) {
+                            // dd($mh);
+                            $name = $mh->marks_headings_id;
+                            $examMarks[$name] = $rowMarks[$name] ?? '';
+                        }
+    
+                        
+    
+                        $marksNested[$subId][$examId] = $examMarks;
+                    }
+                }
+                // dd($marksNested);
+                $data[] = [
+                    'roll_no'   => $st->roll_no,
+                    'reg_no'    => $st->reg_no,
+                    'class_div' => get_class_section_of_student($st->student_id),
+                    'name'      => get_student_name($st->student_id),
+                    'marks'     => $marksNested,
+                ];
+            }
+            return response()->json([
+            'status'   => 200,
+            'message'  => 'Classwise marks report.',
+            'success'  => true,
+            'headings' => $headings,
+            'data'     => $data,
+        ]);
+    
+            
+        }
+            
+
+        
+    
+    
 }
+
+
+
+
+
+
