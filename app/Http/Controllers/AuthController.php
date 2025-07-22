@@ -144,13 +144,14 @@ class AuthController extends Controller
                 dd("No database configuration for the given short_name");
             }
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
-
+            $settings =  Setting::where('active', 'Y')->first();
             $customClaims = [
                 'role_id' => $user->role_id,
                 'reg_id' => $user->reg_id,
                 'academic_year' => $academic_yr,
                 'short_name' => $shortName,
-                'school_name'=> $schoolName
+                'school_name'=> $schoolName,
+                'settings'=>$settings
 
             ];
             $token = JWTAuth::claims($customClaims)->fromUser($user);
@@ -164,11 +165,13 @@ class AuthController extends Controller
             else{
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
             $schoolName = Setting::where('active', 'Y')->first()->institute_name;
+            $settings =  Setting::where('active', 'Y')->first();
             $customClaims = [
                 'role_id' => $user->role_id,
                 'reg_id' => $user->reg_id,
                 'academic_year' => $academic_yr,
-                'school_name'=>$schoolName
+                'school_name'=>$schoolName,
+                'settings'=>$settings
                 
 
             ];
@@ -224,11 +227,13 @@ class AuthController extends Controller
         }
 
         $newAcademicYear = $request->input('academic_year');
+        $settings = Setting::where('academic_yr', $newAcademicYear)->first();
 
         $customClaims = [
             'user_id' => $user->user_id,
             'role_id' => $user->role_id,
             'academic_year' => $newAcademicYear,
+            'settings' => $settings,
         ];
 
         $token = JWTAuth::claims($customClaims)->fromUser($user);
