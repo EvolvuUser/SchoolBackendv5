@@ -16,7 +16,9 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 use App\Jobs\SendOutstandingFeeSmsJob;
-
+use Illuminate\Support\Facades\Mail;
+use League\Csv\Writer;
+use Illuminate\Support\Facades\Storage;
 class NewController extends Controller
 {
     protected $whatsAppService;
@@ -4907,6 +4909,814 @@ class NewController extends Controller
                                 ]); 
          
      }
+     // Api for Approve lesson plan Dev Name - Manish Kumar Sharma 22-07-2025
+     public function getApproveLessonPlandata(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $staffId = $request->query('staff_id');
+            $week = $request->query('week');
+            $query = DB::table('lesson_plan')
+                        ->select(
+                            'lesson_plan.*',
+                            'class.name as classname',
+                            'section.name as secname',
+                            'subject_master.name as subname',
+                            'chapters.chapter_no',
+                            'chapters.name as chaptername',
+                            'chapters.sub_subject',
+                            'teacher.name as teachername'
+                        )
+                        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                        ->join('teacher', 'teacher.teacher_id', '=', 'lesson_plan.reg_id')
+                        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                        ->where('chapters.isDelete', '!=', 'Y')
+                        ->where('lesson_plan.approve', '!=','Y')
+                        ->where('lesson_plan.academic_yr', $customClaims)
+                        ->orderByDesc('lesson_plan.lesson_plan_id')
+                        ->groupBy('lesson_plan.unq_id');
+
+        if (!empty($staffId)) {
+            $query->where('lesson_plan.reg_id', $staffId);
+        }
+    
+        if (!empty($week)) {
+            $query->where('lesson_plan.week_date', $week);
+        }
+    
+        $lessonPlans = $query->get();
+    
+        foreach ($lessonPlans as $plan) {
+            $plan->class_names = DB::table('lesson_plan as a')
+                ->join('class as b', 'a.class_id', '=', 'b.class_id')
+                ->join('section as c', 'a.section_id', '=', 'c.section_id')
+                ->select('b.name as class_name', 'c.name as sec_name')
+                ->where('a.academic_yr', $customClaims)
+                ->where('a.unq_id', $plan->unq_id)
+                ->orderBy('a.class_id')
+                ->get()
+                ->map(fn ($x) => $x->class_name . ' ' . $x->sec_name)
+                ->implode(', ');
+        }
+    
+        // Step 3: Attach static headings
+        $nonDailyHeadings = DB::table('lesson_plan_heading')
+            ->where('change_daily', '!=', 'Y')
+            ->orderBy('sequence')
+            ->get();
+    
+        $dailyHeadings = DB::table('lesson_plan_heading')
+            ->where('change_daily', '=', 'Y')
+            ->orderBy('sequence')
+            ->get();
+    
+        // Step 4: Attach headings and descriptions
+        foreach ($lessonPlans as $plan) {
+            // Non-daily content
+            $plan->non_daily = [];
+            foreach ($nonDailyHeadings as $heading) {
+                $desc = DB::table('lesson_plan_details')
+                    ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
+                    ->where('lesson_plan_id', $plan->lesson_plan_id)
+                    ->value('description');
+                $plan->non_daily[] = [
+                    'heading' => $heading->name,
+                    'description' => explode(PHP_EOL, $desc ?? '')
+                ];
+            }
+    
+            $plan->daily_changes = [];
+            foreach ($dailyHeadings as $heading) {
+                $entries = DB::table('lesson_plan_details')
+                    ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
+                    ->where('lesson_plan_id', $plan->lesson_plan_id)
+                    ->get();
+    
+                $headingData = [
+                    'heading' => $heading->name,
+                    'entries' => []
+                ];
+                
+                foreach ($entries as $entry) {
+                    $headingData['entries'][] = [
+                        'start_date' => $entry->start_date == '0000-00-00' ? '' : date('d-m-Y', strtotime($entry->start_date)),
+                        'description' => explode(PHP_EOL, $entry->description ?? '')
+                    ];
+                }
+                
+                $plan->daily_changes[] = $headingData;
+            }
+        }
+    
+        return response()->json([
+            'status'=>200,
+            'message'=>'Lesson plan to approve data!',
+            'data'=>$lessonPlans,
+            'success'=>true
+        ]);
+         
+     }
+     // Api for Approve lesson plan Dev Name - Manish Kumar Sharma 22-07-2025
+     public function UpdateApproveLessonPlanStatus(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        //  dd($request->all());
+         $plans = $request->input('plans', []);
+        $teacherId = $request->input('teacher_id');
+        $flagError = 0;
+    
+        foreach ($plans as $plan) {
+            $lessonPlanId = $plan['lesson_plan_id'];
+            $unqId = $plan['unq_id'];
+            $remark = $plan['remark'];
+            // dd($unqId);
+            // Update remark & approval
+            DB::table('lesson_plan')
+                ->where('unq_id', $unqId)
+                ->update([
+                    'remark' => $remark,
+                    'approve' => 'Y',
+                ]);
+    
+            // Get lesson plan details
+            $lp = DB::table('lesson_plan')->where('lesson_plan_id', $lessonPlanId)->first();
+            // dd($lp);
+            if (!$lp) {
+                continue;
+            }
+    
+            $class = DB::table('class')->where('class_id',$lp->class_id)->value('name');
+            $section = DB::table('section')->where('section_id',$lp->section_id)->value('name');
+            $subject = DB::table('subject_master')->where('sm_id',$lp->subject_id)->value('name');
+            $week = $lp->week_date;
+    
+            $msg = "Dear Teacher, <br><br> Lesson Plan for Class- {$class} {$section} Subject- {$subject} Week- {$week} has been approved.<br/><br/>Regards,<br/>Evolvu Support";
+    
+            $email = DB::table('teacher')->where('teacher_id',$teacherId)->value('email');
+            // dd($email,$msg);
+    
+            if (!empty($email)) {
+                smart_mail($email, 'Lesson Plan Status', 'emails.lessonPlanStatus', [
+                    'class'   => $class,
+                    'section' => $section,
+                    'subject' => $subject,
+                    'week'    => $week,
+                ]);
+                Mail::html($msg, function ($message) use ($email) {
+                        $message->to($email)
+                                ->subject('Lesson Plan Status');
+                    });
+            } else {
+                $flagError++;
+            }
+        }
+    
+        if ($flagError > 0) {
+            return response()->json([
+                'status' => 400,
+                'success'=>false,
+                'message' => 'Some email IDs were missing. Emails not sent to all teachers.'
+            ]);
+        }
+    
+        return response()->json([
+            'status' => 200,
+            'message' => 'Lesson plans approved and emails sent.',
+            'success'=>true
+        ]);
+         
+     }
+     
+     public function getExamByClassId(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $class_id = $request->input('class_id');
+         $exams = DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM allot_mark_headings join exam on allot_mark_headings.exam_id = exam.exam_id WHERE class_id = ".$class_id." AND allot_mark_headings.academic_yr = '".$customClaims."' order by exam.start_date");
+         return response()->json([
+            'status'=>200,
+            'message'=>'Exams list according to class!',
+            'data'=>$exams,
+            'success'=>true
+        ]);
+         
+     }
+     
+     public function getReportSubjectByClassSection(Request $request){
+          $user = $this->authenticateUser();
+          $customClaims = JWTAuth::getPayload()->get('academic_year');
+          $class_id = $request->input('class_id');
+          $section_id = $request->input('section_id');
+          $classname = DB::table('class')->where('class_id',$class_id)->value('name');
+          if($classname == '11' || $classname == '12'){
+              $subjects = DB::select("select distinct c.sub_rc_master_id as sub_rc_master_id,c.name as name from subject as a join sub_subreportcard_mapping as b on a.sm_id=b.sm_id join subjects_on_report_card_master as c on b.sub_rc_master_id=c.sub_rc_master_id where a.class_id = ".$class_id." and a.section_id = ".$section_id." and a.academic_yr= '".$customClaims."' order by a.section_id asc,c.sequence asc");
+          }
+          else{
+              $subjects = DB::select("select distinct a.sub_rc_master_id as sub_rc_master_id,b.name as name,a.subject_type from subjects_on_report_card as a join subjects_on_report_card_master as b on b.sub_rc_master_id=a.sub_rc_master_id where a.class_id = ".$class_id." and a.academic_yr= '".$customClaims."' order by a.class_id asc,b.sequence asc");
+              
+          }
+          
+          return response()->json([
+            'status'=>200,
+            'message'=>'Subjects by class section!',
+            'data'=>$subjects,
+            'success'=>true
+        ]);
+          
+         
+     }
+     
+     public function saveEvent(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        //  dd("Hello");
+         
+         do {
+            $unq = random_int(1000, 9999);
+            $exists = DB::table('events')->where('unq_id', $unq)->exists();
+        } while ($exists);
+        
+
+        $baseData = [
+            'unq_id'      => $unq,
+            'title'       => $request->input('title'),
+            'event_desc'  => $request->input('description'),
+            'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
+            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'start_time'  => $request->input('start_time'),
+            'end_time'    => $request->input('end_time'),
+            'competition' => $request->input('competition') ? 'Y' : 'N',
+            'notify'      => $request->input('notify') ? 'Y' : 'N',
+            'isDelete'    => 'N',
+            'publish'     => 'N',
+            'created_by'  => $user->reg_id, 
+            'academic_yr' => $customClaims,
+            'login_type'  => implode(',', $request->input('checkbxlogintype')),
+        ];
+        foreach ($request->input('checkbxclass') as $classId) {
+            if (!empty($classId)) {
+                $data = $baseData;
+                $data['class_id'] = $classId;
+                DB::table('events')->insert($data);
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'New event(s) created successfully!',
+            'success' => true
+        ]);
+         
+     }
+     
+     public function savePublishEvent(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        //   dd("Hello");
+         
+         do {
+            $unq = random_int(1000, 9999);
+            $exists = DB::table('events')->where('unq_id', $unq)->exists();
+        } while ($exists);
+        
+
+        $baseData = [
+            'unq_id'      => $unq,
+            'title'       => $request->input('title'),
+            'event_desc'  => $request->input('description'),
+            'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
+            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'start_time'  => $request->input('start_time'),
+            'end_time'    => $request->input('end_time'),
+            'competition' => $request->input('competition') ? 'Y' : 'N',
+            'notify'      => $request->input('notify') ? 'Y' : 'N',
+            'isDelete'    => 'N',
+            'publish'     => 'Y',
+            'created_by'  => $user->reg_id, 
+            'academic_yr' => $customClaims,
+            'login_type'  => implode(',', $request->input('checkbxlogintype')),
+        ];
+        foreach ($request->input('checkbxclass') as $classId) {
+            if (!empty($classId)) {
+                $data = $baseData;
+                $data['class_id'] = $classId;
+                DB::table('events')->insert($data);
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'New event(s) created and published successfully!',
+            'success' => true
+        ]);
+         
+     }
+     
+     public function getRolesForEvent(Request $request){
+         $excludedRoles = ['S', 'U', 'A', 'O', 'F', 'B'];
+
+        $roles = DB::table('role_master')
+            ->whereNotIn('role_id', $excludedRoles)
+            ->get();
+    
+        return response()->json([
+            'status'=>200,
+            'message'=>'Roles for the event.',
+            'data'=>$roles,
+            'success'=>true
+            ]);
+     }
+     
+     public function getEventList(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $monthYear = $request->input('month_year');
+         $classId = $request->input('class_id');
+         
+         $query = DB::table('events as e')
+                ->join('class as c', 'e.class_id', '=', 'c.class_id')
+                ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+                ->where('e.academic_yr', $customClaims);
+
+        // Optional class filter
+        if (!empty($classId)) {
+            $query->where('e.class_id', $classId);
+        }
+        
+        // Optional month-year filter like '07-2025'
+        if (!empty($monthYear)) {
+            [$month, $year] = explode('-', $monthYear);
+            $query->whereMonth('e.start_date', $month)
+                  ->whereYear('e.start_date', $year);
+        }
+        
+        $events = $query->select(
+                'e.unq_id',
+                'e.title',
+                'e.event_desc',
+                'e.start_date',
+                'e.end_date',
+                'e.start_time',
+                'e.end_time',
+                'e.login_type',
+                'e.publish',
+                'e.competition',
+                'e.notify',
+                'e.academic_yr',
+                'e.created_by',
+                'e.class_id',
+                'c.name as class_name',
+                't.name as createdbyname'
+            )
+            ->get();
+
+        
+        $grouped = $events->groupBy('unq_id')->map(function ($group) {
+            $first = $group->first(); 
+            return [
+                'unq_id'      => $first->unq_id,
+                'title'       => $first->title,
+                'event_desc'  => $first->event_desc,
+                'start_date'  => $first->start_date,
+                'end_date'    => $first->end_date,
+                'start_time'  => $first->start_time,
+                'end_time'    => $first->end_time,
+                'login_type'  => $first->login_type,
+                'publish'     => $first->publish,
+                'competition' => $first->competition,
+                'notify'      => $first->notify,
+                'academic_yr' => $first->academic_yr,
+                'created_by'  => $first->created_by,
+                'created_by_name'=>$first->createdbyname,
+                'classes'     => $group->map(fn($item) => [
+                    'class_id'   => $item->class_id,
+                    'class_name' => $item->class_name,
+                ])->unique('class_id')->values()
+            ];
+        })->values();
+         return response()->json([
+            'status'=>200,
+            'message'=>'Event list.',
+            'data'=>$grouped,
+            'success'=>true
+            ]);
+         
+     }
+     
+     public function getEventData(Request $request,$unq_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         $events = DB::table('events as e')
+                        ->join('class as c', 'e.class_id', '=', 'c.class_id')
+                        ->join('teacher as t','t.teacher_id','=','e.created_by')
+                        ->where('unq_id',$unq_id)
+                        ->where('e.academic_yr', $customClaims)
+                        ->select(
+                            'e.unq_id',
+                            'e.title',
+                            'e.event_desc',
+                            'e.start_date',
+                            'e.end_date',
+                            'e.start_time',
+                            'e.end_time',
+                            'e.login_type',
+                            'e.publish',
+                            'e.competition',
+                            'e.notify',
+                            'e.academic_yr',
+                            'e.created_by',
+                            'e.class_id',
+                            'c.name as class_name',
+                            't.name as createdbyname'
+                        )
+                        ->get();
+
+        
+        $grouped = $events->groupBy('unq_id')->map(function ($group) {
+            $first = $group->first(); 
+            return [
+                'unq_id'      => $first->unq_id,
+                'title'       => $first->title,
+                'event_desc'  => $first->event_desc,
+                'start_date'  => $first->start_date,
+                'end_date'    => $first->end_date,
+                'start_time'  => $first->start_time,
+                'end_time'    => $first->end_time,
+                'login_type'  => $first->login_type,
+                'publish'     => $first->publish,
+                'competition' => $first->competition,
+                'notify'      => $first->notify,
+                'academic_yr' => $first->academic_yr,
+                'created_by'  => $first->created_by,
+                'created_by_name'=>$first->createdbyname,
+                'classes'     => $group->map(fn($item) => [
+                    'class_id'   => $item->class_id,
+                    'class_name' => $item->class_name,
+                ])->unique('class_id')->values()
+            ];
+        })->values();
+         return response()->json([
+            'status'=>200,
+            'message'=>'Event data.',
+            'data'=>$grouped,
+            'success'=>true
+            ]);
+     }
+     
+     public function updatePublishEvent(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        
+        
+         $unqids = $request->input('checkbxuniqid');
+        
+        foreach ($unqids as $unq_id){
+         $publish = DB::table('events')
+                        ->where('unq_id', $unq_id) 
+                        ->update(['publish' => 'Y']);
+        }
+                        return response()->json([
+                            'status'=>200,
+                            'message'=>'Event published successfully.',
+                            'success'=>true
+                            ]);
+         
+     }
+     
+     public function deleteEventByUnqId(Request $request,$unq_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        
+         $events = DB::table('events')->where('unq_id', $unq_id)->get();
+
+    
+        if ($events->first()->publish === 'N') {
+            
+            DB::table('events')->where('unq_id', $unq_id)->delete();
+        } else {
+            
+            DB::table('events')
+                ->where('unq_id', $unq_id)
+                ->update(['IsDelete' => 'Y']);
+        }
+    
+        return response()->json([
+            'status' => 200,
+            'message' => 'Event deleted successfully.',
+            'success' => true
+        ]);
+         
+     }
+     
+     public function updateEventByUnqId(Request $request,$unq_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         //  dd($unq_id);
+         $event = DB::table('events')->where('unq_id', $unq_id)->first();
+
+            if (!$event) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Event not found.'
+                ], 404);
+            }
+        
+            $data = [
+                'title'       => $request->input('title', $event->title),
+                'event_desc'  => $request->input('description', $event->event_desc),
+                'start_date'  => $request->input('start_date') ? date('Y-m-d', strtotime($request->start_date)) : $event->start_date,
+                'end_date'    => $request->input('end_date') ? date('Y-m-d', strtotime($request->end_date)) : $event->end_date,
+                'start_time'  => $request->input('start_time', $event->start_time),
+                'end_time'    => $request->input('end_time', $event->end_time),
+                'competition' => empty($request->input('competition')) ? 'N' : 'Y',
+                'notify'      => empty($request->input('notify')) ? 'N' : 'Y',
+                'publish'     => 'N',
+                'isDelete'    => 'N',
+            ];
+        
+            DB::table('events')->where('unq_id', $unq_id)->update($data);
+        
+            return response()->json([
+                'status' => true,
+                'message' => 'Event updated successfully.',
+                'data' => $data
+            ]);
+         
+         
+         
+         
+     }
+     
+     public function getTemplateCsvEvent(Request $request){
+          try{
+        
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="event.csv"',
+            ];
+            ob_get_clean();
+            $columns= ['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time','End Time','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)'];
+
+            $callback = function() use ($columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
+        
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+     }
+     
+     public function importEventCsv(Request $request){
+         $request->validate([
+        'file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+        
+        $file = $request->file('file');
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        if (!$file->isValid()) {
+            return response()->json(['message' => 'Invalid file upload'], 400);
+        }
+        $csvData = file_get_contents($file->getRealPath());
+        $rows = array_map('str_getcsv', explode("\n", $csvData));
+        $header = array_shift($rows); 
+        //  dd($header);
+        $columnMap = [
+            '*Event Title' => 'title',
+            '*Event Description' => 'event_desc',
+            '*Start date(in dd-mm-yyyy format)' => 'start_date',
+            'End date(in dd-mm-yyyy format)' => 'end_date',
+            'Start Time' => 'start_time',
+            'End Time' => 'end_time',
+            '*Login Type(Admin Principal Teacher Parent)' => 'login_type',
+            'Competition(Yes/No)' => 'competition',
+            'Notify(Yes/No)' => 'notify',
+        ];
+        // dd($columnMap);
+        $invalidRows = [];
+        $successfulInserts = 0;
+        foreach ($rows as $rowIndex => $row) {
+            // Skip empty rows
+            if (empty(array_filter($row))) {
+                continue;
+            }
+            $EventData = [];
+            foreach ($header as $index => $columnName) {
+                // dd($columnName);
+                if (isset($columnMap[$columnName])) {
+                    $dbField = $columnMap[$columnName];
+                    $EventData[$dbField] = $row[$index] ?? null;
+                    //  dd($EventData[$dbField]);
+                }
+            }
+            // dd($EventData);
+            DB::beginTransaction();
+            $errors = []; 
+            if (empty($EventData['title'])) {
+                $errors[] = 'Title is required.';
+            }
+            if (empty($EventData['event_desc'])) {
+                $errors[] = 'Event description is required.';
+            }
+           
+    
+            if (empty($EventData['start_date'])) {
+                $errors[] = 'Event Start Date is required.';
+            } elseif (!$this->validateDate($EventData['start_date'], 'd-m-Y')) {
+                $errors[] = 'Invalid Event Start Date format. Expected dd-mm-yyyy.';
+            } else {
+                try {
+                    // Convert DOB to the required format (yyyy-mm-dd)
+                    $EventData['start_date'] = \Carbon\Carbon::createFromFormat('d-m-Y', $EventData['start_date'])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $errors[] = 'Invalid Event Start Date format. Expected dd-mm-yyyy.';
+                }
+            }
+            if (empty($EventData['end_date'])) {
+                $EventData['end_date'] = null;
+            }
+            elseif (!$this->validateDate($EventData['end_date'], 'd-m-Y')) {
+                $errors[] = 'Invalid Event End Date format. Expected dd-mm-yyyy.';
+            } else {
+                try {
+                    // Convert DOB to the required format (yyyy-mm-dd)
+                    $EventData['end_date'] = \Carbon\Carbon::createFromFormat('d-m-Y', $EventData['end_date'])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $errors[] = 'Invalid Event End Date format. Expected dd-mm-yyyy.';
+                }
+            }
+            
+            if (empty($EventData['login_type'])) {
+                $errors[] = 'Event login type is required.';
+            }
+            else {
+            $validLogins = ['Admin' => 'A', 'Principal' => 'M', 'Teacher' => 'T', 'Parent' => 'P'];
+            $loginParts = explode(' ', $EventData['login_type']);
+            $loginStr = '';
+
+            $loginCodes = [];
+
+            foreach ($loginParts as $part) {
+                $clean = trim($part);
+                if (!array_key_exists($clean, $validLogins)) {
+                    $errors[] = "Invalid login type: {$clean}";
+                } else {
+                    $loginCodes[] = $validLogins[$clean];
+                }
+            }
+            
+            $loginStr = implode(',', $loginCodes);
+            // dd($loginStr);
+
+            $EventData['login_type'] = $loginStr;
+          }
+          
+          $EventData['competition'] = strtolower($EventData['competition'] ?? 'no') === 'yes' ? 'Y' : 'N';
+        $EventData['notify'] = strtolower($EventData['notify'] ?? 'no') === 'yes' ? 'Y' : 'N';
+            
+            
+            // dd($errors);
+            if (!empty($errors)) {
+                // Combine the row with the errors and store in invalidRows
+                $invalidRows[] = array_merge($row, ['error' => implode(' | ', $errors)]);
+                // Rollback or continue to the next iteration to prevent processing invalid data
+                DB::rollBack();
+                continue; // Skip this row, moving to the next iteration
+            }
+    
+            try{   
+                // dd($EventData);
+                 $user = $this->authenticateUser();
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+                
+                $name_parts = explode('_', $filename);
+                $class_ids = [];
+    
+                foreach ($name_parts as $part) {
+                    if (strtolower($part) === 'all') {
+                       $classData = DB::table('class')
+                            ->where('academic_yr', $customClaims)
+                            ->get();
+                        
+                        $class_ids = [];
+                        
+                        foreach ($classData as $class) {
+                            $class_ids[] = $class->class_id;
+                        }
+                        
+                    } else {
+                        // Replace this with your real class ID fetch logic
+                        // dd("Hello");
+                        $class_id = DB::table('class')
+                            ->where('name', $part)
+                            ->where('academic_yr',$customClaims)
+                            ->value('class_id');
+                            // dd($class_id);
+                        if ($class_id) {
+                            $class_ids[] = $class_id;
+                        }
+                    }
+                }
+                // dd($class_ids);
+                
+                
+               
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                     do {
+                        $unq = random_int(1000, 9999);
+                        $exists = DB::table('events')->where('unq_id', $unq)->exists();
+                    } while ($exists);
+                    foreach ($class_ids as $class_id){
+                    //   dd($class_id);
+                        $baseData = [
+                            'unq_id'      => $unq,
+                            'title'       => $EventData['title'],
+                            'event_desc'  => $EventData['event_desc'],
+                            'class_id'    => $class_id,
+                            'start_date'  => $EventData['start_date'],
+                            'end_date'    => !empty($EventData['end_Date']) ? $EventData['end_Date'] : '0000-00-00',
+                            'start_time' => !empty($EventData['start_time']) ? $EventData['start_time'] : '00:00:00',
+                            'end_time'   => !empty($EventData['end_time']) ? $EventData['end_time'] : '00:00:00',
+                            'competition' => $EventData['competition'],
+                            'notify'      => $EventData['notify'],
+                            'isDelete'    => 'N',
+                            'publish'     => 'N',
+                            'created_by'  => $user->reg_id, 
+                            'academic_yr' => $customClaims,
+                            'login_type'  => $EventData['login_type'],
+                        ];
+                         DB::table('events')->insert($baseData);
+                         DB::commit();
+                         $successfulInserts++;
+                        
+                    }
+            
+                    
+                     
+                    
+    
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
+        
+                }
+                catch (Exception $e) {
+                    DB::rollBack();
+                    $invalidRows[] = array_merge($row, ['error' => 'Error updating student: ' . $e->getMessage()]);
+                    continue;
+                }
+    
+    
+        }
+        
+            if (!empty($invalidRows)) {
+                $csv = Writer::createFromString('');
+                $csv->insertOne(['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time','End Time','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)','error']);
+                foreach ($invalidRows as $invalidRow) {
+                    $csv->insertOne($invalidRow);
+                }
+                $filePath = 'public/csv_rejected/'.$filename . now()->format('Y_m_d_H_i_s') . '.csv';
+                Storage::put($filePath, $csv->toString());
+                $relativePath = str_replace('public/csv_rejected/', '', $filePath);
+        
+                return response()->json([
+                    'message' => 'Some rows contained errors.',
+                    'invalid_rows' => $relativePath,
+                ], 422);
+            }
+            if ($successfulInserts === 0) {
+                return response()->json([
+                    'message' => 'No valid event records were inserted. Please check your CSV.',
+                    'success' => false
+                ], 422);
+            }
+            
+            return response()->json([
+                'status' =>200,
+                'message' => 'Events Created Successfully.!!!',
+                'success'=>true
+            ]);
+     }
+     
+     private function validateDate($date, $format)
+    {
+    $d = \DateTime::createFromFormat($format, $date);
+    return $d && $d->format($format) === $date;
+    }
 
      private function authenticateUser()
     {

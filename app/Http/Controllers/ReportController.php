@@ -3378,30 +3378,63 @@ class ReportController extends Controller
             $classId   = $request->input('class_id');
             $sectionId = $request->input('section_id');
             $academicYear = '2024-2025';
+            $subjectId = $request->input('subject_id');
+            $examination_id = $request->input('examination_id');
+            $termId = $request->input('term_id');
         
         $classname = DB::table('class')->where('class_id',$classId)->where('academic_yr',$academicYear)->value('name');
-       
-
-        $subjectsRaw = DB::table('subjects_on_report_card as a')
-            ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id','=', 'm.sub_rc_master_id')
-            ->where('a.class_id', $classId)
-            ->where('a.academic_yr', $academicYear)
-            ->distinct()
-            ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
-            ->orderBy('m.sequence')
-            ->get();
+        
+        if($classname == '9' || $classname == '10'){
+            // $subjectsRaw = DB::table('subjects_on_report_card as a')
+            // ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id','=', 'm.sub_rc_master_id')
+            // ->where('a.class_id', $classId)
+            // ->where('a.academic_yr', $academicYear)
+            // ->distinct()
+            // ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
+            // ->orderBy('m.sequence')
+            // ->get();
+            // dd($subjectsRaw);
+            $query = DB::table('subjects_on_report_card as a')
+                        ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id', '=', 'm.sub_rc_master_id')
+                        ->where('a.class_id', $classId)
+                        ->where('a.academic_yr', $academicYear);
+                    
+                    // Only apply subject ID filter if it's not empty
+                    if (!empty($subjectId)) {
+                        $query->where('a.sub_rc_master_id', $subjectId);
+                    }
+                    
+                    $subjectsRaw = $query->distinct()
+                        ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
+                        ->orderBy('m.sequence')
+                        ->get();
 
         $headings = [];
         foreach ($subjectsRaw as $subject) {
-            $exams = DB::table('allot_mark_headings as am')
-                ->join('exam', 'am.exam_id','=', 'exam.exam_id')
-                ->where('am.sm_id', $subject->subject_id)
-                ->where('am.class_id', $classId)
-                ->where('am.academic_yr', $academicYear)
-                ->distinct()
-                ->select('exam.exam_id', 'exam.name')
-                ->orderBy('exam.start_date')
-                ->get();
+            // $exams = DB::table('allot_mark_headings as am')
+            //     ->join('exam', 'am.exam_id','=', 'exam.exam_id')
+            //     ->where('am.sm_id', $subject->subject_id)
+            //     ->where('am.class_id', $classId)
+            //     ->where('am.academic_yr', $academicYear)
+            //     ->distinct()
+            //     ->select('exam.exam_id', 'exam.name')
+            //     ->orderBy('exam.start_date')
+            //     ->get();
+            $query = DB::table('allot_mark_headings as am')
+                        ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                        ->where('am.sm_id', $subject->subject_id)
+                        ->where('am.class_id', $classId)
+                        ->where('am.academic_yr', $academicYear);
+                    
+                    // Apply exam ID filter if provided
+                    if (!empty($examination_id)) {
+                        $query->where('am.exam_id', $examination_id);
+                    }
+                    
+                    $exams = $query->distinct()
+                        ->select('exam.exam_id', 'exam.name')
+                        ->orderBy('exam.start_date')
+                        ->get();
 
             $examArr = [];
             foreach ($exams as $exam) {
@@ -3492,14 +3525,373 @@ class ReportController extends Controller
                 'marks'     => $marksNested,
             ];
         }
+            
+        }
+        elseif($classname == '11' || $classname == '12'){
+            $query = DB::table('term');
+
+            // Apply term filter only if $termId is provided
+            if (!empty($termId)) {
+                $query->where('term_id', $termId);
+            }
+            
+            $terms = $query->get();
+
+        
+        // $subjects = DB::table('subject as a')
+        //     ->join('sub_subreportcard_mapping as b', 'a.sm_id', '=', 'b.sm_id')
+        //     ->join('subjects_on_report_card_master as c', 'b.sub_rc_master_id', '=', 'c.sub_rc_master_id')
+        //     ->where([
+        //         ['a.class_id', $classId],
+        //         ['a.section_id', $sectionId],
+        //         ['a.academic_yr', $academicYear]
+        //     ])
+        //     ->select('c.sub_rc_master_id as subject_id', 'c.name as subject_name')
+        //     ->distinct()
+        //     ->orderBy('c.sequence')
+        //     ->get();
+        $query = DB::table('subject as a')
+                    ->join('sub_subreportcard_mapping as b', 'a.sm_id', '=', 'b.sm_id')
+                    ->join('subjects_on_report_card_master as c', 'b.sub_rc_master_id', '=', 'c.sub_rc_master_id')
+                    ->where([
+                        ['a.class_id', $classId],
+                        ['a.section_id', $sectionId],
+                        ['a.academic_yr', $academicYear],
+                    ]);
+                
+                // Apply subject ID filter only if provided
+                if (!empty($subjectId)) {
+                    $query->where('c.sub_rc_master_id', $subjectId);
+                }
+                
+                $subjects = $query->select('c.sub_rc_master_id as subject_id', 'c.name as subject_name')
+                    ->distinct()
+                    ->orderBy('c.sequence')
+                    ->get();
+
+        // 3. Exams & headings per term + subject
+        $structure = [];
+        foreach ($terms as $term) {
+            foreach ($subjects as $subject) {
+                // $exams = DB::table('allot_mark_headings as am')
+                //     ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                //     ->where([
+                //         ['am.sm_id', $subject->subject_id],
+                //         ['am.class_id', $classId],
+                //         ['am.academic_yr', $academicYear],
+                //         ['exam.term_id', $term->term_id]
+                //     ])
+                //     ->select('exam.exam_id', 'exam.name as exam_name')
+                //     ->distinct()
+                //     ->orderBy('exam.start_date')
+                //     ->get();
+                $query = DB::table('allot_mark_headings as am')
+                        ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                        ->where([
+                            ['am.sm_id', $subject->subject_id],
+                            ['am.class_id', $classId],
+                            ['am.academic_yr', $academicYear],
+                            ['exam.term_id', $term->term_id]
+                        ]);
+                    
+                    // Apply filter only if $examinationId is provided
+                    if (!empty($examination_id)) {
+                        $query->where('exam.exam_id', $examination_id);
+                    }
+                    
+                    $exams = $query->select('exam.exam_id', 'exam.name as exam_name')
+                        ->distinct()
+                        ->orderBy('exam.start_date')
+                        ->get();
+
+                if ($exams->isEmpty()) continue;
+
+                $exArr = [];
+                $totalMax = 0;
+
+                foreach ($exams as $exam) {
+                    $heads = DB::table('allot_mark_headings as am2')
+                        ->join('marks_headings as mh', 'am2.marks_headings_id', '=', 'mh.marks_headings_id')
+                        ->where([
+                            ['am2.exam_id', $exam->exam_id],
+                            ['am2.sm_id', $subject->subject_id],
+                            ['am2.class_id', $classId],
+                            ['am2.academic_yr', $academicYear]
+                        ])
+                        ->select('mh.marks_headings_id', 'mh.name as heading_name', 'am2.highest_marks')
+                        ->orderBy('mh.sequence')
+                        ->get();
+
+                    $maxSub = $heads->sum('highest_marks');
+                    $totalMax += $maxSub;
+
+                    $exArr[] = [
+                        'exam_id'       => $exam->exam_id,
+                        'exam_name'     => $exam->exam_name,
+                        'headings'      => $heads,
+                        'total_max'     => $maxSub,
+                        'colspan'       => $heads->count()
+                    ];
+                }
+
+                $structure[$term->term_id][$subject->subject_id] = [
+                    'term_name'      => $term->name,
+                    'subject_name'   => $subject->subject_name,
+                    'exams'          => $exArr,
+                    'total_max_all'  => $totalMax,
+                ];
+            }
+        }
+
+        // 4. Students
+        $students = DB::table('student as s')
+            ->join('student_marks as sm', 's.student_id', '=', 'sm.student_id')
+            ->where([
+                ['s.class_id', $classId],
+                ['s.section_id', $sectionId],
+                ['s.academic_yr', $academicYear],
+                ['s.IsDelete', 'N']
+            ])
+            ->select('s.student_id', 's.roll_no', 's.reg_no',
+                     DB::raw("CONCAT(s.first_name, ' ', s.mid_name, ' ', s.last_name) as name"),
+                     DB::raw("CONCAT(s.class_id, '', s.section_id) as class_div"))
+            ->distinct()
+            ->orderBy('s.roll_no')
+            ->get();
+
+        // 5. Populate marks
+        foreach ($students as &$student) {
+            $student->marks = [];
+            foreach ($structure as $termId => $subs) {
+                foreach ($subs as $subId => $info) {
+                    $subjectTotal = 0;
+                    foreach ($info['exams'] as $exam) {
+                        $row = DB::table('student_marks')
+                            ->where([
+                                ['student_id', $student->student_id],
+                                ['exam_id', $exam['exam_id']],
+                                ['subject_id', $subId],
+                                ['academic_yr', $academicYear],
+                                ['publish', 'Y']
+                            ])
+                            ->first();
+
+                        $marksArr = $row ? json_decode($row->reportcard_marks, true) : [];
+                        $totalObt = 0;
+                        $cell = [];
+                        foreach ($exam['headings'] as $head) {
+                            $val = $marksArr[$head->heading_name] ?? '';
+                            $cell[$head->heading_name] = ceil((float)$val);
+                            if (is_numeric($val)) $totalObt += ceil((float)$val); $subjectTotal += ceil((float)$val); 
+                        }
+                        if ($exam['colspan'] > 1) {
+                            $cell['Total'] = $subjectTotal;
+                        }
+
+                        $student->marks[$termId][$subId][$exam['exam_id']] = $cell;
+                    }
+                }
+            }
+        }
+        unset($student);
 
         return response()->json([
-            'status'   => 200,
-            'message'  => 'Structured report fetched successfully.',
-            'success'  => true,
-            'headings' => $headings,
-            'data'     => $data,
+            'status'=>200,
+            'message'=>'Report card marks report.',
+            'success'=>true,
+            'headings' => $structure,
+            'data'  => $students
         ]);
+            
+        }
+        else{
+            // dd("Hello");
+            $query = DB::table('term');
+
+            if (!empty($termId)) {
+                $query->where('term_id', $termId);
+            }
+            
+            $terms = $query->get();
+            // $subjects = DB::select("select distinct a.sub_rc_master_id as sub_rc_master_id,b.name as name,a.subject_type from subjects_on_report_card as a join subjects_on_report_card_master as b on b.sub_rc_master_id=a.sub_rc_master_id where a.class_id = ".$classId." and a.academic_yr= '".$academicYear."' order by a.class_id asc,b.sequence asc");
+            $sql = "SELECT DISTINCT a.sub_rc_master_id AS sub_rc_master_id, 
+               b.name AS name, 
+               a.subject_type 
+                FROM subjects_on_report_card AS a 
+                JOIN subjects_on_report_card_master AS b 
+                  ON b.sub_rc_master_id = a.sub_rc_master_id 
+                WHERE a.class_id = ? 
+                  AND a.academic_yr = ?";
+        
+        $params = [$classId, $academicYear];
+        
+        // Add subject ID filter if provided
+        if (!empty($subjectId)) {
+            $sql .= " AND a.sub_rc_master_id = ?";
+            $params[] = $subjectId;
+        }
+        
+        $sql .= " ORDER BY a.class_id ASC, b.sequence ASC";
+        
+        $subjects = DB::select($sql, $params);
+            // dd($subjects);
+            // 3. Exams & headings per term + subject
+            $structure = [];
+            foreach ($terms as $term) {
+                foreach ($subjects as $subject) {
+                    // dd($subject);
+                    // $exams = DB::table('allot_mark_headings as am')
+                    //     ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                    //     ->where([
+                    //         ['am.sm_id', $subject->sub_rc_master_id],
+                    //         ['am.class_id', $classId],
+                    //         ['am.academic_yr', $academicYear],
+                    //         ['exam.term_id', $term->term_id]
+                    //     ])
+                    //     ->select('exam.exam_id', 'exam.name as exam_name')
+                    //     ->distinct()
+                    //     ->orderBy('exam.start_date')
+                    //     ->get();
+                    
+                    $query = DB::table('allot_mark_headings as am')
+                        ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                        ->where([
+                            ['am.sm_id', $subject->sub_rc_master_id],
+                            ['am.class_id', $classId],
+                            ['am.academic_yr', $academicYear],
+                            ['exam.term_id', $term->term_id]
+                        ]);
+                    
+                    // Apply filter only if $examinationId is provided
+                    if (!empty($examination_id)) {
+                        $query->where('exam.exam_id', $examination_id);
+                    }
+                    
+                    $exams = $query->select('exam.exam_id', 'exam.name as exam_name')
+                        ->distinct()
+                        ->orderBy('exam.start_date')
+                        ->get();
+    
+                    if ($exams->isEmpty()) continue;
+    
+                    $exArr = [];
+                    $totalMax = 0;
+    
+                    foreach ($exams as $exam) {
+                        $heads = DB::table('allot_mark_headings as am2')
+                            ->join('marks_headings as mh', 'am2.marks_headings_id', '=', 'mh.marks_headings_id')
+                            ->where([
+                                ['am2.exam_id', $exam->exam_id],
+                                ['am2.sm_id', $subject->sub_rc_master_id],
+                                ['am2.class_id', $classId],
+                                ['am2.academic_yr', $academicYear]
+                            ])
+                            ->select('mh.marks_headings_id', 'mh.name as heading_name', 'am2.highest_marks')
+                            ->orderBy('mh.sequence')
+                            ->get();
+                            // dd($heads);
+                            $reportcardhighestmarks = DB::table('student_marks')
+                                                         ->where('class_id',$classId)
+                                                         ->where('section_id',$sectionId)
+                                                         ->where('exam_id',$exam->exam_id)
+                                                         ->where('subject_id',$subject->sub_rc_master_id)
+                                                         ->value('reportcard_highest_marks');
+                            $decodedMarks = json_decode($reportcardhighestmarks, true);
+                            $maxSub = 0;
+                            
+                            foreach ($heads as $head) {
+                                if (isset($decodedMarks[$head->heading_name])) {
+                                    // Update the highest_marks with the value from JSON
+                                    $head->highest_marks = (float) $decodedMarks[$head->heading_name];
+                                    $maxSub += $head->highest_marks;
+                                } else {
+                                    // Optionally set to 0 if not found in JSON
+                                    $head->highest_marks = 0;
+                                }
+                            }
+    
+                        $totalMax += $maxSub;
+    
+                        $exArr[] = [
+                            'exam_id'       => $exam->exam_id,
+                            'exam_name'     => $exam->exam_name,
+                            'headings'      => $heads,
+                            'total_max'     => $maxSub,
+                            'colspan'       => $heads->count()
+                        ];
+                        
+                    }
+                    // dd($exArr);
+                    $structure[$term->term_id][$subject->sub_rc_master_id] = [
+                        'term_name'      => $term->name,
+                        'subject_name'   => $subject->name,
+                        'exams'          => $exArr,
+                        'total_max_all'  => $totalMax,
+                    ];
+                }
+            }
+    
+            // 4. Students
+            $students = DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='".$academicYear."'  and a.class_id='".$classId."' and a.section_id='".$sectionId."' and c.role_id='P' order by a.roll_no,a.reg_no");
+                // dd($students);
+    
+            // 5. Populate marks
+            foreach ($students as &$student) {
+                $student->marks = [];
+                foreach ($structure as $termId => $subs) {
+                    foreach ($subs as $subId => $info) {
+                         $subjectTotal = 0;
+                        foreach ($info['exams'] as $exam) {
+                            $row = DB::table('student_marks')
+                                ->where([
+                                    ['student_id', $student->student_id],
+                                    ['exam_id', $exam['exam_id']],
+                                    ['subject_id', $subId],
+                                    ['academic_yr', $academicYear],
+                                    ['publish', 'Y']
+                                ])
+                                ->first();
+    
+                            $marksArr = $row ? json_decode($row->reportcard_marks, true) : [];
+                            // dd($marksArr);
+                            $totalObt = 0;
+                            $cell = [];
+                            foreach ($exam['headings'] as $head) {
+                                $val = $marksArr[$head->heading_name] ?? '';
+                                $cell[$head->heading_name] = ceil((float)$val);
+                                if (is_numeric($val)) $totalObt += ceil((float)$val); $subjectTotal += ceil((float)$val); 
+                            }
+                            if ($exam['colspan'] > 1) {
+                                $cell['Total'] = $subjectTotal;
+                            }
+    
+                            $student->marks[$termId][$subId][$exam['exam_id']] = $cell;
+                        }
+                    }
+                }
+            }
+            unset($student);
+    
+            return response()->json([
+                'status'=>200,
+                'message'=>'Report card marks report.',
+                'success'=>true,
+                'headings' => $structure,
+                'data'  => $students
+            ]);
+            
+        }
+       
+
+        
+
+        // return response()->json([
+        //     'status'   => 200,
+        //     'message'  => 'Report card marks report.',
+        //     'success'  => true,
+        //     'headings' => $headings,
+        //     'data'     => $data,
+        // ]);
         }
         
         public function getClasswiseMarksReport(Request $request){
@@ -3507,19 +3899,47 @@ class ReportController extends Controller
             $academicYr = JWTAuth::getPayload()->get('academic_year');
             $classId   = $request->input('class_id');
             $sectionId = $request->input('section_id');
+            $examination_id = $request->input('examination_id'); 
+            $subjectId = $request->input('subject_id');
             $academicYear = '2024-2025';
-            $subjectsRaw = DB::table('subjects_on_report_card as a')
+            $subjectsQuery  = DB::table('subjects_on_report_card as a')
                 ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id','=', 'm.sub_rc_master_id')
                 ->where('a.class_id', $classId)
                 ->where('a.academic_yr', $academicYear)
                 ->distinct()
                 ->select('a.sub_rc_master_id as subject_id', 'm.name as subject_name')
-                ->orderBy('m.sequence')
-                ->get();
+                ->orderBy('m.sequence');
+            if (!empty($subjectId)) {
+                $subjectsQuery->where('a.sub_rc_master_id', $subjectId);
+            }
+            
+            $subjectsRaw = $subjectsQuery->get();
     
             $headings = [];
             foreach ($subjectsRaw as $subject) {
-                $exams = DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE sm_id = ".$subject->subject_id." AND class_id = ".$classId." AND allot_mark_headings.academic_yr = '".$academicYear."' order by exam.start_date");
+                $examQuery = "
+                    SELECT DISTINCT exam.exam_id, exam.name 
+                    FROM allot_mark_headings 
+                    JOIN exam ON allot_mark_headings.exam_id = exam.exam_id 
+                    WHERE allot_mark_headings.sm_id = :sm_id
+                      AND allot_mark_headings.class_id = :class_id
+                      AND allot_mark_headings.academic_yr = :academic_yr
+                ";
+            
+                $params = [
+                    'sm_id' => $subject->subject_id,
+                    'class_id' => $classId,
+                    'academic_yr' => $academicYear,
+                ];
+            
+                if (!empty($examination_id)) {
+                    $examQuery .= " AND exam.exam_id = :exam_id";
+                    $params['exam_id'] = $examination_id;
+                }
+            
+                $examQuery .= " ORDER BY exam.start_date";
+            
+                $exams = DB::select($examQuery, $params);
                 // dd($exams);
     
                 $examArr = [];
@@ -3609,8 +4029,254 @@ class ReportController extends Controller
     
             
         }
+        
+        public function getClasswiseMarksReportchanges(Request $request){
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $classId   = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $examination_id = $request->input('examination_id'); 
+            $subjectId = $request->input('subject_id');
+            $academicYear = '2024-2025';
+            $termId = $request->input('term_id');
+            $query = DB::table('term');
+
+            if (!empty($termId)) {
+                $query->where('term_id', $termId);
+            }
+            
+            $terms = $query->get();
+            // $subjects = DB::select("select distinct a.sub_rc_master_id as sub_rc_master_id,b.name as name,a.subject_type from subjects_on_report_card as a join subjects_on_report_card_master as b on b.sub_rc_master_id=a.sub_rc_master_id where a.class_id = ".$classId." and a.academic_yr= '".$academicYear."' order by a.class_id asc,b.sequence asc");
+            $sql = "SELECT DISTINCT a.sub_rc_master_id AS sub_rc_master_id, 
+               b.name AS name, 
+               a.subject_type 
+                FROM subjects_on_report_card AS a 
+                JOIN subjects_on_report_card_master AS b 
+                  ON b.sub_rc_master_id = a.sub_rc_master_id 
+                WHERE a.class_id = ? 
+                  AND a.academic_yr = ?";
+        
+        $params = [$classId, $academicYear];
+        
+        // Add subject ID filter if provided
+        if (!empty($subjectId)) {
+            $sql .= " AND a.sub_rc_master_id = ?";
+            $params[] = $subjectId;
+        }
+        
+        $sql .= " ORDER BY a.class_id ASC, b.sequence ASC";
+        
+        $subjects = DB::select($sql, $params);
+            // dd($subjects);
+            // 3. Exams & headings per term + subject
+            $structure = [];
+            foreach ($terms as $term) {
+                foreach ($subjects as $subject) {
+                    // dd($subject);
+                    // $exams = DB::table('allot_mark_headings as am')
+                    //     ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                    //     ->where([
+                    //         ['am.sm_id', $subject->sub_rc_master_id],
+                    //         ['am.class_id', $classId],
+                    //         ['am.academic_yr', $academicYear],
+                    //         ['exam.term_id', $term->term_id]
+                    //     ])
+                    //     ->select('exam.exam_id', 'exam.name as exam_name')
+                    //     ->distinct()
+                    //     ->orderBy('exam.start_date')
+                    //     ->get();
+                    
+                    $query = DB::table('allot_mark_headings as am')
+                        ->join('exam', 'am.exam_id', '=', 'exam.exam_id')
+                        ->where([
+                            ['am.sm_id', $subject->sub_rc_master_id],
+                            ['am.class_id', $classId],
+                            ['am.academic_yr', $academicYear],
+                            ['exam.term_id', $term->term_id]
+                        ]);
+                    
+                    // Apply filter only if $examinationId is provided
+                    if (!empty($examination_id)) {
+                        $query->where('exam.exam_id', $examination_id);
+                    }
+                    
+                    $exams = $query->select('exam.exam_id', 'exam.name as exam_name')
+                        ->distinct()
+                        ->orderBy('exam.start_date')
+                        ->get();
+    
+                    if ($exams->isEmpty()) continue;
+    
+                    $exArr = [];
+                    $totalMax = 0;
+    
+                    foreach ($exams as $exam) {
+                        $heads = DB::table('allot_mark_headings as am2')
+                            ->join('marks_headings as mh', 'am2.marks_headings_id', '=', 'mh.marks_headings_id')
+                            ->where([
+                                ['am2.exam_id', $exam->exam_id],
+                                ['am2.sm_id', $subject->sub_rc_master_id],
+                                ['am2.class_id', $classId],
+                                ['am2.academic_yr', $academicYear]
+                            ])
+                            ->select('mh.marks_headings_id', 'mh.name as heading_name', 'am2.highest_marks')
+                            ->orderBy('mh.sequence')
+                            ->get();
+                            // dd($heads);
+    
+                        $maxSub = $heads->sum('highest_marks');
+                        $totalMax += $maxSub;
+    
+                        $exArr[] = [
+                            'exam_id'       => $exam->exam_id,
+                            'exam_name'     => $exam->exam_name,
+                            'headings'      => $heads,
+                            'total_max'     => $maxSub,
+                            'colspan'       => $heads->count()
+                        ];
+                    }
+    
+                    $structure[$term->term_id][$subject->sub_rc_master_id] = [
+                        'term_name'      => $term->name,
+                        'subject_name'   => $subject->name,
+                        'exams'          => $exArr,
+                        'total_max_all'  => $totalMax,
+                    ];
+                }
+            }
+    
+            // 4. Students
+            $students = DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='".$academicYear."'  and a.class_id='".$classId."' and a.section_id='".$sectionId."' and c.role_id='P' order by a.roll_no,a.reg_no");
+                // dd($students);
+    
+            // 5. Populate marks
+            foreach ($students as &$student) {
+                $student->marks = [];
+                foreach ($structure as $termId => $subs) {
+                    foreach ($subs as $subId => $info) {
+                         $subjectTotal = 0;
+                        foreach ($info['exams'] as $exam) {
+                            $row = DB::table('student_marks')
+                                ->where([
+                                    ['student_id', $student->student_id],
+                                    ['exam_id', $exam['exam_id']],
+                                    ['subject_id', $subId],
+                                    ['academic_yr', $academicYear],
+                                    ['publish', 'Y']
+                                ])
+                                ->first();
+    
+                            $marksArr = $row ? json_decode($row->mark_obtained, true) : [];
+                            // dd($marksArr);
+                            $totalObt = 0;
+                            $cell = [];
+                            
+                            foreach ($exam['headings'] as $head) {
+                                // dd($head);
+                                $val = $marksArr[$head->marks_headings_id] ?? '';
+                                $cell[$head->marks_headings_id] = ceil((float)$val);
+                                if (is_numeric($val)) $totalObt += ceil((float)$val); $subjectTotal += ceil((float)$val); 
+                            }
+                            if ($exam['colspan'] > 1) {
+                                $cell['Total'] = $subjectTotal;
+                            }
+    
+                            $student->marks[$termId][$subId][$exam['exam_id']] = $cell;
+                        }
+                    }
+                }
+            }
+            unset($student);
+    
+            return response()->json([
+                'status'=>200,
+                'message'=>'Report card marks report.',
+                'success'=>true,
+                'headings' => $structure,
+                'data'  => $students
+            ]);
+            
+        }
             
 
+        public function getIciciFeePaymentReport(Request $request)
+            {
+                try {
+                    $user = $this->authenticateUser(); // Assume you have this
+                    $academicYear = JWTAuth::getPayload()->get('academic_year');
+        
+                    if (in_array($user->role_id, ['A', 'M', 'F', 'U'])) {
+        
+                        $account_type = $request->input('account_type');
+                        $from_date = $request->input('fromdate');
+                        $to_date = $request->input('todate');
+                        $student_id = $request->input('student_id');
+                        $order_id = $request->input('order_id');
+        
+                        // Get parent_id based on student_id
+                        $parent_id = null;
+                        if (!empty($student_id)) {
+                            $parent = DB::table('student')
+                                ->where('student_id', $student_id)
+                                ->select('parent_id')
+                                ->first();
+        
+                            if ($parent) {
+                                $parent_id = $parent->parent_id;
+                            }
+                        }
+                        // dd($parent_id);
+                        // dd($from_date,$to_date);
+                        $query = DB::table('icicipg_payment_details as ip')
+                            ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'ip.OrderId')
+                            ->select('ip.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
+                            ->where('ip.Status_code', '=', 'S');
+        
+                        if (!empty($account_type)) {
+                            $query->where('ip.Account_type', 'like', $account_type . '%');
+                        }
+        
+                        if (!empty($from_date)) {
+                            $query->whereDate('ip.Trnx_date', '>=', $from_date);
+                        }
+        
+                        if (!empty($to_date)) {
+                            $query->whereDate('ip.Trnx_date', '<=', $to_date);
+                        }
+        
+                        if (!empty($parent_id)) {
+                            $query->where('ip.reg_id', '=', $parent_id);
+                        }
+        
+                        if (!empty($order_id)) {
+                            $query->where('ip.OrderId', '=', $order_id);
+                        }
+        
+                        $query->groupBy('ip.OrderId');
+                        $result = $query->get();
+        
+                        return response()->json([
+                            'status' => 200,
+                            'data' => $result,
+                            'message' => 'ICICI Fee Payment Report fetched successfully',
+                            'success' => true
+                        ]);
+                    } else {
+                        return response()->json([
+                            'status' => 401,
+                            'message' => 'Unauthorized Access',
+                            'success' => false
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error($e);
+                    return response()->json([
+                        'status' => 500,
+                        'error' => 'An error occurred: ' . $e->getMessage(),
+                        'success' => false
+                    ]);
+                }
+            }
         
     
     
