@@ -5022,7 +5022,7 @@ class NewController extends Controller
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
         //  dd($request->all());
-         $plans = $request->input('plans', []);
+        $plans = $request->input('plans', []);
         $teacherId = $request->input('teacher_id');
         $flagError = 0;
     
@@ -5062,11 +5062,8 @@ class NewController extends Controller
                     'section' => $section,
                     'subject' => $subject,
                     'week'    => $week,
+                    'schoolname'=>$schoolname = getSchoolName($customClaims)
                 ]);
-                Mail::html($msg, function ($message) use ($email) {
-                        $message->to($email)
-                                ->subject('Lesson Plan Status');
-                    });
             } else {
                 $flagError++;
             }

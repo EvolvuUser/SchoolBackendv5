@@ -13,6 +13,6 @@
         has been <strong>approved</strong>.
     </p>
 
-    <p>Regards,<br>Evolvu Support</p>
+    <p>Regards,<br>{{$schoolname}}</p>
 </body>
 </html>
