@@ -16612,25 +16612,22 @@ public function generateNewPassword(Request $request)
        $updated = DB::table('user_master')->where('user_id', $userId)->update([
            'password' => bcrypt($newPassword),
        ]);
-
+       $settingsData = getSettingsDataForActive();
+       $loginUrl = $settingsData->website_url;
+       $shortName = $settingsData->short_name;
        if ($updated) {
-           $loginUrl = in_array($roleId, ['A', 'M'])
-            ? 'https://sacs.evolvu.in'
-            : 'https://sms.arnoldcentralschool.org';
-           $emailContent = "
-               Dear EvolvU User,<br/><br/>
-               The password for login id <strong>{$userId}</strong> has been reset to <strong>{$newPassword}</strong><br>
-               Login at <a href='{$loginUrl}'>{$loginUrl}/</a><br><br/>
-               Please READ THE INSTRUCTION on login page and refer to the help once you login into the application.<br/><br/>
-               Make sure your email id and mobile number are correctly added into profile.<br/><br/>
-               Regards,<br/>
-               SACS Support
-           ";
 
-           $subject = "SACS - New Password On Reset";
+           $subject = $shortName."-"."New Password On Reset";
            $emailsSentTo = [];
+           $emailData = [
+                'userId'     => $userId,
+                'newPassword'=> $newPassword,
+                'loginUrl'   => $loginUrl,
+                'shortName' => $shortName
+            ];
 
            if (!empty($userEmail)) {
+               smart_mail($userEmail, $subject, 'emails.password_reset', $emailData);
                Mail::html($emailContent, function ($message) use ($userEmail, $subject) {
                    $message->to($userEmail)
                            ->subject($subject);
@@ -16639,6 +16636,7 @@ public function generateNewPassword(Request $request)
            }
            
            if (!empty($userEmail1)) {
+               smart_mail($userEmail1, $subject, 'emails.password_reset', $emailData);
                Mail::html($emailContent, function ($message) use ($userEmail1, $subject) {
                    $message->to($userEmail1)
                            ->subject($subject);

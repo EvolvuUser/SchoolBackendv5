@@ -1000,3 +1000,13 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             return (new SmartMailer())->send($to, $subject, $view, $data);
         }
     }
+
+    function getSchoolName($customClaims){
+        $setting = DB::table('settings')->where('academic_yr',$customClaims)->value('institute_name');
+        return $setting ;
+    }
+
+    function getSettingsData(){
+        $setting = DB::table('settings')->where('active', 'Y')->first();
+        return $setting ;
+    }
