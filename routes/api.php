@@ -14,12 +14,13 @@
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\HscController;
     use App\Http\Controllers\ReportController;
+    use App\Http\Services\SmartMailer;
 
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
 
-// Protected routes
+   // Protected routes
     Route::middleware(['jwt.auth'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('sessionData', [AuthController::class, 'getUserDetails']);
@@ -762,6 +763,34 @@
         
         // Api for Classwise Report marks report Report Dev Name - Manish Kumar Sharma 21-07-2025
         Route::get('get_classwisemarksreport', [ReportController::class, 'getClasswiseMarksReport']);
+        Route::get('get_classwisemarksreportchanges', [ReportController::class, 'getClasswiseMarksReportchanges']);
+        
+        // Api for Approve lesson plan Dev Name - Manish Kumar Sharma 22-07-2025
+        Route::get('get_approvelessonplandata', [NewController::class, 'getApproveLessonPlandata']);
+        Route::post('update_approvelessonplanstatus',[NewController::class,'UpdateApproveLessonPlanStatus']);
+        
+        //API for subjects and exams for classwise marks report Dev Name - Manish kumar Sharma 23-07-2025
+        Route::get('get_exambyclassid',[NewController::class,'getExamByClassId']);
+        Route::get('get_reportsubjectbyclasssection',[NewController::class,'getReportSubjectByClassSection']);
+        
+        // Api for ICICI Fee Payment Report Dev Name - Mahima Chaudhari 24-07-2025
+        Route::get('geticicifeepaymentreport', [ReportController::class, 'getIciciFeePaymentReport']);
+        
+        //API for the Events module Dev Name - Manish Kumar Sharma 25-07-2025
+        Route::post('save_event',[NewController::class,'saveEvent']);
+        Route::get('get_rolesforevent',[NewController::class,'getRolesForEvent']);
+        Route::post('save_savepublishevent',[NewController::class,'savePublishEvent']);
+        Route::get('get_eventlist',[NewController::class,'getEventList']);
+        Route::get('get_eventdata/{unq_id}',[NewController::class,'getEventData']);
+        Route::post('update_publishevent',[NewController::class,'updatePublishEvent']);
+        Route::delete('delete_eventbyunqid/{unq_id}',[NewController::class,'deleteEventByUnqId']);
+        Route::put('update_eventbyunqid/{unq_id}',[NewController::class,'updateEventByUnqId']);
+        Route::get('get_template_csv_event',[NewController::class,'getTemplateCsvEvent']);
+        Route::post('import_event_csv',[NewController::class,'importEventCsv']);
+        
+        
+        
+        
         
         
         
@@ -866,6 +895,19 @@ Route::get('/clear-all', function () {
         'status' => 'success',
         'message' => 'All caches cleared and optimized.',
     ]);
+});
+
+Route::get('/test-smtp', function () {
+    $mailer = new SmartMailer();
+
+    $mailer->send(
+        'manishnehwal@gmail.com',
+        'Test Email',
+        'emails.dynamic',
+        ['body' => 'This is a test.']
+    );
+
+    return '✅ Email sent!';
 });
 //API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
 Route::get('get_schoolname',[AdminController::class,'getSchoolName']);

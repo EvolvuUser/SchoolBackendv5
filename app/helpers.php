@@ -4,6 +4,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\App;
+use App\Http\Services\SmartMailer;
 
 if (!function_exists('getTokenPayload')) {
     function getTokenPayload(Request $request)
@@ -992,4 +993,10 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
     {
         $setting = DB::table('settings')->where('active', 'Y')->first();
         return $setting ? $setting->academic_yr_to : null;
+    }
+
+    if (!function_exists('smart_mail')) {
+        function smart_mail($to, $subject, $view, $data = []) {
+            return (new SmartMailer())->send($to, $subject, $view, $data);
+        }
     }
