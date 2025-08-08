@@ -787,6 +787,36 @@
         Route::put('update_eventbyunqid/{unq_id}',[NewController::class,'updateEventByUnqId']);
         Route::get('get_template_csv_event',[NewController::class,'getTemplateCsvEvent']);
         Route::post('import_event_csv',[NewController::class,'importEventCsv']);
+
+        // Subject Mapping Dev Name - Mahima Chaudhari 30-07-2025
+        Route::get('/get_all_subjects', [AssessmentController::class, 'getSubjects']);
+        Route::post('/save_subject_mapping', [AssessmentController::class, 'saveSubjectMapping']);
+        Route::get('/get_subjectmapping', [AssessmentController::class, 'getSubjectMappingList']);
+        Route::put('/update_subjectmapping/{id}', [AssessmentController::class, 'updateSubjectMapping']);
+        Route::delete('/delete_subjectmapping/{id}', [AssessmentController::class, 'deleteSubjectMapping']);
+        Route::get('/get_class_subjectmapping/{sm_id}', [AssessmentController::class, 'getClassNamesBySubject']);
+
+        // Book Requistion Dev Name - Mahima Chaudhari 01-08-2025
+        Route::post('/save_bookrequistion', [AssessmentController::class, 'createBookRequisition']);
+        Route::get('/book_requisitioninfo/{id}', [AssessmentController::class, 'getBookRequisitionInfo']);
+        Route::get('/all_book_requisitioninfo', [AssessmentController::class, 'getAllBookRequisitions']);
+        Route::get('/get_BookRequisition', [AssessmentController::class, 'getBookRequisition']);
+        Route::put('/update_book_requisition/{id}', [AssessmentController::class, 'updateBookRequisition']);
+        Route::delete('/delete_book_requisition/{id}', [AssessmentController::class, 'deleteBookRequisition']);
+        
+        // Important Links Dev Name - Mahima Chaudhari 02-08-2025
+        Route::post('/save_importantlink', [AssessmentController::class, 'createImportantLink']);
+        Route::get('/get_importantlink', [AssessmentController::class, 'getImportantLinks']);
+        Route::get('/get_importantlinkid/{id}', [AssessmentController::class, 'getImportantLinkById']);
+        Route::put('/update_importantlink/{id}', [AssessmentController::class, 'updateImportantLink']);
+        Route::delete('/delete_importantlink/{id}', [AssessmentController::class, 'deleteImportantLink']);
+        Route::put('/publish_importantlink/{id}', [AssessmentController::class, 'publishImportantLink']);
+
+        //Background color Dev Name - Manish Kumar Sharma 08-08-2025
+        Route::get('/get_allbackgoundcolor',[NewController::class,'getAllBackgroundColor']);
+        Route::put('/update_backgroundcoloractive/{background_color_id}',[NewController::class,'updateBackgroundColorActive']);
+        Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
+        
         
         
         
