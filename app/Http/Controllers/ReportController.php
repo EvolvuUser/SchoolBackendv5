@@ -1749,7 +1749,11 @@ class ReportController extends Controller
                                         'a.employee_id',
                                         DB::raw('DATE(a.punch_time) as date_part'),
                                         DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
-                                        DB::raw('MAX(TIME(a.punch_time)) as punch_out_time'),
+                                        DB::raw('CASE 
+                                            WHEN COUNT(a.punch_time) > 1 
+                                            THEN MAX(TIME(a.punch_time)) 
+                                            ELSE NULL 
+                                        END as punch_out_time'),
                                         'b.name',
                                         'b.tc_id',
                                         'c.late_time'
@@ -1770,7 +1774,11 @@ class ReportController extends Controller
                                         'a.employee_id',
                                         DB::raw('DATE(a.punch_time) as date_part'),
                                         DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
-                                        DB::raw('MAX(TIME(a.punch_time)) as punch_out_time'),
+                                        DB::raw('CASE 
+                                            WHEN COUNT(a.punch_time) > 1 
+                                            THEN MAX(TIME(a.punch_time)) 
+                                            ELSE NULL 
+                                         END as punch_out_time'),
                                         'b.name',
                                         'b.tc_id',
                                         'c.late_time'
@@ -2114,7 +2122,11 @@ class ReportController extends Controller
             ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
             ->whereDate('a.punch_time', $date)
             ->where('b.teacher_id', $teacherId)
-            ->selectRaw('MAX(TIME(a.punch_time)) as punch_out_time')
+            ->selectRaw('CASE 
+                WHEN COUNT(a.punch_time) > 1 
+                THEN MAX(TIME(a.punch_time)) 
+                ELSE NULL 
+            END as punch_out_time')
             ->value('punch_out_time');
     }
 

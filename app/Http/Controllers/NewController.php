@@ -3354,7 +3354,184 @@ class NewController extends Controller
             } 
      }
 
-     public function saveRemarkObservationForStudents(Request $request){
+    //  public function saveRemarkObservationForStudents(Request $request){
+    //       try{
+    //          $user = $this->authenticateUser();
+    //          $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //          $savepublish = $request->input('save_publish');
+    //          if($savepublish == 'N'){
+    //              $files = $request->file('userfile', []);
+    //             $studentIds = $request->student_id;
+            
+    //             foreach ($studentIds as $index => $studentId) {
+    //                 $remark_type = $request->filled('observation') ? 'Observation' : 'Remark';
+
+    //                 $insertData = [
+    //                     'remark_type'     => $remark_type,
+    //                     'remark_desc'     => $request->input('remark_desc'),
+    //                     'remark_subject'  => $request->input('remark_subject'),
+    //                     'class_id'        => $request->input('class_id'),
+    //                     'section_id'      => $request->input('section_id'),
+    //                     'subject_id'      => $request->input('subject_id'),
+    //                     'teacher_id'      => $user->reg_id,
+    //                     'academic_yr'     => $customClaims,
+    //                     'remark_date'     => \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d'),
+    //                     'publish'         => 'N',
+    //                     'acknowledge'     => 'N',
+    //                     'student_id'      => $studentId,
+    //                 ];
+                    
+    //                  $remarkId = DB::table('remark')->insertGetId($insertData);
+    //                  $filenames = [];
+    //                 $datafiles = [];
+                    
+    //                 $uploadDate = now()->format('d-m-Y'); // Today's date
+    //                 $docTypeFolder = 'remark';            // Document type folder
+    //                 $noticeId = $remarkId; // If notice ID is available
+    //                     foreach ($files as $file) {
+    //                         if ($file && $file->isValid()) {
+    //                             $filename = $file->getClientOriginalName();
+    //                             $folder = 'remark/' . \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d') . '/' . $studentId;
+    //                             $path = $file->storeAs($folder, $filename, 'public');
+    //                             $filesize = $file->getSize();
+    //                             $filenames[] = $filename;
+    //                             $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+    //                             // dd($datafiles);
+    //                             DB::table('remark_detail')->insert([
+    //                                 'remark_id'  => $remarkId,
+    //                                 'image_name' => $filename,
+    //                                 'file_size'  => $filesize,
+    //                             ]);
+    //                         }
+    //                 }
+                    
+    //                 $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+    //                 // dd($response);
+    //             }
+                
+    //             return response()->json([
+    //                 'status' =>200,
+    //                 'message' => 'Remark Saved Successfully!',
+    //                 'success'=>true
+    //                ]);
+                 
+    //          }
+    //          else{
+    //             $files = $request->file('userfile', []);
+    //             $studentIds = $request->student_id;
+            
+    //             foreach ($studentIds as $index => $studentId) {
+    //                 $remark_type = $request->filled('observation') ? 'Observation' : 'Remark';
+
+    //                 $insertData = [
+    //                     'remark_type'     => $remark_type,
+    //                     'remark_desc'     => $request->input('remark_desc'),
+    //                     'remark_subject'  => $request->input('remark_subject'),
+    //                     'class_id'        => $request->input('class_id'),
+    //                     'section_id'      => $request->input('section_id'),
+    //                     'subject_id'      => $request->input('subject_id'),
+    //                     'teacher_id'      => $user->reg_id,
+    //                     'academic_yr'     => $customClaims,
+    //                     'remark_date'     => \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d'),
+    //                     'publish_date'=> \Carbon\Carbon::today()->toDateString(), 
+    //                     'publish'         => 'Y',
+    //                     'acknowledge'     => 'N',
+    //                     'student_id'      => $studentId,
+    //                 ];
+                    
+    //                  $remarkId = DB::table('remark')->insertGetId($insertData);
+
+    //                     foreach ($files as $file) {
+    //                         if ($file && $file->isValid()) {
+    //                             $filename = $file->getClientOriginalName();
+    //                             $folder = 'remark/' . \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d') . '/' . $studentId;
+    //                             $path = $file->storeAs($folder, $filename, 'public');
+    //                             $filesize = $file->getSize();
+                
+    //                             DB::table('remark_detail')->insert([
+    //                                 'remark_id'  => $remarkId,
+    //                                 'image_name' => $filename,
+    //                                 'file_size'  => $filesize,
+    //                             ]);
+    //                         }
+                        
+    //                 }
+    //                 $studentcontactdata = DB::table('student as a')
+    //                             ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+    //                             ->where('a.student_id', $studentId)
+    //                             ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+    //                             ->first();
+    //                 $phone = $studentcontactdata->phone_no;
+    //                 if($phone){
+    //                     $templateName = 'emergency_message';
+    //                     $parameters =["Parent,".$request->input('remark_desc')];
+                    
+    //                     $result = $this->whatsAppService->sendTextMessage(
+    //                         $phone,
+    //                         $templateName,
+    //                         $parameters
+    //                     );
+    //                     if (isset($result['code']) && isset($result['message'])) {
+    //                                         Log::warning("Rate limit hit", []);
+    //                     } 
+    //                     else {
+    //                         DB::table('redington_webhook_details')->insert([
+    //                                     'wa_id' => $result['messages'][0]['id'] ?? null,
+    //                                     'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+    //                                     'stu_teacher_id' => $studentId,
+    //                                     'notice_id' => $remarkId,
+    //                                     'message_type' => 'remarkforstudent',
+    //                                     'created_at' => now()
+    //                                 ]);
+                            
+    //                     }
+                        
+    //                 }
+    //                 $tokenData = getTokenDataParentId($studentId);
+    //                 // dd($tokenData);
+            
+    //                 foreach ($tokenData as $item) {
+    //                     if (!empty($item->token)) {
+    //                         // DB::table('daily_notifications')->insert([
+    //                         //     'student_id'        => $item->student_id,
+    //                         //     'parent_id'         => $item->parent_teacher_id,
+    //                         //     'homework_id'       => 0,
+    //                         //     'remark_id'         => $remark_id,
+    //                         //     'notice_id'         => 0,
+    //                         //     'notes_id'          => 0,
+    //                         //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
+    //                         //     'token'             => $item->token,
+    //                         // ]);
+    //                     }
+    //                     $data = [
+    //                         'token' => $item->token, // FCM token of parent/student device
+    //                         'notification' => [
+    //                             'title' => 'Remark',
+    //                             'description' =>$request->input('remark_desc'),
+    //                         ]
+    //                     ];
+                    
+    //                   sendnotificationusinghttpv1($data);
+    //                 }
+    //             }
+    //             sleep(10);
+    //             return response()->json([
+    //                 'status' =>200,
+    //                 'message' => 'Remark saved and published successfully!',
+    //                 'success'=>true
+    //                ]);
+                 
+    //          }
+                
+             
+    //         }
+    //         catch (Exception $e) {
+    //         \Log::error($e); 
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //         } 
+         
+    //  }
+    public function saveRemarkObservationForStudents(Request $request){
           try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -3440,6 +3617,11 @@ class NewController extends Controller
                     ];
                     
                      $remarkId = DB::table('remark')->insertGetId($insertData);
+                     $filenames = [];
+                     $datafiles = [];
+                    
+                     $uploadDate = now()->format('d-m-Y'); // Today's date
+                     $docTypeFolder = 'remark'; 
 
                         foreach ($files as $file) {
                             if ($file && $file->isValid()) {
@@ -3447,6 +3629,8 @@ class NewController extends Controller
                                 $folder = 'remark/' . \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d') . '/' . $studentId;
                                 $path = $file->storeAs($folder, $filename, 'public');
                                 $filesize = $file->getSize();
+                                $filenames[] = $filename;
+                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
                 
                                 DB::table('remark_detail')->insert([
                                     'remark_id'  => $remarkId,
@@ -3456,12 +3640,14 @@ class NewController extends Controller
                             }
                         
                     }
+                    $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $remarkId);
+                    // dd($response);
                     $studentcontactdata = DB::table('student as a')
                                 ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
                                 ->where('a.student_id', $studentId)
                                 ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
                                 ->first();
-                    $phone = $studentcontactdata->phone_no;
+                    $phone = $studentcontactdata->phone_no ?? null;
                     if($phone){
                         $templateName = 'emergency_message';
                         $parameters =["Parent,".$request->input('remark_desc')];
@@ -3472,7 +3658,7 @@ class NewController extends Controller
                             $parameters
                         );
                         if (isset($result['code']) && isset($result['message'])) {
-                                            Log::warning("Rate limit hit", []);
+                                            // Log::warning("Rate limit hit", []);
                         } 
                         else {
                             DB::table('redington_webhook_details')->insert([
@@ -3552,11 +3738,13 @@ class NewController extends Controller
                             'remark.*',
                             'class.name as classname',
                             'section.name as sectionname',
-                            'student.first_name',
-                            'student.mid_name',
-                            'student.last_name',
-                            'subject_master.name as subjectname'
+                            DB::raw("CONCAT(UPPER(LEFT(student.first_name, 1)), LOWER(SUBSTRING(student.first_name, 2))) as first_name"),
+                            DB::raw("CONCAT(UPPER(LEFT(student.mid_name, 1)), LOWER(SUBSTRING(student.mid_name, 2))) as mid_name"),
+                            DB::raw("CONCAT(UPPER(LEFT(student.last_name, 1)), LOWER(SUBSTRING(student.last_name, 2))) as last_name"),
+                            'subject_master.name as subjectname',
+                            DB::raw('(CASE WHEN remark.remark_id IN (SELECT remark_id FROM remarks_read_log) THEN 1 ELSE 0 END) as read_status')
                         )
+                        ->orderBy('remark.remark_id','DESC')
                         ->get();
 
                         // Step 2: Fetch all remark_detail entries related to these remarks
@@ -3627,7 +3815,130 @@ class NewController extends Controller
          
      }
      
-     public function updatepublishRemarkObservationForStudent(Request $request,$remark_id){
+    //  public function updatepublishRemarkObservationForStudent(Request $request,$remark_id){
+    //      try{
+    //      $user = $this->authenticateUser();
+    //      $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //      DB::table('remark')
+    //         ->where('remark_id', $remark_id)
+    //         ->update([
+    //             'publish'      => 'Y',
+    //             'publish_date' => now()->toDateString(), // 'Y-m-d' format
+    //         ]);
+            
+    //     $remarkdata = DB::table('remark')->where('remark_id',$remark_id)->first();
+            
+    //     $studentcontactdata = DB::table('student as a')
+    //                             ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+    //                             ->where('a.student_id', $remarkdata->student_id)
+    //                             ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
+    //                             ->first(); 
+    //     // dd($studentcontactdata);
+    //     $phone = $studentcontactdata->phone_no;
+    //     if($phone){
+    //         $templateName = 'emergency_message';
+    //         $parameters =[$remarkdata->remark_desc];
+        
+    //         $result = $this->whatsAppService->sendTextMessage(
+    //             $phone,
+    //             $templateName,
+    //             $parameters
+    //         );
+    //         if (isset($result['code']) && isset($result['message'])) {
+    //                             Log::warning("Rate limit hit", []);
+    //         } 
+    //         else {
+    //             DB::table('redington_webhook_details')->insert([
+    //                         'wa_id' => $result['messages'][0]['id'] ?? null,
+    //                         'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+    //                         'stu_teacher_id' => $remarkdata->student_id,
+    //                         'notice_id' => $remarkdata->remark_id,
+    //                         'message_type' => 'remarkforstudent',
+    //                         'created_at' => now()
+    //                     ]);
+                
+    //         }
+            
+    //     }
+        
+    //     $tokenData = getTokenDataParentId($remarkdata->student_id);
+    //     // dd($tokenData);
+
+    //     foreach ($tokenData as $item) {
+    //         if (!empty($item->token)) {
+    //             // DB::table('daily_notifications')->insert([
+    //             //     'student_id'        => $item->student_id,
+    //             //     'parent_id'         => $item->parent_teacher_id,
+    //             //     'homework_id'       => 0,
+    //             //     'remark_id'         => $remark_id,
+    //             //     'notice_id'         => 0,
+    //             //     'notes_id'          => 0,
+    //             //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
+    //             //     'token'             => $item->token,
+    //             // ]);
+    //         }
+    //         $data = [
+    //             'token' => $item->token, // FCM token of parent/student device
+    //             'notification' => [
+    //                 'title' => 'Remark',
+    //                 'description' => $remarkdata->remark_desc,
+    //             ]
+    //         ];
+        
+    //       sendnotificationusinghttpv1($data);
+    //     }
+        
+        
+    //     $failedsms = DB::table('redington_webhook_details')
+    //                     ->where('notice_id',$remarkdata->remark_id)
+    //                     ->where('stu_teacher_id',$remarkdata->student_id)
+    //                     ->where('sms_sent','N')
+    //                     ->where('message_type','remarkforstudent')
+    //                     ->where('status','failed')
+    //                     ->first();
+    //     if($failedsms){
+    //         $smsData = DB::table('daily_sms')
+    //                 ->where('parent_id', $studentcontactdata->parent_id)
+    //                 ->where('student_id', $remarkdata->student_id)
+    //                 ->first();
+                
+    //             if (!$smsData) {
+    //                 // Insert new record
+    //                 DB::table('daily_sms')->insert([
+    //                     'student_id'   => $remarkdata->student_id,
+    //                     'parent_id'    => $studentcontactdata->parent_id,
+    //                     'phone'        => $phone,
+    //                     'homework'     => 0,
+    //                     'remark'       => 1,
+    //                     'notice'       => 0,
+    //                     'note'         => 0,
+    //                     'achievement'  => 0,
+    //                     'sms_date'     => now()->format('Y-m-d H:i:s'),
+    //                 ]);
+    //             } else {
+    //                 // Update existing record (increment remark)
+    //                 DB::table('daily_sms')
+    //                     ->where('parent_id', $studentcontactdata->parent_id)
+    //                     ->where('student_id', $remarkdata->student_id)
+    //                     ->update([
+    //                         'remark'   => $smsData->remark + 1,
+    //                         'sms_date' => now()->format('Y-m-d H:i:s'),
+    //                     ]);
+    //             }
+            
+    //     }
+        
+        
+        
+         
+    //      }
+    //     catch (Exception $e) {
+    //     \Log::error($e); 
+    //     return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     } 
+    //  }
+
+    public function updatepublishRemarkObservationForStudent(Request $request,$remark_id){
          try{
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -3646,7 +3957,7 @@ class NewController extends Controller
                                 ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
                                 ->first(); 
         // dd($studentcontactdata);
-        $phone = $studentcontactdata->phone_no;
+        $phone = $studentcontactdata->phone_no ?? null;
         if($phone){
             $templateName = 'emergency_message';
             $parameters =[$remarkdata->remark_desc];
@@ -3750,6 +4061,154 @@ class NewController extends Controller
         } 
      }
      
+    //  public function updateRemarkObservationForStudent(Request $request,$remark_id){
+    //       try{
+    //          $user = $this->authenticateUser();
+    //          $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //          //  dd("Hello");
+    //          $remarksubject = $request->remark_subject;
+    //          $remarkdesc = $request->remark_desc;
+    //          $remarkType = $request->remark_type ? 'Observation' : 'Remark';
+    //          $remarktypeexist = DB::table('remark')
+    //                                 ->where('remark_id', $remark_id)
+    //                                 ->first();
+    //         // dd($remarktypeexist);
+    //         $date = Carbon::parse($remarktypeexist->remark_date)->toDateString();
+    //         // dd($date);
+    //          if($remarkType == 'Observation'){
+            
+    //          DB::table('remark')
+    //         ->where('remark_id', $remark_id)
+    //         ->update([
+    //             'remark_desc'      => $remarkdesc,
+    //             'remark_subject' => $remarksubject, 
+    //             'remark_type'   =>$remarkType
+    //         ]);
+    //         return response()->json([
+    //                 'status' =>200,
+    //                 'message' => 'Remark updated successfully!',
+    //                 'success'=>true
+    //                ]);
+            
+    //         }
+    //         $filePaths = $request->filenottobedeleted ?? [];
+    //         $trimmedFilePaths = array_map(function($filePath) use ($remarktypeexist, $remark_id,$date) {
+    //             return Str::replaceFirst('storage/app/public/remark/' . $date . '/' . $remark_id . '.', '', $filePath);
+    //         }, $filePaths);
+            
+    //         $filesToExclude = $trimmedFilePaths; 
+
+    //         if (is_string($filesToExclude)) {
+    //             $filesToExclude = explode(',', $filesToExclude);
+    //         }
+    //         if (empty($filesToExclude)) {
+    //             $filesToExclude = [];
+    //         }
+    //         $uploadedFiles = $request->file('userfile');
+    //         $updateremark = DB::table('remark')->where('remark_id',$remark_id)->get();
+    //         foreach($updateremark as $remarkupdate){
+    //                     $notice_detail = DB::table('remark_detail')
+    //                                     ->where('remark_id', $remarkupdate->remark_id)
+    //                                     ->whereNotIn('image_name', $filesToExclude)
+    //                                     ->get()
+    //                                     ->toArray();
+    //                                     if(!is_null($uploadedFiles)){
+    //                                         $filenames = [];
+    //                                         $datafiles = [];
+                                    
+    //                                         foreach ($uploadedFiles as $file) {
+    //                                             $filenames[] = $file->getClientOriginalName();
+    //                                             $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+    //                                         }
+                                    
+                                            
+    //                                         $uploadDate = now()->format('d-m-Y');  // Get today's date
+    //                                         $docTypeFolder = 'remark';
+    //                                         $noticeId = $remarkupdate->remark_id;
+                                            
+                                            
+    //                                         // Call the helper function to upload the files
+    //                                         $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                            
+                        
+    //                                     }                                        
+    //                 }
+    //                 $notice_detail = array_filter($notice_detail, function($value) {
+    //                     return !empty($value); // Remove empty arrays
+    //                 });
+                    
+                    
+    //                 $notice_detail = array_values($notice_detail);
+    //                 $imageNames = array_map(function ($item) {
+    //                     return $item->image_name;
+    //                 }, $notice_detail);
+                    
+    //                 // If you prefer to use Laravel collection's pluck method, you can convert to collection first:
+    //                 $noticeimagesCollection = collect($notice_detail);
+    //                 $imageNames = $noticeimagesCollection->pluck('image_name')->toArray();
+    //                 $uploadDate = '2025-02-23';
+    //                 $docTypeFolder='teacher_notice';
+    //                     // foreach($updatesmsnotice as $noticeid){                          
+    //                     //   delete_uploaded_files_for_laravel ($imageNames,$uploadDate, $docTypeFolder, $noticeid->t_notice_id);
+    //                     // }
+                    
+    //                   // Check if there are any notice details
+    //                 if ($notice_detail) {
+    //                     // Loop through each notice detail and delete the files
+    //                     foreach ($notice_detail as $row) {
+    //                         foreach($updateremark as $noticeid){
+    //                         $path = storage_path("app/public/teacher_notice/{$date}/{$noticeid->remark_id}/{$row->image_name}");
+    //                         // dd($path);
+    //                         // Check if the file exists and delete it
+    //                         if (File::exists($path)) {
+    //                             File::delete($path); // Delete the file
+    //                         }
+    //                        }
+    //                     }
+    //                 }
+    //                 foreach($updateremark as $noticeid){
+    //                     $notice_detail = DB::table('remark_detail')
+    //                                     ->where('remark_id', $noticeid->remark_id)
+    //                                     ->whereNotIn('image_name', $filesToExclude)
+    //                                     ->delete();
+    //                 }
+    //                 foreach ($updateremark as $notice) {
+    //                     DB::table('remark')
+    //                         ->where('remark_id', $notice->remark_id) // Find each notice by its unique ID
+    //                         ->update([
+    //                             'remark_desc'      => $remarkdesc,
+    //                             'remark_subject' => $remarksubject, 
+    //                             'remark_type'   =>$remarkType
+    //                         ]);
+    //                     }
+
+                    
+    //                 $uploadedFiles = $request->file('userfile');
+    //                 if(is_null($uploadedFiles)){
+    //                     return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Remark updated Successfully!',
+    //                         'success'=>true
+    //                         ]);
+    //                 }
+                    
+                    
+    //                 return response()->json([
+    //                         'status'=> 200,
+    //                         'message'=>'Remark updated successfully!',
+    //                         'success'=>true
+    //                         ]);
+    //         // dd($filesToExclude);
+            
+            
+         
+    //         }
+    //         catch (Exception $e) {
+    //         \Log::error($e); 
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //         } 
+         
+    //  }
      public function updateRemarkObservationForStudent(Request $request,$remark_id){
           try{
              $user = $this->authenticateUser();
@@ -3757,7 +4216,7 @@ class NewController extends Controller
              //  dd("Hello");
              $remarksubject = $request->remark_subject;
              $remarkdesc = $request->remark_desc;
-             $remarkType = $request->remark_type ? 'Observation' : 'Remark';
+             $remarkType = $request->filled('remark_type') ? 'Observation' : 'Remark';
              $remarktypeexist = DB::table('remark')
                                     ->where('remark_id', $remark_id)
                                     ->first();
@@ -3794,6 +4253,7 @@ class NewController extends Controller
                 $filesToExclude = [];
             }
             $uploadedFiles = $request->file('userfile');
+            // dd($uploadedFiles);
             $updateremark = DB::table('remark')->where('remark_id',$remark_id)->get();
             foreach($updateremark as $remarkupdate){
                         $notice_detail = DB::table('remark_detail')
@@ -3802,12 +4262,20 @@ class NewController extends Controller
                                         ->get()
                                         ->toArray();
                                         if(!is_null($uploadedFiles)){
+                                            // dd($uploadedFiles);
                                             $filenames = [];
                                             $datafiles = [];
                                     
                                             foreach ($uploadedFiles as $file) {
                                                 $filenames[] = $file->getClientOriginalName();
                                                 $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                                //  dd($file->getClientOriginalName(),$remarkupdate->remark_id,$file->getSize());
+                                                DB::table('remark_detail')->insert([
+                                                        'remark_id'  => $remarkupdate->remark_id,
+                                                        'image_name' =>  $file->getClientOriginalName(),
+                                                        'file_size'  => $file->getSize(),
+                                                    ]);
+                                                    // dd("Hello");
                                             }
                                     
                                             
@@ -3818,6 +4286,7 @@ class NewController extends Controller
                                             
                                             // Call the helper function to upload the files
                                             $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $noticeId);
+                                            // dd($response);
                                             
                         
                                         }                                        
@@ -3842,19 +4311,19 @@ class NewController extends Controller
                         // }
                     
                       // Check if there are any notice details
-                    if ($notice_detail) {
-                        // Loop through each notice detail and delete the files
-                        foreach ($notice_detail as $row) {
-                            foreach($updateremark as $noticeid){
-                            $path = storage_path("app/public/teacher_notice/{$date}/{$noticeid->remark_id}/{$row->image_name}");
-                            // dd($path);
-                            // Check if the file exists and delete it
-                            if (File::exists($path)) {
-                                File::delete($path); // Delete the file
-                            }
-                           }
-                        }
-                    }
+                    // if ($notice_detail) {
+                    //     // Loop through each notice detail and delete the files
+                    //     foreach ($notice_detail as $row) {
+                    //         foreach($updateremark as $noticeid){
+                    //         $path = storage_path("app/public/teacher_notice/{$date}/{$noticeid->remark_id}/{$row->image_name}");
+                    //         // dd($path);
+                    //         // Check if the file exists and delete it
+                    //         if (File::exists($path)) {
+                    //             File::delete($path); // Delete the file
+                    //         }
+                    //       }
+                    //     }
+                    // }
                     foreach($updateremark as $noticeid){
                         $notice_detail = DB::table('remark_detail')
                                         ->where('remark_id', $noticeid->remark_id)
@@ -3862,6 +4331,7 @@ class NewController extends Controller
                                         ->delete();
                     }
                     foreach ($updateremark as $notice) {
+                        // dd($notice);
                         DB::table('remark')
                             ->where('remark_id', $notice->remark_id) // Find each notice by its unique ID
                             ->update([
@@ -3869,6 +4339,22 @@ class NewController extends Controller
                                 'remark_subject' => $remarksubject, 
                                 'remark_type'   =>$remarkType
                             ]);
+                            
+                            $filenames = [];
+                            $datafiles = [];
+                            if(!is_null($uploadedFiles)){
+                            foreach ($uploadedFiles as $file) {
+                                $filenames[] = $file->getClientOriginalName();
+                                $datafiles[] = base64_encode(file_get_contents($file->getRealPath()));
+                                //  dd($file->getClientOriginalName(),$remarkupdate->remark_id,$file->getSize());
+                                DB::table('remark_detail')->insert([
+                                        'remark_id'  => $remarkupdate->remark_id,
+                                        'image_name' =>  $file->getClientOriginalName(),
+                                        'file_size'  => $file->getSize(),
+                                    ]);
+                                    // dd("Hello");
+                            }
+                            }
                         }
 
                     
@@ -5142,8 +5628,8 @@ class NewController extends Controller
             'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
-            'competition' => $request->input('competition') ? 'Y' : 'N',
-            'notify'      => $request->input('notify') ? 'Y' : 'N',
+            'competition' => $request->input('competition'),
+            'notify'      => $request->input('notify'),
             'isDelete'    => 'N',
             'publish'     => 'N',
             'created_by'  => $user->reg_id, 
@@ -5185,8 +5671,8 @@ class NewController extends Controller
             'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
-            'competition' => $request->input('competition') ? 'Y' : 'N',
-            'notify'      => $request->input('notify') ? 'Y' : 'N',
+            'competition' => $request->input('competition'),
+            'notify'      => $request->input('notify'),
             'isDelete'    => 'N',
             'publish'     => 'Y',
             'created_by'  => $user->reg_id, 
@@ -5426,8 +5912,8 @@ class NewController extends Controller
                 'end_date'    => $request->input('end_date') ? date('Y-m-d', strtotime($request->end_date)) : $event->end_date,
                 'start_time'  => $request->input('start_time', $event->start_time),
                 'end_time'    => $request->input('end_time', $event->end_time),
-                'competition' => empty($request->input('competition')) ? 'N' : 'Y',
-                'notify'      => empty($request->input('notify')) ? 'N' : 'Y',
+                'competition' => $request->input('competition'),
+                'notify'      => $request->input('notify'),
                 'publish'     => 'N',
                 'isDelete'    => 'N',
             ];
@@ -5453,7 +5939,7 @@ class NewController extends Controller
                 'Content-Disposition' => 'attachment; filename="event.csv"',
             ];
             ob_get_clean();
-            $columns= ['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time','End Time','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)'];
+            $columns= ['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)'];
 
             $callback = function() use ($columns) {
                 $file = fopen('php://output', 'w');
@@ -5491,8 +5977,8 @@ class NewController extends Controller
             '*Event Description' => 'event_desc',
             '*Start date(in dd-mm-yyyy format)' => 'start_date',
             'End date(in dd-mm-yyyy format)' => 'end_date',
-            'Start Time' => 'start_time',
-            'End Time' => 'end_time',
+            'Start Time(HH:MM:SS)' => 'start_time',
+            'End Time(HH:MM:SS)' => 'end_time',
             '*Login Type(Admin Principal Teacher Parent)' => 'login_type',
             'Competition(Yes/No)' => 'competition',
             'Notify(Yes/No)' => 'notify',
@@ -5626,7 +6112,7 @@ class NewController extends Controller
                 
                 
                
-                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+                if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U'){
                      do {
                         $unq = random_int(1000, 9999);
                         $exists = DB::table('events')->where('unq_id', $unq)->exists();
@@ -5639,7 +6125,7 @@ class NewController extends Controller
                             'event_desc'  => $EventData['event_desc'],
                             'class_id'    => $class_id,
                             'start_date'  => $EventData['start_date'],
-                            'end_date'    => !empty($EventData['end_Date']) ? $EventData['end_Date'] : '0000-00-00',
+                            'end_date'    => !empty($EventData['end_date']) ? $EventData['end_date'] : '0000-00-00',
                             'start_time' => !empty($EventData['start_time']) ? $EventData['start_time'] : '00:00:00',
                             'end_time'   => !empty($EventData['end_time']) ? $EventData['end_time'] : '00:00:00',
                             'competition' => $EventData['competition'],
@@ -5650,6 +6136,7 @@ class NewController extends Controller
                             'academic_yr' => $customClaims,
                             'login_type'  => $EventData['login_type'],
                         ];
+                        // dd($baseData);
                          DB::table('events')->insert($baseData);
                          DB::commit();
                          $successfulInserts++;
@@ -5682,7 +6169,7 @@ class NewController extends Controller
         
             if (!empty($invalidRows)) {
                 $csv = Writer::createFromString('');
-                $csv->insertOne(['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time','End Time','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)','error']);
+                $csv->insertOne(['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)','error']);
                 foreach ($invalidRows as $invalidRow) {
                     $csv->insertOne($invalidRow);
                 }
@@ -5707,6 +6194,41 @@ class NewController extends Controller
                 'message' => 'Events Created Successfully.!!!',
                 'success'=>true
             ]);
+     }
+
+     public function getAllBackgroundColor(Request $request){
+         $backgroundcolors = DB::table('background_color')->get();
+         
+         return response()->json([
+                'status' =>200,
+                'data' => $backgroundcolors,
+                'message' => 'Background color list.',
+                'success'=>true
+            ]);
+         
+     }
+     
+     public function updateBackgroundColorActive(Request $request,$background_color_id){
+         DB::table('background_color')->update(['is_active' => 'N']);
+         DB::table('background_color')->where('background_color_id', $background_color_id)->update(['is_active' => 'Y']);
+         return response()->json([
+                'status' =>200,
+                'message' => 'Background color updated.',
+                'success'=>true
+            ]);
+         
+         
+     }
+     
+     public function getActiveBackgroundColor(Request $request){
+         $activebackgroundcolor = DB::table('background_color')->where('is_active','Y')->get();
+         return response()->json([
+                'status' =>200,
+                'data' => $activebackgroundcolor,
+                'message' => 'Active background color.',
+                'success'=>true
+            ]);
+         
      }
      
      private function validateDate($date, $format)

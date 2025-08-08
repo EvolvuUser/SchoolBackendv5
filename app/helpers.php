@@ -1006,7 +1006,27 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
         return $setting ;
     }
 
-    function getSettingsData(){
+    function getSettingsDataForActive(){
         $setting = DB::table('settings')->where('active', 'Y')->first();
         return $setting ;
+    }
+
+    function getSettingsDataForAcademicYr($customClaims){
+        $setting = DB::table('settings')->where('academic_yr', $customClaims)->first();
+        return $setting ;
+    }
+
+    function getClassNamesBySubject($sm_id)
+    {
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+    
+        return DB::table('class')
+            ->whereIn('class_id', function ($query) use ($sm_id, $academicYear) {
+                $query->select(DB::raw('DISTINCT class_id'))
+                    ->from('subject')
+                    ->where('sm_id', $sm_id)
+                    ->where('academic_yr', $academicYear);
+            })
+            ->pluck('name')
+            ->toArray();
     }

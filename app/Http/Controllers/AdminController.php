@@ -378,6 +378,8 @@ public function getClassDivisionTotalStudents(Request $request)
             (SELECT section_id, COUNT(student_id) AS students_count
              FROM student
              WHERE academic_yr = '{$academicYr}'  -- Filter by academic year
+             AND isDelete = 'N'
+             AND parent_id != '0'
              GROUP BY section_id) as st
         "), 's.section_id', '=', 'st.section_id')
         ->select(
@@ -1555,7 +1557,7 @@ public function storeStaff(Request $request)
                 $filename = $incrementid . '.' . $type;
                 $filePath = storage_path('app/public/teacher_images/' . $filename);
                 $doc_type_folder = 'teacher_image';
-                
+               
 
                 // Ensure the directory exists
                 $directory = dirname($filePath);
@@ -1571,13 +1573,21 @@ public function storeStaff(Request $request)
                 $fileContent = file_get_contents($filePath);           // Get the file content
                 $base64File = base64_encode($fileContent); 
                 upload_teacher_profile_image_into_folder($incrementid,$filename,$doc_type_folder,$base64File);
-
                 // Store the filename in validated data
                 $validatedData['teacher_image_name'] = $filename;
             } else {
                 throw new \Exception('Invalid image data');
             }
         }
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $settingsData = getSettingsDataForAcademicYr($customClaims);
+        $staffUserSuffix = $settingsData->staffuser_suffix;
+        $defaultPassword = $settingsData->default_pwd;
+        $shortName = $settingsData->short_name;
+        $schoolName = $settingsData->institute_name;
+        $websiteUrl = $settingsData->website_url;
+
 
         // Create Teacher record
         $teacher = new Teacher();
@@ -1593,13 +1603,13 @@ public function storeStaff(Request $request)
 
         $firstname = explode(' ', trim($validatedData['name']))[0];
         Log::info("First Name", ['value' => $firstname]);
-        $user_id = strtolower($firstname . "@arnolds");
+        $user_id = strtolower($firstname . '@' . $staffUserSuffix);
         Log::info("First Name userid", ['value' => $user_id]);
         $checkuserid = DB::table('user_master')
                             ->where('user_id',$user_id)
                             ->exists();
         if($checkuserid == true){
-            $user_id = strtolower(str_replace(' ', '', $validatedData['name']) . "@arnolds");
+            $user_id = strtolower(str_replace(' ', '', $validatedData['name']) . '@' . $staffUserSuffix);
             $checkuseridforfullname =  DB::table('user_master')
                                             ->where('user_id',$user_id)
                                             ->exists();
@@ -1613,11 +1623,12 @@ public function storeStaff(Request $request)
                                             }
             Log::info("Full name userid", ['value' => $user_id]);
         }
+
         // Create User record
         $user = UserMaster::create([
             'user_id' => $user_id,
             'name' => $validatedData['name'],
-            'password' => Hash::make('arnolds'),
+            'password' => Hash::make($defaultPassword),
             'reg_id' => $teacher->teacher_id,
             'role_id' => $validatedData['role'],
             'IsDelete' => 'N',
@@ -1631,18 +1642,22 @@ public function storeStaff(Request $request)
                 'message' => 'Failed to create user',
             ], 500);
         }
+        $emailData = [
+            'schoolname' => $schoolName,
+            'websiteurl' => $websiteUrl,
+            'userid' =>$user_id,
+            'defaultpassword'=>$defaultPassword
+        ];
 
-        // Send welcome email
-        Mail::to($validatedData['email'])->send(new WelcomeEmail($user_id, 'arnolds'));
-
-        // Call external API
+        smart_mail($validatedData['email'], 'Welcome', 'emails.welcome', $emailData);
+        
         $response = createStaffUser($user->user_id, $validatedData['role']);
 
         if ($response->successful()) {
-            DB::commit(); // Commit the transaction
+            DB::commit();
             
             return response()->json([
-                'message' => 'Staff created. Your user id is '.$user_id.' and password is arnolds.',
+                'message' => 'Staff created. Your user id is '.$user_id.' and password is '.$defaultPassword.'.',
                 'teacher' => $teacher,
                 'user' => $user,
                 'external_api_response' => $response->json(),
@@ -2228,19 +2243,23 @@ public function getStudentListBySectionData(Request $request){
         $sectionId = $request->query('section_id');
         if(!$sectionId){
             $student = DB::table('student')
-                ->where('academic_yr',$academicYr)
+                ->join('class','class.class_id','=','student.class_id')
+                ->join('section','section.section_id','=','student.section_id')
+                ->where('student.academic_yr',$academicYr)
                 ->where('isDelete','N')
                 ->where('parent_id','!=',0)
-                ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id')
+                ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id','class.name as classname','section.name as sectionname')
                 ->get();
         }
         else{
             $student = DB::table('student')
-                         ->where('academic_yr',$academicYr)
+                         ->join('class','class.class_id','=','student.class_id')
+                         ->join('section','section.section_id','=','student.section_id')
+                         ->where('student.academic_yr',$academicYr)
                          ->where('isDelete','N')
-                         ->where('section_id',$sectionId)
+                         ->where('student.section_id',$sectionId)
                          ->where('parent_id','!=',0)
-                         ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id')
+                         ->select('student.student_id','student.first_name','student.mid_name','student.last_name','student.class_id','student.section_id','class.name as classname','section.name as sectionname')
                          ->get();
         }
          
@@ -2557,14 +2576,18 @@ public function toggleActiveStudent($studentId)
                  'Error' => "User Id not found"
               ]);
         }
-        $password = "arnolds";
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $settingsData = getSettingsDataForAcademicYr($customClaims);
+        $defaultPassword = $settingsData->default_pwd;
+        $password = $defaultPassword;
         $user->password=$password;
         $user->save();
         
         return response()->json(
                       [
                         'Status' => 200 ,
-                         'Message' => "Password is reset to arnolds . "
+                         'Message' => "Password is reset to ".$password." . "
                       ]
                       );
      }
@@ -3593,8 +3616,8 @@ public function getDivisionsAndSubjects(Request $request, $classId)
     
     // Fetch Subjects Based on Class Type
     $subjects = ($className == 11 || $className == 12)
-        ? $this->getAllSubjectsNotHsc()
-        : $this->getAllSubjectsOfHsc();
+        ? $this->getAllSubjectsOfHsc()
+        : $this->getAllSubjectsNotHsc();
     $count = $subjects->count();
     // Return Combined Response
     return response()->json([
@@ -3606,12 +3629,12 @@ public function getDivisionsAndSubjects(Request $request, $classId)
 
 private function getAllSubjectsOfHsc()
 {
-    return SubjectMaster::whereIn('subject_type', ['Compulsory', 'Optional', 'Co-Scholastic_hsc', 'Social','Scholastic', 'Co-Scholastic'])->get();
+    return SubjectMaster::whereIn('subject_type', ['Compulsory', 'Optional', 'Co-Scholastic_hsc', 'Social'])->get();
 }
 
 private function getAllSubjectsNotHsc()
 {
-    return SubjectMaster::whereIn('subject_type', ['Scholastic', 'Co-Scholastic', 'Social'])->get();
+    return SubjectMaster::whereIn('subject_type', ['Scholastic','Social','Co-Scholastic'])->get();
 }
 
 
@@ -3710,7 +3733,7 @@ public function storeSubjectAllotment(Request $request)
                     ->where('section_id', $sectionId)
                     ->where('academic_yr', $academicYr)
                     ->whereIn('sm_id', $subjectIdsToRemove)
-                    ->update(['sm_id' => null]);
+                    ->delete();
 
                 Log::info('Removed subjects', ['class_id' => $classId, 'section_id' => $sectionId, 'removed_subject_ids' => $subjectIdsToRemove]);
             }
@@ -4165,6 +4188,7 @@ public function getPresignSubjectByTeacher(Request $request,$classID, $sectionId
     $academicYr = $payload->get('academic_year'); 
     
     $subjects = SubjectAllotment::with('getSubject')
+    ->select('sm_id', 'subject_id')
     ->where('academic_yr', $academicYr)
     ->where('class_id', $classID)
     ->where('section_id', $sectionId)
@@ -5716,6 +5740,11 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         $studentdetails = DB::table('student')->where('student_id',$studentId)->first();
         $studentAcademicYr = $studentdetails->academic_yr;
         $academicYr = $payload->get('academic_year');
+        $settingsData = getSettingsDataForAcademicYr($academicYr);
+        $schoolName = $settingsData->institute_name;
+        $defaultPassword = $settingsData->default_pwd;
+        $websiteUrl = $settingsData->website_url;
+        $shortName = $settingsData->short_name;
         $validator = Validator::make($request->all(),[
         
         'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,'. $studentId . ',student_id,academic_yr,'. $academicYr,
@@ -5988,11 +6017,11 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                             $user_id = $request->SetEmailIDAsUsername; // If the value is anything else
                             break;
                     }
-                   
+                    // Log::info("Info",$shortName);
                     $user = new UserMaster();
                     $user->user_id = $user_id;
                     $user->name = $validatedData['father_name'];
-                    $user->password = bcrypt('arnolds'); 
+                    $user->password = bcrypt($defaultPassword); 
                     $user->reg_id = $parentId;
                     $user->role_id = 'P';
                     $user->save();
@@ -6012,10 +6041,10 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                                 $validatedData['m_emailid'] ?? null,
                             ]);
                             
-                            $messageemail = "Dear Parent,Welcome to St.Arnold's Central School's online application.'".$validatedData['first_name']."' is registered in the application. Your user id is ".$user_id." and password is arnolds.The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at https://sms.arnoldcentralschool.org .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards,SACS Support";
+                            $messageemail = "Dear Parent,Welcome to ".$schoolName." online application.'".$validatedData['first_name']."' is registered in the application. Your user id is ".$user_id." and password is ".$defaultPassword.".The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at ".$websiteUrl." .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards,".$shortName." Support";
                             Mail::raw($messageemail, function ($mail) use ($recipients) {
                                 $mail->to($recipients)
-                                     ->subject("SACS-Login Details");
+                                     ->subject("Login Details");
                             });
                     }
                     
@@ -6119,12 +6148,12 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                                 $parent->m_emailid ?? null,
                             ]);
                             
-                            $messageemail = "Dear Parent,<br/><br/>Welcome to St.Arnold's Central School's online application. <br/><br/>'".$validatedData['first_name']."' is registered in the application. Please use your existing user id ".$user->user_id." to access the application.<br><br>Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.
+                            $messageemail = "Dear Parent,<br/><br/>Welcome to ".$schoolName." online application. <br/><br/>'".$validatedData['first_name']."' is registered in the application. Please use your existing user id ".$user->user_id." to access the application.<br><br>Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.
 <br/><br/>Please make sure to update your profile and your child's profile.<br/><br/>Regards,<br/>
-SACS Support";
+".$shortName." Support";
                             Mail::raw($messageemail, function ($mail) use ($recipients) {
                                 $mail->to($recipients)
-                                     ->subject("SACS-Login Details");
+                                     ->subject("Login Details");
                             });
                     }
                     $user->save();
@@ -6146,7 +6175,7 @@ SACS Support";
         DB::table('user_master')->insert([
             'user_id' => $user_id,
             'name' => $validatedData['first_name'],
-            'password' => bcrypt('arnolds'), // Consider hashing if it's a real password
+            'password' => bcrypt($defaultPassword), // Consider hashing if it's a real password
             'reg_id' => $studentId,
             'role_id' => 'S',
         ]);
@@ -6672,7 +6701,8 @@ public function saveLeaveAllocationforallStaff(Request $request){
    }
 
    public function sendUserIdParents(Request $request){
-    
+    $user = $this->authenticateUser();
+    $customClaims = JWTAuth::getPayload()->get('academic_year');
     $checkbx = $request->input('studentId');
     foreach ($checkbx as $parent_id) {
         $student = DB::table('student')
@@ -6691,28 +6721,32 @@ public function saveLeaveAllocationforallStaff(Request $request){
         // $decryptedPassword = Crypt::decrypt($password);
         // dd($decryptedPassword);
 
+        $settingsData = getSettingsDataForAcademicYr($customClaims);
+        $schoolName = $settingsData->institute_name;
+        $defaultpassword = $settingsData->default_pwd;
+        $shortName = $settingsData->short_name;
+
+
         if($isNew == 'Y'){
-            $subject= "Welcome to St.Arnold's Central School's online application";
-            $textmsg="Dear Parent,<br/><br/>Welcome to St.Arnold's Central School's online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is arnolds.<br/><br/>Regards,<br/>SACS Support";
+            $subject= "Welcome to ".$schoolName." online application";
+            $textmsg="Dear Parent,<br/><br/>Welcome to ".$schoolName." online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is ".$defaultpassword.".<br/><br/>Regards,<br/>".$shortName." Support";
 
         }
         else{
-            $subject="Your login details for St.Arnold's Central School";
-            $textmsg="Dear Parent,<br/><br/>Your user id for St.Arnold's Central School's online application is {$user_id} and password is arnolds.<br/><br/>Regards,<br/>SACS Support";
+            $subject="Your login details for ".$schoolName;
+            $textmsg="Dear Parent,<br/><br/>Your user id for ".$schoolName." online application is {$user_id} and password is ".$defaultpassword.".<br/><br/>Regards,<br/>".$shortName." Support";
         }
+        $emailData = [
+            'subject' => $subject,
+            'textmsg' => $textmsg,
+        ];
         
         if ($f_emailid) {
-            Mail::send('emails.parentUserEmail', ['textmsg' => $textmsg,'subject'=>$subject], function ($message) use ($f_emailid,$subject) {
-                $message->to($f_emailid)
-                        ->subject('SACS Login Details');
-            });
+            smart_mail($f_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
         }
 
         if ($m_emailid) {
-            Mail::send('emails.parentUserEmail', ['textmsg' => $textmsg], function ($message) use ($m_emailid,$subject) {
-                $message->to($m_emailid)
-                        ->subject('SACS Login Details');
-            });
+            smart_mail($m_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
         }
      }
     }
@@ -16372,6 +16406,10 @@ public function getSchoolName(Request $request){
 
 //API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
 public function updateForgotPassword(Request $request){
+    $settingsData = getSettingsDataForActive();
+    $loginUrl = $settingsData->website_url;
+    $shortName = $settingsData->short_name;
+    $defaultPassword = $settingsData->default_pwd;
     $userId = trim($request->input('user_id'));
        $answerOne = trim($request->input('answer_one'));
        $dob = date('Y-m-d', strtotime($request->input('dob')));
@@ -16412,11 +16450,11 @@ public function updateForgotPassword(Request $request){
        if ($dobMatch) {
            DB::table('user_master')
                ->where('user_id', $userId)
-               ->update(['password' => bcrypt('arnolds')]);
+               ->update(['password' => bcrypt($defaultPassword)]);
 
            return response()->json([
                'status'=>200,
-               'message' => 'Password reset successfully to arnolds.',
+               'message' => 'Password reset successfully to '.$defaultPassword.'.',
                'success'=>true
            ]);
        } else {
@@ -16447,7 +16485,7 @@ public function generateNewPassword(Request $request)
        if ($userMasterData->isEmpty()) {
            return response()->json([
                'status'=>400,
-               'message' => 'Invalid user id!',
+               'message' => 'Invalid user id!!!',
                'type' => 'error',
                'success'=>false
            ]);
@@ -16483,42 +16521,33 @@ public function generateNewPassword(Request $request)
            ]);
        }
 
-       $newPassword = 'sacs@' . mt_rand(1000, 9999);
+       $settingsData = getSettingsDataForActive();
+       $loginUrl = $settingsData->website_url;
+       $shortName = $settingsData->short_name;
+       $newPassword = strtolower($shortName) . '@' . mt_rand(1000, 9999);
 
        $updated = DB::table('user_master')->where('user_id', $userId)->update([
            'password' => bcrypt($newPassword),
        ]);
-
+       
        if ($updated) {
-           $loginUrl = in_array($roleId, ['A', 'M'])
-            ? 'https://sacs.evolvu.in'
-            : 'https://sms.arnoldcentralschool.org';
-           $emailContent = "
-               Dear EvolvU User,<br/><br/>
-               The password for login id <strong>{$userId}</strong> has been reset to <strong>{$newPassword}</strong><br>
-               Login at <a href='{$loginUrl}'>{$loginUrl}/</a><br><br/>
-               Please READ THE INSTRUCTION on login page and refer to the help once you login into the application.<br/><br/>
-               Make sure your email id and mobile number are correctly added into profile.<br/><br/>
-               Regards,<br/>
-               SACS Support
-           ";
 
-           $subject = "SACS - New Password On Reset";
+           $subject = $shortName."-"."New Password On Reset";
            $emailsSentTo = [];
+           $emailData = [
+                'userId'     => $userId,
+                'newPassword'=> $newPassword,
+                'loginUrl'   => $loginUrl,
+                'shortName' => $shortName
+            ];
 
            if (!empty($userEmail)) {
-               Mail::html($emailContent, function ($message) use ($userEmail, $subject) {
-                   $message->to($userEmail)
-                           ->subject($subject);
-               });
+               smart_mail($userEmail, $subject, 'emails.password_reset', $emailData);
                $emailsSentTo[] = $userEmail;
            }
            
            if (!empty($userEmail1)) {
-               Mail::html($emailContent, function ($message) use ($userEmail1, $subject) {
-                   $message->to($userEmail1)
-                           ->subject($subject);
-               });
+               smart_mail($userEmail1, $subject, 'emails.password_reset', $emailData);
                $emailsSentTo[] = $userEmail1;
            }
 
@@ -16663,11 +16692,66 @@ public function getAbsentTeacherForToday(Request $request){
           $date = $request->input('date');
         //   dd($date);
           
-          $presentlate = DB::select("SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_in,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out, lt.late_time ,'N' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
-            t.isDelete = 'N' AND u.role_id IN ('T', 'L') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')<= lt.late_time 
-            UNION
-            SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out,lt.late_time , 'Y' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
-            t.isDelete = 'N' AND u.role_id IN ('T', 'L') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')> lt.late_time;");
+          $presentlate = DB::select("SELECT * FROM (
+    SELECT 
+        t.teacher_id, 
+        t.employee_id, 
+        t.name,
+        t.phone, 
+        tc.name as teachercategoryname,
+        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
+        (
+            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
+            FROM teacher_attendance 
+            WHERE employee_id = t.employee_id 
+              AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
+              HAVING COUNT(*) > 1
+        ) AS punch_out, 
+        lt.late_time, 
+        'N' AS late 
+    FROM teacher AS t 
+    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+    JOIN late_time lt ON lt.tc_id = t.tc_id 
+    JOIN user_master AS u ON t.teacher_id = u.reg_id 
+    WHERE 
+        t.isDelete = 'N' 
+        AND u.role_id IN ('T', 'L') 
+        AND ta.punch_time LIKE '$date%' 
+    GROUP BY ta.employee_id 
+    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') <= lt.late_time 
+
+    UNION
+
+    SELECT 
+        t.teacher_id, 
+        t.employee_id, 
+        t.name,
+        t.phone, 
+        tc.name as teachercategoryname,
+        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
+        (
+            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
+            FROM teacher_attendance 
+            WHERE employee_id = t.employee_id 
+              AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
+              HAVING COUNT(*) > 1
+        ) AS punch_out, 
+        lt.late_time, 
+        'Y' AS late 
+    FROM teacher AS t 
+    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+    JOIN late_time lt ON lt.tc_id = t.tc_id 
+    JOIN user_master AS u ON t.teacher_id = u.reg_id 
+    WHERE 
+        t.isDelete = 'N' 
+        AND u.role_id IN ('T', 'L') 
+        AND ta.punch_time LIKE '$date%' 
+    GROUP BY ta.employee_id 
+    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') > lt.late_time 
+) AS attendance_result
+ORDER BY late_time ASC,teachercategoryname;");
             // dd($presentlate);
             
             foreach ($presentlate as $entry) {
@@ -16753,15 +16837,68 @@ public function getAbsentnonTeacherForToday(Request $request){
       $customClaims = JWTAuth::getPayload()->get('academic_year');
       if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
             $date = $request->input('date');  
-            $nonteacherpresent = DB::select("SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out, lt.late_time ,'N' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
-t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')<= lt.late_time 
-UNION
-SELECT t.teacher_id, t.employee_id, t.name,t.phone, date_format(ta.punch_time,'%H:%i') as punch_time,(SELECT date_format(max(punch_time),'%H:%i') FROM teacher_attendance WHERE employee_id = t.employee_id and date_format(punch_time,'%Y-%m-%d') = '$date' having count(*)>1) as punch_out,lt.late_time , 'Y' as late FROM teacher AS t JOIN teacher_category tc ON t.tc_id = tc.tc_id join teacher_attendance ta on t.employee_id=ta.employee_id join late_time lt on lt.tc_id=t.tc_id JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE 
-t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and ta.punch_time like '$date%' group by ta.employee_id having date_format(min(ta.punch_time),'%H:%i')> lt.late_time;");
+            $nonteacherpresent = DB::select("SELECT * FROM (
+    SELECT 
+        t.teacher_id, 
+        t.employee_id, 
+        t.name,
+        t.phone, 
+        tc.name as teachercategoryname,
+        DATE_FORMAT(ta.punch_time,'%H:%i') AS punch_time,
+        (
+            SELECT DATE_FORMAT(MAX(punch_time),'%H:%i') 
+            FROM teacher_attendance 
+            WHERE employee_id = t.employee_id 
+              AND DATE_FORMAT(punch_time,'%Y-%m-%d') = '$date' 
+              HAVING COUNT(*) > 1
+        ) AS punch_out, 
+        lt.late_time, 
+        'N' AS late 
+    FROM teacher AS t 
+    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+    JOIN late_time lt ON lt.tc_id = t.tc_id 
+    JOIN user_master AS u ON t.teacher_id = u.reg_id 
+    WHERE t.isDelete = 'N' 
+      AND u.role_id IN ('A','F', 'M', 'N', 'X','E') 
+      AND ta.punch_time LIKE '$date%' 
+    GROUP BY ta.employee_id 
+    HAVING DATE_FORMAT(MIN(ta.punch_time),'%H:%i') <= lt.late_time
+
+    UNION
+
+    SELECT 
+        t.teacher_id, 
+        t.employee_id, 
+        t.name,
+        t.phone, 
+        tc.name as teachercategoryname,
+        DATE_FORMAT(ta.punch_time,'%H:%i') AS punch_time,
+        (
+            SELECT DATE_FORMAT(MAX(punch_time),'%H:%i') 
+            FROM teacher_attendance 
+            WHERE employee_id = t.employee_id 
+              AND DATE_FORMAT(punch_time,'%Y-%m-%d') = '$date' 
+              HAVING COUNT(*) > 1
+        ) AS punch_out, 
+        lt.late_time, 
+        'Y' AS late 
+    FROM teacher AS t 
+    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+    JOIN late_time lt ON lt.tc_id = t.tc_id 
+    JOIN user_master AS u ON t.teacher_id = u.reg_id 
+    WHERE t.isDelete = 'N' 
+      AND u.role_id IN ('A','F', 'M', 'N', 'X','E') 
+      AND ta.punch_time LIKE '$date%' 
+    GROUP BY ta.employee_id 
+    HAVING DATE_FORMAT(MIN(ta.punch_time),'%H:%i') > lt.late_time
+) AS combined
+ORDER BY combined.late_time,combined.teachercategoryname;");
 
 
-            $nonteacherabsent = DB::select("SELECT t.teacher_id, t.name,t.designation, t.phone, 'Leave applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') UNION
-SELECT t.teacher_id, t.name, t.designation, t.phone, 'Leave not applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'Y') and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P');");
+            $nonteacherabsent = DB::select("SELECT t.teacher_id, t.name,t.designation, t.phone, 'Leave applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'E') and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') UNION
+SELECT t.teacher_id, t.name, t.designation, t.phone, 'Leave not applied' as leave_status FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id WHERE t.isDelete = 'N' AND u.role_id IN ('A','F', 'M', 'N', 'X', 'E') and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P');");
             // dd($nonteacherabsent);
             $nonteacher = [
                 'nonteacher_present'=>$nonteacherpresent,
