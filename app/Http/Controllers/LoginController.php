@@ -782,6 +782,10 @@ public function updateCsvData(Request $request, $section_id)
     $request->validate([
         'file' => 'required|file|mimes:csv,txt|max:2048',
     ]);
+     $academicYear = JWTAuth::getPayload()->get('academic_year');
+     $settingsData = getSettingsDataForAcademicYr($academicYear);
+     $defaultPassword = $settingsData->default_pwd;
+
 
     // Read the uploaded CSV file
     $file = $request->file('file');
@@ -1043,7 +1047,7 @@ public function updateCsvData(Request $request, $section_id)
                     ['user_id' => $studentData['father_email']],
                     [
                         'name' => $studentData['father_name'],
-                        'password' => bcrypt('arnolds'),
+                        'password' => bcrypt($defaultPassword),
                         'reg_id' => $parent->parent_id,
                         'role_id' => 'P',
                         'IsDelete' => 'N',
