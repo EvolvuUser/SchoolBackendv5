@@ -19,6 +19,8 @@ use App\Jobs\SendOutstandingFeeSmsJob;
 use Illuminate\Support\Facades\Mail;
 use League\Csv\Writer;
 use Illuminate\Support\Facades\Storage;
+use Log;
+use App\Jobs\SendEventNotificationJob;
 class NewController extends Controller
 {
     protected $whatsAppService;
@@ -5401,6 +5403,7 @@ class NewController extends Controller
          $customClaims = JWTAuth::getPayload()->get('academic_year');
          $staffId = $request->query('staff_id');
             $week = $request->query('week');
+            $month = $request->query('month');
             $query = DB::table('lesson_plan')
                         ->select(
                             'lesson_plan.*',
@@ -5429,6 +5432,10 @@ class NewController extends Controller
     
         if (!empty($week)) {
             $query->where('lesson_plan.week_date', $week);
+        }
+
+        if (!empty($month)) {
+            $query->whereRaw('MONTH(STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, " / ", 1), "%d-%m-%Y")) = ?', [$month]);
         }
     
         $lessonPlans = $query->get();
@@ -5655,7 +5662,6 @@ class NewController extends Controller
      public function savePublishEvent(Request $request){
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
-        //   dd("Hello");
          
          do {
             $unq = random_int(1000, 9999);
@@ -5679,12 +5685,22 @@ class NewController extends Controller
             'academic_yr' => $customClaims,
             'login_type'  => implode(',', $request->input('checkbxlogintype')),
         ];
+        
+        // $loginTypes = $request->input('checkbxlogintype');
         foreach ($request->input('checkbxclass') as $classId) {
             if (!empty($classId)) {
                 $data = $baseData;
                 $data['class_id'] = $classId;
                 DB::table('events')->insert($data);
             }
+        }
+         if (strtoupper($request->input('notify')) === 'Y') {
+            SendEventNotificationJob::dispatch([
+                'unq_id'     => $unq,
+                'title'      => $request->input('title'),
+                'login_type' => $request->input('checkbxlogintype'),
+                'class_ids'  => $request->input('checkbxclass')
+            ]);
         }
 
         return response()->json([
@@ -5696,11 +5712,9 @@ class NewController extends Controller
      }
      
      public function getRolesForEvent(Request $request){
-         $excludedRoles = ['S', 'U', 'A', 'O', 'F', 'B'];
-
-        $roles = DB::table('role_master')
-            ->whereNotIn('role_id', $excludedRoles)
-            ->get();
+         $roles = DB::table('event_roles')
+                    ->where('is_active','Y')
+                    ->get();
     
         return response()->json([
             'status'=>200,
@@ -5858,12 +5872,30 @@ class NewController extends Controller
          $publish = DB::table('events')
                         ->where('unq_id', $unq_id) 
                         ->update(['publish' => 'Y']);
+        $eventData = DB::table('events')
+            ->select('title', 'login_type','notify')
+            ->where('unq_id', $unq_id)
+            ->first();
+
+        $classIds = DB::table('events')
+            ->where('unq_id', $unq_id)
+            ->pluck('class_id')
+            ->toArray();
+            
+            if (!empty($eventData) && strtoupper($eventData->notify) === 'Y') {
+                SendEventNotificationJob::dispatch([
+                    'unq_id'     => $unq_id,
+                    'title'      => $eventData->title,
+                    'login_type' => explode(',', $eventData->login_type),
+                    'class_ids'  => $classIds
+                ]);
+            }
         }
-                        return response()->json([
-                            'status'=>200,
-                            'message'=>'Event published successfully.',
-                            'success'=>true
-                            ]);
+        return response()->json([
+            'status'=>200,
+            'message'=>'Event published successfully.',
+            'success'=>true
+            ]);
          
      }
      
@@ -5933,13 +5965,18 @@ class NewController extends Controller
      
      public function getTemplateCsvEvent(Request $request){
           try{
-        
+            $roles = DB::table('event_roles')
+                        ->where('is_active', 'Y')
+                        ->get();
+            
+            $roleNames = $roles->pluck('name')->toArray(); 
+            $roleNamesStr = implode(' ', $roleNames);
             $headers = [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => 'attachment; filename="event.csv"',
             ];
             ob_get_clean();
-            $columns= ['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)'];
+            $columns= ['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)',"*Login Type({$roleNamesStr})",'Competition(Yes/No)','Notify(Yes/No)'];
 
             $callback = function() use ($columns) {
                 $file = fopen('php://output', 'w');
@@ -5959,9 +5996,22 @@ class NewController extends Controller
      }
      
      public function importEventCsv(Request $request){
+        //  dd("Hello");
+         $roles = DB::table('event_roles')
+                        ->where('is_active', 'Y')
+                        ->get();
+                        
+         $validLogins = DB::table('event_roles')
+                    ->where('is_active', 'Y')
+                    ->pluck('role_id', 'name') // ['Admin' => 'A', 'Teacher' => 'T', ...]
+                    ->toArray();
+        //  dd($validLogins);
+            
+        $roleNames = $roles->pluck('name')->toArray(); 
+        $roleNamesStr = implode(' ', $roleNames);
          $request->validate([
-        'file' => 'required|file|mimes:csv,txt|max:2048',
-        ]);
+           'file' => 'required|file|mimes:csv,txt|max:2048',
+         ]);
         
         $file = $request->file('file');
         $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
@@ -5979,7 +6029,7 @@ class NewController extends Controller
             'End date(in dd-mm-yyyy format)' => 'end_date',
             'Start Time(HH:MM:SS)' => 'start_time',
             'End Time(HH:MM:SS)' => 'end_time',
-            '*Login Type(Admin Principal Teacher Parent)' => 'login_type',
+            "*Login Type({$roleNamesStr})" => 'login_type',
             'Competition(Yes/No)' => 'competition',
             'Notify(Yes/No)' => 'notify',
         ];
@@ -6041,7 +6091,8 @@ class NewController extends Controller
                 $errors[] = 'Event login type is required.';
             }
             else {
-            $validLogins = ['Admin' => 'A', 'Principal' => 'M', 'Teacher' => 'T', 'Parent' => 'P'];
+            
+            // $validLogins = ['Admin' => 'A', 'Principal' => 'M', 'Teacher' => 'T', 'Parent' => 'P'];
             $loginParts = explode(' ', $EventData['login_type']);
             $loginStr = '';
 
@@ -6063,7 +6114,7 @@ class NewController extends Controller
           }
           
           $EventData['competition'] = strtolower($EventData['competition'] ?? 'no') === 'yes' ? 'Y' : 'N';
-        $EventData['notify'] = strtolower($EventData['notify'] ?? 'no') === 'yes' ? 'Y' : 'N';
+          $EventData['notify'] = strtolower($EventData['notify'] ?? 'no') === 'yes' ? 'Y' : 'N';
             
             
             // dd($errors);
@@ -6096,19 +6147,15 @@ class NewController extends Controller
                         }
                         
                     } else {
-                        // Replace this with your real class ID fetch logic
-                        // dd("Hello");
                         $class_id = DB::table('class')
                             ->where('name', $part)
                             ->where('academic_yr',$customClaims)
                             ->value('class_id');
-                            // dd($class_id);
                         if ($class_id) {
                             $class_ids[] = $class_id;
                         }
                     }
                 }
-                // dd($class_ids);
                 
                 
                
@@ -6169,7 +6216,7 @@ class NewController extends Controller
         
             if (!empty($invalidRows)) {
                 $csv = Writer::createFromString('');
-                $csv->insertOne(['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)','*Login Type(Admin Principal Teacher Parent)','Competition(Yes/No)','Notify(Yes/No)','error']);
+                $csv->insertOne(['*Event Title','*Event Description','*Start date(in dd-mm-yyyy format)','End date(in dd-mm-yyyy format)','Start Time(HH:MM:SS)','End Time(HH:MM:SS)',"*Login Type({$roleNamesStr})",'Competition(Yes/No)','Notify(Yes/No)','error']);
                 foreach ($invalidRows as $invalidRow) {
                     $csv->insertOne($invalidRow);
                 }
@@ -6196,9 +6243,13 @@ class NewController extends Controller
             ]);
      }
 
-     public function getAllBackgroundColor(Request $request){
-         $backgroundcolors = DB::table('background_color')->get();
-         
+      public function getAllBackgroundColor(Request $request){
+         $flatcolor = DB::table('background_color')->where('color_category','flat_colors')->get();
+         $gradientcolor = DB::table('background_color')->where('color_category','gradient_color')->get();
+         $backgroundcolors = [
+             'flat_colors'=>$flatcolor,
+             'gradient_color'=>$gradientcolor
+             ];
          return response()->json([
                 'status' =>200,
                 'data' => $backgroundcolors,
