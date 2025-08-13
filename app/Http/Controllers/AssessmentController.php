@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\App;
 
 
 class AssessmentController extends Controller
@@ -1899,6 +1901,357 @@ class AssessmentController extends Controller
             return response()->json([
                 'status' => 200,
                 'message' => 'Important Link published successfully!',
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    //  News
+    public function createNews(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'You do not have permission to create news.',
+                    'success' => false,
+                ]);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'title'            => 'required|string|max:255',
+                'description'      => 'nullable|string|max:1000',
+                'active_till_date' => 'nullable|date',
+                'url'              => 'nullable|url|max:255',
+                'image'            => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                    'success' => false,
+                ]);
+            }
+
+            // 4. Prepare data
+            $data = [
+                'title'        => $request->input('title'),
+                'description'  => $request->input('description'),
+                'date_posted'  => now()->toDateString(),
+                'active_till_date' => $request->input('active_till_date'),
+                'url'          => $request->input('url'),
+                'publish'      => 'N',
+                'isDelete'     => 'N',
+                'posted_by'    => $user->reg_id,
+                'image_name'   => null,
+            ];
+
+            // 5. Insert news and get ID
+            $newsId = DB::table('news')->insertGetId($data);
+
+            // 6. Handle image upload (if any)
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = $image->getClientOriginalName();
+                $folder = 'news/'  . $newsId;
+                $path = $image->storeAs($folder, $filename, 'public');
+            
+                $publicUrl = Storage::url($path);
+                $docTypeFolder = 'news';
+                $uploadDate= '2025-08-12';
+                $datafiles[] = base64_encode(file_get_contents($image->getRealPath()));
+                $filenames[] = $image->getClientOriginalName();
+                $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $newsId);
+    
+
+                // Update DB with image name
+                DB::table('news')->where('news_id', $newsId)->update([
+                    'image_name' => $filename
+                ]);
+            }
+
+            // 7. Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'News created successfully.',
+                'news_id' => $newsId,
+                'success' => true,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false,
+            ]);
+        }
+    }
+
+    public function getAllNews(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $todayDate = now()->toDateString();
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            
+            $news = DB::table('news')
+                        ->orderBy('date_posted', 'DESC')
+                        ->get()
+                        ->map(function ($item) use ($codeigniter_app_url) {
+                            $concatprojecturl = $codeigniter_app_url . 'uploads/news/' . $item->news_id . '/';
+                            $item->image_name = $item->image_name 
+                                ? $concatprojecturl . $item->image_name 
+                                : null;
+                            return $item;
+                        });
+
+            // 5. Return the result
+            return response()->json([
+                'status' => 200,
+                'message' => 'News fetched successfully.',
+                'data' => $news,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function getNewsById(Request $request, $id)
+    {
+        try {
+            // 1. Authenticate user
+            $user = $this->authenticateUser();
+
+            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Unauthorized access.',
+                    'success' => false
+                ]);
+            }
+
+            $news = DB::table('news')
+                ->where('news_id', $id)
+                ->where('IsDelete', '!=', 'Y') 
+                ->first();
+
+            // 4. Check if found
+            if (!$news) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'News not found.',
+                    'success' => false
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'News fetched successfully.',
+                'data' => $news,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function updateNews(Request $request, $id)
+    {
+        try {
+            // 1. Authenticate user
+            $user = $this->authenticateUser();
+
+            // 2. Role check
+            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'You do not have permission to edit news.',
+                    'success' => false
+                ]);
+            }
+
+            // 3. Validate input
+            $validator = Validator::make($request->all(), [
+                'title'            => 'required|string|max:255',
+                'description'      => 'nullable|string|max:1000',
+                'active_till_date' => 'nullable|date',
+                'url'              => 'nullable|url|max:255',
+                'image'            => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                    'success' => false
+                ]);
+            }
+
+            // 4. Check if news exists
+            $news = DB::table('news')->where('news_id', $id)->first();
+            if (!$news) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'News not found.',
+                    'success' => false
+                ]);
+            }
+
+            // 5. Prepare update data
+            $updateData = [
+                'title'            => $request->input('title'),
+                'description'      => $request->input('description'),
+                'active_till_date' => $request->input('active_till_date'),
+                'url'              => $request->input('url'),
+            ];
+
+            // 6. Handle image upload (if new one provided)
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $filename = $image->getClientOriginalName();
+                $folder = 'news/'  . $id;
+                $path = $image->storeAs($folder, $filename, 'public');
+            
+                $publicUrl = Storage::url($path);
+                $docTypeFolder = 'news';
+                $uploadDate= '2025-08-12';
+                $datafiles[] = base64_encode(file_get_contents($image->getRealPath()));
+                $filenames[] = $image->getClientOriginalName();
+                $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $id);
+                
+                $updateData['image_name'] = $filename;
+            }
+
+            // 7. Update record
+            DB::table('news')->where('news_id', $id)->update($updateData);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'News updated successfully.',
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function deleteNews(Request $request, $id)
+    {
+        try {
+            // 1. Authenticate user
+            $user = $this->authenticateUser();
+
+            // 2. Check permission
+            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Unauthorized to delete news.',
+                    'success' => false
+                ]);
+            }
+
+            // 3. Find news by ID
+            $news = DB::table('news')->where('news_id', $id)->first();
+
+            if (!$news) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'News not found.',
+                    'success' => false
+                ]);
+            }
+
+            // 4. Delete logic
+            if ($news->publish === 'N') {
+                // Hard delete
+                DB::table('news')->where('news_id', $id)->delete();
+                $msg = 'News hard deleted.';
+            } else {
+                // Soft delete
+                DB::table('news')->where('news_id', $id)->update(['isDelete' => 'Y']);
+                $msg = 'News soft deleted (marked IsDelete = Y).';
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => $msg,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function publishNews(Request $request, $id)
+    {
+        try {
+            // 1. Authenticate user
+            $user = $this->authenticateUser();
+
+            // 2. Check permission
+            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'Unauthorized to publish news.',
+                    'success' => false
+                ]);
+            }
+
+            // 3. Fetch news
+            $news = DB::table('news')->where('news_id', $id)->first();
+
+            if (!$news) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'News not found.',
+                    'success' => false
+                ]);
+            }
+
+            // 4. Publish the news
+            DB::table('news')->where('news_id', $id)->update([
+                'publish' => 'Y'
+            ]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'News published successfully.',
                 'success' => true
             ]);
         } catch (\Exception $e) {
