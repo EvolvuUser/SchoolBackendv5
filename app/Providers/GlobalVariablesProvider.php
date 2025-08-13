@@ -21,8 +21,6 @@ class GlobalVariablesProvider extends ServiceProvider
     {
         $globalData = imagesforall();
 
-
-        // You can also store it in the container, so it can be accessed globally via `app()` helper
         app()->singleton('global_variables', function () use ($globalData) {
             return [
                 'parent_app_url' => $globalData[0]['url'],

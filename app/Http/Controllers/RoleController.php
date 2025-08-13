@@ -601,6 +601,105 @@ public function getSubMenus($parentId, $assignedMenuIds)
         
     }
 
+    //API for the Roles for Event  Dev Name- Manish Kumar Sharma 12-08-2025
+    public function saveRolesForEvent(Request $request){
+        $validator = Validator::make($request->all(), [
+        'role_id' => [
+            'required',
+            Rule::unique('event_roles', 'role_id')
+        ],
+        'name' => 'required|string|max:255',
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 422,
+                'errors' => $validator->errors(),
+                'success' => false
+            ], 422);
+        }
+    
+        DB::table('event_roles')->insert([
+            'role_id' => $request->role_id,
+            'name' => $request->name,
+            'is_active' => 'Y'
+        ]);
+        
+        return response()->json([
+            'status' =>200,
+            'message' => 'Role for event saved.',
+            'success'=>true
+            ]);
+        
+    }
+    
+    //API for the Roles for Event  Dev Name- Manish Kumar Sharma 12-08-2025
+    public function getRolesForEvent(Request $request){
+        $roles = DB::table('event_roles')->get();
+        return response()->json([
+            'status' =>200,
+            'data' => $roles,
+            'message' => 'Role for event saved.',
+            'success'=>true
+            ]);
+        
+    }
+     //API for the Roles for Event  Dev Name- Manish Kumar Sharma 12-08-2025
+    public function updateRolesForEvent(Request $request,$id){
+        
+        $updated = DB::table('event_roles')
+        ->where('role_id', $id)
+        ->update([
+            'name' => $request->name,
+        ]);
+        
+        return response()->json([
+            'status' =>200,
+            'message' => 'Role updated successfully.',
+            'success'=>true
+            ]);
+        
+    }
+    //API for the Roles for Event  Dev Name- Manish Kumar Sharma 12-08-2025
+    public function deleteRolesForEvent(Request $request,$id){
+        DB::table('event_roles')
+        ->where('role_id', $id)
+        ->delete();
+        return response()->json([
+            'status' =>200,
+            'message' => 'Role deleted successfully.',
+            'success'=>true
+            ]);
+    }
+    
+    public function updateActiveForEvent(Request $request,$id){
+         $role = DB::table('event_roles')->where('role_id', $id)->first();
+
+            if (!$role) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Role not found.',
+                    'success' => false
+                ], 404);
+            }
+        
+            // Flip the status (if null, treat as inactive)
+            $newStatus = ($role->is_active === 'Y') ? 'N' : 'Y';
+        
+            DB::table('event_roles')
+                ->where('role_id', $id)
+                ->update([
+                    'is_active' => $newStatus
+                ]);
+        
+            return response()->json([
+                'status' => 200,
+                'message' => 'Role status toggled successfully.',
+                'data' => $newStatus,
+                'success' => true
+            ]);
+    }
+
    
 
 }

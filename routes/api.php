@@ -816,35 +816,22 @@
         Route::get('/get_allbackgoundcolor',[NewController::class,'getAllBackgroundColor']);
         Route::put('/update_backgroundcoloractive/{background_color_id}',[NewController::class,'updateBackgroundColorActive']);
         Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+        //Event Roles Dev Name - Manish Kumar Sharma 12-08-2025
+        Route::post('save_rolesforevent',[RoleController::class,'saveRolesForEvent']);
+        Route::get('get_rolesforevent',[RoleController::class,'getRolesForEvent']);
+        Route::post('update_rolesforevent/{id}',[RoleController::class,'updateRolesForEvent']);
+        Route::delete('delete_rolesforevent/{id}',[RoleController::class,'deleteRolesForEvent']);
+        Route::put('update_activeforevent/{id}',[RoleController::class,'updateActiveForEvent']);
         
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // News Dev Name - Mahima Chaudhari 04-08-2025
+        Route::post('/save_news', [AssessmentController::class, 'createNews']);
+        Route::get('/get_allnews', [AssessmentController::class, 'getAllNews']);
+        Route::get('/get_news/{id}', [AssessmentController::class, 'getNewsById']);
+        Route::post('/update_news/{id}', [AssessmentController::class, 'updateNews']);
+        Route::delete('/delete_news/{id}', [AssessmentController::class, 'deleteNews']);
+        Route::put('/publish_news/{id}', [AssessmentController::class, 'publishNews']);
 
 
     });
