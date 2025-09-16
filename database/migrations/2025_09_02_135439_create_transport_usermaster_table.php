@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('transport_usermaster', function (Blueprint $table) {
+            $table->string('user_id', 50);
+            $table->longText('name');
+            $table->string('password', 20);
+            $table->integer('reg_id');
+            $table->char('role_id', 1);
+            $table->string('answer_one', 100);
+            $table->string('answer_two', 100);
+            $table->char('IsDelete', 1)->default('N');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('transport_usermaster');
+    }
+};

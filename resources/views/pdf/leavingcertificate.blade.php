@@ -34,28 +34,41 @@
 	<br><br><br>
     <div style="width:95%;margin-top:22%;;text-align:center;display: inline-block">
         <table width="100%" border="0">
-	    <tr>
-		    <td width="10%"></td>
-			<td align="left" width="25%">GR No.: <?php echo $data->grn_no;?></td>
-			<td align="left" align="left" width="28%"></td>
-			<td align="left" align="left"width="25%">REF. NO.: <?php echo $data->academic_yr."/".$data->sr_no;?></td>
-			<td align="left" align="left"></td>
-        </tr>
-         <tr>
-		    <td width="10%"></td>
-			<td align="left" width="48%" colspan=2>SARAL STUDENT ID-NO: <?php echo $data->stud_id_no;?></td>
-			<td align="left" align="left" width="30%">UDISE PEN NO: <?php echo $data->udise_pen_no;?></td>
-			<td align="left" align="left"></td>
-        </tr>
-        </table>
+    <tr>
+        <td width="5%"></td>
+        <td align="left" width="30%">
+            REF. NO.: <?php echo $data->academic_yr."/".$data->sr_no; ?>
+        </td>
+        <td  align="center" width="30%"></td>
+        <td width="8%"></td>
+        <td align="left" width="30%">
+            GR No.: <?php echo $data->grn_no; ?>
+        </td>
+        <td width="5%"></td>
+    </tr>
+    <tr>
+        <td width="5%"></td>
+        <td align="left" width="30%">
+            SARAL ID: <?php echo $data->stud_id_no; ?>
+        </td>
+        <td align="center" width="30%">
+            UDISE PEN: <?php echo $data->udise_pen_no; ?>
+        </td>
+        <td width="8%"></td>
+        <td align="left" width="30%">
+            APAAR ID: <?php echo $data->apaar_id; ?>
+        </td>
+        <td width="5%"></td>
+    </tr>
+</table>
          <table width="100%" border="0">
        
     </table>
  	<!--<p style="font-size:15px;"><span style="margin-left:5%;">GR No.: <?php //echo $reg_no;?></span><span width="10%"></span> <b>REF. NO.: <?php //echo $academic_yr."/".$sr_no;?><br> <span style="margin-left:10%;text-align:right;">SARAL STUDENT ID-NO: <?php //echo $stud_id_no;?></span><span style="margin-left:10%;text-align:right;">UDISE PEN NO: <?php //echo $udise_pen_no;?></span></b></p>-->
     <table width="100%" border="0">
 	    <tr>
-		    <td width="10%"></td>
-			<td align="left" width="45%">Name of Pupil in full</td>
+		    <td width="5%"></td>
+			<td align="left" width="40%">Name of Pupil in full</td>
 			<td align="center" width="8%">:</td>
 			<td align="left" align="left"><?php echo $data->stud_name." ".$data->mid_name." ".$data->last_name;?></td>
         </tr>
@@ -263,7 +276,7 @@
 			<td align="left"><?php echo $data->remark;?></td>
 	    </tr>
     </table>
-	<p style="font-size:14px;text-align:left;padding-left: 30px;padding-right: 30px;margin-left:5%;">I hereby declare that the above information including Name of the Candidate, Father’s/ guardian Name, Mother’s Name and Date of Birth furnished above is correct as per school records.</p>
+	<p style="font-size:14px;text-align:left;margin-left:5%;">I hereby declare that the above information including Name of the Candidate, Father’s/ guardian Name, Mother’s Name and Date of Birth furnished above is correct as per school records.</p>
         <br>
     <p style="font-size:12px;padding-left: 25px;padding-right: 30px;">Date : <?php echo date_format(date_create($data->issue_date) , 'd-m-Y');?><span style="margin-left:30%;">Signature of Principal </span></p>
 	</div></center>

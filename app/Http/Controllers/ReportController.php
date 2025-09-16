@@ -2339,6 +2339,7 @@ class ReportController extends Controller
             $academic_year = JWTAuth::getPayload()->get('academic_year');
             $staffId = $request->query('staff_id');
             $week = $request->query('week');
+            $month = $request->query('month');
             $query = DB::table('lesson_plan')
         ->select(
             'lesson_plan.*',
@@ -2366,6 +2367,10 @@ class ReportController extends Controller
     
         if (!empty($week)) {
             $query->where('lesson_plan.week_date', $week);
+        }
+        
+         if (!empty($month)) {
+            $query->whereRaw('MONTH(STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, " / ", 1), "%d-%m-%Y")) = ?', [$month]);
         }
     
         $lessonPlans = $query->get();
