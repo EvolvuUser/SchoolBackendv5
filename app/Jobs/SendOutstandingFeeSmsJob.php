@@ -42,7 +42,12 @@ class SendOutstandingFeeSmsJob implements ShouldQueue
                             ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
                             ->first();
             if($contactno->phone_no){
-                $templateName = 'emergency_message';
+                $schoolsettings = getSchoolSettingsData();
+                $whatsappintegration = $schoolsettings->whatsapp_integration;
+                $smsintegration = $schoolsettings->sms_integration;
+                $schoolemailid =  $schoolsettings->school_email_id;
+                if($whatsappintegration == 'Y'){
+                     $templateName = 'emergency_message';
                 $parameters = ['Parent, '.$this->message];
                  Log::info('SendOutstandingFeeSmsJob started',$parameters);
                 $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
@@ -101,6 +106,59 @@ class SendOutstandingFeeSmsJob implements ShouldQueue
                             'date_sms_sent'  => Carbon::now()->format('Y-m-d H:i:s'),
                         ]);
                     }
+                }
+                    
+                }
+                if($smsintegration == 'Y'){
+                    
+                    $template_id = '1107164450672312707';
+                    $message = "Dear parent, ".getStudentNameOnly($studentId)."'s fees payment for installment ".$installment." is due. Please make the payment at the earliest. If already paid please send details to ".$schoolemailid.". -EvolvU";
+                     $sms_status = app('App\Http\Services\SmsService')->sendSms($contactno->phone_no, $message, $template_id);
+                                            
+                    $messagestatus = $sms_status['data']['status'] ?? null;
+
+                    if ($messagestatus == "success") {
+                        $data = [
+                        'student_id'         =>  $studentId,
+                        'parent_id'          => 1111, 
+                        'phone_no'           => '0000000000', // replace with actual number if available
+                        'installment'        => $installment,
+                        'date_last_sms_sent' => Carbon::now()->format('Y-m-d H:i:s'),
+                        'academic_yr'        => $this->customClaims,
+                    ];
+
+                    $existingLog = DB::table('sms_log_for_outstanding_fees')
+                        ->where('student_id', $data['student_id'])
+                        ->where('parent_id', $data['parent_id'])
+                        ->where('installment', $data['installment'])
+                        ->where('academic_yr', $data['academic_yr'])
+                        ->first();
+
+                    if ($existingLog) {
+                        $data['count_of_sms'] = $existingLog->count_of_sms + 1;
+
+                        DB::table('sms_log_for_outstanding_fees')
+                            ->where('sms_log_id', $existingLog->sms_log_id)
+                            ->update($data);
+
+                        DB::table('sms_log_for_outstanding_fees_details')->insert([
+                            'sms_log_id'     => $existingLog->sms_log_id,
+                            'date_sms_sent'  => Carbon::now()->format('Y-m-d H:i:s'),
+                        ]);
+                    } else {
+                        $data['count_of_sms'] = 1;
+
+                        $smsLogId = DB::table('sms_log_for_outstanding_fees')->insertGetId($data);
+
+                        DB::table('sms_log_for_outstanding_fees_details')->insert([
+                            'sms_log_id'     => $smsLogId,
+                            'date_sms_sent'  => Carbon::now()->format('Y-m-d H:i:s'),
+                        ]);
+                    }
+                        
+                    }
+                    
+                    
                 }
             }
         }

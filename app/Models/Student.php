@@ -76,7 +76,8 @@ class Student extends Model
         'guardian_image_name',
         'udise_pen_no',
         'added_bk_date',
-        'added_by'
+        'added_by',
+        'apaar_id'
     ];
 
     public function getClass()

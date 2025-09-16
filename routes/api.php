@@ -16,6 +16,9 @@
     use App\Http\Controllers\ReportController;
     use App\Http\Services\SmartMailer;
 
+    Route::post('/connectdatabase', [AuthController::class, 'connectByShortName']);
+    // Public routes
+    // Route::middleware(['school.db'])->group(function () {
     // Public routes
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
@@ -263,6 +266,8 @@
         Route::get('get_srnoleavingcertificatedata/{id}',[CertificateController::class,'getSrnoLeavingCertificate']);
         Route::get('get_srnoleavingcertificateByAcademicyr/{id}/{academic_yr}',[CertificateController::class,'getSrnoLeavingCertificateAcademicYr']);
         Route::post('save_pdfleavingcertificate',[CertificateController::class,'saveLeavingCertificatePDF']);
+        Route::get('get_pendingbooksreturnforstudent',[StudentController::class,'getPendingBooksForReturn']);
+
 
         //Manage Leaving Certificate
         Route::get('get_leavingcertificatelist',[CertificateController::class,'getLeavingCertificateList']);
@@ -800,7 +805,7 @@
         Route::post('/save_bookrequistion', [AssessmentController::class, 'createBookRequisition']);
         Route::get('/book_requisitioninfo/{id}', [AssessmentController::class, 'getBookRequisitionInfo']);
         Route::get('/all_book_requisitioninfo', [AssessmentController::class, 'getAllBookRequisitions']);
-        Route::get('/get_BookRequisition', [AssessmentController::class, 'getBookRequisition']);
+        Route::get('/get_BookRequisition/{reg_id}/{member_type}', [AssessmentController::class, 'getBookRequisition']);
         Route::put('/update_book_requisition/{id}', [AssessmentController::class, 'updateBookRequisition']);
         Route::delete('/delete_book_requisition/{id}', [AssessmentController::class, 'deleteBookRequisition']);
         
@@ -815,7 +820,7 @@
         //Background color Dev Name - Manish Kumar Sharma 08-08-2025
         Route::get('/get_allbackgoundcolor',[NewController::class,'getAllBackgroundColor']);
         Route::put('/update_backgroundcoloractive/{background_color_id}',[NewController::class,'updateBackgroundColorActive']);
-        Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
+       
 
         //Event Roles Dev Name - Manish Kumar Sharma 12-08-2025
         Route::post('save_rolesforevent',[RoleController::class,'saveRolesForEvent']);
@@ -823,7 +828,7 @@
         Route::post('update_rolesforevent/{id}',[RoleController::class,'updateRolesForEvent']);
         Route::delete('delete_rolesforevent/{id}',[RoleController::class,'deleteRolesForEvent']);
         Route::put('update_activeforevent/{id}',[RoleController::class,'updateActiveForEvent']);
-        
+        Route::get('get_activerolesforevent',[RoleController::class,'getActiveRolesForEvent']);
 
         // News Dev Name - Mahima Chaudhari 04-08-2025
         Route::post('/save_news', [AssessmentController::class, 'createNews']);
@@ -833,71 +838,109 @@
         Route::delete('/delete_news/{id}', [AssessmentController::class, 'deleteNews']);
         Route::put('/publish_news/{id}', [AssessmentController::class, 'publishNews']);
 
+        // Approve Stationery Dev Name - Mahima Chaudhari 14-08-2025
+        Route::get('/get_approvestationerylist', [AssessmentController::class, 'getStationeryApprove']);
+        Route::post('/update_approvestationerylist/{id}', [AssessmentController::class, 'saveOrUpdateStationeryApprove']);
+        
+        // View Book Availability Dev Name - Mahima Chaudhari 16-08-2025
+        Route::get('/get_booksoncopyid/{id}', [AssessmentController::class, 'getBooksOnCopyId']);
+        Route::get('/get_categoryname/{id}', [AssessmentController::class, 'getCategoryName']);
+        Route::get('/get_category_group_name', [AssessmentController::class, 'getCategoryGroupName']);
+        Route::get('/get_category', [AssessmentController::class, 'getCategory']);
+        Route::get('/get_allcategoryname', [AssessmentController::class, 'getAllCategoryName']);
+        Route::get('/get_all_books', [AssessmentController::class, 'searchBooks']);
+        
+        // Dynamic field Updation of Student table Dev Name - Manish Kumar Sharma 19-08-2025
+        Route::get('/get_studenttablefieldsforUpdate', [StudentController::class, 'getFieldsForUpdateStudent']);
+        Route::get('/get_studentdatawithfielddata/{id}/{field_name}', [StudentController::class, 'getStudentDataWithFieldData']);
+        Route::put('/update_studentdatawithfielddata', [StudentController::class, 'updateStudentDataWithFieldData']);
+
+        //House api Dev Name- Manish Kumar Sharma 22-08-2025
+        Route::get('/get_houses', [NewController::class, 'getHouseofSchool']);
+
+        
+        
+        
+        Route::post('/update-students-csv/{section_id}', [LoginController::class, 'updateCsvData']);
+
+        //  API for the New Student list Buulk upload 
+        Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
+
+        Route::get('/get_newstudent_by_sectionId/{section_id}', [AdminController::class, 'getNewStudentListbysectionforregister']);
+        Route::get('/get_all_newstudentlist', [AdminController::class, 'getAllNewStudentListForRegister']);
+        Route::get('/getParentInfoOfStudent/{siblingStudentId}', [AdminController::class, 'getParentInfoOfStudent']); 
+        Route::delete('/deleteNewstudent/{studentId}', [AdminController::class, 'deleteNewStudent']); 
+        Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 'updateNewStudentAndParentData']);   
+
+        //routes for the Allot Class teacher 
+        Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
+        Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
+        Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'editClassTeacher']);
+        Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
+        Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
+            
+        //routes for the Marks headings
+        Route::get('/get_Markheadingslist', [AssessmentController::class, 'getMarksheadingsList']);
+        Route::post('/save_Markheadings', [AssessmentController::class, 'saveMarksheadings']);
+        Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'editMarkheadings']);
+        Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
+        Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
+            
+        //routes for the Grades
+        Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
+        Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
+        Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
+        Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
+        Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
+
+        //routes for the Exams
+        Route::get('/get_Term', [AssessmentController::class, 'getTerm']);
+        Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
+        Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
+        Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
+        Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
+        Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);
+
+        //routes for the Allot Marks headings
+        // Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
+        // Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
+        // Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+        // Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
+        // Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
+        Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
+            
+
+        //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
+
+        //routes for the Allot Marks headings//Hostinger Done
+        Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
+        Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
+        Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+        Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
+        Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
+        Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
+
+        //Teacher with classes and classteacher Dev Name- Manish Kumar Sharma 30-08-2025
+        Route::get('get_teacherclasseswithclassteacher',[NewController::class,'getTeacherClasseswithClassTeacher']);
+
+        //Students Attendance on dashboard Dev Name - Manish Kumar Sharma 01-09-2025
+        Route::get('get_studentslistattendance',[StudentController::class,'getStudentListAttendance']);
+        Route::post('send_messageforattendance',[StudentController::class,'sendMessageForAttendance']);
+
 
     });
 
+// });
+
     
     
     
 
-//  API for the New Student list Buulk upload 
-Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
-Route::post('/update-students-csv/{section_id}', [LoginController::class, 'updateCsvData']);
-Route::get('/get_newstudent_by_sectionId/{section_id}', [AdminController::class, 'getNewStudentListbysectionforregister']);
-Route::get('/get_all_newstudentlist', [AdminController::class, 'getAllNewStudentListForRegister']);
-Route::get('/getParentInfoOfStudent/{siblingStudentId}', [AdminController::class, 'getParentInfoOfStudent']); 
-Route::delete('/deleteNewstudent/{studentId}', [AdminController::class, 'deleteNewStudent']); 
-Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 'updateNewStudentAndParentData']);   
-
-//routes for the Allot Class teacher 
-Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
-Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
-Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'editClassTeacher']);
-Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
-Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
-       
-//routes for the Marks headings
-Route::get('/get_Markheadingslist', [AssessmentController::class, 'getMarksheadingsList']);
-Route::post('/save_Markheadings', [AssessmentController::class, 'saveMarksheadings']);
-Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'editMarkheadings']);
-Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
-Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
-      
-//routes for the Grades
-Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
-Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
-Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
-Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
-Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
-
-//routes for the Exams
-Route::get('/get_Term', [AssessmentController::class, 'getTerm']);
-Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
-Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
-Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
-Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
-Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
+   
       
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
 
-//routes for the Allot Marks headings
-// Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
-// Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
-// Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
-// Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
-// Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
-Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
-      
 
-//Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
-
-//routes for the Allot Marks headings//Hostinger Done
-Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
-Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
-Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
-Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
-Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
-Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
 
 Route::get('/clear-all', function () {
     Artisan::call('optimize:clear');
@@ -914,29 +957,25 @@ Route::get('/clear-all', function () {
     ]);
 });
 
-Route::get('/test-smtp', function () {
-    $mailer = new SmartMailer();
-
-    $mailer->send(
-        'manishnehwal@gmail.com',
-        'Test Email',
-        'emails.dynamic',
-        ['body' => 'This is a test.']
-    );
-
-    return '✅ Email sent!';
-});
 //API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
 Route::get('get_schoolname',[AdminController::class,'getSchoolName']);
 //API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
 Route::post('update_forgotpassword',[AdminController::class,'updateForgotPassword']);
 Route::post('save_newpasswordforgot',[AdminController::class,'generateNewPassword']);
-
+Route::get('get_generalinstructions',[NewController::class,'getGeneralInstructions']);
 Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages']);
 
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 
 Route::get('whatsapp_messages_for_not_approving_lesson',[ReportController::class,'whatsappmessagesfornotapprovinglessonplan']);
+Route::get('get_supportemailid',[NewController::class,'getSupportEmailId']);
+
+//Background Image for common code Dev Name-Manish Kumar Sharma 03-09-2025
+Route::get('get_backgroundimage',[NewController::class,'getBackgroundImage']);
+ Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
+
+//Role of user for link showing common code Dev Name-Manish Kumar Sharma 03-09-2025
+Route::get('get_roleofuser',[NewController::class,'getRoleOfUser']);
 
 // Optionally, if you need to refresh tokens
 Route::post('refresh', [AuthController::class, 'refresh']);

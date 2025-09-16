@@ -137,12 +137,13 @@ if (!function_exists('getFullName')) {
 
 
 function imagesforall(){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $url =config('externalapis.EVOLVU_URL').'/get_school_details';
 
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
      ]);
 
@@ -154,6 +155,7 @@ function imagesforall(){
 }
 
 function upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$newImageData){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -161,7 +163,7 @@ function upload_student_profile_image_into_folder($studentId,$filename,$doc_type
 
      $response = Http::asMultipart()->post($url, [
         [
-            'name' => 'short_name',
+            'name' => $shortName,
             'contents' => 'SACS', 
         ],
         [
@@ -192,6 +194,7 @@ function upload_student_profile_image_into_folder($studentId,$filename,$doc_type
 }
 
 function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -202,7 +205,7 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'teacher_id',
@@ -234,7 +237,8 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
 }
 
 function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-     $globalVariables = App::make('global_variables');
+    $shortName = JWTAuth::getPayload()->get('short_name');
+    $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
     $url = $parent_app_url.'upload_guardian_profile_image_into_folder';
@@ -244,7 +248,7 @@ function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folde
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -277,6 +281,7 @@ function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folde
 
 
 function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -287,7 +292,7 @@ function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -319,6 +324,7 @@ function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -329,7 +335,7 @@ function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -361,6 +367,7 @@ function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -371,7 +378,7 @@ function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'filename',
@@ -401,6 +408,7 @@ function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
 function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFolder, $noticeId)
     {
         // API URL
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -408,7 +416,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         // Prepare the data array with dynamic values
         $data = [
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
             'upload_date' => $uploadDate,
             'doc_type_folder' => $docTypeFolder,
             'notice_id' => $noticeId,
@@ -436,6 +444,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
     function ticket_files_for_laravel($ticketid, $commentid, $fileupload)
     {
         // API URL
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $globalVariables = App::make('global_variables');
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $url = $codeigniter_app_url . 'index.php/TicketApi/upload_files_for_ticket_laravel';
@@ -466,6 +475,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function delete_uploaded_files_for_laravel ($filename,$uploadDate, $docTypeFolder, $noticeId)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -474,7 +484,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         // Prepare the data array with dynamic values
         $data = [
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
             'upload_date' => $uploadDate,
             'doc_type_folder' => $docTypeFolder,
             'notice_id' => $noticeId,
@@ -597,9 +607,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function createUserInEvolvu($user_id)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $payload = [
             'user_id' => $user_id,
-            'school_id' => 1,
+            'school_id' => $school_id,
         ];
 
         try {
@@ -648,12 +660,13 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function createStaffUser($userId, $role)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $url = config('externalapis.EVOLVU_URL').'/create_staff_userid';
 
         $response = Http::post($url, [
             'user_id' => $userId,
             'role' => $role,
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
         ]);
 
         // Log the API response
@@ -679,11 +692,13 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
     
      function deleteParentUser($currentUserName)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $url = config('externalapis.EVOLVU_URL') . '/user_delete_post';
 
         $payload = [
             'user_id' => $currentUserName,
-            'school_id' => '1',
+            'school_id' => $school_id,
         ];
 
         $response = Http::withHeaders([
@@ -703,9 +718,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function edit_user_id($username, $currentUserName)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $user_data = [
             'user_id'      => $username,
-            'school_id'    => '1',
+            'school_id'    => $school_id,
             'old_user_id'  => $currentUserName,
         ];
 
@@ -743,9 +760,10 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function delete_staff_user_id($user_id, $role)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $user_data = [
             'user_id'      => $user_id,
-            'short_name'    => 'SACS',
+            'short_name'    => $shortName,
             'role'  => $role,
         ];
 
@@ -1029,4 +1047,55 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             })
             ->pluck('name')
             ->toArray();
+    }
+
+    function getSchoolSettingsData(){
+        $schoolsettings = DB::table('school_settings')
+                             ->where('is_active','Y')
+                             ->first();
+        return $schoolsettings;
+    }
+
+    function getStudentNameOnly($student_id)
+    {
+        $studentName = DB::table('student')
+            ->where('student_id', $student_id)
+            ->value('student_name'); 
+    
+        return $studentName
+        ? ucwords(strtolower($studentName))
+        : '';
+    }
+
+    function upload_parent_related_images($filename,$datafile, $docTypeFolder, $studentId)
+    {
+        
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url.'index.php/AdminApi/upload_parent_related_images';
+
+        // Prepare the data array with dynamic values
+        $data = [
+            'doc_type_folder' => $docTypeFolder,
+            'parent_id' => $studentId,
+            'filename' => $filename,  
+            'filedata' => $datafile, 
+        ];
+
+
+        // Send the data to the external API
+        try {
+            $response = Http::post($url, $data); // Send the data to the external API
+            
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json(); // Return the response as JSON
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()]; // Handle errors
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that may occur
+            return ['error' => $e->getMessage()];
+        }
     }

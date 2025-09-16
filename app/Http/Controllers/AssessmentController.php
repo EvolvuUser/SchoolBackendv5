@@ -201,8 +201,12 @@ class AssessmentController extends Controller
          
         //$grades = Grades::orderBy('grade_id')->get();
         
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
         $query = Grades::with('Class');
-        $grades = $query->orderBy('grade_id', 'DESC') 
+        $grades = $query
+                 ->where('academic_yr',$customClaims)
+                 ->orderBy('grade_id', 'DESC') 
                              ->get();
  
         return response()->json($grades);
@@ -950,11 +954,10 @@ class AssessmentController extends Controller
         try {
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
-
+    
             // Allow only specific roles
             if (in_array($user->role_id, ['A', 'U', 'M'])) {
-
-                // JOIN with subject_master and subjects_on_report_card_master
+    
                 $subjectmappinglist = DB::table('sub_subreportcard_mapping')
                     ->select(
                         'sub_subreportcard_mapping.sub_mapping',
@@ -962,17 +965,32 @@ class AssessmentController extends Controller
                         'subject_master.name as sub_name',
                         'sub_subreportcard_mapping.sub_rc_master_id',
                         'subjects_on_report_card_master.name as report_sub_name',
-                        'subjects_on_report_card_master.sequence'
+                        'subjects_on_report_card_master.sequence',
+                        DB::raw("CASE 
+                                WHEN EXISTS (
+                                    SELECT 1 
+                                    FROM student_marks 
+                                    WHERE student_marks.subject_id = sub_subreportcard_mapping.sub_rc_master_id
+                                    LIMIT 1
+                                ) 
+                                THEN 'N' 
+                                ELSE 'Y' 
+                             END as isDelete")
                     )
                     ->join('subject_master', 'sub_subreportcard_mapping.sm_id', '=', 'subject_master.sm_id')
-                    ->join('subjects_on_report_card_master', 'sub_subreportcard_mapping.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                    ->join(
+                        'subjects_on_report_card_master',
+                        'sub_subreportcard_mapping.sub_rc_master_id',
+                        '=',
+                        'subjects_on_report_card_master.sub_rc_master_id'
+                    )
                     ->get();
-
+    
                 // Attach class names using helper
                 foreach ($subjectmappinglist as $subject) {
                     $subject->class_names = getClassNamesBySubject($subject->sm_id);
                 }
-
+    
                 return response()->json([
                     'status' => 200,
                     'message' => 'Subject Mapping List fetched successfully.',
@@ -1238,44 +1256,33 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser(); // Custom method to get logged-in user
             $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional, if needed
 
-            // 2. Check role permission
-            if (in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
-                // 3. Validate request data
-                $validated = $request->validate([
-                    'title'     => 'required|string',
-                    'author'    => 'nullable|alpha',
-                    'publisher' => 'nullable|alpha',
-                ]);
+            // 3. Validate request data
+            $validated = $request->validate([
+                'title'     => 'required|string',
+                'author'    => 'nullable|string',
+                'publisher' => 'nullable|string',
+            ]);
 
-                // 4. Prepare data
-                $data = [
-                    'title'       => $validated['title'],
-                    'author'      => $validated['author'] ?? null,
-                    'publisher'   => $validated['publisher'] ?? null,
-                    'status'      => 'A',
-                    'req_date'    => now()->toDateString(),
-                    'member_type' => $user->role_id,
-                    // == 'S' ? 'S' : 'T'
-                    'member_id'   => $user->reg_id,
-                ];
+            // 4. Prepare data
+            $data = [
+                'title'       => $validated['title'],
+                'author'      => $validated['author'] ?? null,
+                'publisher'   => $validated['publisher'] ?? null,
+                'status'      => 'A',
+                'req_date'    => now()->toDateString(),
+                'member_type' => $user->role_id == 'S' ? 'S' : 'T',
+                'member_id'   => $user->reg_id,
+            ];
 
-                // 5. Save data
-                DB::table('book_req')->insert($data);
+            // 5. Save data
+            DB::table('book_req')->insert($data);
 
-                // 6. Return success response
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Book Requisition created successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission to create a book requisition.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            // 6. Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Book Requisition created successfully!',
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -1294,40 +1301,33 @@ class AssessmentController extends Controller
             $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional
 
             // 2. Check role permission
-            if (in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
-                // 3. Fetch requisition
-                $book = DB::table('book_req')
-                    ->where('book_req_id', $book_req_id)
-                    ->first();
 
-                // 4. Check if record exists
-                if ($book) {
-                    // 5. Optional: Only allow access to own request for students/teachers
-                    if (($user->role_id == 'S' || $user->role_id == 'T') && $book->member_id != $user->reg_id) {
-                        return response()->json([
-                            'status' => 403,
-                            'message' => 'You are not authorized to view this requisition.',
-                            'success' => false
-                        ]);
-                    }
+            // 3. Fetch requisition
+            $book = DB::table('book_req')
+                ->where('book_req_id', $book_req_id)
+                ->first();
 
-                    // 6. Return requisition data
+            // 4. Check if record exists
+            if ($book) {
+                // 5. Optional: Only allow access to own request for students/teachers
+                if (($user->role_id == 'S' || $user->role_id == 'T') && $book->member_id != $user->reg_id) {
                     return response()->json([
-                        'status' => 200,
-                        'data' => $book,
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Book Requisition not found',
+                        'status' => 403,
+                        'message' => 'You are not authorized to view this requisition.',
                         'success' => false
                     ]);
                 }
+
+                // 6. Return requisition data
+                return response()->json([
+                    'status' => 200,
+                    'data' => $book,
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized access to requisition info.',
+                    'status' => 404,
+                    'message' => 'Book Requisition not found',
                     'success' => false
                 ]);
             }
@@ -1345,43 +1345,36 @@ class AssessmentController extends Controller
     {
         try {
             // 1. Authenticate user
-            $user = $this->authenticateUser(); // Custom method to get logged-in user
-            $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
 
 
-            if (in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
 
-                $query = DB::table('book_req');
 
-                //  only S and T in existing
-                if ($user->role_id == 'S' || $user->role_id == 'T' || $user->role_id == 'A' || $user->role_id == 'U') {
-                    $query->where('member_id', $user->reg_id);
-                }
+            $query = DB::table('book_req');
 
-                $bookRequisitions = $query->orderByDesc('book_req_id')->get();
+            //  only S and T in existing
+            if ($user->role_id == 'S' || $user->role_id == 'T' || $user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
+                $query->where('member_id', $user->reg_id);
+            }
 
-                // 4. Check if any records found
-                if ($bookRequisitions->isEmpty()) {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'No book requisitions found.',
-                        'success' => false
-                    ]);
-                }
+            $bookRequisitions = $query->orderByDesc('book_req_id')->get();
 
-                // 5. Return data
+            // 4. Check if any records found
+            if ($bookRequisitions->isEmpty()) {
                 return response()->json([
-                    'status' => 200,
-                    'data' => $bookRequisitions,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to view book requisitions.',
+                    'status' => 404,
+                    'message' => 'No book requisitions found.',
                     'success' => false
                 ]);
             }
+
+            // 5. Return data
+            return response()->json([
+                'status' => 200,
+                'data' => $bookRequisitions,
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -1392,60 +1385,36 @@ class AssessmentController extends Controller
         }
     }
 
-    public function getBookRequisition(Request $request)
+    public function getBookRequisition($reg_id, $member_type)
     {
         try {
             // 1. Authenticate user
-            $user = $this->authenticateUser(); // Custom method to get logged-in user
-            $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year'); // optional
 
-            // 2. Check role permission
-            if (in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
-                // 3. Get optional filters from request
-                $reg_id = $request->input('reg_id', '');
-                $user_type = $request->input('user_type', '');
+            // 2. Build query using both params
+            $query = DB::table('book_req')
+                ->where('member_id', $reg_id)
+                ->where('member_type', $member_type);
 
-                // 4. Build query
-                $query = DB::table('book_req');
+            // 3. Execute query
+            $books = $query->orderByDesc('book_req_id')->get();
 
-                if (!empty($reg_id)) {
-                    $query->where('member_id', $reg_id);
-                }
-
-                if (!empty($user_type)) {
-                    $query->where('member_type', $user_type);
-                }
-
-                // Optional: Students/Teachers can only view their own records
-                if (in_array($user->role_id, ['S', 'T'])) {
-                    $query->where('member_id', $user->reg_id);
-                }
-
-                // 5. Execute query
-                $books = $query->orderByDesc('book_req_id')->get();
-
-                // 6. Check if empty
-                if ($books->isEmpty()) {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'No book requisitions found.',
-                        'success' => false
-                    ]);
-                }
-
-                // 7. Return data
+            // 4. If empty, return not found
+            if ($books->isEmpty()) {
                 return response()->json([
-                    'status' => 200,
-                    'data' => $books,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to view book requisitions.',
+                    'status' => 404,
+                    'message' => 'No book requisitions found for this reg_id and member_type.',
                     'success' => false
                 ]);
             }
+
+            // 5. Return data
+            return response()->json([
+                'status' => 200,
+                'data' => $books,
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -1455,6 +1424,7 @@ class AssessmentController extends Controller
             ]);
         }
     }
+
 
     public function updateBookRequisition(Request $request, $book_req_id)
     {
@@ -1463,20 +1433,11 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional if needed
 
-            // 2. Check role permission
-            if (!in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to update book requisition.',
-                    'success' => false
-                ]);
-            }
-
             // 3. Validate request
             $validated = $request->validate([
                 'title'     => 'required|string',
-                'author'    => 'nullable|alpha',
-                'publisher' => 'nullable|alpha',
+                'author'    => 'nullable|string',
+                'publisher' => 'nullable|string',
             ]);
 
             // 4. Fetch existing record
@@ -1490,14 +1451,6 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            // 5. Prevent update if not owned (for Students/Teachers)
-            if (in_array($user->role_id, ['S', 'T']) && $existing->member_id != $user->reg_id) {
-                return response()->json([
-                    'status' => 403,
-                    'message' => 'You are not authorized to edit this requisition.',
-                    'success' => false
-                ]);
-            }
 
             // 6. Prepare update data
             $data = [
@@ -1506,8 +1459,7 @@ class AssessmentController extends Controller
                 'publisher'   => $validated['publisher'] ?? null,
                 'status'      => 'A',
                 'req_date'    => now()->toDateString(),
-                'member_type' => $user->role_id,
-                // == 'S' ? 'S' : 'T'
+                'member_type' => $user->role_id == 'S' ? 'S' : 'T',
                 'member_id'   => $user->reg_id,
             ];
 
@@ -1537,14 +1489,6 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year'); // Optional
 
-            // 2. Check role permission
-            if (!in_array($user->role_id, ['S', 'T', 'U', 'A'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to delete book requisition.',
-                    'success' => false
-                ]);
-            }
 
             // 3. Check if the book requisition exists
             $book = DB::table('book_req')->where('book_req_id', $book_req_id)->first();
@@ -1596,8 +1540,9 @@ class AssessmentController extends Controller
             ]);
         }
     }
+
     
-     public function createImportantLink(Request $request)
+    public function createImportantLink(Request $request)
     {
         try {
             // 1. Authenticate user
@@ -1927,22 +1872,7 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            $validator = Validator::make($request->all(), [
-                'title'            => 'required|string|max:255',
-                'description'      => 'nullable|string|max:1000',
-                'active_till_date' => 'nullable|date',
-                'url'              => 'nullable|url|max:255',
-                'image'            => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => 422,
-                    'message' => 'Validation failed.',
-                    'errors' => $validator->errors(),
-                    'success' => false,
-                ]);
-            }
+           
 
             // 4. Prepare data
             $data = [
@@ -2095,26 +2025,14 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            // 3. Validate input
-            $validator = Validator::make($request->all(), [
-                'title'            => 'required|string|max:255',
-                'description'      => 'nullable|string|max:1000',
-                'active_till_date' => 'nullable|date',
-                'url'              => 'nullable|url|max:255',
-                'image'            => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => 422,
-                    'message' => 'Validation failed.',
-                    'errors' => $validator->errors(),
-                    'success' => false
-                ]);
-            }
+            
 
             // 4. Check if news exists
             $news = DB::table('news')->where('news_id', $id)->first();
+            $filenottobedeleted = $request->input('filenottobedeleted');
+            DB::table('news')->where('news_id', $id)->update([
+                'image_name'=>$filenottobedeleted
+                ]);
             if (!$news) {
                 return response()->json([
                     'status' => 404,
@@ -2252,6 +2170,355 @@ class AssessmentController extends Controller
             return response()->json([
                 'status' => 200,
                 'message' => 'News published successfully.',
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+    
+    // Approve Stationery
+
+    public function getStationeryApprove()
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            // Allowed roles
+            if (!in_array($user->role_id, ['A', 'T', 'M', 'P', 'U'])) {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'This user does not have permission to view stationery approvals.',
+                    'data'    => $user->role_id,
+                    'success' => false
+                ]);
+            }
+
+            $status = ['A', 'H'];
+
+            $stationeryApprove = DB::table('stationery_req as sr')
+                ->leftJoin('teacher as t', 'sr.staff_id', '=', 't.teacher_id')
+                ->leftJoin('stationery_master as sm', 'sr.stationery_id', '=', 'sm.stationery_id')
+                ->whereIn('sr.status', $status)
+                ->select(
+                    'sr.*',
+                    DB::raw('COALESCE(t.name, "") as teacher_name'),
+                    DB::raw('COALESCE(sm.name, "") as stationery_name')
+                )
+                ->get();
+
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Approved / On Hold Stationery Requests.',
+                'data'    => $stationeryApprove,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status'  => 500,
+                'error'   => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function saveOrUpdateStationeryApprove(Request $request, $requisition_id = null)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
+
+                // Validation
+                $request->validate([
+                    'status' => 'required|string',
+                    'comments' => 'nullable|string',
+                    'approved_by' => 'nullable|string'
+                ]);
+
+                $data = [
+                    'status'        => $request->status,
+                    'comments'      => $request->comments,
+                    'approved_by'   => $request->approved_by,
+                    'approved_date' => now()->format('Y-m-d')
+                ];
+
+                if ($requisition_id) {
+                    // EDIT existing record
+                    $result = DB::table('stationery_req')
+                        ->where('requisition_id', $requisition_id)
+                        ->update($data);
+
+                    $message = 'Stationery Requisition Status Updated Successfully.';
+                } else {
+                    // CREATE new record
+                    $result = DB::table('stationery_req')->insert($data);
+
+                    $message = 'Stationery Requisition Saved Successfully.';
+                }
+
+                return response()->json([
+                    'status'  => 200,
+                    'message' => $message,
+                    'data'    => $result,
+                    'success' => true
+                ]);
+            } else {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'This User Does not have Permission to Save or Update Stationery Approval.',
+                    'data'    => $user->role_id,
+                    'success' => false
+                ]);
+            }
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    // View Book Availability
+
+    public function getBooksOnCopyId(Request $request, $copy_id)
+    {
+        try {
+            // 1. Authenticate user
+            $user = $this->authenticateUser();
+
+            // 3. Fetch book details with joins
+            $query = DB::table('book as a')
+                ->select('a.*', 'b.*', 'c.*')
+                ->join('book_copies as b', 'a.book_id', '=', 'b.book_id')
+                ->join('category as c', 'c.category_id', '=', 'a.category_id');
+            // ->where('b.status', 'A'); // uncomment if needed
+
+            if (!empty($copy_id)) {
+                $query->where('b.copy_id', $copy_id);
+            }
+
+            $books = $query->get();
+
+            // 4. Check if found
+            if ($books->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No books found for the given copy ID.',
+                    'success' => false
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Books fetched successfully.',
+                'data' => $books,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function getCategoryName(Request $request, $category_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $category = DB::table('category as c')
+                ->select('c.call_no', 'c.category_name')
+                ->where('c.category_id', $category_id)
+                ->first();
+
+            if (!$category) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Category not found.',
+                    'success' => false
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Category fetched successfully.',
+                'data' => $category->call_no . ' / ' . $category->category_name,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function getCategoryGroupName()
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $groups = DB::table('category_group')
+                ->select('category_group_id as value', 'category_group_name as label')
+                ->get();
+
+            if ($groups->isEmpty()) {
+                return response()->json([]);
+            }
+
+            return response()->json($groups);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+
+    public function getCategory()
+    {
+        try {
+            // Authenticate user if needed
+            $user = $this->authenticateUser(); // optional, if you’re using auth
+
+            $categories = DB::table('category')
+                ->select('category_id as value', 'category_name as label')
+                ->get();
+
+            if ($categories->isEmpty()) {
+                return response()->json([]);
+            }
+
+            return response()->json($categories);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function getAllCategoryName()
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $categories = DB::table('category as c')
+                ->select('c.category_id', 'c.call_no', 'c.category_name')
+                ->orderBy('c.call_no', 'asc')
+                ->get();
+
+            if ($categories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No categories found.',
+                    'success' => false
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Categories fetched successfully.',
+                'data' => $categories,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ]);
+        }
+    }
+
+    public function searchBooks(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $status = $request->input('status');
+            $category_group_id = $request->input('category_group_id');
+            $category_id = $request->input('category_id');
+            $author = $request->input('author');
+            $title = $request->input('title');
+            $isNew = $request->input('is_new');
+            $accession_no = $request->input('accession_no');
+
+            $query = DB::table('book')
+                ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
+                ->join('category', 'category.category_id', '=', 'book.category_id')
+                ->select(
+                    'book.*',
+                    'book_copies.*',
+                    'category.category_name',
+                    'category.call_no'
+                );
+
+            if (!empty($status)) {
+                $query->where('book_copies.status', $status);
+            }
+
+            if (!empty($category_group_id)) {
+                $query->join('category_categorygroup as b', 'category.category_id', '=', 'b.category_id')
+                    ->where('b.category_group_id', $category_group_id);
+            }
+
+            if (!empty($category_id)) {
+                $query->where('book.category_id', $category_id);
+            }
+
+            if (!empty($author)) {
+                $query->where('book.author', 'like', '%' . $author . '%');
+            }
+
+            if (!empty($title)) {
+                $query->where('book.book_title', 'like', '%' . $title . '%');
+            }
+
+            if (!empty($isNew) && $isNew == true) {
+                $query->whereRaw('DATEDIFF(NOW(), book_copies.added_date) <= 60');
+            }
+
+
+            if (!empty($accession_no)) {
+                $query->where('book_copies.copy_id', $accession_no);
+            }
+
+            $books = $query->get();
+
+            if ($books->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No books found.',
+                    'success' => false
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Books fetched successfully.',
+                'data' => $books,
                 'success' => true
             ]);
         } catch (\Exception $e) {

@@ -53,8 +53,6 @@ class PublishNotice implements ShouldQueue
                             $parameters
                         );
 
-                        Log::info($result);
-                        Log::info($result);
                         if (isset($result['code']) && isset($result['message'])) {
                                 Log::warning("Rate limit hit", []);
                         } 

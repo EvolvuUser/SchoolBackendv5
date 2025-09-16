@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Validation\Rule;
 use DB;
+use Illuminate\Support\Facades\Validator;
 class RoleController extends Controller
 {
     public function index()
@@ -662,6 +663,19 @@ public function getSubMenus($parentId, $assignedMenuIds)
     }
     //API for the Roles for Event  Dev Name- Manish Kumar Sharma 12-08-2025
     public function deleteRolesForEvent(Request $request,$id){
+        
+        $isRoleUsed = DB::table('events')
+        ->whereRaw("FIND_IN_SET(?, login_type)", [$id])
+        ->exists();
+
+        if ($isRoleUsed) {
+            return response()->json([
+                'status' => 409,
+                'message' => 'Cannot delete this role because it is already used in events.',
+                'success' => false
+            ], 409);
+        }
+        
         DB::table('event_roles')
         ->where('role_id', $id)
         ->delete();
@@ -698,6 +712,18 @@ public function getSubMenus($parentId, $assignedMenuIds)
                 'data' => $newStatus,
                 'success' => true
             ]);
+    }
+    
+    public function getActiveRolesForEvent(Request $request){
+        $roles = DB::table('event_roles')->where('is_active','Y')->get();
+        return response()->json([
+            'status' =>200,
+            'data' => $roles,
+            'message' => 'Role for event saved.',
+            'success'=>true
+            ]);
+        
+        
     }
 
    

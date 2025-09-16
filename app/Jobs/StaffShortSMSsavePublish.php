@@ -30,50 +30,53 @@ class StaffShortSMSsavePublish implements ShouldQueue
      */
     public function handle(): void
     {
+       $schoolsettings = getSchoolSettingsData();
+       $whatsappintegration = $schoolsettings->whatsapp_integration;
+       $smsintegration = $schoolsettings->sms_integration;
+       $websiteurl = $schoolsettings->website_url;
        $staffnoticedata = DB::table('staff_notice')->where('unq_id', $this->unq)->get();
-
-        foreach ($staffnoticedata as $staffnotice) {
-
-            $teacherphone = DB::table('teacher')
-                ->where('teacher_id', $staffnotice->teacher_id)
-                ->select('phone')
-                ->first();
-            if($teacherphone){
-            $phone_no = $teacherphone->phone;
-            
-            $templateName = 'staff_notice';
-            $parameters = [$this->nsmsdata['notice_desc']];
-
-            $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                $phone_no,
-                $templateName,
-                $parameters
-            );
-
-            if (isset($result['code']) && isset($result['message'])) {
-                // Log::warning("Rate limit hit: Too many messages to same user");
-            } else {
-                $wamid = $result['messages'][0]['id'];
-                $phone_no = $result['contacts'][0]['input'];
-                $message_type = 'staff_sms_notice';
-
-                DB::table('redington_webhook_details')->insert([
-                    'wa_id' => $wamid,
-                    'phone_no' => $phone_no,
-                    'stu_teacher_id' => $staffnotice->teacher_id,
-                    'notice_id' => $staffnotice->t_notice_id,
-                    'message_type' => $message_type,
-                    'created_at' => now(),
-                ]);
+       if($whatsappintegration == 'Y'){
+               foreach ($staffnoticedata as $staffnotice) {
+    
+                $teacherphone = DB::table('teacher')
+                    ->where('teacher_id', $staffnotice->teacher_id)
+                    ->select('phone')
+                    ->first();
+                if($teacherphone){
+                $phone_no = $teacherphone->phone;
+                
+                $templateName = 'staff_notice';
+                $parameters = [$this->nsmsdata['notice_desc']];
+    
+                $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
+                    $phone_no,
+                    $templateName,
+                    $parameters
+                );
+    
+                if (isset($result['code']) && isset($result['message'])) {
+                    // Log::warning("Rate limit hit: Too many messages to same user");
+                } else {
+                    $wamid = $result['messages'][0]['id'];
+                    $phone_no = $result['contacts'][0]['input'];
+                    $message_type = 'staff_sms_notice';
+    
+                    DB::table('redington_webhook_details')->insert([
+                        'wa_id' => $wamid,
+                        'phone_no' => $phone_no,
+                        'stu_teacher_id' => $staffnotice->teacher_id,
+                        'notice_id' => $staffnotice->t_notice_id,
+                        'message_type' => $message_type,
+                        'created_at' => now(),
+                    ]);
+                }
+    
+                }
+                
             }
-
-            }
-            
-        }
-
-        sleep(20); 
-
-        foreach ($staffnoticedata as $staffnotice) {
+    
+            sleep(20); 
+            foreach ($staffnoticedata as $staffnotice) {
             $leftmessages = DB::table('redington_webhook_details')
                 ->where('sms_sent', 'N')
                 ->where('status', 'failed')
@@ -90,7 +93,7 @@ class StaffShortSMSsavePublish implements ShouldQueue
                     'sms_date' => now()->toDateString(),
                 ]);
                 $temp_id = '1107164450693700526';
-                $message = 'Dear Staff, '.$this->nsmsdata['notice_desc'].". Login @ https://sms.arnoldcentralschool.org for details.-EvolvU";
+                $message = 'Dear Staff, '.$this->nsmsdata['notice_desc'].". Login @ ".$websiteurl." for details.-EvolvU";
                     $sms_status = app('App\Http\Services\SmsService')->sendSms($leftmessage->phone_no, $message, $temp_id);
                     $messagestatus = $sms_status['data']['status'] ?? null;
 
@@ -103,5 +106,44 @@ class StaffShortSMSsavePublish implements ShouldQueue
 
             }
         }
+           
+       }
+       if($smsintegration == 'Y'){
+           foreach ($staffnoticedata as $staffnotice) {
+    
+                $teacherphone = DB::table('teacher')
+                    ->where('teacher_id', $staffnotice->teacher_id)
+                    ->select('phone')
+                    ->first();
+                if($teacherphone){
+                    $phone_no = $teacherphone->phone;
+                    DB::table('staff_notice_sms_log')->insert([
+                        'teacher_id' => $staffnotice->teacher_id,
+                        'notice_id'  => $staffnotice->t_notice_id,
+                        'phone_no'   => $phone_no,
+                        'sms_date'   => now()->format('Y/m/d'),
+                    ]);
+                    $temp_id = '1107164450693700526';
+                    $message = 'Dear Staff, '.$this->nsmsdata['notice_desc'].". Login @ ".$websiteurl." for details.-EvolvU";
+                    Log::info('message',['messafe',[$message]]);
+                    $sms_status = app('App\Http\Services\SmsService')->sendSms($phone_no, $message, $temp_id);
+                    $messagestatus = $sms_status['data']['status'] ?? null;
+                    Log::info('message',['messafe',[$sms_status]]);
+
+                    if ($messagestatus == "success") {
+                        DB::table('staff_notice_sms_log')->where('notice_id',$staffnotice->t_notice_id)->update(['sms_status'=>'Success','sms_sent'=>'Y']);
+                        
+                    }
+                    
+                    
+                    
+                }
+               
+           }
+           
+       }
+        
+
+        
     }
 }

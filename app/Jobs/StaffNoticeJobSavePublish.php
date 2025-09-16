@@ -30,9 +30,14 @@ class StaffNoticeJobSavePublish implements ShouldQueue
      */
     public function handle(): void
     {
+        $schoolsettings = getSchoolSettingsData();
+        $whatsappintegration = $schoolsettings->whatsapp_integration;
+        $smsintegration = $schoolsettings->sms_integration;
+        $websiteurl = $schoolsettings->website_url;
         $staffnoticedata = DB::table('staff_notice')->where('unq_id', $this->unq)->get();
 
-        foreach ($staffnoticedata as $staffnotice) {
+        if($whatsappintegration == 'Y'){
+            foreach ($staffnoticedata as $staffnotice) {
 
             $teacherphone = DB::table('teacher')
                 ->where('teacher_id', $staffnotice->teacher_id)
@@ -93,5 +98,32 @@ class StaffNoticeJobSavePublish implements ShouldQueue
                 ]);
             }
         }
+            
+        }
+        if($smsintegration == 'Y'){
+            
+            foreach ($staffnoticedata as $staffnotice) {
+
+            $teacherphone = DB::table('teacher')
+                ->where('teacher_id', $staffnotice->teacher_id)
+                ->select('phone')
+                ->first();
+            if($teacherphone){
+                $phone_no = $teacherphone->phone;
+                DB::table('daily_sms_for_teacher')->insert([
+                'teacher_id'    => $staffnotice->teacher_id,
+                'phone'         => $phone_no,
+                'homework'      => 0,
+                'notice'        => 0,
+                'note'          => 0,
+                'staff_notice'  => 1,
+                'sms_date'      => now()->format('Y-m-d H:i:s'),
+            ]);
+                
+             }
+            }
+            
+        }
+        
     }
 }

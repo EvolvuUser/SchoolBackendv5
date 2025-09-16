@@ -783,7 +783,7 @@ public function updateCsvData(Request $request, $section_id)
         'file' => 'required|file|mimes:csv,txt|max:2048',
     ]);
      $academicYear = JWTAuth::getPayload()->get('academic_year');
-     $settingsData = getSettingsDataForAcademicYr($academicYear);
+     $settingsData = getSchoolSettingsData();
      $defaultPassword = $settingsData->default_pwd;
 
 
@@ -798,10 +798,7 @@ public function updateCsvData(Request $request, $section_id)
     Log::info($csvData);
     $rows = array_map('str_getcsv', explode("\n", $csvData));
     Log::info($rows);
-    $header = array_shift($rows); // Extract the header row
-    // Log::info($header);
-    //dd($header);
-    // Define the CSV to database column mapping
+    $header = array_shift($rows); 
     $columnMap = [
         'student_id' => 'student_id',
         '*First Name' => 'first_name',
@@ -810,6 +807,8 @@ public function updateCsvData(Request $request, $section_id)
         '*Gender' => 'gender',
         '*DOB(in dd/mm/yyyy format)' => 'dob',
         '*Student Aadhaar No.' => 'stu_aadhaar_no',
+        'Udise Pen No.' => 'udise_pen_no',
+        'Apaar ID No.' => 'apaar_id',
         'Mother Tongue' => 'mother_tongue',
         'Religion' => 'religion',
         '*Blood Group' => 'blood_group',
@@ -1017,7 +1016,6 @@ public function updateCsvData(Request $request, $section_id)
 
         try {
 
-            // Handle parent creation or update
             $parentData = [
                 'father_name' => $studentData['father_name'] ?? null,
                 'father_occupation' => $studentData['father_occupation'] ?? null,
@@ -1070,6 +1068,8 @@ public function updateCsvData(Request $request, $section_id)
             $student->blood_group = $studentData['blood_group'];
             $student->admission_date = $studentData['admission_date'];
             $student->stu_aadhaar_no = $studentData['stu_aadhaar_no'];
+            $student->udise_pen_no = $studentData['udise_pen_no'];
+            $student->apaar_id = $studentData['apaar_id'];
             $student->mother_tongue = $studentData['mother_tongue'];
             $student->religion = $studentData['religion'];
             $student->caste = $studentData['caste'];
@@ -1106,6 +1106,8 @@ public function updateCsvData(Request $request, $section_id)
         '*Gender', 
         '*DOB(in dd/mm/yyyy format)', 
         '*Student Aadhaar No.', 
+        'Udise Pen No.',
+        'Apaar ID No.',
         'Mother Tongue', 
         'Religion', 
         '*Blood Group', 

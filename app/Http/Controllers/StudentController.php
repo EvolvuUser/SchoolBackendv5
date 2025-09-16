@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Jobs\SendMessageStudentAttendanceShortage;
 
 class StudentController extends Controller
 {
@@ -694,6 +695,199 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
            ->get();
    
        return $data;
+   }
+
+   public function getFieldsForUpdateStudent(Request $request){
+       $fields = DB::table('update_studentdata_settings')
+                ->get();
+
+       return response()->json([
+           'status'=>200,
+           'message'=>'Fields for update',
+           'data' => $fields,
+           'success'=>true
+           ]);
+       
+   }
+   
+   public function getStudentDataWithFieldData(Request $request,$id,$fieldname){
+       $user = $this->authenticateUser();
+       $customClaims = JWTAuth::getPayload()->get('academic_year');
+       $query = DB::table('student')
+                    ->where('section_id', $id)
+                    ->where('academic_yr', $customClaims)
+                    ->where('isDelete', 'N')
+                    ->select(
+                        'student_id',
+                        'first_name',
+                        'mid_name',
+                        'last_name',
+                        'roll_no'
+                    );
+            
+                // If the requested field is 'religion', format it in camel case
+                if ($fieldname === 'religion') {
+                    $query->addSelect(DB::raw("CONCAT(UPPER(SUBSTRING(religion, 1, 1)), LOWER(SUBSTRING(religion, 2))) as religion"));
+                } else {
+                    $query->addSelect($fieldname);
+                }
+            
+                $students = $query->orderBy('roll_no', 'ASC')->get();
+                            
+        return response()->json([
+           'status'=>200,
+           'message'=>'Student data according to field.',
+           'data' => $students,
+           'success'=>true
+           ]);
+       
+   }
+   
+   public function updateStudentDataWithFieldData(Request $request){
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+    
+        $studentsData = $request->input('students'); 
+    
+        if (!is_array($studentsData) || empty($studentsData)) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'No student data provided',
+                'success' => false
+            ], 400);
+        }
+    
+        $updatedCount = 0;
+        $uppercaseFields = ['first_name', 'mid_name', 'last_name', 'student_name'];
+        foreach ($studentsData as $student) {
+    
+            $studentId = $student['student_id'] ?? null;
+            if (!$studentId) continue;
+    
+            $updateData = [];
+    
+            
+    
+            foreach ($student as $field => $value) {
+            if (in_array($field, $uppercaseFields) && !is_null($value)) {
+                $updateData[$field] = strtoupper($value); // Convert to uppercase
+            } else {
+                $updateData[$field] = $value;
+            }
+            }
+    
+            if (!empty($updateData)) {
+                DB::table('student')
+                    ->where('student_id', $studentId)
+                    ->where('academic_yr', $academicYear)
+                    ->update($updateData);
+    
+                $updatedCount++;
+            }
+        }
+    
+        return response()->json([
+            'status' => 200,
+            'message' => "$updatedCount students updated successfully",
+            'success' => true
+        ]);
+   }
+
+   public function getPendingBooksForReturn(Request $request){
+       $student_id = $request->input('student_id');
+       $books = DB::select("select a.*,b.book_title, s.first_name,s.last_name,s.class_id,s.section_id from issue_return a, book b, student s where a.book_id = b.book_id and a.member_id = s.student_id and member_type='S' and return_date='0000-00-00' and member_id IN (".$student_id.") order by issue_date asc");
+       $booksCount = count($books);
+       return response()->json([
+           'status'=>200,
+           'message'=>'Pending books for return.',
+           'data' => $booksCount,
+           'bookdetails'=>$books,
+           'success'=>true
+           ]);
+       
+       
+   }
+
+   public function getStudentListAttendance(Request $request){
+        $user = $this->authenticateUser();
+        $settingsData = JWTAuth::getPayload()->get('settings');
+        $department_id = $request->input('department_id');
+        $threshold = $request->input('threshold');
+        $startDate = $settingsData['academic_yr_from'];
+        $endDate = $request->input('end_date'); 
+        $classIds = DB::table('class')
+            ->where('department_id', $department_id)
+            ->pluck('class_id');
+        
+        $sectionIds = DB::table('section')
+            ->whereIn('class_id', $classIds)
+            ->pluck('section_id');
+        
+        $lowAttendanceStudents = DB::table('attendance')
+            ->join('student', 'student.student_id', '=', 'attendance.student_id')
+            ->join('class', 'class.class_id', '=', 'attendance.class_id')
+            ->join('section', 'section.section_id', '=', 'attendance.section_id')
+            ->whereBetween('attendance.only_date', [$startDate, $endDate])
+            ->where('student.isDelete', 'N')
+            ->whereIn('attendance.class_id', $classIds)
+            ->whereIn('attendance.section_id', $sectionIds)
+            ->select(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name as classname',
+                'section.name as sectionname',
+                'class.class_id',
+                'section.section_id',
+                DB::raw('SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) as present_days'),
+                DB::raw('COUNT(attendance.attendance_id) as total_days'),
+               DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage')
+            )
+            ->groupBy(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name',
+                'section.name',
+                'class.class_id',
+                'section.section_id'
+            )
+            ->having('attendance_percentage', '<', $threshold)
+            ->orderBy('class.class_id', 'asc')   
+            ->orderBy('section.section_id', 'asc') 
+            ->orderBy('student.first_name', 'asc') 
+            ->get();
+        
+            return response()->json([
+                   'status'=>200,
+                   'message'=>'Student attendance.',
+                   'data' => $lowAttendanceStudents,
+                   'success'=>true
+                   ]);
+       
+   }
+   
+   public function sendMessageForAttendance(Request $request){
+       $user = $this->authenticateUser();
+       $academicYear = JWTAuth::getPayload()->get('academic_year');
+       $students = $request->input('student_id');
+       $message = $request->input('message');
+       $schoolsettings = getSchoolSettingsData();
+       $whatsappintegration = $schoolsettings->whatsapp_integration;
+       $smsintegration = $schoolsettings->sms_integration;
+         
+       if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+         SendMessageStudentAttendanceShortage::dispatch($students, $message);
+       }
+
+       return response()->json([
+                   'status'=>200,
+                   'message'=>'Messages for student attendance shortage.',
+                   'success'=>true
+                   ]);
+       
    }
 
     private function authenticateUser()

@@ -21,6 +21,8 @@ use League\Csv\Writer;
 use Illuminate\Support\Facades\Storage;
 use Log;
 use App\Jobs\SendEventNotificationJob;
+use App\Http\Services\SmsService;
+use Illuminate\Support\Facades\Http;
 class NewController extends Controller
 {
     protected $whatsAppService;
@@ -612,6 +614,13 @@ class NewController extends Controller
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
                 if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                    $settingsData = getSchoolSettingsData();
+                    $schoolName = $settingsData->institute_name;
+                    $defaultPassword = $settingsData->default_pwd;
+                    $websiteUrl = $settingsData->website_url;
+                    $shortName = $settingsData->short_name;
+                    $whatsappIntegration = $settingsData->whatsapp_integration;
+                    $smsIntegration = $settingsData->sms_integration;
                     $teacherids = $request->teacherid;
                     $remarksubject = $request->remark_subject;
                     $remark = $request->remark;
@@ -650,6 +659,7 @@ class NewController extends Controller
                             //  dd($teacherNameCamel);
                             $teacherphoneno = $teacherdetails->phone;
                             if($teacherphoneno){
+                                if($whatsappIntegration == 'Y'){
                                 $templateName = 'emergency_message';
                                 $parameters =[$teacherNameCamel.", ".$remark];
                                 // Log::info($teacherphoneno);
@@ -679,6 +689,14 @@ class NewController extends Controller
                                         'message_type' => $message_type,
                                         'created_at' => now()
                                     ]);
+                                }
+                                    
+                                }
+                                if($smsIntegration == 'Y'){
+                                    $temp_id = '1107164450693700526';
+                                    $message = 'Dear Staff,'.$remark.". Login @ ".$websiteUrl." for details.-EvolvU";
+                                    $sms_status = app('App\Http\Services\SmsService')->sendSms($teacherphoneno, $message, $temp_id);
+                                    Log::info('smsm',['smsstatus'=>$sms_status]);
                                 }
             
                             }
@@ -931,6 +949,13 @@ class NewController extends Controller
              $customClaims = JWTAuth::getPayload()->get('academic_year');
              if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                 //  dd("Hello");
+                $settingsData = getSchoolSettingsData();
+                $schoolName = $settingsData->institute_name;
+                $defaultPassword = $settingsData->default_pwd;
+                $websiteUrl = $settingsData->website_url;
+                $shortName = $settingsData->short_name;
+                $whatsappIntegration = $settingsData->whatsapp_integration;
+                $smsIntegration = $settingsData->sms_integration;
                 $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
                 // dd($remarkdetails);
                 $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
@@ -952,36 +977,45 @@ class NewController extends Controller
                 // dd($teacherNameCamel);
                 $teacherphoneno = $teacherdetails->phone;
                 if($teacherphoneno){
-                    $templateName = 'emergency_message';
-                    $parameters =[$teacherNameCamel.", ".$remarkdetails->remark_desc];
-                    // Log::info($teacherphoneno);
-                    $result = $this->whatsAppService->sendTextMessage(
-                        $teacherphoneno,
-                        $templateName,
-                        $parameters
-                    );
-                    // Log::info("Failed message",$result);
-                    if (isset($result['code']) && isset($result['message'])) {
-                        // Handle rate limit error
-                        Log::warning("Rate limit hit: Too many messages to same user", [
-                            
-                        ]);
-                
-                    } else {
-                        // Proceed if no error
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
-                        $message_type = 'teacher_remark';
-                
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $wamid,
-                            'phone_no' => $phone_no,
-                            'stu_teacher_id' => $remarkdetails->teachers_id,
-                            'notice_id' => $id,
-                            'message_type' => $message_type,
-                            'created_at' => now()
-                        ]);
+                    if($whatsappIntegration == 'Y'){
+                        $templateName = 'emergency_message';
+                        $parameters =[$teacherNameCamel.", ".$remarkdetails->remark_desc];
+                        // Log::info($teacherphoneno);
+                        $result = $this->whatsAppService->sendTextMessage(
+                            $teacherphoneno,
+                            $templateName,
+                            $parameters
+                        );
+                        // Log::info("Failed message",$result);
+                        if (isset($result['code']) && isset($result['message'])) {
+                            // Handle rate limit error
+                            Log::warning("Rate limit hit: Too many messages to same user", [
+                                
+                            ]);
+                    
+                        } else {
+                            // Proceed if no error
+                            $wamid = $result['messages'][0]['id'];
+                            $phone_no = $result['contacts'][0]['input'];
+                            $message_type = 'teacher_remark';
+                    
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $wamid,
+                                'phone_no' => $phone_no,
+                                'stu_teacher_id' => $remarkdetails->teachers_id,
+                                'notice_id' => $id,
+                                'message_type' => $message_type,
+                                'created_at' => now()
+                            ]);
+                        }
+                        
                     }
+                    if($smsIntegration == 'Y'){
+                         $temp_id = '1107164450693700526';
+                         $message = "Dear Staff ,".$remarkdetails->remark_desc.". Login @ ".$websiteUrl." for details.-EvolvU";
+                         $sms_status = app('App\Http\Services\SmsService')->sendSms($teacherphoneno, $message, $temp_id);
+                    }
+                    
 
                 }
                  
@@ -3537,6 +3571,13 @@ class NewController extends Controller
           try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
+             $settingsData = getSchoolSettingsData();
+             $schoolName = $settingsData->institute_name;
+             $defaultPassword = $settingsData->default_pwd;
+             $websiteUrl = $settingsData->website_url;
+             $shortName = $settingsData->short_name;
+             $whatsappIntegration = $settingsData->whatsapp_integration;
+             $smsIntegration = $settingsData->sms_integration;
              $savepublish = $request->input('save_publish');
              if($savepublish == 'N'){
                  $files = $request->file('userfile', []);
@@ -3651,6 +3692,7 @@ class NewController extends Controller
                                 ->first();
                     $phone = $studentcontactdata->phone_no ?? null;
                     if($phone){
+                        if($whatsappIntegration == 'Y'){
                         $templateName = 'emergency_message';
                         $parameters =["Parent,".$request->input('remark_desc')];
                     
@@ -3671,6 +3713,13 @@ class NewController extends Controller
                                         'message_type' => 'remarkforstudent',
                                         'created_at' => now()
                                     ]);
+                            
+                        }
+                        }
+                        if($smsIntegration == 'Y'){
+                            $message = "Dear Parent,".$request->input('remark_desc') . ". Login to school application for details - AceVentura";
+                            $temp_id = '1107161354408119887';
+                            $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
                             
                         }
                         
@@ -3944,6 +3993,13 @@ class NewController extends Controller
          try{
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $settingsData = getSchoolSettingsData();
+         $schoolName = $settingsData->institute_name;
+         $defaultPassword = $settingsData->default_pwd;
+         $websiteUrl = $settingsData->website_url;
+         $shortName = $settingsData->short_name;
+         $whatsappIntegration = $settingsData->whatsapp_integration;
+         $smsIntegration = $settingsData->sms_integration;
          DB::table('remark')
             ->where('remark_id', $remark_id)
             ->update([
@@ -3961,26 +4017,35 @@ class NewController extends Controller
         // dd($studentcontactdata);
         $phone = $studentcontactdata->phone_no ?? null;
         if($phone){
-            $templateName = 'emergency_message';
-            $parameters =[$remarkdata->remark_desc];
-        
-            $result = $this->whatsAppService->sendTextMessage(
-                $phone,
-                $templateName,
-                $parameters
-            );
-            if (isset($result['code']) && isset($result['message'])) {
-                                Log::warning("Rate limit hit", []);
-            } 
-            else {
-                DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $result['messages'][0]['id'] ?? null,
-                            'phone_no' => $result['contacts'][0]['input'] ?? $phone,
-                            'stu_teacher_id' => $remarkdata->student_id,
-                            'notice_id' => $remarkdata->remark_id,
-                            'message_type' => 'remarkforstudent',
-                            'created_at' => now()
-                        ]);
+            if($whatsappIntegration == 'Y'){
+                $templateName = 'emergency_message';
+                $parameters =[$remarkdata->remark_desc];
+            
+                $result = $this->whatsAppService->sendTextMessage(
+                    $phone,
+                    $templateName,
+                    $parameters
+                );
+                if (isset($result['code']) && isset($result['message'])) {
+                                    Log::warning("Rate limit hit", []);
+                } 
+                else {
+                    DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $result['messages'][0]['id'] ?? null,
+                                'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                                'stu_teacher_id' => $remarkdata->student_id,
+                                'notice_id' => $remarkdata->remark_id,
+                                'message_type' => 'remarkforstudent',
+                                'created_at' => now()
+                            ]);
+                    
+                }
+                
+            }
+            if($smsIntegration == 'Y'){
+                $message = "Dear Parent,".$remarkdata->remark_desc . ". Login to school application for details - AceVentura";
+                $temp_id = '1107161354408119887';
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
                 
             }
             
@@ -4003,7 +4068,7 @@ class NewController extends Controller
                 // ]);
             }
             $data = [
-                'token' => $item->token, // FCM token of parent/student device
+                'token' => $item->token, 
                 'notification' => [
                     'title' => 'Remark',
                     'description' => $remarkdata->remark_desc,
@@ -5348,7 +5413,13 @@ class NewController extends Controller
              if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
               $studentid_installment = $request->studentid_installment;
               $message = $request->message;
-              SendOutstandingFeeSmsJob::dispatch($studentid_installment,$customClaims,$message);
+              $schoolsettings = getSchoolSettingsData();
+              $whatsappintegration = $schoolsettings->whatsapp_integration;
+              $smsintegration = $schoolsettings->sms_integration;
+                
+              if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+                SendOutstandingFeeSmsJob::dispatch($studentid_installment,$customClaims,$message);
+              }
 
               return response()->json([
                     'status' => 200,
@@ -5631,8 +5702,8 @@ class NewController extends Controller
             'unq_id'      => $unq,
             'title'       => $request->input('title'),
             'event_desc'  => $request->input('description'),
-            'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
-            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'start_date'  => $request->input('start_date'),
+            'end_date'    => $request->input('end_date'),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
             'competition' => $request->input('competition'),
@@ -5662,6 +5733,9 @@ class NewController extends Controller
      public function savePublishEvent(Request $request){
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $schoolsettings = getSchoolSettingsData();
+         $whatsappintegration = $schoolsettings->whatsapp_integration;
+         $smsintegration = $schoolsettings->sms_integration;
          
          do {
             $unq = random_int(1000, 9999);
@@ -5674,7 +5748,7 @@ class NewController extends Controller
             'title'       => $request->input('title'),
             'event_desc'  => $request->input('description'),
             'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
-            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'end_date'    => $request->input('end_date'),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
             'competition' => $request->input('competition'),
@@ -5695,12 +5769,14 @@ class NewController extends Controller
             }
         }
          if (strtoupper($request->input('notify')) === 'Y') {
+            if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
             SendEventNotificationJob::dispatch([
                 'unq_id'     => $unq,
                 'title'      => $request->input('title'),
                 'login_type' => $request->input('checkbxlogintype'),
                 'class_ids'  => $request->input('checkbxclass')
             ]);
+            }
         }
 
         return response()->json([
@@ -5748,6 +5824,7 @@ class NewController extends Controller
         }
         
         $events = $query->select(
+                'e.event_id',
                 'e.unq_id',
                 'e.title',
                 'e.event_desc',
@@ -5765,12 +5842,15 @@ class NewController extends Controller
                 'c.name as class_name',
                 't.name as createdbyname'
             )
+            ->orderBy('e.event_id', 'DESC')
             ->get();
 
         
         $grouped = $events->groupBy('unq_id')->map(function ($group) {
             $first = $group->first(); 
+            $latestEventId = $group->max('event_id');
             return [
+                'latest_event_id' => $latestEventId, 
                 'unq_id'      => $first->unq_id,
                 'title'       => $first->title,
                 'event_desc'  => $first->event_desc,
@@ -5790,7 +5870,9 @@ class NewController extends Controller
                     'class_name' => $item->class_name,
                 ])->unique('class_id')->values()
             ];
-        })->values();
+        })
+        ->sortByDesc('latest_event_id')
+        ->values();
          return response()->json([
             'status'=>200,
             'message'=>'Event list.',
@@ -5864,7 +5946,9 @@ class NewController extends Controller
      public function updatePublishEvent(Request $request){
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+         $schoolsettings = getSchoolSettingsData();
+         $whatsappintegration = $schoolsettings->whatsapp_integration;
+         $smsintegration = $schoolsettings->sms_integration;
         
          $unqids = $request->input('checkbxuniqid');
         
@@ -5883,12 +5967,14 @@ class NewController extends Controller
             ->toArray();
             
             if (!empty($eventData) && strtoupper($eventData->notify) === 'Y') {
+             if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
                 SendEventNotificationJob::dispatch([
                     'unq_id'     => $unq_id,
                     'title'      => $eventData->title,
                     'login_type' => explode(',', $eventData->login_type),
                     'class_ids'  => $classIds
                 ]);
+             }
             }
         }
         return response()->json([
@@ -5941,7 +6027,7 @@ class NewController extends Controller
                 'title'       => $request->input('title', $event->title),
                 'event_desc'  => $request->input('description', $event->event_desc),
                 'start_date'  => $request->input('start_date') ? date('Y-m-d', strtotime($request->start_date)) : $event->start_date,
-                'end_date'    => $request->input('end_date') ? date('Y-m-d', strtotime($request->end_date)) : $event->end_date,
+                'end_date'    => $request->input('end_date'),
                 'start_time'  => $request->input('start_time', $event->start_time),
                 'end_time'    => $request->input('end_time', $event->end_time),
                 'competition' => $request->input('competition'),
@@ -6172,7 +6258,7 @@ class NewController extends Controller
                             'event_desc'  => $EventData['event_desc'],
                             'class_id'    => $class_id,
                             'start_date'  => $EventData['start_date'],
-                            'end_date'    => !empty($EventData['end_date']) ? $EventData['end_date'] : '0000-00-00',
+                            'end_date'    => $EventData['end_date'],
                             'start_time' => !empty($EventData['start_time']) ? $EventData['start_time'] : '00:00:00',
                             'end_time'   => !empty($EventData['end_time']) ? $EventData['end_time'] : '00:00:00',
                             'competition' => $EventData['competition'],
@@ -6272,6 +6358,12 @@ class NewController extends Controller
      }
      
      public function getActiveBackgroundColor(Request $request){
+        $shortName = $request->query('short_name'); 
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
          $activebackgroundcolor = DB::table('background_color')->where('is_active','Y')->get();
          return response()->json([
                 'status' =>200,
@@ -6281,6 +6373,151 @@ class NewController extends Controller
             ]);
          
      }
+
+     public function getGeneralInstructions(Request $request){
+         $shortName = $request->query('short_name'); 
+         if ($shortName && array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } elseif($shortName) {
+                dd("No database configuration for the given short_name");
+            }
+            
+         $generalinstructions = DB::table('general_instructions')
+                                    ->where('is_active','Y')
+                                    ->get();
+        return response()->json([
+                'status' =>200,
+                'data' => $generalinstructions,
+                'message' => 'General instructions.',
+                'success'=>true
+            ]);
+            
+        
+     }
+
+     public function getHouseofSchool(Request $request){
+         $houses = DB::table('house')->get();
+         return response()->json([
+                'status' =>200,
+                'data' => $houses,
+                'message' => 'School houses.',
+                'success'=>true
+            ]);
+         
+     }
+
+     public function getSupportEmailId(Request $request){
+         $shortName = $request->query('short_name'); 
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+        $supportemailid = DB::table('school_settings')->select('support_email_id')->first();
+         return response()->json([
+                'status' =>200,
+                'data' => $supportemailid,
+                'message' => 'Support Email ID.',
+                'success'=>true
+            ]);
+         
+     }
+
+     public function getTeacherClasseswithClassTeacher(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacher_id = $request->input('teacher_id');
+         $classdata = DB::table('subject')
+                            ->join('class', 'class.class_id', '=', 'subject.class_id')
+                            ->join('section', 'section.section_id', '=', 'subject.section_id')
+                            ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+                            ->leftJoin('class_teachers', function ($join) use($teacher_id) {
+                                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                                     ->on('class_teachers.section_id', '=', 'subject.section_id')
+                                     ->where('class_teachers.teacher_id', '=', $teacher_id);
+                            })
+                            ->where('subject.academic_yr', $customClaims)
+                            ->where('subject.teacher_id', $teacher_id)
+                            ->where(function ($query) use ($teacher_id) {
+                                $query->where('subject.teacher_id', $teacher_id)
+                                      ->orWhere('class_teachers.teacher_id', $teacher_id);
+                            })
+                            ->distinct()
+                            ->select(
+                                'section.section_id',
+                                'class.name as classname',
+                                'section.name as sectionname',
+                                'teacher.name as teachername',
+                                'teacher.teacher_id',
+                                'class.class_id',
+                                DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher')
+                            )
+                            ->get();
+                            return response()->json([
+                                'status' =>200,
+                                'data' => $classdata,
+                                'message' => 'Classes for teachers.',
+                                'success'=>true
+                            ]);
+     }
+
+     public function getBackgroundImage(Request $request){
+         $shortName = $request->input('short_name');
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+         $settingsData = getSchoolSettingsData();
+         $logo = $settingsData->school_logo;
+         $image = $settingsData->school_image;
+         $url =config('externalapis.EVOLVU_URL').'/get_school_details';
+
+         $response = Http::asMultipart()->post($url, [
+            [
+                'name' => 'short_name',
+                'contents' => $shortName, 
+            ],
+         ]);
+         
+         $projectUrl = $response->json()[0]['project_url'];
+         $schoollogo = $projectUrl."uploads/".$logo;
+         $schoolImage = $projectUrl."uploads/".$image;
+         $data = [
+                   'logo'=>$schoollogo,
+                   'school_image'=>$schoolImage
+             ];
+         return response()->json([
+                                'status' =>200,
+                                'data' => $data,
+                                'message' => 'Background image for school and logo.',
+                                'success'=>true
+                            ]);
+         
+     }
+     
+     public function getRoleOfUser(Request $request){
+         $shortName = $request->input('short_name');
+         $userId = $request->input('user_id');
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+         $data = DB::table('user_master')
+                     ->where('user_id',$userId)
+                     ->select('role_id')
+                     ->get();
+         return response()->json([
+                                'status' =>200,
+                                'data' => $data,
+                                'message' => 'RoleId for the user.',
+                                'success'=>true
+                            ]);
+         
+     }
+
+     
      
      private function validateDate($date, $format)
     {
