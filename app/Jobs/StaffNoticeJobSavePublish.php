@@ -56,7 +56,18 @@ class StaffNoticeJobSavePublish implements ShouldQueue
             );
 
             if (isset($result['code']) && isset($result['message'])) {
-                // Log::warning("Rate limit hit: Too many messages to same user");
+                $message_type = 'staff_notice';
+
+                DB::table('redington_webhook_details')->insert([
+                    'wa_id' => null,
+                    'phone_no' => $phone_no,
+                    'stu_teacher_id' => $staffnotice->teacher_id,
+                    'notice_id' => $staffnotice->t_notice_id,
+                    'message_type' => $message_type,
+                    'status' =>'failed',
+                    'sms_sent'=>'N',
+                    'created_at' => now(),
+                ]);
             } else {
                 $wamid = $result['messages'][0]['id'];
                 $phone_no = $result['contacts'][0]['input'];
@@ -96,6 +107,7 @@ class StaffNoticeJobSavePublish implements ShouldQueue
                     'staff_notice' => 1,
                     'sms_date' => now(),
                 ]);
+                DB::table('redington_webhook_details')->where('notice_id', $leftmessage->notice_id)->where('message_type','staff_notice')->update(['sms_sent' => 'Y']);
             }
         }
             

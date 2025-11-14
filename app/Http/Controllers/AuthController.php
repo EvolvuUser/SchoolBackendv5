@@ -78,8 +78,7 @@ class AuthController extends Controller
 //     }
 // }
 
-
-    public function connectByShortName(Request $request){
+public function connectByShortName(Request $request){
          $request->validate([
         'short_name' => 'required|string',
          ]);
@@ -99,6 +98,7 @@ class AuthController extends Controller
         'success'=>true
         ]);
     }
+
     // Modified By Manish Kumar Sharma 27-03-2025
     public function login(Request $request)
     {
@@ -126,8 +126,9 @@ class AuthController extends Controller
                 }
             }
             
+            
             $userrole = UserMaster::where('user_id', $credentials['user_id'])
-                        ->whereIn('role_id', ['A', 'M','U','T'])
+                        ->whereIn('role_id', ['A', 'M','U','T','P','L'])
                         ->first();
             if($userrole){
 
@@ -165,7 +166,7 @@ class AuthController extends Controller
                 Log::warning('Invalid password for user:', $credentials);
                 return response()->json(['error' => 'Invalid password'], 401);
             }
-            if($userrole->role_id != 'U' && $userrole->role_id != 'T'){
+            if($userrole->role_id != 'U' && $userrole->role_id != 'T' && $userrole->role_id != 'P'){
             $url = config('externalapis.EVOLVU_URL').'/validate_staff_user';
 
             $response = Http::asMultipart()->post($url, [
@@ -211,7 +212,8 @@ class AuthController extends Controller
                 'reg_id' => $user->reg_id,
                 'academic_year' => $academic_yr,
                 'school_name'=>$schoolName,
-                'settings'=>$settings
+                'settings'=>$settings,
+                'short_name'=>$settings->short_name
                 
 
             ];

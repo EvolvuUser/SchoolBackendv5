@@ -49,6 +49,16 @@ class SendEventNotificationJob implements ShouldQueue
                                 );
 
                                 if (isset($result['code']) && isset($result['message'])) {
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => null,
+                                        'phone_no' => $parent->phone_no,
+                                        'stu_teacher_id' => $parent->student_id,
+                                        'notice_id' => $this->data['unq_id'],
+                                        'message_type' => 'event',
+                                        'status'=>'failed',
+                                        'sms_sent'=>'N',
+                                        'created_at' => now()
+                                    ]);
 
                                 } else {
                                     $wamid = $result['messages'][0]['id'];
@@ -88,6 +98,16 @@ class SendEventNotificationJob implements ShouldQueue
 
 
                                 if (isset($result['code']) && isset($result['message'])) {
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => null,
+                                        'phone_no' => $user->phone,
+                                        'stu_teacher_id' => $user->teacher_id,
+                                        'notice_id' => $this->data['unq_id'],
+                                        'message_type' => 'event',
+                                        'status'=>'failed',
+                                        'sms_sent'=>'Y',
+                                        'created_at' => now()
+                                    ]);
                                 } else {
                                     $wamid = $result['messages'][0]['id'];
                                     $phone_no = $result['contacts'][0]['input'];

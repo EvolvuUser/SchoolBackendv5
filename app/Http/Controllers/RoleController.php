@@ -276,6 +276,19 @@ public function navMenulisttest(Request $request)
     $assignedMenuIds = RolesAndMenu::where('role_id', $roleId)
         ->pluck('menu_id')
         ->toArray();
+    if ($roleId === 'T') {
+    $hasClass = DB::table('class_teachers as n')
+        ->where('n.teacher_id', $user->reg_id)
+            ->whereIn('n.class_id', function ($query) {
+                $query->select('class_id')->from('hpc_classes');
+            })
+            ->exists();
+    
+        if ($hasClass) {
+            $extraMenuIds = [414, 408,399,410,402,406,404,409,413]; 
+            $assignedMenuIds = array_merge($assignedMenuIds, $extraMenuIds);
+        }
+    }
 
     $mergedMenuIds = array_unique(array_merge($assignedMenuIdsss, $assignedMenuIds));
     
@@ -724,6 +737,56 @@ public function getSubMenus($parentId, $assignedMenuIds)
             ]);
         
         
+    }
+
+    public function navLeafMenus(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $roleId = $user->role_id;
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+    
+        // Get all assigned menu IDs for this role
+        $assignedMenuIds = RolesAndMenu::where('role_id', $roleId)
+            ->pluck('menu_id')
+            ->toArray();
+        if ($roleId === 'T') {
+            $hasClass = DB::table('class_teachers as n')
+                ->where('n.teacher_id', $user->reg_id)
+                    ->whereIn('n.class_id', function ($query) {
+                        $query->select('class_id')->from('hpc_classes');
+                    })
+                    ->exists();
+            
+                if ($hasClass) {
+                    $extraMenuIds = [414, 408,399,410,402,406,404,409,413]; 
+                    $assignedMenuIds = array_merge($assignedMenuIds, $extraMenuIds);
+                }
+            }
+        // Get all menus assigned to the role
+        $assignedMenus = Menu::whereIn('menu_id', $assignedMenuIds)->get();
+    
+        // Find all parent IDs among assigned menus
+        $parentIds = $assignedMenus->pluck('parent_id')->unique()->filter()->toArray();
+    
+        // Leaf menus = menus that are assigned but NOT a parent of any other
+        $leafMenus = $assignedMenus->whereNotIn('menu_id', $parentIds)
+            ->sortBy('sequence')
+            ->values()
+            ->map(function ($menu) {
+                return [
+                    'menu_id' => $menu->menu_id,
+                    'name'    => $menu->name,
+                    'url'     => $menu->url,
+                    'parent_id' => $menu->parent_id,
+                ];
+            });
+    
+        return response()->json([
+            'status'=>200,
+            'message'=>'leaf data',
+            'data'=>$leafMenus,
+            'success'=>true
+            ]);
     }
 
    

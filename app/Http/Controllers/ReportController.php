@@ -68,9 +68,277 @@ class ReportController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname =  JWTAuth::getPayload()->get('short_name');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 $class_id = $request->input('class_id'); // Get class_id from request
                 $status = $request->input('status'); // Get status from request
+                if($shortname == 'SACS'){
+                    $admissionreport = DB::table('online_admission_form')
+                                    ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                                    ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                                    ->select(
+                                        'online_admission_form.*',
+                                        'online_admfee.form_id',
+                                        'online_admfee.status',
+                                        'online_admfee.payment_date',
+                                        'online_admfee.OrderId',
+                                        'class.name as classname',
+                                        'online_admfee.Trnx_ref_no'
+                                    )
+                                    ->where('online_admission_form.academic_yr', $customClaims)
+                                    ->where('online_admfee.status', 'S')
+                                    ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+                                
+                                // Apply filters
+                                if ($class_id) {
+                                    $admissionreport->where('online_admission_form.class_id', $class_id);
+                                }
+                                if ($status) {
+                                    $admissionreport->where('online_admission_form.admission_form_status', $status);
+                                }
+                                
+                                // Fetch data
+                                $admissionreport = $admissionreport->get()->map(function ($row) {
+                                
+                                    // ✅ Handle sibling info
+                                    if ($row->sibling == 'Y') {
+                                        if ($row->sibling_class_id != '0') {
+                                            $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                                            $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+                                
+                                            $class_name = DB::table('class')
+                                                ->where('class_id', $class_id)
+                                                ->value('name');
+                                            $section_name = DB::table('section')
+                                                ->where('section_id', $section_id)
+                                                ->value('name');
+                                
+                                            $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
+                                        } else {
+                                            $row->sibling_student_info = $row->sibling_student_id . "()";
+                                        }
+                                    } else {
+                                        $row->sibling_student_info = "No";
+                                    }
+                                
+                                    // ✅ Fetch Academic Details
+                                    $academicDetails = DB::table('admission_academic_detail as aad')
+                                        ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
+                                        ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                                        ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                                        ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
+                                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                                        ->where('aad.form_id', $row->form_id)
+                                        ->select(
+                                            'grp.sub_group_name',
+                                            'grpd.sm_hsc_id',
+                                            'shsm.name as subject_name',
+                                            'shsm.subject_type',
+                                            'stream.stream_name',
+                                            'shs_op.name as optional_sub_name',
+                                            'aad.9-marks as nine_marks',
+                                            'aad.10-preboard as ten_preboard',
+                                            'aad.10-final as ten_final'
+                                        )
+                                        ->get();
+                                
+                                    // Build academic info summary
+                                    if ($academicDetails->count() > 0) {
+                                        $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
+                                        $academicInfo = [
+                                            'stream_name' => $academicDetails[0]->stream_name,
+                                            'sub_group_name' => $academicDetails[0]->sub_group_name,
+                                            'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
+                                            '9marks' => $academicDetails[0]->nine_marks ?? null,
+                                            '10preboard' => $academicDetails[0]->ten_preboard ?? null,
+                                            '10final' => $academicDetails[0]->ten_final ?? null,
+                                        ];
+                                    } else {
+                                        $academicInfo = [];
+                                    }
+                                
+                                    // Attach to main result
+                                    $row->academic_details = $academicInfo;
+                                
+                                    return $row;
+                                });
+                                
+                                return response([
+                                    'status' => 200,
+                                    'data' => $admissionreport,
+                                    'message' => 'New Admission Report',
+                                    'success' => true
+                                ]);
+                    
+                }
+                elseif($shortname== 'HSCS'){
+                    $admissionreport = DB::table('online_admission_form')
+                                    ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                                    ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                                    ->select('online_admission_form.*',
+                                            'online_admfee.form_id',
+                                            'online_admfee.status',
+                                            'online_admfee.payment_date',
+                                            'online_admfee.OrderId',
+                                            'class.name as classname',
+                                            'online_admfee.Trnx_ref_no')
+                                    ->where('online_admission_form.academic_yr', $customClaims)
+                                    ->where('online_admfee.status', 'S')
+                                    ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+
+                                // Apply filters for class_id and status if they are provided
+                                if ($class_id) {
+                                    $admissionreport->where('online_admission_form.class_id', $class_id);
+                                }
+
+                                if ($status) {
+                                    $admissionreport->where('online_admission_form.admission_form_status', $status);
+                                }
+
+                                // Get results and map sibling info
+                                $admissionreport = $admissionreport->get()->map(function ($row) {
+                                    if ($row->sibling == 'Y') {
+                                        if($row->sibling_class_id != '0'){
+                                        $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                                        $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+                                        // dd($section_id);
+                                        $class_name = DB::table('class')
+                                                        ->where('class_id', $class_id)
+                                                        ->select('name')
+                                                        ->first();
+                                                        // dd($class_name);
+
+                                        $section_name = DB::table('section')
+                                                        ->where('section_id', $section_id)
+                                                        ->select('name')
+                                                        ->first();
+                                        //  dd($section_name);
+                                        // Set sibling student info
+                                        $class = $class_name->name ?? 'N/A';
+                                        $section = $section_name->name ?? 'N/A';
+                                        
+                                        $row->sibling_student_info = $row->sibling_student_id . " ({$class} {$section})";
+                                        }
+                                        else{
+                                             $row->sibling_student_info = $row->sibling_student_id."()";
+                                        }
+                                        // $row->sibling_student_info = $row->sibling_student_id."()";
+
+                                    } 
+                                    else {
+                                        $row->sibling_student_info = "No";
+                                    }
+
+                                    return $row;
+                                });
+
+                                     return response([
+                                        'status'=>200,
+                                        'data'=>$admissionreport,
+                                        'message'=>'New Admission Report',
+                                        'success'=>true
+                                    ]);
+                    
+                }
+                else{
+                    $admissionreport = DB::table('online_admission_form')
+                            ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                            ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                            ->select(
+                                'online_admission_form.*',
+                                'online_admfee.form_id',
+                                'online_admfee.status',
+                                'online_admfee.payment_date',
+                                'online_admfee.OrderId',
+                                'class.name as classname',
+                                'online_admfee.Trnx_ref_no'
+                            )
+                            ->where('online_admission_form.academic_yr', $customClaims)
+                            ->where('online_admfee.status', 'S')
+                            ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+                        
+                        // Apply filters
+                        if ($class_id) {
+                            $admissionreport->where('online_admission_form.class_id', $class_id);
+                        }
+                        if ($status) {
+                            $admissionreport->where('online_admission_form.admission_form_status', $status);
+                        }
+                        
+                        // Fetch data
+                        $admissionreport = $admissionreport->get()->map(function ($row) {
+                        
+                            // ✅ Handle sibling info
+                            if ($row->sibling == 'Y') {
+                                if ($row->sibling_class_id != '0') {
+                                    $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                                    $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+                        
+                                    $class_name = DB::table('class')
+                                        ->where('class_id', $class_id)
+                                        ->value('name');
+                                    $section_name = DB::table('section')
+                                        ->where('section_id', $section_id)
+                                        ->value('name');
+                        
+                                    $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
+                                } else {
+                                    $row->sibling_student_info = $row->sibling_student_id . "()";
+                                }
+                            } else {
+                                $row->sibling_student_info = "No";
+                            }
+                        
+                            // ✅ Fetch Academic Details
+                            $academicDetails = DB::table('admission_academic_detail as aad')
+                                ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
+                                ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                                ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                                ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
+                                ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                                ->where('aad.form_id', $row->form_id)
+                                ->select(
+                                    'grp.sub_group_name',
+                                    'grpd.sm_hsc_id',
+                                    'shsm.name as subject_name',
+                                    'shsm.subject_type',
+                                    'stream.stream_name',
+                                    'shs_op.name as optional_sub_name',
+                                    'aad.9-marks as nine_marks',
+                                    'aad.10-preboard as ten_preboard',
+                                    'aad.10-final as ten_final'
+                                )
+                                ->get();
+                        
+                            // Build academic info summary
+                            if ($academicDetails->count() > 0) {
+                                $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
+                                $academicInfo = [
+                                    'stream_name' => $academicDetails[0]->stream_name,
+                                    'sub_group_name' => $academicDetails[0]->sub_group_name,
+                                    'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
+                                    '9marks' => $academicDetails[0]->nine_marks ?? null,
+                                    '10preboard' => $academicDetails[0]->ten_preboard ?? null,
+                                    '10final' => $academicDetails[0]->ten_final ?? null,
+                                ];
+                            } else {
+                                $academicInfo = [];
+                            }
+                        
+                            // Attach to main result
+                            $row->academic_details = $academicInfo;
+                        
+                            return $row;
+                        });
+                        
+                        return response([
+                            'status' => 200,
+                            'data' => $admissionreport,
+                            'message' => 'New Admission Report',
+                            'success' => true
+                        ]);
+                    
+                }
                 $admissionreport = DB::table('online_admission_form')
                                     ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
                                     ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
@@ -79,7 +347,8 @@ class ReportController extends Controller
                                             'online_admfee.status',
                                             'online_admfee.payment_date',
                                             'online_admfee.OrderId',
-                                            'class.name as classname')
+                                            'class.name as classname',
+                                            'online_admfee.Trnx_ref_no')
                                     ->where('online_admission_form.academic_yr', $customClaims)
                                     ->where('online_admfee.status', 'S')
                                     ->orderBy('online_admission_form.adm_form_pk', 'ASC');
@@ -765,8 +1034,10 @@ class ReportController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 $class_id = $request->input('class_id');
+                if($shortname == 'SACS'){
                 $newstudentreport = DB::table('student')
                                         ->join('class', 'student.class_id', '=', 'class.class_id')
                                         ->join('section', 'student.section_id', '=', 'section.section_id')
@@ -787,6 +1058,52 @@ class ReportController extends Controller
                                     'message'=>'New Student Report',
                                     'success'=>true
                                 ]);
+                }
+                elseif($shortname == 'HSCS'){
+                    $newstudentreport = DB::table('student')
+                                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                                        ->join('section', 'student.section_id', '=', 'section.section_id')
+                                        ->where('student.IsNew', 'Y')
+                                        ->where('student.academic_yr', $customClaims)
+                                        ->orderBy('student.admission_date')
+                                        ->orderBy('student.reg_no')
+                                        ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+                            if ($class_id != '') {
+                                $newstudentreport->where('student.class_id', '=', $class_id);
+                                }
+        
+                                $results = $newstudentreport->get();
+                                return response([
+                                    'status'=>200,
+                                    'data'=>$results,
+                                    'message'=>'New Student Report',
+                                    'success'=>true
+                                ]);
+                    
+                }
+                else{
+                    $newstudentreport = DB::table('student')
+                                        ->join('class', 'student.class_id', '=', 'class.class_id')
+                                        ->join('section', 'student.section_id', '=', 'section.section_id')
+                                        ->where('student.IsNew', 'Y')
+                                        ->where('student.isDelete', 'N')
+                                        ->where('student.academic_yr', $customClaims)
+                                        ->orderBy('student.admission_date')
+                                        ->orderBy('student.reg_no')
+                                        ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+                            if ($class_id != '') {
+                                $newstudentreport->where('student.class_id', '=', $class_id);
+                                }
+        
+                                $results = $newstudentreport->get();
+                                return response([
+                                    'status'=>200,
+                                    'data'=>$results,
+                                    'message'=>'New Student Report',
+                                    'success'=>true
+                                ]);
+                    
+                }
 
 
             }
@@ -3936,6 +4253,7 @@ class ReportController extends Controller
             // ->orderBy('m.sequence')
             // ->get();
             // dd($subjectsRaw);
+            $structure = [];
             $query = DB::table('subjects_on_report_card as a')
                         ->join('subjects_on_report_card_master as m', 'a.sub_rc_master_id', '=', 'm.sub_rc_master_id')
                         ->where('a.class_id', $classId)
@@ -4055,9 +4373,9 @@ class ReportController extends Controller
                             $cell[$head->heading_name] = ceil((float)$val);
                             if (is_numeric($val)) $totalObt += ceil((float)$val); $subjectTotal += ceil((float)$val); 
                         }
-                        if ($exam['colspan'] > 1) {
-                            $cell['Total'] = $subjectTotal;
-                        }
+                        // if ($exam['colspan'] > 1) {
+                        //     $cell['Total'] = $subjectTotal;
+                        // }
 
                         $student->marks[$subId][$exam['exam_id']] = $cell;
                     }
@@ -4838,6 +5156,142 @@ class ReportController extends Controller
                         'success' => false
                     ]);
                 }
+            }
+
+              public function getFeePendingForTeachersReport(Request $request){
+                $user = $this->authenticateUser(); // Assume you have this
+                $academicYear = JWTAuth::getPayload()->get('academic_year');
+                $request->validate([
+                    'class_id'    => 'required|integer',
+                    'section_id'  => 'required|integer',
+                    'installment' => 'required|string',
+                ]);
+            
+                $class_id    = $request->input('class_id');
+                $section_id  = $request->input('section_id');
+                $installment = $request->input('installment');
+                $acd_yr      = $academicYear;
+            
+                $query = DB::select("
+                    SELECT * FROM (
+                        SELECT * FROM (
+                            SELECT 
+                                student_installment,
+                                s.student_id,
+                                s.installment,
+                                installment_fees,
+                                fees_category_name,
+                                first_name,
+                                last_name,
+                                roll_no,
+                                section_id,
+                                0 AS paid_amount
+                            FROM view_student_fees_category s
+                            LEFT JOIN fee_concession_details d 
+                                ON s.student_id = d.student_id 
+                                AND s.installment = d.installment
+                            WHERE due_date < CURDATE()
+                                AND s.academic_yr = ?
+                                AND class_id = ?
+                                AND section_id = ?
+                                AND s.installment LIKE ?
+                            GROUP BY s.student_id, s.installment
+                            HAVING (installment_fees - COALESCE(SUM(d.amount), 0)) > 0
+                        ) x
+                        WHERE x.student_installment NOT IN (
+                            SELECT student_installment 
+                            FROM view_student_fees_payment a 
+                            WHERE a.academic_yr = ?
+                                AND a.class_id = ?
+                                AND a.installment LIKE ?
+                        )
+                        UNION
+                        SELECT * FROM (
+                            SELECT 
+                                CONCAT(f.student_id,'^',b.installment) AS student_installment,
+                                f.student_id,
+                                b.installment,
+                                b.installment_fees,
+                                b.category_name AS fees_category_name,
+                                e.first_name,
+                                e.last_name,
+                                e.roll_no,
+                                e.section_id,
+                                SUM(f.fees_paid) AS paid_amount
+                            FROM view_student_fees_payment f
+                            LEFT JOIN fee_concession_details c 
+                                ON f.student_id = c.student_id 
+                                AND f.installment = c.installment
+                            JOIN view_fee_allotment b 
+                                ON f.fee_allotment_id = b.fee_allotment_id 
+                                AND b.installment = f.installment
+                            JOIN student e 
+                                ON f.student_id = e.student_id
+                            WHERE f.academic_yr = ?
+                                AND e.class_id = ?
+                                AND e.section_id = ?
+                                AND f.installment LIKE ?
+                                AND e.isDelete = 'N'
+                            GROUP BY f.student_id, f.installment
+                            HAVING (b.installment_fees - COALESCE(SUM(c.amount),0)) > SUM(f.fees_paid)
+                        ) z
+                    ) w 
+                    ORDER BY w.roll_no, w.installment
+                ", [$acd_yr, $class_id, $section_id, $installment.'%', $acd_yr, $class_id, $installment.'%', $acd_yr, $class_id, $section_id, $installment.'%']);
+            
+                
+                $result = collect($query)->map(function ($row) use ($acd_yr) {
+                    // Get student contact
+                    $contact = DB::table('student as a')
+                        ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                        ->where('a.student_id', $row->student_id)
+                        ->select('b.phone_no', 'b.email_id')
+                        ->first();
+            
+                    $phone_no = $contact->phone_no ?? '';
+            
+                    // Calculate concession
+                    $concession = DB::table('fee_concession_details')
+                        ->where('student_id', $row->student_id)
+                        ->where('installment', $row->installment)
+                        ->where('academic_yr', $acd_yr)
+                        ->sum('amount');
+            
+                    $actual_installment_amt = $row->installment_fees - $concession;
+            
+                    // Skip fully paid ones
+                    if (($actual_installment_amt - $row->paid_amount) <= 0) {
+                        return null;
+                    }
+                    
+                    $className = DB::table('class')
+                        ->where('class_id', DB::table('student')->where('student_id', $row->student_id)->value('class_id'))
+                        ->value('name');
+                    
+                    $sectionName = DB::table('section')
+                        ->where('section_id', $row->section_id)
+                        ->value('name');
+            
+                    return [
+                        'roll_no'               => $row->roll_no,
+                        'student_name'          => $row->first_name . ' ' . $row->last_name,
+                        'class_section'         => trim($className.' '.$sectionName),
+                        'phone_no'              => $phone_no,
+                        'installment'           => $row->installment == 4 ? 'CBSE Exam Fee' : $row->installment,
+                        'installment_fees'      => $row->installment_fees,
+                        'paid_amount'           => $row->paid_amount,
+                        'concession'            => $concession,
+                        'actual_installment_amt'=> $actual_installment_amt,
+                    ];
+                })->filter()->values();
+            
+                return response()->json([
+                    'status'  => 200,
+                    'total'   => $result->count(),
+                    'data'    => $result,
+                    'success' => true
+                ]);
+                
             }
         
     

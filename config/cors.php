@@ -29,7 +29,8 @@ return [
     'http://103.159.85.174:8506',
     'http://103.159.85.174:8509',
     'https://hscstestl.evolvu.in',
-    'https://sacstest.evolvu.in'
+    'https://sacstest.evolvu.in',
+    'https://hscstestlx.evolvu.in'
 ],
 
 

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Jobs\SendMessageStudentAttendanceShortage;
+use App\Jobs\SendMessageStudentDailyAttendanceShortage;
 
 class StudentController extends Controller
 {
@@ -898,6 +899,228 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
             return null;
         }
     }
+
+     public function getStudentsByClassSection(Request $request){
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $class_id = $request->input('class_id');
+        $section_id= $request->input('section_id');
+        $students = DB::table('student')
+                        ->where('class_id', $class_id)
+                        ->where('section_id', $section_id)
+                        ->where('IsDelete', 'N')
+                        ->where('academic_yr', $academicYear)
+                        ->orderBy('roll_no', 'asc')
+                        ->orderBy('reg_no', 'asc')
+                        ->get();
+                        
+        return response()->json([
+                   'status'=>200,
+                   'data' =>$students,
+                   'message'=>'Student list by class section.',
+                   'success'=>true
+                   ]);
+        
+    }
+    
+    public function getAttClassSectionDay(Request $request){
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $class_id = $request->input('class_id');
+        $section_id= $request->input('section_id');
+        $dateatt = $request->input('dateatt');
+        $attendance = DB::table('attendance as a')
+                            ->select('a.*', 'b.first_name', 'b.last_name', 'b.roll_no')
+                            ->join('student as b', 'a.student_id', '=', 'b.student_id')
+                            ->where('a.class_id', $class_id)
+                            ->where('a.section_id', $section_id)
+                            ->where('a.only_date', $dateatt)
+                            ->where('a.academic_yr', $academicYear)
+                            ->orderBy('b.roll_no', 'asc')
+                            ->orderBy('b.reg_no', 'asc')
+                            ->get();
+        return response()->json([
+                   'status'=>200,
+                   'data' =>$attendance,
+                   'message'=>'Student attendance list.',
+                   'success'=>true
+                   ]);
+        
+    }
+    
+    public function saveMarkAttendance(Request $request){
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $data = [];
+        $t_id = $user->reg_id; 
+        $unq = rand(200, 500);
+
+        $countOfStudents = $request->input('countOfStudents');
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $dateatt = Carbon::createFromFormat('d-m-Y', $request->input('dateatt'))->format('Y-m-d');
+
+        
+
+            $countCheckBox = $request->input('checkbox', []);
+
+            foreach ($countCheckBox as $student_id) {
+                // Check if attendance already exists
+                $existing = DB::table('attendance')
+                    ->where('student_id', $student_id)
+                    ->where('only_date', $dateatt)
+                    ->where('academic_yr', $academic_yr)
+                    ->get();
+
+                if ($existing->count() > 0) {
+                    // Delete existing attendance record
+                    DB::table('attendance')
+                        ->where('student_id', $student_id)
+                        ->where('only_date', $dateatt)
+                        ->where('academic_yr', $academic_yr)
+                        ->delete();
+                }
+
+                // Prepare attendance data
+                $attendance_status = $request->input("present_$student_id") == '1' ? '1' : '0';
+
+                $attendanceData = [
+                    'class_id' => $class_id,
+                    'section_id' => $section_id,
+                    'only_date' => $dateatt,
+                    'academic_yr' => $academic_yr,
+                    'teacher_id' => $t_id,
+                    'student_id' => $student_id,
+                    'attendance_status' => $attendance_status,
+                    'unq_id' => $unq,
+                    'date' => now(),
+                ];
+
+                // Insert attendance record
+                DB::table('attendance')->insert($attendanceData);
+
+                // Handle SMS for absent students
+                if ($attendance_status == '1') {
+                    $smsExists = DB::table('attendance_sms_log')
+                        ->where('student_id', $student_id)
+                        ->where('absent_date', $dateatt)
+                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(sms_status, '$.status')) = 'success'")
+                        ->exists();
+
+                    if (!$smsExists) {
+                        // $temp_id = '1107164450685654320';
+                        // $studentName = DB::table('student')->where('student_id', $student_id)->value('first_name');
+                        // $message = "Dear Parent, $studentName has been marked absent on " . Carbon::parse($dateatt)->format('d-m-Y') . ". Login to school application for details. -EvolvU";
+
+                        // $contactData = DB::table('student_contact')->where('student_id', $student_id)->get();
+
+                        // foreach ($contactData as $contact) {
+                        //     // Uncomment this line to send SMS
+                        //     // $sms_status = $this->send_sms($contact->phone_no, $message, $temp_id);
+                        //     $sms_status = ""; 
+
+                        //     DB::table('attendance_sms_log')->insert([
+                        //         'sms_status' => $sms_status,
+                        //         'student_id' => $student_id,
+                        //         'absent_date' => $dateatt,
+                        //         'phone_no' => $contact->phone_no,
+                        //         'sms_date' => now()->format('Y-m-d'),
+                        //     ]);
+                        // }
+                    }
+                }
+            }
+
+            return response()->json([
+                'status'  =>200,
+                'message' => 'Attendance saved successfully!',
+                'success' =>true
+                ]);
+    }
+    
+    public function deleteMarkAttendance(Request $request){
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $only_date = $request->input('only_date');
+        DB::table('attendance')
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('only_date', $only_date)
+            ->delete();
+        return response()->json([
+                'status'  =>200,
+                'message' => 'Attendance deleted successfully!',
+                'success' =>true
+                ]);
+        
+        
+    }
+    
+    public function deleteStudentMarkAttendance(Request $request){
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $attendance_id = $request->input('attendance_id');
+        DB::table('attendance')
+            ->where('attendance_id', $attendance_id)
+            ->delete();
+        return response()->json([
+                'status'  =>200,
+                'message' => 'Attendance deleted successfully!',
+                'success' =>true
+                ]);
+        
+    }
+    
+    public function sendMessageForDailyAttendance(Request $request){
+       $user = $this->authenticateUser();
+       $academicYear = JWTAuth::getPayload()->get('academic_year');
+       $students = $request->input('student_id');
+       $message = $request->input('message');
+       $schoolsettings = getSchoolSettingsData();
+       $whatsappintegration = $schoolsettings->whatsapp_integration;
+       $smsintegration = $schoolsettings->sms_integration;
+         
+       if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+         SendMessageStudentDailyAttendanceShortage::dispatch($students, $message);
+       }
+
+       return response()->json([
+                   'status'=>200,
+                   'message'=>'Messages for student attendance shortage.',
+                   'success'=>true
+                   ]);
+        
+    }
+    
+    public function sendPendingSMSForDailyAttendanceStudent(Request $request,$webhook_id){
+         
+            $failedMessages = DB::table('redington_webhook_details')
+                                    ->where('webhook_id', $webhook_id)
+                                    ->get();
+            //  dd($failedMessages);
+            foreach ($failedMessages as $failedmessage){
+               
+                // dd($staffmessage);
+                $message = "Dear Parent,".$failedmessage->message. ". Login to school application for details - Evolvu";
+                $temp_id = '1107164450685654320';
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                $messagestatus = $sms_status['data']['status'] ?? null;
+                // dd($messagestatus);
+                if ($messagestatus == "success") {
+                    DB::table('redington_webhook_details')->where('webhook_id',$failedmessage->webhook_id)->where('message_type',$failedmessage->message_type)->where('stu_teacher_id',$failedmessage->stu_teacher_id)->update(['sms_sent' => 'Y']);
+
+                }
+            }
+            
+            return response([
+                'status'=>200,
+                'message'=>'messages sended successfully.',
+                'success'=>true
+                ]);
+         
+     }
 
 }
 
