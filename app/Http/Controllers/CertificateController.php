@@ -165,7 +165,9 @@ class CertificateController extends Controller
 
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-
+        $shortname = JWTAuth::getPayload()->get('short_name');
+        // dd($shortname);
+        if($shortname == 'SACS'){
         $data = [
             'stud_name'=>$request->stud_name,
             'father_name'=>$request->father_name,
@@ -190,7 +192,46 @@ class CertificateController extends Controller
         $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
         // Load a view and pass the data to it
         $pdf = PDF::loadView('pdf.template', compact('data'));
-
+        }
+        elseif($shortname == 'HSCS'){
+                $data = [
+                'stud_name'=>$request->stud_name,
+                'father_name'=>$request->father_name,
+                'class_division'=>$request->class_division,
+                'dob'=>$request->dob,
+                'dob_words'=>$request->dob_words,
+                'purpose' =>$request ->purpose,
+                'stud_id' =>$request ->stud_id,
+                'issue_date_bonafide'=>$request->date,
+                'nationality' =>$request->nationality,
+                'academic_yr'=>$customClaims,
+                'IsGenerated'=> 'Y',
+                'IsDeleted'  => 'N',
+                'IsIssued'   => 'N',
+                'generated_by'=>$user->reg_id,
+                'mother_name'=>$request->mother_name,
+                'subcaste'=>$request->subcaste,
+                'state'=>$request->state,
+                'permant_add'=>$request->permant_add,
+                'reg_no'=>$request->reg_no,
+                'caste'=>$request->caste,
+                'religion'=>$request->religion,
+                'birth_place'=>$request->birth_place
+    
+            ];
+            
+            BonafideCertificate::create($data);
+            
+            $data= DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            // Load a view and pass the data to it
+            $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
+            
+            
+        }
+        else{
+            
+        }
         // Download the generated PDF
         return response()->stream(
             function () use ($pdf) {
@@ -293,14 +334,27 @@ class CertificateController extends Controller
 
     public function getPDFdownloadBonafide(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('bonafide_certificate')
                     ->where('sr_no',$sr_no)  
                     ->orderBy('sr_no','desc')->first();
             
             
             $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.template', compact('data'));
+                
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
+                
+            }
+            else{
+                
+            }
             
-            $pdf = PDF::loadView('pdf.template', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -339,26 +393,67 @@ class CertificateController extends Controller
 
     public function updateBonafideCertificate(Request $request,$sr_no){
         try{
-            $bonafidecertificate = BonafideCertificate::find($sr_no);
-            $bonafidecertificate->stud_name = $request->stud_name;
-            $bonafidecertificate->father_name = $request->father_name;
-            $bonafidecertificate->class_division = $request->class_division;
-            $bonafidecertificate->dob=$request->dob;
-            $bonafidecertificate->dob_words=$request->dob_words;
-            $bonafidecertificate->purpose =$request->purpose;
-            $bonafidecertificate->nationality =$request->nationality;
-            $bonafidecertificate->stud_id=$request->stud_id;
-            $bonafidecertificate->issue_date_bonafide=$request->date;
-            $bonafidecertificate->update();
-
-            $data= DB::table('bonafide_certificate')
-                    ->where('sr_no',$sr_no)  
-                    ->orderBy('sr_no','desc')->first();
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+            if($shortname == 'SACS'){
+                $bonafidecertificate = BonafideCertificate::find($sr_no);
+                $bonafidecertificate->stud_name = $request->stud_name;
+                $bonafidecertificate->father_name = $request->father_name;
+                $bonafidecertificate->class_division = $request->class_division;
+                $bonafidecertificate->dob=$request->dob;
+                $bonafidecertificate->dob_words=$request->dob_words;
+                $bonafidecertificate->purpose =$request->purpose;
+                $bonafidecertificate->nationality =$request->nationality;
+                $bonafidecertificate->stud_id=$request->stud_id;
+                $bonafidecertificate->issue_date_bonafide=$request->date;
+                $bonafidecertificate->update();
+    
+                $data= DB::table('bonafide_certificate')
+                        ->where('sr_no',$sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+                
+                
+                $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+                
+                $pdf = PDF::loadView('pdf.template', compact('data'));
+                
+            }
+            elseif($shortname == 'HSCS'){
+                $bonafidecertificate = BonafideCertificate::find($sr_no);
+                $bonafidecertificate->stud_name = $request->stud_name;
+                $bonafidecertificate->father_name = $request->father_name;
+                $bonafidecertificate->class_division = $request->class_division;
+                $bonafidecertificate->dob=$request->dob;
+                $bonafidecertificate->dob_words=$request->dob_words;
+                $bonafidecertificate->purpose =$request->purpose;
+                $bonafidecertificate->nationality =$request->nationality;
+                $bonafidecertificate->stud_id=$request->stud_id;
+                $bonafidecertificate->issue_date_bonafide=$request->date;
+                $bonafidecertificate->mother_name=$request->mother_name;
+                $bonafidecertificate->subcaste=$request->subcaste;
+                $bonafidecertificate->state=$request->state;
+                $bonafidecertificate->permant_add=$request->permant_add;
+                $bonafidecertificate->reg_no=$request->reg_no;
+                $bonafidecertificate->caste=$request->caste;
+                $bonafidecertificate->religion=$request->religion;
+                $bonafidecertificate->birth_place=$request->birth_place;
+                $bonafidecertificate->update();
+    
+                $data= DB::table('bonafide_certificate')
+                        ->where('sr_no',$sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+                
+                
+                $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+                
+                $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
+                
+            }
+            else{
+                
+            }
             
-            
-            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
-            
-            $pdf = PDF::loadView('pdf.template', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -450,6 +545,7 @@ class CertificateController extends Controller
 
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $shortname = JWTAuth::getPayload()->get('short_name');
         $data = [
             'stud_name'=>$request->stud_name,
             'father_name'=>$request->father_name,
@@ -470,9 +566,13 @@ class CertificateController extends Controller
         
         $data= DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
         $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
-        // Load a view and pass the data to it
+        if($shortname == 'SACS'){
         $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
-        // Download the generated PDF
+        }
+        elseif($shortname == 'HSCS'){
+            $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+        }
+        
         return response()->stream(
             function () use ($pdf) {
                 echo $pdf->output();
@@ -576,9 +676,20 @@ class CertificateController extends Controller
 
     public function simpleBonafideDownload(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = SimpleBonafide::find($sr_no);
             $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
+            if($shortname == 'SACS'){
             $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            }
+            else{
+                
+            }
         // Download the generated PDF
             return response()->stream(
                 function () use ($pdf) {
@@ -620,6 +731,7 @@ class CertificateController extends Controller
 
     public function updateSimpleBonafide(Request $request,$sr_no){
         try{
+           $shortname = JWTAuth::getPayload()->get('short_name');
            $bonafidecertificate = SimpleBonafide::find($sr_no);
            $bonafidecertificate->stud_name = $request->stud_name;
            $bonafidecertificate->father_name = $request->father_name;
@@ -632,8 +744,15 @@ class CertificateController extends Controller
 
            $data= DB::table('simple_bonafide_certificate')->where('sr_no',$sr_no)->first();
            $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
-            // Load a view and pass the data to it
+           if($shortname == 'SACS'){
             $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            }
+            else{
+                
+            }
             // Download the generated PDF
             return response()->stream(
                 function () use ($pdf) {
@@ -723,6 +842,7 @@ class CertificateController extends Controller
 
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = [
                 'reg_no' => $request->reg_no,
                 'stud_name'=>$request->stud_name,
@@ -765,7 +885,16 @@ class CertificateController extends Controller
                     ->orderBy('sr_no', 'desc')
                     ->first();
            // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           if($shortname == 'SACS'){
+               $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           }
+           elseif($shortname == 'HSCS'){
+               $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+           }
+           else{
+               $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           }
+            
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -871,7 +1000,7 @@ class CertificateController extends Controller
 
     public function CasteBonafideDownload(Request $request,$sr_no){
         try{
-
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('bonafide_caste_certificate')
                     ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
                     ->join('parent','parent.parent_id','=','student.parent_id')
@@ -879,8 +1008,15 @@ class CertificateController extends Controller
                     ->where('sr_no',$sr_no)
                     ->orderBy('sr_no', 'desc')
                     ->first();
-           // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -928,6 +1064,7 @@ class CertificateController extends Controller
 
     public function updateCasteBonafide(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $castebonafide = CasteBonafide::find($sr_no);
             $castebonafide->reg_no = $request->reg_no;
             $castebonafide->stud_name = $request->stud_name;
@@ -962,8 +1099,15 @@ class CertificateController extends Controller
                     ->where('sr_no',$sr_no)
                     ->orderBy('sr_no', 'desc')
                     ->first();
-           // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1056,6 +1200,7 @@ class CertificateController extends Controller
 
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = [
                 'stud_name'=>$request->stud_name,
                 'class_division'=>$request->class_division,
@@ -1076,8 +1221,16 @@ class CertificateController extends Controller
             
             $data= DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1182,10 +1335,19 @@ class CertificateController extends Controller
 
     public function CharacterBonafideDownload(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1225,6 +1387,7 @@ class CertificateController extends Controller
 
     public function updateCharacterBonafide(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $charactercertificate = CharacterCertificate::find($sr_no);
             $charactercertificate->stud_name = $request->stud_name;
             $charactercertificate->class_division = $request->class_division;
@@ -1238,7 +1401,15 @@ class CertificateController extends Controller
             $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1398,7 +1569,7 @@ class CertificateController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            
+            $shortname = JWTAuth::getPayload()->get('short_name');
             
             $percentageCertificate = PercentageCertificate::create([
             'roll_no' => $request->roll_no,
@@ -1435,8 +1606,16 @@ class CertificateController extends Controller
                    ->orderBy('sr_no', 'desc')->first();
             $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
             // Load a view and pass the data to it
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+            }
+            else{
+                
+            }
             
-            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -1539,7 +1718,7 @@ class CertificateController extends Controller
 
     public function PercentageDownload(Request $request,$sr_no){
         try{
-             
+            $shortname = JWTAuth::getPayload()->get('short_name'); 
             $data= DB::table('percentage_certificate')
                    ->join('student','student.student_id','=','percentage_certificate.stud_id')
                    ->where('percentage_certificate.sr_no',$sr_no)
@@ -1548,7 +1727,15 @@ class CertificateController extends Controller
             $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+            }
+            else{
+                
+            }
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -1649,6 +1836,7 @@ class CertificateController extends Controller
 
     public function updatePercentagePDF(Request $request,$sr_no){
         try{
+              $shortname = JWTAuth::getPayload()->get('short_name');
               $percentagecertificateinfo = PercentageCertificate::find($sr_no);
               $percentagecertificateinfo->roll_no = $request->roll_no;
               $percentagecertificateinfo->stud_name = $request->stud_name;
@@ -1674,7 +1862,15 @@ class CertificateController extends Controller
                 $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
                 // Load a view and pass the data to it
                 
+                if($shortname == 'SACS'){
                 $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+                }
+                elseif($shortname == 'HSCS'){
+                    $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+                }
+                else{
+                    
+                }
                 return response()->stream(
                     function () use ($pdf) {
                         echo $pdf->output();
@@ -1696,19 +1892,863 @@ class CertificateController extends Controller
 
     public function getSrnoLeavingCertificate($id){
         try{
+            
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+            if($shortname == 'SACS'){
+                $books = DB::select("select a.*,b.book_title, s.first_name,s.last_name,s.class_id,s.section_id from issue_return a, book b, student s where a.book_id = b.book_id and a.member_id = s.student_id and member_type='S' and return_date='0000-00-00' and member_id IN (".$id.") order by issue_date asc");
+                $booksCount = count($books);
+                if($booksCount > 0){
+                     return response()->json([
+                        'status'=> 409,
+                        'message'=>'Books are pending to be returned to library.LC can be generated after books are returned.',
+                        'success'=>false
+                     ]);
+                    
+                }
+                $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+                if(is_null($checkstudentbonafide)){
+                $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
+                $studentinformation = DB::table('student')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->where('student_id',$id)
+                ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                ->first();
+    
+                $dob_in_words =  $studentinformation->dob;
+                    $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+                
+                    // Check if the date is valid
+                    if ($dateTime === false) {
+                        return 'Invalid date format';
+                    }
+                    $dateInWords = $dateTime->format('j F Y'); 
+                    
+                    $dobinwords = $this->convertDateToWords($dateInWords);
+                    $data['dobinwords']= $dobinwords;
+    
+                if(is_null($studentinformation)){
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Student information is not there',
+                        'data' =>$studentinformation,
+                        'success'=>true
+                     ]);
+                  }
+                if (is_null($srnoleavingbonafide)) {
+                    $data['sr_no'] = '1';
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days . "/" . $total_working_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+                }
+                else{
+                    $data['sr_no'] = $srnoleavingbonafide->sr_no + 1 ;
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days . "/" . $total_working_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                                  
+    
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+    
+                }
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Certificate SrNo.',
+                    'data' =>$data,
+                    'success'=>true
+                 ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 403,
+                        'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                        'success'=>false
+                     ]);
+                }
+                
+            }
+            elseif($shortname == 'HSCS'){
+                
+                
+                $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+                if(is_null($checkstudentbonafide)){
+                $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
+                $studentinformation = DB::table('student')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->where('student_id',$id)
+                ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                ->first();
+                if (empty($studentinformation->dob)) {
+                    return response()->json([
+                        'status' => 422,
+                        'message' => 'Date of birth not available for this student',
+                    ], 422);
+                }
+    
+                $dob_in_words =  $studentinformation->dob;
+                    $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+                
+                    // Check if the date is valid
+                    if ($dateTime === false) {
+                        return 'Invalid date format';
+                    }
+                    $dateInWords = $dateTime->format('j F Y'); 
+                    
+                    $dobinwords = $this->convertDateToWords($dateInWords);
+                    $data['dobinwords']= $dobinwords;
+    
+                if(is_null($studentinformation)){
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Student information is not there',
+                        'data' =>$studentinformation,
+                        'success'=>true
+                     ]);
+                  }
+                if (is_null($srnoleavingbonafide)) {
+                    $data['sr_no'] = '1';
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['working_days'] = $total_working_days;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+                }
+                else{
+                    $data['sr_no'] = $srnoleavingbonafide->sr_no + 1 ;
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['working_days'] = $total_working_days;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                                  
+    
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+    
+                }
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Certificate SrNo.',
+                    'data' =>$data,
+                    'success'=>true
+                 ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 403,
+                        'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                        'success'=>false
+                     ]);
+                }
+                
+            }
+            else{
+                $books = DB::select("select a.*,b.book_title, s.first_name,s.last_name,s.class_id,s.section_id from issue_return a, book b, student s where a.book_id = b.book_id and a.member_id = s.student_id and member_type='S' and return_date='0000-00-00' and member_id IN (".$id.") order by issue_date asc");
+                $booksCount = count($books);
+                if($booksCount > 0){
+                     return response()->json([
+                        'status'=> 409,
+                        'message'=>'Books are pending to be returned to library.LC can be generated after books are returned.',
+                        'success'=>false
+                     ]);
+                    
+                }
+                $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+                if(is_null($checkstudentbonafide)){
+                $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
+                $studentinformation = DB::table('student')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->where('student_id',$id)
+                ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                ->first();
+    
+                $dob_in_words =  $studentinformation->dob;
+                    $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+                
+                    // Check if the date is valid
+                    if ($dateTime === false) {
+                        return 'Invalid date format';
+                    }
+                    $dateInWords = $dateTime->format('j F Y'); 
+                    
+                    $dobinwords = $this->convertDateToWords($dateInWords);
+                    $data['dobinwords']= $dobinwords;
+    
+                if(is_null($studentinformation)){
+                    return response()->json([
+                        'status'=> 200,
+                        'message'=>'Student information is not there',
+                        'data' =>$studentinformation,
+                        'success'=>true
+                     ]);
+                  }
+                if (is_null($srnoleavingbonafide)) {
+                    $data['sr_no'] = '1';
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days . "/" . $total_working_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+                }
+                else{
+                    $data['sr_no'] = $srnoleavingbonafide->sr_no + 1 ;
+                    $data['date']  = Carbon::today()->format('Y-m-d');
+                    $data['studentinformation']=$studentinformation;
+                    if($studentinformation->classname==11 || $studentinformation->classname==12){
+                        $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                        ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                        ->where('shs.student_id', $id)
+                        ->get();
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->subject_name,
+                            ];
+                        });
+                        $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                                   ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                                   ->select('shs.opt_subject_id','shsm.name')
+                                   ->where('shs.student_id',$id)
+                                   ->get();
+                            $result1 = $result1->map(function ($results1) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results1->name,
+                            ];
+                            });
+                            $mergedResult = $result->merge($result1);
+    
+                        $data['classsubject'] = $mergedResult;
+                        $count = count($mergedResult);
+                        $data['subjectCount'] = $count;
+                    }else{
+                        $result = DB::table('subjects_on_report_card')
+                            ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                            ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                            ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                            ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                            ->orderBy('subjects_on_report_card.class_id', 'asc')
+                            ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                            ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                            ->get();  // Retrieve the results as a collection
+                        $result = $result->map(function ($results) {
+                            // Change 'old_key' to 'new_key'
+                            return [
+                                'name' => $results->name,
+                            ];
+                        });
+                        $data['classsubject'] = $result;
+                        $count = count($result);
+                        $data['subjectCount'] = $count;
+    
+                    }
+    
+                    $totalattendance = DB::table('attendance')
+                    ->select(
+                        DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                        DB::raw('COUNT(*) AS total_working_days')
+                    )
+                    ->where('student_id', $id)
+                    ->where('academic_yr', $studentinformation->academic_yr)
+                    ->first();  // Get the first (and only) row as we expect a single result
+                   
+                // Initialize the result variables
+                $total_present_days = $totalattendance->total_present_days ?? 0;
+                $total_working_days = $totalattendance->total_working_days ?? 0;
+                
+                // Calculate total attendance
+                if ($total_present_days !== null) {
+                    $total_attendance = $total_present_days . "/" . $total_working_days;
+                } else {
+                    $total_attendance = "";
+                }
+                 
+                $data['total_attendance'] = $total_attendance;
+                $data['last_fee_paid_month'] = "";
+                $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                                  
+    
+                        if(!empty($paymentdetails)){
+                            $paymentdetailsarray = (array) $paymentdetails[0];
+                            $last_fee_paid_month="";
+                            $installment = $paymentdetailsarray['installment'];
+                            if($installment==1){
+                                $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==2){
+                                $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                            }elseif($installment==3){
+                                $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                            }
+                          $data['last_fee_paid_month']=$last_fee_paid_month;
+                        }
+                
+    
+                $academicStudent = DB::table('student')
+                                    ->where('parent_id',$studentinformation->parent_id)
+                                    ->where('first_name',$studentinformation->first_name)
+                                    ->select('academic_yr')
+                                    ->get();
+    
+                $data['academicStudent'] = $academicStudent;
+    
+                }
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Leaving Certificate SrNo.',
+                    'data' =>$data,
+                    'success'=>true
+                 ]);
+                }
+                else{
+                    return response()->json([
+                        'status'=> 403,
+                        'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                        'success'=>false
+                     ]);
+                }
+            }
+            
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+         }
+    }
+
+    public function getSrnoLeavingCertificateAcademicYr($id,$academic_yr){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+            if($shortname == 'SACS'){
+                $studentinfo = DB::table('student')
+                           ->where('student_id',$id)
+                           ->select('parent_id','first_name')
+                           ->distinct('student_id')
+                           ->first();
+
+            $studentinfoacademic = DB::table('student')
+                                   ->where('parent_id',$studentinfo->parent_id)
+                                   ->where('first_name',$studentinfo->first_name)
+                                   ->where('academic_yr',$academic_yr)
+                                   ->first();
+             
+            
             $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
             if(is_null($checkstudentbonafide)){
             $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
             $studentinformation = DB::table('student')
-            ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-            ->join('section', 'section.section_id', '=', 'student.section_id')
-            ->join('class', 'class.class_id', '=', 'student.class_id')
-            ->where('student_id',$id)
-            ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
-            ->first();
-
+                                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                                    ->where('student_id',$studentinfoacademic->student_id)
+                                    ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                                    ->first();
+            $data['studentinformationclass'] = $studentinformation->classname;
+            if (empty($studentinformation->dob)) {
+                    return response()->json([
+                        'status' => 422,
+                        'message' => 'Date of birth not available for this student',
+                    ], 422);
+                }
             $dob_in_words =  $studentinformation->dob;
-                $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+            
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
             
                 // Check if the date is valid
                 if ($dateTime === false) {
@@ -1741,10 +2781,9 @@ class CertificateController extends Controller
                     ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
                     ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
                     ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
-                    ->where('shs.student_id', $id)
+                    ->where('shs.student_id', $studentinformation->student_id)
                     ->get();
                     $result = $result->map(function ($results) {
-                        // Change 'old_key' to 'new_key'
                         return [
                             'name' => $results->subject_name,
                         ];
@@ -1792,7 +2831,7 @@ class CertificateController extends Controller
                     DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
                     DB::raw('COUNT(*) AS total_working_days')
                 )
-                ->where('student_id', $id)
+                ->where('student_id', $studentinformation->student_id)
                 ->where('academic_yr', $studentinformation->academic_yr)
                 ->first();  // Get the first (and only) row as we expect a single result
                
@@ -1808,16 +2847,11 @@ class CertificateController extends Controller
             }
              
             $data['total_attendance'] = $total_attendance;
-            
-            $paymentdetails = DB::table('view_student_fees_payment')
-                              ->where('student_id',$id)
-                              ->where('academic_yr',$studentinformation->academic_yr)
-                              ->orderBy('installment','desc')
-                              ->select('installment','academic_yr')
-                              ->first();
-                              $paymentdetailsarray = (array) $paymentdetails;
-
-                    if(isset($paymentdetailsarray) && count($paymentdetailsarray)>0){
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
                         $installment = $paymentdetailsarray['installment'];
                         if($installment==1){
                             $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
@@ -1826,7 +2860,7 @@ class CertificateController extends Controller
                         }elseif($installment==3){
                             $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
                         }
-                        $data['last_fee_paid_month']=$last_fee_paid_month;
+                      $data['last_fee_paid_month']=$last_fee_paid_month;
                     }
             
 
@@ -1852,8 +2886,183 @@ class CertificateController extends Controller
                     ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
                     ->where('shs.student_id', $id)
                     ->get();
+                    
                     $result = $result->map(function ($results) {
                         // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->subject_name,
+                        ];
+                    });
+                    $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                               ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                               ->select('shs.opt_subject_id','shsm.name')
+                               ->where('shs.student_id',$id)
+                               ->get();
+                        $result1 = $result1->map(function ($results1) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results1->name,
+                        ];
+                        });
+                        $mergedResult = $result->merge($result1);
+
+                    $data['classsubject'] = $mergedResult;
+                    $count = count($mergedResult);
+                    $data['subjectCount'] = $count;
+                }else{
+                    $result = DB::table('subjects_on_report_card')
+                        ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                        ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                        ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                        ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                        ->orderBy('subjects_on_report_card.class_id', 'asc')
+                        ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                        ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                        ->get();  
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->name,
+                        ];
+                    });
+                    $data['classsubject'] = $result;
+                    $count = count($result);
+                    $data['subjectCount'] = $count;
+
+                }
+
+                $totalattendance = DB::table('attendance')
+                ->select(
+                    DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                    DB::raw('COUNT(*) AS total_working_days')
+                )
+                ->where('student_id', $studentinformation->student_id)
+                ->where('academic_yr', $studentinformation->academic_yr)
+                ->first();  // Get the first (and only) row as we expect a single result
+               
+            // Initialize the result variables
+            $total_present_days = $totalattendance->total_present_days ?? 0;
+            $total_working_days = $totalattendance->total_working_days ?? 0;
+            
+            // Calculate total attendance
+            if ($total_present_days !== null) {
+                $total_attendance = $total_present_days . "/" . $total_working_days;
+            } else {
+                $total_attendance = "";
+            }
+             
+            $data['total_attendance'] = $total_attendance;
+            
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
+                        $installment = $paymentdetailsarray['installment'];
+                        if($installment==1){
+                            $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                        }elseif($installment==2){
+                            $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                        }elseif($installment==3){
+                            $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                        }
+                      $data['last_fee_paid_month']=$last_fee_paid_month;
+                    }
+            
+
+            $academicStudent = DB::table('student')
+                                ->where('parent_id',$studentinformation->parent_id)
+                                ->where('first_name',$studentinformation->first_name)
+                                ->select('academic_yr')
+                                ->get();
+
+            $data['academicStudent'] = $academicStudent;
+
+            }
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Leaving Certificate SrNo. By Academic Yr',
+                'data' =>$data,
+                'success'=>true
+             ]);
+            }
+            else{
+                return response()->json([
+                    'status'=> 403,
+                    'message'=>'Leaving Certificate Already Generated.Please go to manage to download the Leaving Certificate',
+                    'success'=>false
+                 ]);
+            }
+                
+            }
+            elseif($shortname == 'HSCS'){
+                $studentinfo = DB::table('student')
+                           ->where('student_id',$id)
+                           ->select('parent_id','first_name')
+                           ->distinct('student_id')
+                           ->first();
+
+            $studentinfoacademic = DB::table('student')
+                                   ->where('parent_id',$studentinfo->parent_id)
+                                   ->where('first_name',$studentinfo->first_name)
+                                   ->where('academic_yr',$academic_yr)
+                                   ->first();
+             
+            
+            $checkstudentbonafide = DB::table('leaving_certificate')->where('stud_id',$id)->where('isDelete','N')->first();
+            if(is_null($checkstudentbonafide)){
+            $srnoleavingbonafide = DB::table('leaving_certificate')->orderBy('sr_no', 'desc')->first();
+            $studentinformation = DB::table('student')
+                                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                                    ->where('student_id',$studentinfoacademic->student_id)
+                                    ->select('class.class_id','class.name as classname', 'section.section_id','section.name as sectionname', 'parent.*', 'student.*') // Adjust select as needed
+                                    ->first();
+            $data['studentinformationclass'] = $studentinformation->classname;
+            if (empty($studentinformation->dob)) {
+                    return response()->json([
+                        'status' => 422,
+                        'message' => 'Date of birth not available for this student',
+                    ], 422);
+                }
+            $dob_in_words =  $studentinformation->dob;
+            $dateTime = DateTime::createFromFormat('Y-m-d', $dob_in_words);
+            
+                // Check if the date is valid
+                if ($dateTime === false) {
+                    return 'Invalid date format';
+                }
+                
+                // Format the date as 'Day Month Year'
+                $dateInWords = $dateTime->format('j F Y'); // e.g., 24th October, 2024
+                
+                $dobinwords = $this->convertDateToWords($dateInWords);
+                $data['dobinwords']= $dobinwords;
+
+            if(is_null($studentinformation)){
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Student information is not there',
+                    'data' =>$studentinformation,
+                    'success'=>true
+                 ]);
+              }
+            if (is_null($srnoleavingbonafide)) {
+                $data['sr_no'] = '1';
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+                if($studentinformation->classname==11 || $studentinformation->classname==12){
+                    $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                    ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                    ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                    ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                    ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                    ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                    ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                    ->where('shs.student_id', $studentinformation->student_id)
+                    ->get();
+                    $result = $result->map(function ($results) {
                         return [
                             'name' => $results->subject_name,
                         ];
@@ -1901,7 +3110,7 @@ class CertificateController extends Controller
                     DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
                     DB::raw('COUNT(*) AS total_working_days')
                 )
-                ->where('student_id', $id)
+                ->where('student_id', $studentinformation->student_id)
                 ->where('academic_yr', $studentinformation->academic_yr)
                 ->first();  // Get the first (and only) row as we expect a single result
                
@@ -1911,22 +3120,124 @@ class CertificateController extends Controller
             
             // Calculate total attendance
             if ($total_present_days !== null) {
-                $total_attendance = $total_present_days . "/" . $total_working_days;
+                $total_attendance = $total_present_days;
             } else {
                 $total_attendance = "";
             }
              
             $data['total_attendance'] = $total_attendance;
+            $data['working_days'] = $total_working_days;
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
+                        $installment = $paymentdetailsarray['installment'];
+                        if($installment==1){
+                            $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
+                        }elseif($installment==2){
+                            $last_fee_paid_month="December (".$paymentdetailsarray['academic_yr'].")";
+                        }elseif($installment==3){
+                            $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
+                        }
+                      $data['last_fee_paid_month']=$last_fee_paid_month;
+                    }
             
-            $paymentdetails = DB::table('view_student_fees_payment')
-                              ->where('student_id',$id)
-                              ->where('academic_yr',$studentinformation->academic_yr)
-                              ->orderBy('installment','desc')
-                              ->select('installment','academic_yr')
-                              ->first();
-                              $paymentdetailsarray = (array) $paymentdetails;
 
-                    if(isset($paymentdetailsarray) && count($paymentdetailsarray)>0){
+            $academicStudent = DB::table('student')
+                                ->where('parent_id',$studentinformation->parent_id)
+                                ->where('first_name',$studentinformation->first_name)
+                                ->select('academic_yr')
+                                ->get();
+
+            $data['academicStudent'] = $academicStudent;
+            }
+            else{
+                $data['sr_no'] = $srnoleavingbonafide->sr_no + 1 ;
+                $data['date']  = Carbon::today()->format('Y-m-d');
+                $data['studentinformation']=$studentinformation;
+                if($studentinformation->classname==11 || $studentinformation->classname==12){
+                    $result = DB::table('subjects_higher_secondary_studentwise AS shs')
+                    ->join('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                    ->join('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                    ->join('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                    ->join('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                    ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                    ->select('shs.*', 'grp.sub_group_name', 'grpd.sm_hsc_id', 'shsm.name as subject_name', 'shsm.subject_type', 'stream.stream_name', 'shs_op.name as optional_sub_name')
+                    ->where('shs.student_id', $id)
+                    ->get();
+                    
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->subject_name,
+                        ];
+                    });
+                    $result1 = DB::table('subjects_higher_secondary_studentwise AS shs')
+                               ->join('subject_master AS shsm','shs.opt_subject_id','=','shsm.sm_id')
+                               ->select('shs.opt_subject_id','shsm.name')
+                               ->where('shs.student_id',$id)
+                               ->get();
+                        $result1 = $result1->map(function ($results1) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results1->name,
+                        ];
+                        });
+                        $mergedResult = $result->merge($result1);
+
+                    $data['classsubject'] = $mergedResult;
+                    $count = count($mergedResult);
+                    $data['subjectCount'] = $count;
+                }else{
+                    $result = DB::table('subjects_on_report_card')
+                        ->join('subjects_on_report_card_master', 'subjects_on_report_card.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
+                        ->where('subjects_on_report_card.class_id', $studentinformation->class_id)
+                        ->where('subjects_on_report_card.subject_type', 'Scholastic')
+                        ->where('subjects_on_report_card.academic_yr', $studentinformation->academic_yr)
+                        ->orderBy('subjects_on_report_card.class_id', 'asc')
+                        ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+                        ->select('subjects_on_report_card_master.*')  // Select all columns from subjects_on_report_card_master
+                        ->get();  
+                    $result = $result->map(function ($results) {
+                        // Change 'old_key' to 'new_key'
+                        return [
+                            'name' => $results->name,
+                        ];
+                    });
+                    $data['classsubject'] = $result;
+                    $count = count($result);
+                    $data['subjectCount'] = $count;
+
+                }
+
+                $totalattendance = DB::table('attendance')
+                ->select(
+                    DB::raw('SUM(IF(attendance_status = 0, 1, 0)) AS total_present_days'),
+                    DB::raw('COUNT(*) AS total_working_days')
+                )
+                ->where('student_id', $studentinformation->student_id)
+                ->where('academic_yr', $studentinformation->academic_yr)
+                ->first();  // Get the first (and only) row as we expect a single result
+               
+            // Initialize the result variables
+            $total_present_days = $totalattendance->total_present_days ?? 0;
+            $total_working_days = $totalattendance->total_working_days ?? 0;
+            
+            // Calculate total attendance
+            if ($total_present_days !== null) {
+                $total_attendance = $total_present_days;
+            } else {
+                $total_attendance = "";
+            }
+             
+            $data['total_attendance'] = $total_attendance;
+            $data['working_days'] = $total_working_days;
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
                         $installment = $paymentdetailsarray['installment'];
                         if($installment==1){
                             $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
@@ -1950,7 +3261,7 @@ class CertificateController extends Controller
             }
             return response()->json([
                 'status'=> 200,
-                'message'=>'Leaving Certificate SrNo.',
+                'message'=>'Leaving Certificate SrNo. By Academic Yr',
                 'data' =>$data,
                 'success'=>true
              ]);
@@ -1962,16 +3273,10 @@ class CertificateController extends Controller
                     'success'=>false
                  ]);
             }
-        }
-        catch (Exception $e) {
-            \Log::error($e); // Log the exception
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-         }
-    }
-
-    public function getSrnoLeavingCertificateAcademicYr($id,$academic_yr){
-        try{
-            $studentinfo = DB::table('student')
+                
+            }
+            else{
+                $studentinfo = DB::table('student')
                            ->where('student_id',$id)
                            ->select('parent_id','first_name')
                            ->distinct('student_id')
@@ -2096,16 +3401,11 @@ class CertificateController extends Controller
             }
              
             $data['total_attendance'] = $total_attendance;
-            
-            $paymentdetails = DB::table('view_student_fees_payment')
-                              ->where('student_id',$studentinformation->student_id)
-                              ->where('academic_yr',$studentinformation->academic_yr)
-                              ->orderBy('installment','desc')
-                              ->select('installment','academic_yr')
-                              ->first();
-                              $paymentdetailsarray = (array) $paymentdetails;
-
-                    if(isset($paymentdetailsarray) && count($paymentdetailsarray)>0){
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
                         $installment = $paymentdetailsarray['installment'];
                         if($installment==1){
                             $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
@@ -2114,7 +3414,7 @@ class CertificateController extends Controller
                         }elseif($installment==3){
                             $last_fee_paid_month="Whole year (".$paymentdetailsarray['academic_yr'].")";
                         }
-                        $data['last_fee_paid_month']=$last_fee_paid_month;
+                      $data['last_fee_paid_month']=$last_fee_paid_month;
                     }
             
 
@@ -2207,15 +3507,11 @@ class CertificateController extends Controller
              
             $data['total_attendance'] = $total_attendance;
             
-            $paymentdetails = DB::table('view_student_fees_payment')
-                              ->where('student_id',$studentinformation->student_id)
-                              ->where('academic_yr',$studentinformation->academic_yr)
-                              ->orderBy('installment','desc')
-                              ->select('installment','academic_yr')
-                              ->first();
-                              $paymentdetailsarray = (array) $paymentdetails;
-
-                    if(isset($paymentdetailsarray) && count($paymentdetailsarray)>0){
+            $data['last_fee_paid_month'] = "";
+            $paymentdetails = DB::select("SELECT student_installment, student_id, installment, fees_paid as fees_paid, academic_yr FROM view_student_fees_payment where academic_yr = '$studentinformation->academic_yr' and  student_installment=(SELECT distinct(max(student_installment)) FROM view_student_fees_payment where student_id IN (SELECT b.student_id FROM student a, student b where a.student_id=".$studentinformation->student_id." and a.parent_id=b.parent_id and (a.first_name =b.first_name || a.reg_no=b.reg_no)))");
+                    if(!empty($paymentdetails)){
+                        $paymentdetailsarray = (array) $paymentdetails[0];
+                        $last_fee_paid_month="";
                         $installment = $paymentdetailsarray['installment'];
                         if($installment==1){
                             $last_fee_paid_month="September (".$paymentdetailsarray['academic_yr'].")";
@@ -2251,6 +3547,9 @@ class CertificateController extends Controller
                     'success'=>false
                  ]);
             }
+                
+            }
+            
         }
         catch (Exception $e) {
             \Log::error($e); // Log the exception
@@ -2261,8 +3560,10 @@ class CertificateController extends Controller
     public function saveLeavingCertificatePDF(Request $request){
         try{
             $user = $this->authenticateUser();
-            
-            $tagsString = implode(',', $request->subjects);
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortName = JWTAuth::getPayload()->get('short_name');
+            if($shortName == 'SACS'){
+                $tagsString = implode(',', $request->subjects);
             $tagsString1 = implode(',', $request->games);
             $leavingCertificate = LeavingCertificate::create([
             'grn_no' => $request->grn_no,
@@ -2303,6 +3604,7 @@ class CertificateController extends Controller
             'academic_yr'=>$request->academic_yr,
             'stud_id' => $request->stud_id,
             'udise_pen_no'=>$request->udise_pen_no,
+            'apaar_id'=>$request->apaar_id,
             'IsGenerated'=> 'Y',
             'IsDelete'  => 'N',
             'IsIssued'   => 'N',
@@ -2326,6 +3628,146 @@ class CertificateController extends Controller
             // Load a view and pass the data to it
             
             $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
+            elseif($shortName == 'HSCS'){
+                $tagsString = implode(',', $request->subjects);
+                $tagsString1 = implode(',', $request->games);
+                $leavingCertificate = LeavingCertificate::create([
+                'grn_no' => $request->grn_no,
+                'issue_date' => $request->issue_date,
+                'stud_id_no' => $request->stud_id_no,
+                'aadhar_no'=>$request->stu_aadhaar_no,
+                'stud_name'=>$request->first_name,
+                'mid_name' =>$request->mid_name,
+                'last_name'=>$request->last_name,
+                'father_name'=>$request->father_name,
+                'mother_name'=>$request->mother_name,
+                'nationality'=>$request->nationality,
+                'mother_tongue'=>$request->mother_tongue,
+                'state'=>$request->state,
+                'religion' => $request->religion,
+                'caste' => $request->caste,
+                'subcaste' => $request->subcaste,
+                'birth_place'=>$request->birth_place,
+                'dob' => $request->dob,
+                'dob_words'=>$request->dob_words,
+                'dob_proof'=>$request->dob_proof,
+                'last_school_attended_standard'=>$request->previous_school_attended,
+                'date_of_admission'=>$request->admission_date,
+                'admission_class'=>$request->admission_class,
+                'leaving_date'=>$request->leaving_date,
+                'standard_studying'=>$request->standard_studying,
+                'last_exam'=>$request->last_exam,
+                'subjects_studied'=>$tagsString,
+                'promoted_to'=>$request->promoted_to,
+                'attendance' =>$request->attendance,
+                'fee_month' => $request->fee_month,
+                'part_of'=>$request->part_of,
+                'games' => $tagsString1,
+                'application_date'=>$request->application_date,
+                'conduct'=>$request->conduct,
+                'reason_leaving'=>$request->reason_leaving,
+                'remark'=>$request->remark,
+                'academic_yr'=>$request->academic_yr,
+                'stud_id' => $request->stud_id,
+                'udise_pen_no'=>$request->udise_pen_no,
+                'apaar_id'=>$request->apaar_id,
+                'IsGenerated'=> 'Y',
+                'IsDelete'  => 'N',
+                'IsIssued'   => 'N',
+                'generated_by'=>$user->reg_id,
+                'working_days'=>$request->working_days
+                ]);
+                
+                $data= DB::table('leaving_certificate')
+                        ->where('sr_no',$leavingCertificate->sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+    
+                        DB::table('student')
+                            ->where('student_id', $data->stud_id)
+                            ->update([
+                                'last_date' => $data->leaving_date,
+                                'slc_no' => $data->sr_no,
+                                'slc_issue_date' => $data->issue_date,
+                                'leaving_remark' =>$data->remark,
+                            ]);
+                        
+                $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
+                
+            }
+            else{
+                $tagsString = implode(',', $request->subjects);
+                $tagsString1 = implode(',', $request->games);
+                $leavingCertificate = LeavingCertificate::create([
+                'grn_no' => $request->grn_no,
+                'issue_date' => $request->issue_date,
+                'stud_id_no' => $request->stud_id_no,
+                'aadhar_no'=>$request->stu_aadhaar_no,
+                'stud_name'=>$request->first_name,
+                'mid_name' =>$request->mid_name,
+                'last_name'=>$request->last_name,
+                'father_name'=>$request->father_name,
+                'mother_name'=>$request->mother_name,
+                'nationality'=>$request->nationality,
+                'mother_tongue'=>$request->mother_tongue,
+                'state'=>$request->state,
+                'religion' => $request->religion,
+                'caste' => $request->caste,
+                'subcaste' => $request->subcaste,
+                'birth_place'=>$request->birth_place,
+                'dob' => $request->dob,
+                'dob_words'=>$request->dob_words,
+                'dob_proof'=>$request->dob_proof,
+                'last_school_attended_standard'=>$request->previous_school_attended,
+                'date_of_admission'=>$request->admission_date,
+                'admission_class'=>$request->admission_class,
+                'leaving_date'=>$request->leaving_date,
+                'standard_studying'=>$request->standard_studying,
+                'last_exam'=>$request->last_exam,
+                'subjects_studied'=>$tagsString,
+                'promoted_to'=>$request->promoted_to,
+                'attendance' =>$request->attendance,
+                'fee_month' => $request->fee_month,
+                'part_of'=>$request->part_of,
+                'games' => $tagsString1,
+                'application_date'=>$request->application_date,
+                'conduct'=>$request->conduct,
+                'reason_leaving'=>$request->reason_leaving,
+                'remark'=>$request->remark,
+                'academic_yr'=>$request->academic_yr,
+                'stud_id' => $request->stud_id,
+                'udise_pen_no'=>$request->udise_pen_no,
+                'apaar_id'=>$request->apaar_id,
+                'IsGenerated'=> 'Y',
+                'IsDelete'  => 'N',
+                'IsIssued'   => 'N',
+                'generated_by'=>$user->reg_id,
+                ]);
+                
+                $data= DB::table('leaving_certificate')
+                        ->where('sr_no',$leavingCertificate->sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+    
+                        DB::table('student')
+                            ->where('student_id', $data->stud_id)
+                            ->update([
+                                'last_date' => $data->leaving_date,
+                                'slc_no' => $data->sr_no,
+                                'slc_issue_date' => $data->issue_date,
+                                'leaving_remark' =>$data->remark,
+                            ]);
+                    
+                $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
+            
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -2441,13 +3883,27 @@ class CertificateController extends Controller
 
     public function leavingCertificatePDFDownload(Request $request,$sr_no){      
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortName = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('leaving_certificate')
                     ->where('sr_no',$sr_no)  
                     ->orderBy('sr_no','desc')->first();
             $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
             // Load a view and pass the data to it
+            if($shortName == 'SACS'){
+                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
+            elseif($shortName == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
+                
+            }
+            else{
+                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
             
-            $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -2563,56 +4019,173 @@ class CertificateController extends Controller
      
     public function updateLeavingCertificateDownload(Request $request,$sr_no){
         try{
-            $tagsString = implode(',', $request->subjects);
-            $tagsString1 = implode(',', $request->games);
-            $leavingcertificate = LeavingCertificate::find($sr_no);
-            $leavingcertificate->grn_no = $request->grn_no;
-            $leavingcertificate->issue_date = $request->issue_date;
-            $leavingcertificate->stud_id_no = $request->student_id_no;
-            $leavingcertificate->aadhar_no=$request->aadhar_no;
-            $leavingcertificate->stud_name=$request->first_name;
-            $leavingcertificate->mid_name =$request->mid_name;
-            $leavingcertificate->last_name=$request->last_name;
-            $leavingcertificate->father_name=$request->father_name;
-            $leavingcertificate->mother_name=$request->mother_name;
-            $leavingcertificate->nationality=$request->nationality;
-            $leavingcertificate->mother_tongue=$request->mother_tongue;
-            $leavingcertificate->religion = $request->religion;
-            $leavingcertificate->caste = $request->caste;
-            $leavingcertificate->subcaste = $request->subcaste;
-            $leavingcertificate->birth_place=$request->birth_place;
-            $leavingcertificate->dob = $request->dob;
-            $leavingcertificate->dob_words = $request->dob_words;
-            $leavingcertificate->dob_proof = $request->dob_proof;
-            $leavingcertificate->last_school_attended_standard = $request->previous_school_attended;
-            $leavingcertificate->date_of_admission = $request->date_of_admission;
-            $leavingcertificate->admission_class = $request->admission_class;
-            $leavingcertificate->leaving_date = $request->leaving_date;
-            $leavingcertificate->standard_studying = $request->standard_studying;
-            $leavingcertificate->last_exam = $request->last_exam;
-            $leavingcertificate->subjects_studied = $tagsString;
-            $leavingcertificate->promoted_to = $request->promoted_to;
-            $leavingcertificate->attendance  = $request->attendance;
-            $leavingcertificate->fee_month = $request->fee_month;
-            $leavingcertificate->part_of =  $request->part_of;
-            $leavingcertificate->games = $tagsString1;
-            $leavingcertificate->application_date = $request->application_date;
-            $leavingcertificate->conduct = $request->conduct;
-            $leavingcertificate->reason_leaving = $request->reason_leaving;
-            $leavingcertificate->remark = $request->remark;
-            $leavingcertificate->academic_yr = $request->academic_yr;
-            $leavingcertificate->stud_id = $request->stud_id;
-            $leavingcertificate->udise_pen_no= $request->udise_pen_no;
-            $leavingcertificate->update();
-   
-            $data= DB::table('leaving_certificate')
-                    ->where('sr_no',$leavingcertificate->sr_no)  
-                    ->orderBy('sr_no','desc')->first();
-                    
-            $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
-            // Load a view and pass the data to it
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortName = JWTAuth::getPayload()->get('short_name');
+            if($shortName == 'SACS'){
+                $tagsString = implode(',', $request->subjects);
+                $tagsString1 = implode(',', $request->games);
+                $leavingcertificate = LeavingCertificate::find($sr_no);
+                $leavingcertificate->grn_no = $request->grn_no;
+                $leavingcertificate->issue_date = $request->issue_date;
+                $leavingcertificate->stud_id_no = $request->student_id_no;
+                $leavingcertificate->aadhar_no=$request->aadhar_no;
+                $leavingcertificate->stud_name=$request->first_name;
+                $leavingcertificate->mid_name =$request->mid_name;
+                $leavingcertificate->last_name=$request->last_name;
+                $leavingcertificate->father_name=$request->father_name;
+                $leavingcertificate->mother_name=$request->mother_name;
+                $leavingcertificate->nationality=$request->nationality;
+                $leavingcertificate->mother_tongue=$request->mother_tongue;
+                $leavingcertificate->religion = $request->religion;
+                $leavingcertificate->caste = $request->caste;
+                $leavingcertificate->subcaste = $request->subcaste;
+                $leavingcertificate->birth_place=$request->birth_place;
+                $leavingcertificate->dob = $request->dob;
+                $leavingcertificate->dob_words = $request->dob_words;
+                $leavingcertificate->dob_proof = $request->dob_proof;
+                $leavingcertificate->last_school_attended_standard = $request->previous_school_attended;
+                $leavingcertificate->date_of_admission = $request->date_of_admission;
+                $leavingcertificate->admission_class = $request->admission_class;
+                $leavingcertificate->leaving_date = $request->leaving_date;
+                $leavingcertificate->standard_studying = $request->standard_studying;
+                $leavingcertificate->last_exam = $request->last_exam;
+                $leavingcertificate->subjects_studied = $tagsString;
+                $leavingcertificate->promoted_to = $request->promoted_to;
+                $leavingcertificate->attendance  = $request->attendance;
+                $leavingcertificate->fee_month = $request->fee_month;
+                $leavingcertificate->part_of =  $request->part_of;
+                $leavingcertificate->games = $tagsString1;
+                $leavingcertificate->application_date = $request->application_date;
+                $leavingcertificate->conduct = $request->conduct;
+                $leavingcertificate->reason_leaving = $request->reason_leaving;
+                $leavingcertificate->remark = $request->remark;
+                $leavingcertificate->academic_yr = $request->academic_yr;
+                $leavingcertificate->stud_id = $request->stud_id;
+                $leavingcertificate->udise_pen_no= $request->udise_pen_no;
+                $leavingcertificate->apaar_id= $request->apaar_id;
+                $leavingcertificate->update();
+       
+                $data= DB::table('leaving_certificate')
+                        ->where('sr_no',$leavingcertificate->sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+                        
+                $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
+            elseif($shortName == 'HSCS'){
+                $tagsString = implode(',', $request->subjects);
+                $tagsString1 = implode(',', $request->games);
+                $leavingcertificate = LeavingCertificate::find($sr_no);
+                $leavingcertificate->grn_no = $request->grn_no;
+                $leavingcertificate->issue_date = $request->issue_date;
+                $leavingcertificate->stud_id_no = $request->student_id_no;
+                $leavingcertificate->aadhar_no=$request->aadhar_no;
+                $leavingcertificate->stud_name=$request->first_name;
+                $leavingcertificate->mid_name =$request->mid_name;
+                $leavingcertificate->last_name=$request->last_name;
+                $leavingcertificate->father_name=$request->father_name;
+                $leavingcertificate->mother_name=$request->mother_name;
+                $leavingcertificate->nationality=$request->nationality;
+                $leavingcertificate->mother_tongue=$request->mother_tongue;
+                $leavingcertificate->religion = $request->religion;
+                $leavingcertificate->caste = $request->caste;
+                $leavingcertificate->subcaste = $request->subcaste;
+                $leavingcertificate->birth_place=$request->birth_place;
+                $leavingcertificate->dob = $request->dob;
+                $leavingcertificate->dob_words = $request->dob_words;
+                $leavingcertificate->dob_proof = $request->dob_proof;
+                $leavingcertificate->last_school_attended_standard = $request->previous_school_attended;
+                $leavingcertificate->date_of_admission = $request->date_of_admission;
+                $leavingcertificate->admission_class = $request->admission_class;
+                $leavingcertificate->leaving_date = $request->leaving_date;
+                $leavingcertificate->standard_studying = $request->standard_studying;
+                $leavingcertificate->last_exam = $request->last_exam;
+                $leavingcertificate->subjects_studied = $tagsString;
+                $leavingcertificate->promoted_to = $request->promoted_to;
+                $leavingcertificate->attendance  = $request->attendance;
+                $leavingcertificate->fee_month = $request->fee_month;
+                $leavingcertificate->part_of =  $request->part_of;
+                $leavingcertificate->games = $tagsString1;
+                $leavingcertificate->application_date = $request->application_date;
+                $leavingcertificate->conduct = $request->conduct;
+                $leavingcertificate->reason_leaving = $request->reason_leaving;
+                $leavingcertificate->remark = $request->remark;
+                $leavingcertificate->academic_yr = $request->academic_yr;
+                $leavingcertificate->stud_id = $request->stud_id;
+                $leavingcertificate->udise_pen_no= $request->udise_pen_no;
+                $leavingcertificate->apaar_id= $request->apaar_id;
+                $leavingcertificate->working_days= $request->working_days;
+                $leavingcertificate->update();
+       
+                $data= DB::table('leaving_certificate')
+                        ->where('sr_no',$leavingcertificate->sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+                        
+                $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
+                
+            }
+            else{
+                $tagsString = implode(',', $request->subjects);
+                $tagsString1 = implode(',', $request->games);
+                $leavingcertificate = LeavingCertificate::find($sr_no);
+                $leavingcertificate->grn_no = $request->grn_no;
+                $leavingcertificate->issue_date = $request->issue_date;
+                $leavingcertificate->stud_id_no = $request->student_id_no;
+                $leavingcertificate->aadhar_no=$request->aadhar_no;
+                $leavingcertificate->stud_name=$request->first_name;
+                $leavingcertificate->mid_name =$request->mid_name;
+                $leavingcertificate->last_name=$request->last_name;
+                $leavingcertificate->father_name=$request->father_name;
+                $leavingcertificate->mother_name=$request->mother_name;
+                $leavingcertificate->nationality=$request->nationality;
+                $leavingcertificate->mother_tongue=$request->mother_tongue;
+                $leavingcertificate->religion = $request->religion;
+                $leavingcertificate->caste = $request->caste;
+                $leavingcertificate->subcaste = $request->subcaste;
+                $leavingcertificate->birth_place=$request->birth_place;
+                $leavingcertificate->dob = $request->dob;
+                $leavingcertificate->dob_words = $request->dob_words;
+                $leavingcertificate->dob_proof = $request->dob_proof;
+                $leavingcertificate->last_school_attended_standard = $request->previous_school_attended;
+                $leavingcertificate->date_of_admission = $request->date_of_admission;
+                $leavingcertificate->admission_class = $request->admission_class;
+                $leavingcertificate->leaving_date = $request->leaving_date;
+                $leavingcertificate->standard_studying = $request->standard_studying;
+                $leavingcertificate->last_exam = $request->last_exam;
+                $leavingcertificate->subjects_studied = $tagsString;
+                $leavingcertificate->promoted_to = $request->promoted_to;
+                $leavingcertificate->attendance  = $request->attendance;
+                $leavingcertificate->fee_month = $request->fee_month;
+                $leavingcertificate->part_of =  $request->part_of;
+                $leavingcertificate->games = $tagsString1;
+                $leavingcertificate->application_date = $request->application_date;
+                $leavingcertificate->conduct = $request->conduct;
+                $leavingcertificate->reason_leaving = $request->reason_leaving;
+                $leavingcertificate->remark = $request->remark;
+                $leavingcertificate->academic_yr = $request->academic_yr;
+                $leavingcertificate->stud_id = $request->stud_id;
+                $leavingcertificate->udise_pen_no= $request->udise_pen_no;
+                $leavingcertificate->apaar_id= $request->apaar_id;
+                $leavingcertificate->update();
+       
+                $data= DB::table('leaving_certificate')
+                        ->where('sr_no',$leavingcertificate->sr_no)  
+                        ->orderBy('sr_no','desc')->first();
+                        
+                $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
+                // Load a view and pass the data to it
+                
+                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                
+            }
             
-            $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -2800,13 +4373,13 @@ class CertificateController extends Controller
                             ->where('a.role_id', 'P')
                             ->where('b.parent_id', $studentinfo->parent_id)
                             ->value('a.user_id');
-                        
+                        $schoolsettings =getSchoolSettingsData();
+                        $school_id = $schoolsettings->school_id;
                             $user_data1 = [
                                 "user_id" => $user_id,
-                                "school_id" => "1"
+                                "school_id" => $school_id
                             ];
                             
-                            // Send POST request to external service using Laravel's HTTP client
                             $response = deleteParentUser($user_id);
                             
                             
@@ -2973,15 +4546,8 @@ class CertificateController extends Controller
                                             ->where('b.parent_id', $parent_id)
                                             ->select('a.user_id as user_id')
                                             ->first();
-                        $user_data1 = [
-                            "user_id" => $currentUserName,
-                            "school_id" => "1"
-                        ];
-                        $user_data = json_encode($user_data1);
                         
-                        $response = Http::withHeaders([
-                            'Content-Type' => 'application/json',
-                        ])->post('http://aceventura.in/demo/evolvuUserService/user_create_post', $user_data);
+                        $response = createUserInEvolvu($currentUserName);
                         
                         $token_data = $response->body();
                         $data = DB::table('deleted_contact_details')

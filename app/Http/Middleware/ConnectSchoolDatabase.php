@@ -8,6 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Log;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ConnectSchoolDatabase
 {
@@ -18,12 +19,13 @@ class ConnectSchoolDatabase
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('api/connectdatabase')) {
+        if ($request->is('api/connectdatabase') || $request->is('api/login')) {
         return $next($request);
     }
    
-        
-         $shortName = $request->cookie('short_name');
+        $payload = JWTAuth::parseToken()->getPayload();
+        $shortName = $payload->get('short_name');
+        // dd($shortName);
 
         if (!$shortName) {
             return response()->json(['error' => 'short_name missing. Use /setup-school first.'], 400);
@@ -40,7 +42,7 @@ class ConnectSchoolDatabase
             'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix'    => '',
-            'strict'    => true,
+            'strict'    => false,
         ]);
         }
         elseif($shortName == 'HSCS'){
@@ -54,7 +56,7 @@ class ConnectSchoolDatabase
             'charset'   => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix'    => '',
-            'strict'    => true,
+            'strict'    => false,
         ]);
             
         }

@@ -78,6 +78,27 @@ class AuthController extends Controller
 //     }
 // }
 
+public function connectByShortName(Request $request){
+         $request->validate([
+        'short_name' => 'required|string',
+         ]);
+
+    $shortName = $request->short_name;
+    Log::info($shortName);
+
+    // Optional: validate short_name from a master DB
+    // $exists = DB::table('schools')->where('short_name', $shortName)->exists();
+    // if (!$exists) {
+    //     return response()->json(['error' => 'Invalid school short_name'], 404);
+    // }
+     session(['short_name' => $shortName]);
+    return response()->json([
+        'status' =>200,
+        'message' => 'Connected to school DB',
+        'success'=>true
+        ]);
+    }
+
     // Modified By Manish Kumar Sharma 27-03-2025
     public function login(Request $request)
     {
@@ -85,9 +106,29 @@ class AuthController extends Controller
         $remember_me = $request->rememberme;
 
         try {
+            if($request->has('short_name') && !empty($request->short_name)){
+                 $shortName = $request->short_name;
+            }
+            else{
+                $shortName = 'SACS';
+                
+            }
+            // dd($shortName);
+            $shortName = $request->short_name ;
+            if ($request->has('short_name') && !empty($request->short_name)) {
+                $shortName = $request->short_name;
+                $databaseConnectionName = $shortName;
+            
+                if (array_key_exists($databaseConnectionName, config('database.connections'))) {
+                    config(['database.default' => $databaseConnectionName]);
+                } else {
+                    dd("No database configuration for the given short_name");
+                }
+            }
+            
             
             $userrole = UserMaster::where('user_id', $credentials['user_id'])
-                        ->whereIn('role_id', ['A', 'M','U','T'])
+                        ->whereIn('role_id', ['A', 'M','U','T','P','L'])
                         ->first();
             if($userrole){
 
@@ -125,7 +166,7 @@ class AuthController extends Controller
                 Log::warning('Invalid password for user:', $credentials);
                 return response()->json(['error' => 'Invalid password'], 401);
             }
-            if($userrole->role_id != 'U' && $userrole->role_id != 'T'){
+            if($userrole->role_id != 'U' && $userrole->role_id != 'T' && $userrole->role_id != 'P'){
             $url = config('externalapis.EVOLVU_URL').'/validate_staff_user';
 
             $response = Http::asMultipart()->post($url, [
@@ -171,7 +212,8 @@ class AuthController extends Controller
                 'reg_id' => $user->reg_id,
                 'academic_year' => $academic_yr,
                 'school_name'=>$schoolName,
-                'settings'=>$settings
+                'settings'=>$settings,
+                'short_name'=>$settings->short_name
                 
 
             ];

@@ -15,8 +15,12 @@
     use App\Http\Controllers\HscController;
     use App\Http\Controllers\ReportController;
     use App\Http\Services\SmartMailer;
+    use App\Http\Controllers\LibraryController;
 
+    Route::post('/connectdatabase', [AuthController::class, 'connectByShortName']);
     // Public routes
+    Route::middleware(['school.db'])->group(function () {
+    
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
 
@@ -263,6 +267,8 @@
         Route::get('get_srnoleavingcertificatedata/{id}',[CertificateController::class,'getSrnoLeavingCertificate']);
         Route::get('get_srnoleavingcertificateByAcademicyr/{id}/{academic_yr}',[CertificateController::class,'getSrnoLeavingCertificateAcademicYr']);
         Route::post('save_pdfleavingcertificate',[CertificateController::class,'saveLeavingCertificatePDF']);
+        Route::get('get_pendingbooksreturnforstudent',[StudentController::class,'getPendingBooksForReturn']);
+
 
         //Manage Leaving Certificate
         Route::get('get_leavingcertificatelist',[CertificateController::class,'getLeavingCertificateList']);
@@ -800,7 +806,7 @@
         Route::post('/save_bookrequistion', [AssessmentController::class, 'createBookRequisition']);
         Route::get('/book_requisitioninfo/{id}', [AssessmentController::class, 'getBookRequisitionInfo']);
         Route::get('/all_book_requisitioninfo', [AssessmentController::class, 'getAllBookRequisitions']);
-        Route::get('/get_BookRequisition', [AssessmentController::class, 'getBookRequisition']);
+        Route::get('/get_BookRequisition/{reg_id}/{member_type}', [AssessmentController::class, 'getBookRequisition']);
         Route::put('/update_book_requisition/{id}', [AssessmentController::class, 'updateBookRequisition']);
         Route::delete('/delete_book_requisition/{id}', [AssessmentController::class, 'deleteBookRequisition']);
         
@@ -815,7 +821,7 @@
         //Background color Dev Name - Manish Kumar Sharma 08-08-2025
         Route::get('/get_allbackgoundcolor',[NewController::class,'getAllBackgroundColor']);
         Route::put('/update_backgroundcoloractive/{background_color_id}',[NewController::class,'updateBackgroundColorActive']);
-        Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
+       
 
         //Event Roles Dev Name - Manish Kumar Sharma 12-08-2025
         Route::post('save_rolesforevent',[RoleController::class,'saveRolesForEvent']);
@@ -823,7 +829,7 @@
         Route::post('update_rolesforevent/{id}',[RoleController::class,'updateRolesForEvent']);
         Route::delete('delete_rolesforevent/{id}',[RoleController::class,'deleteRolesForEvent']);
         Route::put('update_activeforevent/{id}',[RoleController::class,'updateActiveForEvent']);
-        
+        Route::get('get_activerolesforevent',[RoleController::class,'getActiveRolesForEvent']);
 
         // News Dev Name - Mahima Chaudhari 04-08-2025
         Route::post('/save_news', [AssessmentController::class, 'createNews']);
@@ -833,71 +839,412 @@
         Route::delete('/delete_news/{id}', [AssessmentController::class, 'deleteNews']);
         Route::put('/publish_news/{id}', [AssessmentController::class, 'publishNews']);
 
+        // Approve Stationery Dev Name - Mahima Chaudhari 14-08-2025
+        Route::get('/get_approvestationerylist', [AssessmentController::class, 'getStationeryApprove']);
+        Route::post('/update_approvestationerylist/{id}', [AssessmentController::class, 'saveOrUpdateStationeryApprove']);
+        
+        // View Book Availability Dev Name - Mahima Chaudhari 16-08-2025
+        Route::get('/get_booksoncopyid/{id}', [AssessmentController::class, 'getBooksOnCopyId']);
+        Route::get('/get_categoryname/{id}', [AssessmentController::class, 'getCategoryName']);
+        Route::get('/get_category_group_name', [AssessmentController::class, 'getCategoryGroupName']);
+        Route::get('/get_category', [AssessmentController::class, 'getCategory']);
+        Route::get('/get_allcategoryname', [AssessmentController::class, 'getAllCategoryName']);
+        Route::get('/get_all_books', [AssessmentController::class, 'searchBooks']);
+        
+        // Dynamic field Updation of Student table Dev Name - Manish Kumar Sharma 19-08-2025
+        Route::get('/get_studenttablefieldsforUpdate', [StudentController::class, 'getFieldsForUpdateStudent']);
+        Route::get('/get_studentdatawithfielddata/{id}/{field_name}', [StudentController::class, 'getStudentDataWithFieldData']);
+        Route::put('/update_studentdatawithfielddata', [StudentController::class, 'updateStudentDataWithFieldData']);
+
+        //House api Dev Name- Manish Kumar Sharma 22-08-2025
+        Route::get('/get_houses', [NewController::class, 'getHouseofSchool']);
+
+        
+        
+        
+        Route::post('/update-students-csv/{section_id}', [LoginController::class, 'updateCsvData']);
+        //routes for the Allot Class teacher 
+        Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
+        Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
+        Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'editClassTeacher']);
+        Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
+        Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
+
+        //routes for the Grades
+        Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
+        Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
+        Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
+        Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
+        Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
+
+        //routes for the Exams
+        Route::get('/get_Term', [AssessmentController::class, 'getTerm']);
+        Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
+        Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
+        Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
+        Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
+        Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);
+
+        //  API for the New Student list Buulk upload 
+        Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
+
+        Route::get('/get_newstudent_by_sectionId/{section_id}', [AdminController::class, 'getNewStudentListbysectionforregister']);
+        Route::get('/get_all_newstudentlist', [AdminController::class, 'getAllNewStudentListForRegister']);
+        Route::get('/getParentInfoOfStudent/{siblingStudentId}', [AdminController::class, 'getParentInfoOfStudent']); 
+        Route::delete('/deleteNewstudent/{studentId}', [AdminController::class, 'deleteNewStudent']); 
+        Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 'updateNewStudentAndParentData']);   
+
+        
+            
+        //routes for the Marks headings
+        Route::get('/get_Markheadingslist', [AssessmentController::class, 'getMarksheadingsList']);
+        Route::post('/save_Markheadings', [AssessmentController::class, 'saveMarksheadings']);
+        Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'editMarkheadings']);
+        Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
+        Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
+            
+        
+
+        //routes for the Allot Marks headings
+        // Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
+        // Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
+        // Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+        // Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
+        // Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
+        Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
+            
+
+        //Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
+
+        //routes for the Allot Marks headings//Hostinger Done
+        Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
+        Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
+        Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
+        Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
+        Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
+        Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
+
+        //Teacher with classes and classteacher Dev Name- Manish Kumar Sharma 30-08-2025
+        Route::get('get_teacherclasseswithclassteacher',[NewController::class,'getTeacherClasseswithClassTeacher']);
+
+        //Students Attendance on dashboard Dev Name - Manish Kumar Sharma 01-09-2025
+        Route::get('get_studentslistattendance',[StudentController::class,'getStudentListAttendance']);
+        Route::post('send_messageforattendance',[StudentController::class,'sendMessageForAttendance']);
+        //HPC Subjects Dev Name - Manish Kumar Sharma 04-09-2025
+        Route::post('/check_hpc_subject_name', [AssessmentController::class, 'checkHPCSubjectName']);
+        Route::get('/hpcsubject', [AssessmentController::class, 'getHPCSubjects']);
+        Route::post('/hpcsubject', [AssessmentController::class, 'storeHPCSubject']);
+        Route::get('/hpcsubject/{id}', [AssessmentController::class, 'editHPCSubject']);
+        Route::put('/hpcsubject/{id}', [AssessmentController::class, 'updateHPCSubject']);
+        Route::delete('/hpcsubject/{id}', [AssessmentController::class, 'deleteHPCSubject']); 
+        
+        //HPC Subject Allotment Dev Name - Manish Kumar Sharma 04-09-2025
+        Route::get('/get_hpc_subject_Alloted_for_report_card/{class_id}', [AssessmentController::class, 'getHPCSubjectAllotmentForReportCard']);
+        Route::delete('/delete_hpc_sub_report_allotted/{sub_reportcard_id}', [AssessmentController::class, 'deleteHPCSubjectAllotmentforReportcard']);
+        Route::post('/hpc-subject-allotments-reportcard/{class_id}', [AssessmentController::class, 'createOrUpdateHPCSubjectAllotment']);
+        Route::get('/get_hpc_sub_report_allotted/{class_id}', [AssessmentController::class, 'editHPCSubjectAllotmentforReportCard']);
+        
+        //Domain Competency Dev Name - Manish Kumar Sharma 04-09-2025
+        Route::post('save_domaincompetencies',[AssessmentController::class,'saveDomainCompetencies']);
+        Route::get('get_domaincompetencies',[AssessmentController::class,'getDomainCompetencies']);
+        Route::put('update_domaincompetencies/{dm_competency_id}',[AssessmentController::class,'updateDomainCompetencies']);
+        Route::delete('delete_domaincompetencies/{dm_competency_id}',[AssessmentController::class,'deleteDomainCompetencies']);
+        
+        //Domain Dev Name - Manish Kumar Sharma 04-09-2025
+        Route::post('save_domainparameters',[AssessmentController::class,'saveDomainParameters']);
+        Route::get('get_domainparameters',[AssessmentController::class,'getDomainParameters']);
+        Route::get('edit_domainparameters/{dm_id}',[AssessmentController::class,'editDomainParameters']);
+        Route::put('update_domainparameters/{dm_id}',[AssessmentController::class,'updateDomainParameters']);
+        Route::delete('delete_domainparameters/{dm_id}',[AssessmentController::class,'deleteDomainParameters']);
+        
+        //Student Domain Details Dev Name-Manish Kumar Sharma 08-09-2025
+        Route::get('get_domains/{class_id}',[AssessmentController::class,'getDomainsClass']);
+        Route::get('get_studentparametervalue',[AssessmentController::class,'getStudentParameterValue']);
+        Route::post('save_domainparametervalue',[AssessmentController::class,'saveStudentParameterValue']);
+        Route::post('savenpublish_domainparametervalue',[AssessmentController::class,'savenpublishStudentParameterValue']);
+        Route::get('unpublish_domainparametervalue',[AssessmentController::class,'unpublishStudentParameterValue']);
+        Route::get('publish_domainparametervalue',[AssessmentController::class,'publishStudentParameterValue']);
+        
+        // Holistic Report Card Dev Name - Mahima Chaudhari 11-09-2025
+        Route::get('/students_report_card', [AssessmentController::class, 'getStudentsforReportCard']);
+        Route::post('/save_studentsreportcard', [AssessmentController::class, 'savePhotoUploadForRC']);
+        
+        //Report card publish unpublish Dev Name- Manish Kumar Sharma 12-09-2025
+        Route::get('/get_reportcard_publish_value', [AssessmentController::class, 'getReportCardPublishValue']);
+        Route::post('/save_reportcardpublishvalue', [AssessmentController::class, 'saveReportCardPublishValue']);
+        Route::post('/save_reportcardreopendate', [AssessmentController::class, 'saveReportCardReopenDate']);
+        
+        //Update report card remarks Dev Name - Manish Kumar Sharma 12-09-2025
+        Route::get('/get_reportcard_remark_value', [AssessmentController::class, 'getReportCardRemarkValue']);
+        Route::get('/get_promote_to_value', [AssessmentController::class, 'getPromoteToValue']);
+        Route::post('save_reportcardremark',[AssessmentController::class,'saveReportCardRemark']);
+        
+        //Self Assessment master Dev Name-Manish Kumar Sharma 13-09-2025
+        Route::post('save_selfassessmentmaster',[AssessmentController::class,'saveSelfAssessmentMaster']);
+        Route::get('/get_selfassessmentmaster', [AssessmentController::class, 'getSelfAssessmentMaster']);
+        Route::put('update_selfassessmentmaster/{sam_id}',[AssessmentController::class,'updateSelfAssessmentMaster']);
+        Route::delete('delete_selfassessmentmaster/{sam_id}',[AssessmentController::class,'deleteSelfAssessmentMaster']);
+        
+        //Self Assessment Data Dev Name-Manish Kumar Sharma 13-09-2025
+        Route::get('/get_selfassessment', [AssessmentController::class, 'getSelfAssessment']);
+        Route::post('save_selfassessment',[AssessmentController::class,'saveSelfAssessment']);
+        Route::post('savenpublish_selfassessment',[AssessmentController::class,'savenPublishSelfAssessment']);
+        Route::get('unpublish_selfassessment',[AssessmentController::class,'unpublishSelfAssessment']);
+        
+        //Peer Feedback master Dev Name-Manish Kumar Sharma 16-09-2025
+        Route::post('save_peerfeedbackmaster',[AssessmentController::class,'savePeerFeedbackMaster']);
+        Route::get('/get_peerfeedbackmaster', [AssessmentController::class, 'getPeerFeedbackMaster']);
+        Route::put('update_peerfeedbackmaster/{pfm_id}',[AssessmentController::class,'updatePeerFeedbackMaster']);
+        Route::delete('delete_peerfeedbackmaster/{pfm_id}',[AssessmentController::class,'deletePeerFeedbackMaster']);
+        
+        //Peer feedback Data Dev Name-Manish Kumar Sharma 16-09-2025
+        Route::get('/get_peerfeedback', [AssessmentController::class, 'getPeerFeedback']);
+        Route::post('save_peerfeedback',[AssessmentController::class,'savePeerFeedback']);
+        Route::post('savenpublish_peerfeedback',[AssessmentController::class,'savenPublishPeerFeedback']);
+        Route::get('unpublish_peerfeedback',[AssessmentController::class,'unpublishPeerFeedback']);
+        
+        //All about me master Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::post('save_allaboutmemaster',[AssessmentController::class,'saveAllAboutMeMaster']);
+        Route::get('/get_allaboutmemaster', [AssessmentController::class, 'getAllAboutMeMaster']);
+        Route::put('update_allaboutmemaster/{am_id}',[AssessmentController::class,'updateAllAboutMeMaster']);
+        Route::delete('delete_allaboutmemaster/{am_id}',[AssessmentController::class,'deleteAllAboutMeMaster']);
+        Route::get('/get_allaboutmemasterbyclassid', [AssessmentController::class, 'getAllAboutMeMasterByClassId']);
+        
+        //All about me Data Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::get('/get_allaboutme', [AssessmentController::class, 'getAllAboutMe']);
+        Route::post('save_allaboutme',[AssessmentController::class,'saveAllAboutMe']);
+        Route::post('savenpublish_allaboutme',[AssessmentController::class,'savenPublishAllAboutMe']);
+        Route::get('unpublish_allaboutme',[AssessmentController::class,'unpublishAllAboutme']);
+        
+        //Parent feedback master Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::post('save_parentfeedbackmaster',[AssessmentController::class,'saveParentFeedbackMaster']);
+        Route::get('/get_parentfeedbackmaster', [AssessmentController::class, 'getParentFeedbackMaster']);
+        Route::put('update_parentfeedbackmaster/{pfm_id}',[AssessmentController::class,'updateParentFeedbackMaster']);
+        Route::delete('delete_parentfeedbackmaster/{pfm_id}',[AssessmentController::class,'deleteParentFeedbackMaster']);
+        
+        //Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::get('/get_parentfeedback', [AssessmentController::class, 'getParentFeedback']);
+        Route::post('save_parentfeedback',[AssessmentController::class,'saveParentFeedback']);
+        Route::post('savenpublish_parentfeedback',[AssessmentController::class,'savenPublishParentFeedback']);
+        Route::get('unpublish_parentfeedback',[AssessmentController::class,'unpublishParentFeedback']);
+        
+        
+        
+        //Class teacher remark master Dev Name - Manish Kumar Sharma 23-09-2025
+        Route::post('save_classteacherremarkmaster',[AssessmentController::class,'saveClassTeacherRemarkMaster']);
+        Route::get('/get_classteacherremarkmaster', [AssessmentController::class, 'getClassTeacherRemarkMaster']);
+        Route::put('update_classteacherremarkmaster/{id}',[AssessmentController::class,'updateClassTeacherRemarkMaster']);
+        Route::delete('delete_classteacherremarkmaster/{id}',[AssessmentController::class,'deleteClassTeacherRemarkMaster']);
+        
+        //Class teacher remark Data Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::get('/get_classteacherremark', [AssessmentController::class, 'getClassTeacherRemark']);
+        Route::post('save_classteacherremark',[AssessmentController::class,'saveClassTeacherRemark']);
+        
+        //Get Classes By getdepartmentlist
+        Route::get('get_hsc_classes_of_a_department',[AssessmentController::class,'getHSCClassesOfADepartment']);
+
+        //Get classes of the class teacher 
+        Route::get('get_classes_of_classteacher',[AssessmentController::class,'getClassesOfClassTeacher']);
+        
+        //get HPC Classes Dev Name- Manish Kumar Sharma 26-09-2025
+        Route::get('get_hpc_classes',[AssessmentController::class,'getHpcClasses']);
+        
+        //Hpc Report Card generation Dev Name-Manish Kumar Sharma 24-09-2025
+        Route::get('get_allaboutmebystudentid',[AssessmentController::class,'getAllAboutMeByStudentId']);
+        Route::get('get_domaindetailsbystudentid',[AssessmentController::class,'getDomainDetailsByStudentId']);
+        Route::get('get_selfassessmentbystudentid',[AssessmentController::class,'getSelfAssessmentByStudentId']);
+        Route::get('get_peerfeedbackbystudentid',[AssessmentController::class,'getPeerFeedbackByStudentId']);
+        Route::get('get_parentfeedbackbystudentid',[AssessmentController::class,'getParentFeedbackByStudentId']);
+        Route::get('get_classteacherremarkbystudentid',[AssessmentController::class,'getClassTeacherRemarkByStudentId']);
+        
+        //Publish hpc report card Dev Name-Manish Kumar Sharma 25-09-2025
+        Route::get('get_hpcreportcardpublishvalue',[AssessmentController::class,'getHpcReportCardPublishValue']);
+        Route::post('save_hpcreportcardpublishvalue',[AssessmentController::class,'saveHpcReportCardPublishValue']);
+        
+        
+        //Upload Marks
+        Route::get('get_subject_by_class',[AssessmentController::class,'getSubjectByClass']);
+        Route::get('get_exams_by_class_subject',[AssessmentController::class,'getExamsByClassSubject']);
+        Route::get('get_marks_heading_class',[AssessmentController::class,'getMarksHeadingClass']);
+        Route::post('update_publishstudentmarks',[AssessmentController::class,'updatePublishStudentMarks']);
+        Route::delete('delete_studentmarks',[AssessmentController::class,'deleteStudentMarks']);
+        Route::get('get_studentmarks',[AssessmentController::class,'getStudentMarks']);
+        Route::post('save_studentmarks',[AssessmentController::class,'saveStudentMarks']);
+        Route::get('get_marksgeneratecsv',[AssessmentController::class,'getMarksGenerateCsv']);
+        Route::post('save_uploadmarkscsv',[AssessmentController::class,'saveUploadsMarksCsv']);
+        Route::get('get_publishdeletestatusstudentmarks',[AssessmentController::class,'getPublishDeleteStatusStudentMarks']);
+        
+        //Teacher category Apis
+        Route::get('/get_teachercategory_teaching',[NewController::class,'getTeacherCategoryTeaching']);
+        Route::get('/get_teachercategory_nonteaching',[NewController::class,'getTeacherCategoryNonTeaching']);
+        
+        //Nav leaf Menus
+        Route::get('/get_navleafmenus',[RoleController::class,'navLeafMenus']);
+        
+        
+        //Chapters Apis Dev Name-Manish Kumar Sharma 10-10-2025
+        Route::post('save_chapters',[AssessmentController::class,'saveChapters']);
+        Route::post('save_savenpublishchapters',[AssessmentController::class,'savenpublishChapters']);
+        Route::delete('delete_chapters/{chapter_id}',[AssessmentController::class,'deleteChapters']);
+        Route::get('/get_chapters',[AssessmentController::class,'getChapters']);
+        Route::get('/get_chapter',[AssessmentController::class,'getChapter']);
+        Route::post('update_publishchapters',[AssessmentController::class,'publishChapters']);
+        Route::post('update_chapters/{chapter_id}',[AssessmentController::class,'updateChapters']);
+        Route::get('/get_only_classes_allotted_to_teacher',[AssessmentController::class,'getOnlyClassesAllotedToTeacher']);
+        Route::get('/get_subjects_according_class',[AssessmentController::class,'getSubjectsAccordingClass']);
+        Route::get('/get_generate_csv_file_for_chapters',[AssessmentController::class,'generateCsvFileForChapters']);
+        Route::post('/upload_chapters_through_excelsheet',[AssessmentController::class,'uploadChaptersThroughExcelsheet']);
+        
+        //Lesson Plan heading Dev Name-Manish Kumar Sharma 13-10-2025
+        Route::post('save_lessonplanheading',[AssessmentController::class,'saveLessonPlanHeading']);
+        Route::get('get_lesson_plan_heading',[AssessmentController::class,'getLessonPlanHeading']);
+        Route::delete('delete_lesson_plan_heading/{lesson_plan_heading_id}',[AssessmentController::class,'deleteLessonPlanHeading']);
+        Route::put('update_lesson_plan_heading/{lesson_plan_heading_id}',[AssessmentController::class,'updateLessonPlanHeading']);
+        
+        //Lesson plan template Dev Name - Manish Kumar Sharma 15-10-2025
+        Route::get('get_chapter_info_class_sub_id',[AssessmentController::class,'getChapterInfoClassSubId']);
+        Route::get('get_lesson_plan_template',[AssessmentController::class,'getLessonPlanTemplate']);
+        Route::get('get_lesson_plan_heading_non_daily',[AssessmentController::class,'getLessonPlanHeadingNonDaily']);
+        Route::get('get_lesson_plan_heading_daily',[AssessmentController::class,'getLessonPlanHeadingDaily']);
+        Route::post('save_lessonplantemplate',[AssessmentController::class,'saveLessonPlanTemplate']);
+        Route::post('savenpublish_lessonplantemplate',[AssessmentController::class,'savenPublishLessonPlanTemplate']);
+        Route::delete('delete_lesson_plan_template/{les_pln_temp_id}',[AssessmentController::class,'deleteLessonPlanTemplate']);
+        Route::get('get_lesson_plan_template_list',[AssessmentController::class,'getLessonPlanTemplateList']);
+        Route::put('/update_lessonplan_template/{id}', [AssessmentController::class, 'updateLessonPlanTemplate']);
+        Route::put('/updatepublish_lessonplan_template/{id}', [AssessmentController::class, 'updatePublishLessonPlanTemplate']);
+        Route::post('/unpublish_lessonplan_template', [AssessmentController::class, 'unpublishLessonPlanTemplate']);
+        Route::get('/get_lesson_plan_template_id', [AssessmentController::class, 'getLessonPlanTemplateID']);
+        
+        
+        //Notice for staff messages 
+        Route::post('send_pendingsmsforstaffnotice/{unq_id}',[NoticeController::class,'sendPendingSMSForStaffNotice']);
+        
+        //Remark for teacher messages
+        Route::post('send_pendingsmsforteacherremark/{remark_id}',[NewController::class,'sendPendingSMSForTeacherRemark']);  
+        
+        //Remark for student messages
+        Route::post('send_pendingsmsforstudentremark/{remark_id}',[NewController::class,'sendPendingSMSForStudentRemark']);
+        
+        //event messages
+        Route::post('send_pendingsmsforevent/{unq_id}',[NewController::class,'sendPendingSMSForEvent']);
+        
+        //Lesson Plan APIs Dev Name-Manish Kumar Sharma 17-10-2025
+        Route::get('get_subsubject_by_class_sub',[AssessmentController::class,'getSubSubjectByClassSub']);
+        Route::get('/get_lesson_plan', [AssessmentController::class, 'getLessonPlan']);
+        Route::get('/get_lp_classes_by_unq_id', [AssessmentController::class, 'getLPClassesByUnqId']);
+        Route::delete('delete_lesson_plan/{unq_id}',[AssessmentController::class,'deleteLessonPlan']);
+        Route::post('update_statusoflessonplan/{unq_id}',[AssessmentController::class,'updateStatusOfLessonPlan']);
+        Route::post('save_lesson_plan',[AssessmentController::class,'saveLessonPlan']);
+        Route::get('/get_lesson_plan_details', [AssessmentController::class, 'getLessonPlanDetails']);
+        Route::put('/update_lesson_plan/{unq_id}', [AssessmentController::class, 'updateLessonPlan']);
+        Route::get('get_lesson_plan_by_unq_id/{unq_id}',[AssessmentController::class,'getLessonPlanByUnqId']);
+        Route::get('get_subject_name/{sm_id}',[AssessmentController::class,'getSubjectName']);
+        Route::get('get_subsubject_name_by_chapterid/{chapter_id}',[AssessmentController::class,'getSubSubjectNameByChapterId']);
+        
+        
+        
+        //Daily Attendance APIs Dev Name - Manish Kumar Sharma 24-10-2025
+        Route::get('get_students_by_class_section',[StudentController::class,'getStudentsByClassSection']);
+        Route::get('get_att_class_section_day',[StudentController::class,'getAttClassSectionDay']);
+        Route::post('save_markattendance',[StudentController::class,'saveMarkAttendance']);
+        Route::delete('delete_markattendance',[StudentController::class,'deleteMarkAttendance']);
+        Route::delete('delete_studentmarkattendance',[StudentController::class,'deleteStudentMarkAttendance']);
+        
+        
+        //View APIs Dev Name - Manish Kumar Sharma 27-10-2025
+        Route::get('get_published_notice_by_class',[NoticeController::class,'getPublishedNoticeByClass']);
+        Route::get('get_remark_of_teacher',[NewController::class,'getRemarkOfTeacher']);
+        Route::post('save_acknowledgeteacher/{remark_id}',[NewController::class,'saveAcknowledgeTeacher']);
+        Route::get('get_viewremarkteacher/{remark_id}',[NewController::class,'getViewRemarkTeacher']);
+        Route::get('get_daily_notes_class_teacherwise',[NewController::class,'getDailyNotesClassTeacherWise']);
+        Route::get('get_view_daily_notes_class_teacherwise/{notes_id}',[NewController::class,'getViewDailyNotesClassTeacherWise']);
+        Route::post('get_teacher_timetable',[NewController::class,'getTeacherTimetable']);
+        Route::get('get_homework_class_teacherwise',[NewController::class,'getHomeworkClassTeacherwise']);
+        Route::get('get_view_homework_class_teacherwise/{homework_id}',[NewController::class,'getViewHomeworkClassTeacherwise']);
+        
+        
+        //Fees pending report of the students Dev Name- Manish Kumar Sharma 28-10-2025
+        Route::get('get_fee_pending_for_teachers_report',[ReportController::class,'getFeePendingForTeachersReport']);
+        
+        //Allot GR No.
+        Route::get('get_studentallotrollnohouse/{class_id}/{section_id}',[NewController::class,'studentAllotRollnoHouse']);
+        Route::put('update_studentallotrollnohouse',[NewController::class,'updateStudentAllotRollnoHouse']);
+        
+        //Publish Proficiency Certificate Dev Name-Manish Kumar Sharma 28-10-2025
+        Route::get('show_listing_of_proficiency_students_class9',[AssessmentController::class,'showListingOfProficiencyStudentsClass9']);
+        Route::get('show_listing_of_proficiency_students_class11',[AssessmentController::class,'showListingOfProficiencyStudentsClass11']);
+        Route::get('show_listing_of_proficiency_students',[AssessmentController::class,'showListingOfProficiencyStudents']);
+        Route::get('get_max_highest_marks_per_term',[AssessmentController::class,'getMaxHighestMarksPerTerm']);
+        Route::get('get_proficiency_certificate_publish_value',[AssessmentController::class,'getProficiencyCertificatePublishValue']);
+        Route::post('publish_proficiency_certificate',[AssessmentController::class,'publishProficiencyCertificate']);
+        Route::get('download_proficiency_certificate/{student_id}/{term_id}/{type}',[AssessmentController::class,'downloadProficiencyCertificate']);
+        
+        
+        //Teacher Notes Dev Name- Manish Kumar Sharma 29-10-2025
+        Route::post('daily_notes',[AssessmentController::class,'dailyNotes']);
+        Route::post('get_daily_notes',[AssessmentController::class,'getdailyNotes']);
+        Route::post('get_images_daily_notes',[AssessmentController::class,'getImagesDailyNotes']);
+        Route::post('get_students_notes_viewed',[AssessmentController::class,'getStudentsNotesViewed']);
+        Route::post('upload_files',[AssessmentController::class,'uploadFiles']);
+        Route::post('delete_uploaded_files',[AssessmentController::class,'deleteUploadedFiles']);
+        Route::post('get_subject_alloted_to_teacher_by_multiple_class',[AssessmentController::class,'getSubjectAllotedToTeacherByMultipleClass']);
+        
+        //Homework Dev Name- Manish Kumar Sharma 30-10-2025
+        Route::post('homework',[AssessmentController::class,'HomeworkCreateEditPublishDelete']);
+        Route::post('get_images_homework',[AssessmentController::class,'getImagesHomework']);
+        Route::post('get_homework',[AssessmentController::class,'getHomework']);
+        Route::post('get_student_with_homework_status',[AssessmentController::class,'getStudentWithHomeworkStatus']);
+        Route::post('get_count_of_homework_comments',[AssessmentController::class,'getCountOfHomeworkComments']);
+        Route::post('get_students_homework_viewed',[AssessmentController::class,'getStudentsHomeworkViewed']);
+        Route::post('updateHomework',[AssessmentController::class,'updateHomework']);
+        
+        // Stationery Requisition
+        Route::get('/get_stationery_req', [AssessmentController::class, 'getStationeryReq']);
+        Route::post('/create_stationery_req', [AssessmentController::class, 'createStationeryReq']);
+        Route::put('/update_stationery_req/{id}', [AssessmentController::class, 'updateStationeryReq']);
+        Route::delete('/delete_stationery_req/{id}', [AssessmentController::class, 'deleteStationeryReq']);
+        
+        Route::post('send_messagefordailyattendance',[StudentController::class,'sendMessageForDailyAttendance']);
+        Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}',[StudentController::class,'sendPendingSMSForDailyAttendanceStudent']);
+        
+        Route::post('/create-member', [LibraryController::class, 'createMembers']);
+        Route::get('/get-not-members', [LibraryController::class, 'getNotMembers']);
+        
+        Route::get('/category-group', [LibraryController::class, 'index']);            
+        Route::post('/category-group', [LibraryController::class, 'store']);          
+        Route::put('/category-group/{id}', [LibraryController::class, 'update']);    
+        Route::delete('/category-group/{id}', [LibraryController::class, 'destroy']); 
+        Route::get('/category-group/names', [LibraryController::class, 'names']);
+        
+        Route::put('update_frequenttabs', [NewController::class, 'updateFrequentTabs']);
+        Route::get('get_frequenttabs', [NewController::class, 'getFrequentTabs']);
+        
+        Route::get('/get_librarycategory', [LibraryController::class, 'getLibraryCategory']);
+        Route::post('/save_librarycategory', [LibraryController::class, 'Librarystore']);     
+        Route::put('/update_librarycategory/{id}', [LibraryController::class, 'Libraryupdate']);
+        Route::delete('/delete_librarycategory/{id}', [LibraryController::class, 'Librarydestroy']); 
+        Route::get('/librarycategory/{id}', [LibraryController::class, 'showCategoryGroupById']);
+        
+        Route::get('/books/search', [LibraryController::class, 'searchBooks']);
+        Route::post('/books/edit/{book_id}', [LibraryController::class, 'editBook']);
+        Route::post('/get-book-details', [LibraryController::class, 'getBookDetails']);
+        Route::post('/books/create', [LibraryController::class, 'createBook']);
+        Route::delete('/books/delete/{book_id}', [LibraryController::class, 'deleteBook']);
+        Route::get('/books/max-copy-id', [LibraryController::class, 'getMaxCopyId']);
 
     });
 
+});
+
     
     
     
 
-//  API for the New Student list Buulk upload 
-Route::get('/students/download-template/{section_id}', [AdminController::class, 'downloadCsvTemplateWithData']);
-Route::post('/update-students-csv/{section_id}', [LoginController::class, 'updateCsvData']);
-Route::get('/get_newstudent_by_sectionId/{section_id}', [AdminController::class, 'getNewStudentListbysectionforregister']);
-Route::get('/get_all_newstudentlist', [AdminController::class, 'getAllNewStudentListForRegister']);
-Route::get('/getParentInfoOfStudent/{siblingStudentId}', [AdminController::class, 'getParentInfoOfStudent']); 
-Route::delete('/deleteNewstudent/{studentId}', [AdminController::class, 'deleteNewStudent']); 
-Route::put('/updateNewStudent/{studentId}/{parentId}', [AdminController::class, 'updateNewStudentAndParentData']);   
-
-//routes for the Allot Class teacher 
-Route::get('/get_Classteacherslist', [AdminController::class, 'getClassteacherList']);
-Route::post('/save_ClassTeacher', [AdminController::class, 'saveClassTeacher']);
-Route::get('/classteacher/{class_id}/{section_id}', [AdminController::class, 'editClassTeacher']);
-Route::put('/update_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'updateClassTeacher']);
-Route::delete('/delete_ClassTeacher/{class_id}/{section_id}', [AdminController::class, 'deleteClassTeacher']);     
-       
-//routes for the Marks headings
-Route::get('/get_Markheadingslist', [AssessmentController::class, 'getMarksheadingsList']);
-Route::post('/save_Markheadings', [AssessmentController::class, 'saveMarksheadings']);
-Route::get('/markheadings/{marks_headings_id}', [AssessmentController::class, 'editMarkheadings']);
-Route::put('/update_Markheadings/{marks_headings_id}', [AssessmentController::class, 'updateMarksheadings']);
-Route::delete('/delete_Markheadings/{marks_headings_id}', [AssessmentController::class, 'deleteMarksheading']);     
-      
-//routes for the Grades
-Route::get('/get_Gradeslist', [AssessmentController::class, 'getGradesList']);
-Route::post('/save_Grades', [AssessmentController::class, 'saveGrades']);
-Route::get('/grades/{grade_id}', [AssessmentController::class, 'editGrades']);
-Route::put('/update_Grades/{grade_id}', [AssessmentController::class, 'updateGrades']);
-Route::delete('/delete_Grades/{grade_id}', [AssessmentController::class, 'deleteGrades']);   
-
-//routes for the Exams
-Route::get('/get_Term', [AssessmentController::class, 'getTerm']);
-Route::get('/get_Examslist', [AssessmentController::class, 'getExamsList']);
-Route::post('/save_Exams', [AssessmentController::class, 'saveExams']);
-Route::get('/exams/{exam_id}', [AssessmentController::class, 'editExam']);
-Route::put('/update_Exams/{exam_id}', [AssessmentController::class, 'updateExam']);
-Route::delete('/delete_Exams/{exam_id}', [AssessmentController::class, 'deleteExam']);   
+   
       
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
 
-//routes for the Allot Marks headings
-// Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
-// Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarkheadings']);
-// Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
-// Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
-// Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarkheading']);  
-Route::get('/get_markheadingsForClassSubExam/{class_id}/{subject_id}/{exam_id}', [AssessmentController::class, 'getMarkheadingsForClassSubExam']);   
-      
 
-//Route::put('/get_sub_report_allotted/{sub_reportcard_id}', [AdminController::class, 'updateSubjectType']);
-
-//routes for the Allot Marks headings//Hostinger Done
-Route::get('/get_AllotMarkheadingslist/{class_id}', [AssessmentController::class, 'getAllotMarkheadingsList']);
-Route::post('/save_AllotMarkheadings', [AssessmentController::class, 'saveAllotMarksheadings']);
-Route::get('/allotmarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'editAllotMarkheadings']);
-Route::put('/update_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'updateAllotMarkheadings']);
-Route::delete('/delete_AllotMarkheadings/{allot_markheadings_id}', [AssessmentController::class, 'deleteAllotMarksheading']); 
-Route::delete('delete_AllotMarkheadingss/{class_id}/{subject_id}/{exam_id}',[AssessmentController::class,'deleteAllotMarksheadingg']);
 
 Route::get('/clear-all', function () {
     Artisan::call('optimize:clear');
@@ -914,32 +1261,31 @@ Route::get('/clear-all', function () {
     ]);
 });
 
-Route::get('/test-smtp', function () {
-    $mailer = new SmartMailer();
+//Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
+Route::get('/get_hpcreportcard',[AssessmentController::class,'gethpcreportcard']);
 
-    $mailer->send(
-        'manishnehwal@gmail.com',
-        'Test Email',
-        'emails.dynamic',
-        ['body' => 'This is a test.']
-    );
-
-    return '✅ Email sent!';
-});
 //API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
 Route::get('get_schoolname',[AdminController::class,'getSchoolName']);
 //API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
 Route::post('update_forgotpassword',[AdminController::class,'updateForgotPassword']);
 Route::post('save_newpasswordforgot',[AdminController::class,'generateNewPassword']);
-
+Route::get('get_generalinstructions',[NewController::class,'getGeneralInstructions']);
 Route::post('sendwhatsappmessages',[AdminController::class,'sendwhatsappmessages']);
 
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 
 Route::get('whatsapp_messages_for_not_approving_lesson',[ReportController::class,'whatsappmessagesfornotapprovinglessonplan']);
+Route::get('get_supportemailid',[NewController::class,'getSupportEmailId']);
 
-// Optionally, if you need to refresh tokens
+//Background Image for common code Dev Name-Manish Kumar Sharma 03-09-2025
+Route::get('get_backgroundimage',[NewController::class,'getBackgroundImage']);
+ Route::get('/get_activebackgroundcolor',[NewController::class,'getActiveBackgroundColor']);
+
+//Role of user for link showing common code Dev Name-Manish Kumar Sharma 03-09-2025
+Route::get('get_roleofuser',[NewController::class,'getRoleOfUser']);
+
 Route::post('refresh', [AuthController::class, 'refresh']);
+Route::post('send_pending_messages_whatsapp',[NewController::class,'sendPendingMessagesWhatsapp']);
 
 // Example of retrieving authenticated user information
 Route::get('/user', function (Request $request) {

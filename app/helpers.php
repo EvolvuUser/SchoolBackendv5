@@ -137,12 +137,13 @@ if (!function_exists('getFullName')) {
 
 
 function imagesforall(){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $url =config('externalapis.EVOLVU_URL').'/get_school_details';
 
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
      ]);
 
@@ -154,6 +155,7 @@ function imagesforall(){
 }
 
 function upload_student_profile_image_into_folder($studentId,$filename,$doc_type_folder,$newImageData){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -162,7 +164,7 @@ function upload_student_profile_image_into_folder($studentId,$filename,$doc_type
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'student_id',
@@ -192,6 +194,7 @@ function upload_student_profile_image_into_folder($studentId,$filename,$doc_type
 }
 
 function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -202,7 +205,7 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'teacher_id',
@@ -234,7 +237,8 @@ function upload_teacher_profile_image_into_folder($id,$filename,$doc_type_folder
 }
 
 function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
-     $globalVariables = App::make('global_variables');
+    $shortName = JWTAuth::getPayload()->get('short_name');
+    $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
     $url = $parent_app_url.'upload_guardian_profile_image_into_folder';
@@ -244,7 +248,7 @@ function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folde
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -277,6 +281,7 @@ function upload_guardian_profile_image_into_folder($id,$filename,$doc_type_folde
 
 
 function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -287,7 +292,7 @@ function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -319,6 +324,7 @@ function upload_father_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -329,7 +335,7 @@ function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'parent_id',
@@ -361,6 +367,7 @@ function upload_mother_profile_image_into_folder($id,$filename,$doc_type_folder,
 }
 
 function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
+    $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -371,7 +378,7 @@ function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
      $response = Http::asMultipart()->post($url, [
         [
             'name' => 'short_name',
-            'contents' => 'SACS', 
+            'contents' => $shortName, 
         ],
         [
             'name'=>'filename',
@@ -401,6 +408,7 @@ function upload_qrcode_into_folder($filename,$doc_type_folder,$base64File){
 function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFolder, $noticeId)
     {
         // API URL
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -408,10 +416,10 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         // Prepare the data array with dynamic values
         $data = [
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
             'upload_date' => $uploadDate,
             'doc_type_folder' => $docTypeFolder,
-            'notice_id' => $noticeId,
+            'id' => $noticeId,
             'filename' => $filename,  
             'datafile' => $datafile, 
         ];
@@ -435,7 +443,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function ticket_files_for_laravel($ticketid, $commentid, $fileupload)
     {
-        // API URL
+        
         $globalVariables = App::make('global_variables');
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $url = $codeigniter_app_url . 'index.php/TicketApi/upload_files_for_ticket_laravel';
@@ -466,6 +474,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function delete_uploaded_files_for_laravel ($filename,$uploadDate, $docTypeFolder, $noticeId)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -474,7 +483,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
         // Prepare the data array with dynamic values
         $data = [
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
             'upload_date' => $uploadDate,
             'doc_type_folder' => $docTypeFolder,
             'notice_id' => $noticeId,
@@ -597,9 +606,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function createUserInEvolvu($user_id)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $payload = [
             'user_id' => $user_id,
-            'school_id' => 1,
+            'school_id' => $school_id,
         ];
 
         try {
@@ -648,12 +659,13 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function createStaffUser($userId, $role)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $url = config('externalapis.EVOLVU_URL').'/create_staff_userid';
 
         $response = Http::post($url, [
             'user_id' => $userId,
             'role' => $role,
-            'short_name' => 'SACS',
+            'short_name' => $shortName,
         ]);
 
         // Log the API response
@@ -679,11 +691,13 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
     
      function deleteParentUser($currentUserName)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $url = config('externalapis.EVOLVU_URL') . '/user_delete_post';
 
         $payload = [
             'user_id' => $currentUserName,
-            'school_id' => '1',
+            'school_id' => $school_id,
         ];
 
         $response = Http::withHeaders([
@@ -703,9 +717,11 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function edit_user_id($username, $currentUserName)
     {
+        $schoolsettings =getSchoolSettingsData();
+        $school_id = $schoolsettings->school_id;
         $user_data = [
             'user_id'      => $username,
-            'school_id'    => '1',
+            'school_id'    => $school_id,
             'old_user_id'  => $currentUserName,
         ];
 
@@ -743,9 +759,10 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
 
     function delete_staff_user_id($user_id, $role)
     {
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $user_data = [
             'user_id'      => $user_id,
-            'short_name'    => 'SACS',
+            'short_name'    => $shortName,
             'role'  => $role,
         ];
 
@@ -1029,4 +1046,214 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             })
             ->pluck('name')
             ->toArray();
+    }
+
+    function getSchoolSettingsData(){
+        $schoolsettings = DB::table('school_settings')
+                             ->where('is_active','Y')
+                             ->first();
+        return $schoolsettings;
+    }
+
+    function getStudentNameOnly($student_id)
+    {
+        $studentName = DB::table('student')
+            ->where('student_id', $student_id)
+            ->value('student_name'); 
+    
+        return $studentName
+        ? ucwords(strtolower($studentName))
+        : '';
+    }
+
+    function upload_parent_related_images($filename,$datafile, $docTypeFolder, $studentId)
+    {
+        
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url.'index.php/AdminApi/upload_parent_related_images';
+
+        // Prepare the data array with dynamic values
+        $data = [
+            'doc_type_folder' => $docTypeFolder,
+            'parent_id' => $studentId,
+            'filename' => $filename,  
+            'filedata' => $datafile, 
+        ];
+
+
+        // Send the data to the external API
+        try {
+            $response = Http::post($url, $data); // Send the data to the external API
+            
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json(); // Return the response as JSON
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()]; // Handle errors
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that may occur
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    function getClassesOfADepartment($dep_name)
+    {
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+        return DB::table('class as c')
+                            ->join('department as d', 'c.department_id', '=', 'd.department_id')
+                            ->where('d.name', $dep_name)
+                            ->where('d.academic_yr', $academicYr)
+                            ->select('c.*')
+                            ->get();
+                            
+    
+    }
+
+    function get_class_of_classteacher($teacher_id,$acd_yr){
+		$query = DB::select("select class.name as classname, section.name as sectionname,class_teachers.class_id,class_teachers.section_id from class_teachers,class,section where class_teachers.class_id = class.class_id and class_teachers.section_id = section.section_id and class_teachers.teacher_id=".$teacher_id." and class_teachers.academic_yr = '".$acd_yr."' order by class_teachers.section_id");
+        return $query;
+    
+    }
+    
+    function get_subjects_by_class($class_id,$acd_yr)       
+	{
+        $query= DB::select("select distinct a.sub_rc_master_id as sub_rc_master_id,b.name as name,a.subject_type from subjects_on_report_card as a join subjects_on_report_card_master as b on b.sub_rc_master_id=a.sub_rc_master_id where a.class_id = ".$class_id." and a.academic_yr= '".$acd_yr."' order by a.class_id asc,b.sequence asc");
+		return $query;
+    }
+    
+    function get_subjects_for_teacher($class_id,$section_id,$teacher_id,$acd_yr){
+        $query= DB::select("select distinct c.sub_rc_master_id as sub_rc_master_id,c.name as name from subject as a join sub_subreportcard_mapping as b on a.sm_id=b.sm_id join subjects_on_report_card_master as c on b.sub_rc_master_id=c.sub_rc_master_id where a.class_id = ".$class_id." and a.section_id = ".$section_id." and a.teacher_id = ".$teacher_id." and a.academic_yr= '".$acd_yr."' order by a.section_id asc,c.sequence asc ");		
+		return $query;
+    }
+    
+    function get_exams_by_class_subject($class_id,$subject_rc_id,$acd_yr)
+    {
+       $query=DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE sm_id = ".$subject_rc_id." AND class_id = ".$class_id." AND allot_mark_headings.academic_yr = '".$acd_yr."' order by exam.start_date") ;
+       return $query;
+    }
+    
+    function get_marks_heading_class($class_id,$subject_id,$exam_id,$acd_yr)
+    {
+        $query = DB::select("SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = ".$class_id." AND allot_mark_headings.sm_id = ".$subject_id." AND allot_mark_headings.exam_id = ".$exam_id." and allot_mark_headings.academic_yr = '".$acd_yr."' order by marks_headings.sequence");
+        return $query;
+    }
+    
+    function get_total_stu_attendance($studentId, $dateFrom, $dateTo, $academicYr)
+    {
+        return DB::table('attendance')
+            ->where('student_id', $studentId)
+            ->whereBetween('only_date', [$dateFrom, $dateTo])
+            ->where('academic_yr', $academicYr)
+            ->where('attendance_status', 0) 
+            ->count();
+    }
+    
+    function get_total_stu_workingdays($studentId, $dateFrom, $dateTo, $academicYr)
+    {
+        return DB::table('attendance')
+            ->where('student_id', $studentId)
+            ->whereBetween('only_date', [$dateFrom, $dateTo])
+            ->where('academic_yr', $academicYr)
+            ->count();
+    }
+    
+    function get_term_dates($academicYr, $termCount)
+    {
+        $settings = DB::table('settings')->where('academic_yr', $academicYr)->first();
+        $yearStart = substr($settings->academic_yr_from, 0, 4);
+    
+        if ($termCount == 1) {
+            return [[
+                'from' => $settings->academic_yr_from,
+                'to'   => $settings->academic_yr_to,
+            ]];
+        } elseif ($termCount == 2) {
+            return [
+                [
+                    'from' => $settings->academic_yr_from,
+                    'to'   => date_format(date_create($yearStart . "-09-30"), 'Y-m-d'),
+                ],
+                [
+                    'from' => $settings->academic_yr_from,
+                    'to'   => $settings->academic_yr_to,
+                ]
+            ];
+        }
+    }
+    
+    function get_open_day($exam_id)
+    {
+        return DB::table('exam')
+            ->where('exam_id', $exam_id)
+            ->value('open_day');
+    }
+    
+    function upload_files($filename,$datafile, $upload_date, $doc_type_folder, $random_no)
+    {
+        // API URL
+        $shortName = JWTAuth::getPayload()->get('short_name');
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url.'index.php/AdminApi/upload_files';
+
+        // Prepare the data array with dynamic values
+        $data = [
+            'random_no'  =>$random_no,
+            'upload_date' => $upload_date,
+            'doc_type_folder' => $doc_type_folder,
+            'filename' => $filename,  
+            'datafile' => $datafile, 
+        ];
+
+
+        // Send the data to the external API
+        try {
+            $response = Http::post($url, $data); // Send the data to the external API
+            
+            // Check if the response is successful
+            if ($response->successful()) {
+                return $response->json(); // Return the response as JSON
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()]; // Handle errors
+            }
+        } catch (\Exception $e) {
+            // Handle any exceptions that may occur
+            return ['error' => $e->getMessage()];
+        }
+    }
+    
+    function delete_uploaded_files($filename, $upload_date, $doc_type_folder, $random_no)
+    {
+        // API URL
+        $shortName = JWTAuth::getPayload()->get('short_name');
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $url = $codeigniter_app_url.'index.php/AdminApi/delete_uploaded_files';
+
+        
+        $data = [
+            'random_no'  =>$random_no,
+            'upload_date' => $upload_date,
+            'doc_type_folder' => $doc_type_folder,
+            'filename' => $filename,  
+        ];
+
+        try {
+            $response = Http::post($url, $data); 
+            
+            
+            if ($response->successful()) {
+                return $response->json(); 
+            } else {
+                return ['error' => 'Failed to upload files', 'status' => $response->status()]; 
+            }
+        } catch (\Exception $e) {
+            
+            return ['error' => $e->getMessage()];
+        }
     }

@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+            'school.db' => \App\Http\Middleware\ConnectSchoolDatabase::class,
         ]);
 
         //

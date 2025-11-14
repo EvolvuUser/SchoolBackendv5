@@ -21,6 +21,9 @@ use League\Csv\Writer;
 use Illuminate\Support\Facades\Storage;
 use Log;
 use App\Jobs\SendEventNotificationJob;
+use App\Http\Services\SmsService;
+use Illuminate\Support\Facades\Http;
+use App\Models\Student;
 class NewController extends Controller
 {
     protected $whatsAppService;
@@ -354,13 +357,20 @@ class NewController extends Controller
         try{
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
-                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                     $leavetype = DB::table('leave_type_master')
                               ->join('leave_allocation','leave_type_master.leave_type_id','=','leave_allocation.leave_type_id')
                               ->where('leave_allocation.staff_id',$request->staff_id)
                               ->where('leave_allocation.academic_yr',$customClaims)
                               ->where('leave_allocation.leave_type_id',$request->leave_type_id)
                               ->first();
+                    if (!$leavetype) {
+                        return response()->json([
+                            'status' => 404,
+                            'message' => 'Leave allocation not found for this staff and leave type.',
+                            'success' => false
+                        ]);
+                    }
                     $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
                     if($balanceleave < $request->no_of_days){
                         return response()->json([
@@ -508,7 +518,7 @@ class NewController extends Controller
         try{
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
-                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'|| $user->role_id == 'T'){
                     // dd($request->all());
                     $teacherids = $request->teacherid;
                     $remarksubject = $request->remark_subject;
@@ -611,7 +621,14 @@ class NewController extends Controller
         try{
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
-                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'|| $user->role_id == 'T'){
+                    $settingsData = getSchoolSettingsData();
+                    $schoolName = $settingsData->institute_name;
+                    $defaultPassword = $settingsData->default_pwd;
+                    $websiteUrl = $settingsData->website_url;
+                    $shortName = $settingsData->short_name;
+                    $whatsappIntegration = $settingsData->whatsapp_integration;
+                    $smsIntegration = $settingsData->sms_integration;
                     $teacherids = $request->teacherid;
                     $remarksubject = $request->remark_subject;
                     $remark = $request->remark;
@@ -650,6 +667,7 @@ class NewController extends Controller
                             //  dd($teacherNameCamel);
                             $teacherphoneno = $teacherdetails->phone;
                             if($teacherphoneno){
+                                if($whatsappIntegration == 'Y'){
                                 $templateName = 'emergency_message';
                                 $parameters =[$teacherNameCamel.", ".$remark];
                                 // Log::info($teacherphoneno);
@@ -660,10 +678,18 @@ class NewController extends Controller
                                 );
                                 // Log::info("Failed message",$result);
                                 if (isset($result['code']) && isset($result['message'])) {
-                                    // Handle rate limit error
-                                    Log::warning("Rate limit hit: Too many messages to same user", [
-                                        
+                                    $message_type = 'teacher_remark';
+                                    DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => null,
+                                        'phone_no' => $teacherphoneno,
+                                        'stu_teacher_id' => $teacherid,
+                                        'notice_id' => $id,
+                                        'message_type' => $message_type,
+                                        'sms_sent' => 'N',
+                                        'status'   =>'failed',
+                                        'created_at' => now()
                                     ]);
+                                    
                             
                                 } else {
                                     // Proceed if no error
@@ -679,6 +705,34 @@ class NewController extends Controller
                                         'message_type' => $message_type,
                                         'created_at' => now()
                                     ]);
+                                }
+                                sleep(20);
+                                $failedsms = DB::table('redington_webhook_details')
+                                                 ->where('message_type','teacher_remark')
+                                                 ->where('sms_sent','N')
+                                                 ->where('notice_id',$id)
+                                                 ->where('stu_teacher_id',$teacherid)
+                                                 ->get();
+                                // dd($failedsms);
+                                foreach($failedsms as $failedmessage){
+                                    $temp_id = '1107164450693700526';
+                                    $message = 'Dear Staff,'.$remark.". Login to school application for details.-EvolvU";
+                                    $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                                    $messagestatus = $sms_status['data']['status'] ?? null;
+
+                                    if ($messagestatus == "success") {
+                                        DB::table('redington_webhook_details')->where('notice_id', $failedmessage->notice_id)->where('message_type',$failedmessage->message_type)->update(['sms_sent' => 'Y']);
+                
+                                    }
+                                }
+                                
+                                    
+                                }
+                                if($smsIntegration == 'Y'){
+                                    $temp_id = '1107164450693700526';
+                                    $message = 'Dear Staff,'.$remark.". Login @ ".$websiteUrl." for details.-EvolvU";
+                                    $sms_status = app('App\Http\Services\SmsService')->sendSms($teacherphoneno, $message, $temp_id);
+                                    Log::info('smsm',['smsstatus'=>$sms_status]);
                                 }
             
                             }
@@ -714,11 +768,37 @@ class NewController extends Controller
         try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
-                 $remarkslist = DB::select("SELECT * from(SELECT  tr .*, teacher.name, 0 as read_status
-        from teachers_remark tr JOIN teacher  on teacher.teacher_id=tr.teachers_id  WHERE tr.academic_yr = '".$customClaims."' and tr.t_remark_id   NOT IN (select t_remark_id from tremarks_read_log)
-        UNION SELECT  tr .*, teacher.name, 1 as read_status
-        from teachers_remark tr JOIN teacher  on teacher.teacher_id=tr.teachers_id  WHERE tr.academic_yr= '".$customClaims."' and tr.t_remark_id  IN (select t_remark_id from tremarks_read_log))as Z ORDER BY `t_remark_id` DESC");
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'|| $user->role_id == 'T'){
+                 $remarkslist = DB::select("SELECT 
+                        Z.*,
+                        COUNT(CASE 
+                            WHEN rwd.sms_sent = 'N' 
+                            THEN 1 END) AS failed_sms_count
+                    FROM (
+                        SELECT  
+                            tr.*, 
+                            teacher.name, 
+                            0 AS read_status
+                        FROM teachers_remark tr
+                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
+                        WHERE tr.academic_yr = '".$customClaims."'
+                          AND tr.t_remark_id NOT IN (SELECT t_remark_id FROM tremarks_read_log)
+                    
+                        UNION 
+                    
+                        SELECT  
+                            tr.*, 
+                            teacher.name, 
+                            1 AS read_status
+                        FROM teachers_remark tr
+                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
+                        WHERE tr.academic_yr = '".$customClaims."'
+                          AND tr.t_remark_id IN (SELECT t_remark_id FROM tremarks_read_log)
+                    ) AS Z
+                    LEFT JOIN redington_webhook_details rwd 
+                        ON rwd.notice_id = Z.t_remark_id
+                    GROUP BY Z.t_remark_id
+                    ORDER BY Z.t_remark_id DESC;");
 
         // dd($remarkslist);
                  return response()->json([
@@ -751,22 +831,24 @@ class NewController extends Controller
         try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                   $t_remark_id = $id;
                   $remarksubject = $request->remarksubject;
                   $remark = $request->remark;
+                  $remark_type = $request->remark_type;
                 //   dd( $t_remark_id,$remarksubject,$remark );
                  $updateremark= DB::table('teachers_remark')
                                     ->where('t_remark_id', $t_remark_id ) 
                                     ->update([
                                         'remark_subject'=>$remarksubject,
-                                        'remark_desc'=>$remark
+                                        'remark_desc'=>$remark,
+                                        'remark_type'=>$remark_type
                                     ]);
 
                                      return response()->json([
                                             'status' => 200,
                                             'data' =>$updateremark,
-                                            'message'=> 'Remark and observation updated.',
+                                            'message'=> "$remark_type updated successfully.",
                                             'success'=>true
                                         ]);
 
@@ -794,7 +876,7 @@ class NewController extends Controller
         try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'|| $user->role_id == 'T'){
                 $exists = DB::table('teachers_remark')->where('t_remark_id', $id)->exists();
 
                 if (!$exists) {
@@ -929,8 +1011,15 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                 //  dd("Hello");
+                $settingsData = getSchoolSettingsData();
+                $schoolName = $settingsData->institute_name;
+                $defaultPassword = $settingsData->default_pwd;
+                $websiteUrl = $settingsData->website_url;
+                $shortName = $settingsData->short_name;
+                $whatsappIntegration = $settingsData->whatsapp_integration;
+                $smsIntegration = $settingsData->sms_integration;
                 $remarkdetails = DB::table('teachers_remark')->where('t_remark_id',$id)->first();
                 // dd($remarkdetails);
                 $teacherdetails = DB::table('teacher')->where('teacher_id',$remarkdetails->teachers_id)->first();
@@ -952,36 +1041,72 @@ class NewController extends Controller
                 // dd($teacherNameCamel);
                 $teacherphoneno = $teacherdetails->phone;
                 if($teacherphoneno){
-                    $templateName = 'emergency_message';
-                    $parameters =[$teacherNameCamel.", ".$remarkdetails->remark_desc];
-                    // Log::info($teacherphoneno);
-                    $result = $this->whatsAppService->sendTextMessage(
-                        $teacherphoneno,
-                        $templateName,
-                        $parameters
-                    );
-                    // Log::info("Failed message",$result);
-                    if (isset($result['code']) && isset($result['message'])) {
-                        // Handle rate limit error
-                        Log::warning("Rate limit hit: Too many messages to same user", [
-                            
-                        ]);
-                
-                    } else {
-                        // Proceed if no error
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
-                        $message_type = 'teacher_remark';
-                
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $wamid,
-                            'phone_no' => $phone_no,
-                            'stu_teacher_id' => $remarkdetails->teachers_id,
-                            'notice_id' => $id,
-                            'message_type' => $message_type,
-                            'created_at' => now()
-                        ]);
+                    if($whatsappIntegration == 'Y'){
+                        $templateName = 'emergency_message';
+                        $parameters =[$teacherNameCamel.", ".$remarkdetails->remark_desc];
+                        // Log::info($teacherphoneno);
+                        $result = $this->whatsAppService->sendTextMessage(
+                            $teacherphoneno,
+                            $templateName,
+                            $parameters
+                        );
+                        // Log::info("Failed message",$result);
+                        if (isset($result['code']) && isset($result['message'])) {
+                            $message_type = 'teacher_remark';
+                    
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => null,
+                                'phone_no' => $phone_no,
+                                'stu_teacher_id' => $remarkdetails->teachers_id,
+                                'notice_id' => $id,
+                                'status' =>'failed',
+                                'sms_sent'=>'N',
+                                'message_type' => $message_type,
+                                'created_at' => now()
+                            ]);
+                    
+                        } else {
+                            // Proceed if no error
+                            $wamid = $result['messages'][0]['id'];
+                            $phone_no = $result['contacts'][0]['input'];
+                            $message_type = 'teacher_remark';
+                    
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $wamid,
+                                'phone_no' => $phone_no,
+                                'stu_teacher_id' => $remarkdetails->teachers_id,
+                                'notice_id' => $id,
+                                'message_type' => $message_type,
+                                'created_at' => now()
+                            ]);
+                        }
+                        sleep(20);
+                        $failedsms = DB::table('redington_webhook_details')
+                                         ->where('message_type','teacher_remark')
+                                         ->where('sms_sent','N')
+                                         ->where('notice_id',$id)
+                                         ->where('stu_teacher_id',$remarkdetails->teachers_id)
+                                         ->get();
+                        // dd($failedsms);
+                        foreach($failedsms as $failedmessage){
+                            $temp_id = '1107164450693700526';
+                            $message = 'Dear Staff,'.$remark.". Login to school application for details.-EvolvU";
+                            $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                            $messagestatus = $sms_status['data']['status'] ?? null;
+
+                            if ($messagestatus == "success") {
+                                DB::table('redington_webhook_details')->where('notice_id', $failedmessage->notice_id)->where('message_type',$failedmessage->message_type)->update(['sms_sent' => 'Y']);
+        
+                            }
+                        }
+                        
                     }
+                    if($smsIntegration == 'Y'){
+                         $temp_id = '1107164450693700526';
+                         $message = "Dear Staff ,".$remarkdetails->remark_desc.". Login @ ".$websiteUrl." for details.-EvolvU";
+                         $sms_status = app('App\Http\Services\SmsService')->sendSms($teacherphoneno, $message, $temp_id);
+                    }
+                    
 
                 }
                  
@@ -1021,7 +1146,7 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                   $servicename = $request->input('servicename');
                   $role_id = $request->input('role_id');
                   $description = $request->input('description');
@@ -1545,7 +1670,7 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                  
                  $data=getTicketListForRespondent($user->role_id,$user->reg_id);
                  return response()->json([
@@ -3537,6 +3662,13 @@ class NewController extends Controller
           try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
+             $settingsData = getSchoolSettingsData();
+             $schoolName = $settingsData->institute_name;
+             $defaultPassword = $settingsData->default_pwd;
+             $websiteUrl = $settingsData->website_url;
+             $shortName = $settingsData->short_name;
+             $whatsappIntegration = $settingsData->whatsapp_integration;
+             $smsIntegration = $settingsData->sms_integration;
              $savepublish = $request->input('save_publish');
              if($savepublish == 'N'){
                  $files = $request->file('userfile', []);
@@ -3651,6 +3783,7 @@ class NewController extends Controller
                                 ->first();
                     $phone = $studentcontactdata->phone_no ?? null;
                     if($phone){
+                        if($whatsappIntegration == 'Y'){
                         $templateName = 'emergency_message';
                         $parameters =["Parent,".$request->input('remark_desc')];
                     
@@ -3660,7 +3793,16 @@ class NewController extends Controller
                             $parameters
                         );
                         if (isset($result['code']) && isset($result['message'])) {
-                                            // Log::warning("Rate limit hit", []);
+                            DB::table('redington_webhook_details')->insert([
+                                        'wa_id' => null,
+                                        'phone_no' => $phone,
+                                        'stu_teacher_id' => $studentId,
+                                        'notice_id' => $remarkId,
+                                        'message_type' => 'remarkforstudent',
+                                        'status' =>'failed',
+                                        'sms_sent'=>'N',
+                                        'created_at' => now()
+                                    ]);
                         } 
                         else {
                             DB::table('redington_webhook_details')->insert([
@@ -3671,6 +3813,13 @@ class NewController extends Controller
                                         'message_type' => 'remarkforstudent',
                                         'created_at' => now()
                                     ]);
+                            
+                        }
+                        }
+                        if($smsIntegration == 'Y'){
+                            $message = "Dear Parent,".$request->input('remark_desc') . ". Login to school application for details - AceVentura";
+                            $temp_id = '1107161354408119887';
+                            $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
                             
                         }
                         
@@ -3733,6 +3882,10 @@ class NewController extends Controller
                         ->join('section', 'section.section_id', '=', 'remark.section_id')
                         ->join('student', 'student.student_id', '=', 'remark.student_id')
                         ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'remark.subject_id')
+                        ->leftJoin('redington_webhook_details', function ($join) {
+                            $join->on('remark.remark_id', '=', 'redington_webhook_details.notice_id')
+                                 ->where('redington_webhook_details.message_type', '=', 'remarkforstudent');
+                        })
                         ->where('remark.academic_yr', $customClaims)
                         ->where('remark.teacher_id', $user->reg_id)
                         ->where('remark.isDelete', 'N')
@@ -3744,8 +3897,10 @@ class NewController extends Controller
                             DB::raw("CONCAT(UPPER(LEFT(student.mid_name, 1)), LOWER(SUBSTRING(student.mid_name, 2))) as mid_name"),
                             DB::raw("CONCAT(UPPER(LEFT(student.last_name, 1)), LOWER(SUBSTRING(student.last_name, 2))) as last_name"),
                             'subject_master.name as subjectname',
-                            DB::raw('(CASE WHEN remark.remark_id IN (SELECT remark_id FROM remarks_read_log) THEN 1 ELSE 0 END) as read_status')
+                            DB::raw('(CASE WHEN remark.remark_id IN (SELECT remark_id FROM remarks_read_log) THEN 1 ELSE 0 END) as read_status'),
+                            DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count')
                         )
+                        ->groupBy('remark.remark_id')
                         ->orderBy('remark.remark_id','DESC')
                         ->get();
 
@@ -3944,6 +4099,13 @@ class NewController extends Controller
          try{
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $settingsData = getSchoolSettingsData();
+         $schoolName = $settingsData->institute_name;
+         $defaultPassword = $settingsData->default_pwd;
+         $websiteUrl = $settingsData->website_url;
+         $shortName = $settingsData->short_name;
+         $whatsappIntegration = $settingsData->whatsapp_integration;
+         $smsIntegration = $settingsData->sms_integration;
          DB::table('remark')
             ->where('remark_id', $remark_id)
             ->update([
@@ -3961,28 +4123,47 @@ class NewController extends Controller
         // dd($studentcontactdata);
         $phone = $studentcontactdata->phone_no ?? null;
         if($phone){
-            $templateName = 'emergency_message';
-            $parameters =[$remarkdata->remark_desc];
-        
-            $result = $this->whatsAppService->sendTextMessage(
-                $phone,
-                $templateName,
-                $parameters
-            );
-            if (isset($result['code']) && isset($result['message'])) {
-                                Log::warning("Rate limit hit", []);
-            } 
-            else {
-                DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $result['messages'][0]['id'] ?? null,
-                            'phone_no' => $result['contacts'][0]['input'] ?? $phone,
-                            'stu_teacher_id' => $remarkdata->student_id,
-                            'notice_id' => $remarkdata->remark_id,
-                            'message_type' => 'remarkforstudent',
-                            'created_at' => now()
-                        ]);
+            if($whatsappIntegration == 'Y'){
+                $templateName = 'emergency_message';
+                $parameters =[$remarkdata->remark_desc];
+            
+                $result = $this->whatsAppService->sendTextMessage(
+                    $phone,
+                    $templateName,
+                    $parameters
+                );
+                if (isset($result['code']) && isset($result['message'])) {
+                        DB::table('redington_webhook_details')->insert([
+                                'wa_id' =>null,
+                                'phone_no' => $phone,
+                                'stu_teacher_id' => $remarkdata->student_id,
+                                'notice_id' => $remarkdata->remark_id,
+                                'status' =>'failed',
+                                'sms_sent'=>'N',
+                                'message_type' => 'remarkforstudent',
+                                'created_at' => now()
+                            ]);
+                } 
+                else {
+                    DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $result['messages'][0]['id'] ?? null,
+                                'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                                'stu_teacher_id' => $remarkdata->student_id,
+                                'notice_id' => $remarkdata->remark_id,
+                                'message_type' => 'remarkforstudent',
+                                'created_at' => now()
+                            ]);
+                    
+                }
                 
             }
+            if($smsIntegration == 'Y'){
+                $message = "Dear Parent,".$remarkdata->remark_desc . ". Login to school application for details - AceVentura";
+                $temp_id = '1107161354408119887';
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
+                
+            }
+            
             
         }
         
@@ -4900,7 +5081,9 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
+             $shortname = JWTAuth::getPayload()->get('short_name');
              if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                 if($shortname == 'SACS'){
                  $feescategory = DB::table('fees_category')
                                         ->join('fees_category_detail', 'fees_category_detail.fees_category_id', '=', 'fees_category.fees_category_id')
                                         ->join('class', 'class.class_id', '=', 'fees_category_detail.class_concession')
@@ -4915,6 +5098,48 @@ class NewController extends Controller
                                         )
                                         ->get()
                                         ->toArray();
+                 }
+                 elseif($shortname == 'HSCS'){
+                   $feescategory = DB::table('fees_category')
+                                    ->leftJoin('fees_category_detail', 'fees_category_detail.fees_category_id', '=', 'fees_category.fees_category_id')
+                                    ->leftJoin('class', function ($join) {
+                                        $join->on('class.class_id', '=', 'fees_category_detail.class_concession')
+                                             ->where('fees_category_detail.class_concession', '!=', 'C');
+                                    })
+                                    ->where('fees_category.academic_yr', $customClaims)
+                                    ->select(
+                                        'fees_category.fees_category_id',
+                                        'fees_category.name',
+                                        'fees_category.academic_yr',
+                                        DB::raw('GROUP_CONCAT(
+                                            CASE 
+                                                WHEN fees_category_detail.class_concession = "C" THEN "Concession"
+                                                ELSE class.name
+                                            END
+                                            ORDER BY 
+                                                CASE 
+                                                    WHEN fees_category_detail.class_concession = "C" THEN 0 
+                                                    ELSE 1 
+                                                END,
+                                                class.name
+                                            SEPARATOR ", "
+                                        ) as classnames')
+                                    )
+                                
+                                    ->groupBy(
+                                        'fees_category.fees_category_id',
+                                        'fees_category.name',
+                                        'fees_category.academic_yr'
+                                    )
+                                
+                                    ->orderBy('fees_category.fees_category_id', 'ASC')
+                                    ->get()
+                                    ->toArray();
+                     
+                 }
+                 else{
+                     
+                 }
                                     return response()->json([
                                         'status' => 200,
                                         'data'=>$feescategory,
@@ -5348,7 +5573,13 @@ class NewController extends Controller
              if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
               $studentid_installment = $request->studentid_installment;
               $message = $request->message;
-              SendOutstandingFeeSmsJob::dispatch($studentid_installment,$customClaims,$message);
+              $schoolsettings = getSchoolSettingsData();
+              $whatsappintegration = $schoolsettings->whatsapp_integration;
+              $smsintegration = $schoolsettings->sms_integration;
+                
+              if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+                SendOutstandingFeeSmsJob::dispatch($studentid_installment,$customClaims,$message);
+              }
 
               return response()->json([
                     'status' => 200,
@@ -5631,8 +5862,8 @@ class NewController extends Controller
             'unq_id'      => $unq,
             'title'       => $request->input('title'),
             'event_desc'  => $request->input('description'),
-            'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
-            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'start_date'  => $request->input('start_date'),
+            'end_date'    => $request->input('end_date'),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
             'competition' => $request->input('competition'),
@@ -5662,6 +5893,9 @@ class NewController extends Controller
      public function savePublishEvent(Request $request){
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $schoolsettings = getSchoolSettingsData();
+         $whatsappintegration = $schoolsettings->whatsapp_integration;
+         $smsintegration = $schoolsettings->sms_integration;
          
          do {
             $unq = random_int(1000, 9999);
@@ -5674,7 +5908,7 @@ class NewController extends Controller
             'title'       => $request->input('title'),
             'event_desc'  => $request->input('description'),
             'start_date'  => date('Y-m-d', strtotime($request->input('start_date'))),
-            'end_date'    => date('Y-m-d', strtotime($request->input('end_date'))),
+            'end_date'    => $request->input('end_date'),
             'start_time'  => $request->input('start_time'),
             'end_time'    => $request->input('end_time'),
             'competition' => $request->input('competition'),
@@ -5695,12 +5929,14 @@ class NewController extends Controller
             }
         }
          if (strtoupper($request->input('notify')) === 'Y') {
+            if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
             SendEventNotificationJob::dispatch([
                 'unq_id'     => $unq,
                 'title'      => $request->input('title'),
                 'login_type' => $request->input('checkbxlogintype'),
                 'class_ids'  => $request->input('checkbxclass')
             ]);
+            }
         }
 
         return response()->json([
@@ -5733,6 +5969,10 @@ class NewController extends Controller
          $query = DB::table('events as e')
                 ->join('class as c', 'e.class_id', '=', 'c.class_id')
                 ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+                ->leftJoin('redington_webhook_details as rwd', function ($join) {
+                        $join->on('rwd.notice_id', '=', 'e.unq_id')
+                             ->where('rwd.message_type', '=', 'event');
+                    })
                 ->where('e.academic_yr', $customClaims);
 
         // Optional class filter
@@ -5748,6 +5988,7 @@ class NewController extends Controller
         }
         
         $events = $query->select(
+                'e.event_id',
                 'e.unq_id',
                 'e.title',
                 'e.event_desc',
@@ -5763,14 +6004,19 @@ class NewController extends Controller
                 'e.created_by',
                 'e.class_id',
                 'c.name as class_name',
-                't.name as createdbyname'
+                't.name as createdbyname',
+                DB::raw('COUNT(CASE WHEN rwd.sms_sent = "N" THEN 1 END) as failed_sms_count')
             )
+            ->groupBy('e.event_id')
+            ->orderBy('e.event_id', 'DESC')
             ->get();
 
         
         $grouped = $events->groupBy('unq_id')->map(function ($group) {
             $first = $group->first(); 
+            $latestEventId = $group->max('event_id');
             return [
+                'latest_event_id' => $latestEventId, 
                 'unq_id'      => $first->unq_id,
                 'title'       => $first->title,
                 'event_desc'  => $first->event_desc,
@@ -5785,12 +6031,15 @@ class NewController extends Controller
                 'academic_yr' => $first->academic_yr,
                 'created_by'  => $first->created_by,
                 'created_by_name'=>$first->createdbyname,
+                'failed_sms_count'=> $group->sum('failed_sms_count'), 
                 'classes'     => $group->map(fn($item) => [
                     'class_id'   => $item->class_id,
                     'class_name' => $item->class_name,
                 ])->unique('class_id')->values()
             ];
-        })->values();
+        })
+        ->sortByDesc('latest_event_id')
+        ->values();
          return response()->json([
             'status'=>200,
             'message'=>'Event list.',
@@ -5864,7 +6113,9 @@ class NewController extends Controller
      public function updatePublishEvent(Request $request){
          $user = $this->authenticateUser();
          $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+         $schoolsettings = getSchoolSettingsData();
+         $whatsappintegration = $schoolsettings->whatsapp_integration;
+         $smsintegration = $schoolsettings->sms_integration;
         
          $unqids = $request->input('checkbxuniqid');
         
@@ -5883,12 +6134,14 @@ class NewController extends Controller
             ->toArray();
             
             if (!empty($eventData) && strtoupper($eventData->notify) === 'Y') {
+             if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
                 SendEventNotificationJob::dispatch([
                     'unq_id'     => $unq_id,
                     'title'      => $eventData->title,
                     'login_type' => explode(',', $eventData->login_type),
                     'class_ids'  => $classIds
                 ]);
+             }
             }
         }
         return response()->json([
@@ -5941,7 +6194,7 @@ class NewController extends Controller
                 'title'       => $request->input('title', $event->title),
                 'event_desc'  => $request->input('description', $event->event_desc),
                 'start_date'  => $request->input('start_date') ? date('Y-m-d', strtotime($request->start_date)) : $event->start_date,
-                'end_date'    => $request->input('end_date') ? date('Y-m-d', strtotime($request->end_date)) : $event->end_date,
+                'end_date'    => $request->input('end_date'),
                 'start_time'  => $request->input('start_time', $event->start_time),
                 'end_time'    => $request->input('end_time', $event->end_time),
                 'competition' => $request->input('competition'),
@@ -6172,7 +6425,7 @@ class NewController extends Controller
                             'event_desc'  => $EventData['event_desc'],
                             'class_id'    => $class_id,
                             'start_date'  => $EventData['start_date'],
-                            'end_date'    => !empty($EventData['end_date']) ? $EventData['end_date'] : '0000-00-00',
+                            'end_date'    => $EventData['end_date'],
                             'start_time' => !empty($EventData['start_time']) ? $EventData['start_time'] : '00:00:00',
                             'end_time'   => !empty($EventData['end_time']) ? $EventData['end_time'] : '00:00:00',
                             'competition' => $EventData['competition'],
@@ -6272,6 +6525,12 @@ class NewController extends Controller
      }
      
      public function getActiveBackgroundColor(Request $request){
+         $shortName = $request->query('short_name'); 
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
          $activebackgroundcolor = DB::table('background_color')->where('is_active','Y')->get();
          return response()->json([
                 'status' =>200,
@@ -6281,6 +6540,796 @@ class NewController extends Controller
             ]);
          
      }
+     
+     public function getGeneralInstructions(Request $request){
+         $shortName = $request->query('short_name'); 
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+            
+         $generalinstructions = DB::table('general_instructions')
+                                    ->where('is_active','Y')
+                                    ->get();
+        return response()->json([
+                'status' =>200,
+                'data' => $generalinstructions,
+                'message' => 'General instructions.',
+                'success'=>true
+            ]);
+            
+        
+     }
+     
+     public function getHouseofSchool(Request $request){
+         $houses = DB::table('house')->get();
+         return response()->json([
+                'status' =>200,
+                'data' => $houses,
+                'message' => 'School houses.',
+                'success'=>true
+            ]);
+         
+     }
+     
+     public function getSupportEmailId(Request $request){
+         $shortName = $request->query('short_name'); 
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+        $supportemailid = DB::table('school_settings')->select('support_email_id')->first();
+         return response()->json([
+                'status' =>200,
+                'data' => $supportemailid,
+                'message' => 'Support Email ID.',
+                'success'=>true
+            ]);
+         
+     }
+     
+     public function getTeacherClasseswithClassTeacher(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacher_id = $request->input('teacher_id');
+         $classdata = DB::table('subject')
+                            ->join('class', 'class.class_id', '=', 'subject.class_id')
+                            ->join('section', 'section.section_id', '=', 'subject.section_id')
+                            ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+                            ->leftJoin('class_teachers', function ($join) use($teacher_id) {
+                                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                                     ->on('class_teachers.section_id', '=', 'subject.section_id')
+                                     ->where('class_teachers.teacher_id', '=', $teacher_id);
+                            })
+                            ->where('subject.academic_yr', $customClaims)
+                            ->where('subject.teacher_id', $teacher_id)
+                            ->where(function ($query) use ($teacher_id) {
+                                $query->where('subject.teacher_id', $teacher_id)
+                                      ->orWhere('class_teachers.teacher_id', $teacher_id);
+                            })
+                            ->distinct()
+                            ->select(
+                                'subject.class_id',
+                                'section.section_id',
+                                'class.name as classname',
+                                'section.name as sectionname',
+                                'teacher.name as teachername',
+                                'teacher.teacher_id',
+                                'class.class_id',
+                                DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher')
+                            )
+                            ->orderBy('subject.class_id')
+                            ->get();
+                            return response()->json([
+                                'status' =>200,
+                                'data' => $classdata,
+                                'message' => 'Classes for teachers.',
+                                'success'=>true
+                            ]);
+     }
+     
+     public function getBackgroundImage(Request $request){
+         $shortName = $request->input('short_name');
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+         $settingsData = getSchoolSettingsData();
+         $logo = $settingsData->school_logo;
+         $image = $settingsData->school_image;
+         $url =config('externalapis.EVOLVU_URL').'/get_school_details';
+
+         $response = Http::asMultipart()->post($url, [
+            [
+                'name' => 'short_name',
+                'contents' => $shortName, 
+            ],
+         ]);
+         
+         $projectUrl = $response->json()[0]['project_url'];
+         $schoollogo = $projectUrl."uploads/".$logo;
+         $schoolImage = $projectUrl."uploads/".$image;
+         $data = [
+                   'logo'=>$schoollogo,
+                   'school_image'=>$schoolImage
+             ];
+         return response()->json([
+                                'status' =>200,
+                                'data' => $data,
+                                'message' => 'Background image for school and logo.',
+                                'success'=>true
+                            ]);
+         
+     }
+     
+     public function getRoleOfUser(Request $request){
+         $shortName = $request->input('short_name');
+         $userId = $request->input('user_id');
+         if (array_key_exists($shortName, config('database.connections'))) {
+                config(['database.default' => $shortName]);
+            } else {
+                dd("No database configuration for the given short_name");
+            }
+         $data = DB::table('user_master')
+                     ->where('user_id',$userId)
+                     ->select('role_id')
+                     ->get();
+         return response()->json([
+                                'status' =>200,
+                                'data' => $data,
+                                'message' => 'RoleId for the user.',
+                                'success'=>true
+                            ]);
+         
+     }
+     
+     public function getTeacherCategoryTeaching(){
+        try{
+            $teacherCategory = DB::table('teacher_category')->where('teaching','Y')->get();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Teacher Category teaching list.',
+                'data' =>$teacherCategory,
+                'success'=>true
+              ]);
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+     }
+     
+     public function getTeacherCategoryNonTeaching(){
+        try{
+            $teacherCategory = DB::table('teacher_category')->where('teaching','N')->get();
+            return response()->json([
+                'status'=> 200,
+                'message'=>'Teacher Category non teaching list',
+                'data' =>$teacherCategory,
+                'success'=>true
+              ]);
+        }
+        catch (Exception $e) {
+            \Log::error($e); // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+     }
+     
+     public function sendPendingSMSForTeacherRemark(Request $request,$remark_id){
+         $remark_ids = DB::table('teachers_remark')
+                              ->where('t_remark_id',$remark_id)
+                              ->pluck('t_remark_id');
+            $message_type = ['teacher_remark'];
+            $failedMessages = DB::table('redington_webhook_details')
+                                    ->whereIn('notice_id', $remark_ids)
+                                    ->whereIn('message_type',$message_type)
+                                    ->where('sms_sent', 'N')
+                                    ->get();
+            foreach ($failedMessages as $failedmessage){
+                $staffmessage = DB::table('teachers_remark')
+                                    ->where('t_remark_id',$failedmessage->notice_id)
+                                    ->value('remark_desc');
+                // dd($staffmessage);
+                $temp_id = '1107164450693700526';           
+                $message = 'Dear Staff, '.$staffmessage.". Login to school application for details.-EvolvU";
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                $messagestatus = $sms_status['data']['status'] ?? null;
+
+                if ($messagestatus == "success") {
+                    DB::table('redington_webhook_details')->where('notice_id', $failedmessage->notice_id)->where('message_type',$failedmessage->message_type)->where('stu_teacher_id',$failedmessage->stu_teacher_id)->update(['sms_sent' => 'Y']);
+
+                }
+            }
+            
+            return response([
+                'status'=>200,
+                'message'=>'messages sended successfully.',
+                'success'=>true
+                ]);
+     }
+     
+     public function sendPendingSMSForStudentRemark(Request $request,$remark_id){
+         $remark_ids = DB::table('remark')
+                              ->where('remark_id',$remark_id)
+                              ->pluck('remark_id');
+            $message_type = ['remarkforstudent'];
+            $failedMessages = DB::table('redington_webhook_details')
+                                    ->whereIn('notice_id', $remark_ids)
+                                    ->whereIn('message_type',$message_type)
+                                    ->where('sms_sent', 'N')
+                                    ->get();
+            // dd($failedMessages);
+            foreach ($failedMessages as $failedmessage){
+                $staffmessage = DB::table('remark')
+                                    ->where('remark_id',$failedmessage->notice_id)
+                                    ->value('remark_desc');
+                // dd($staffmessage);
+                $message = "Dear Parent,".$staffmessage. ". Login to school application for details - Evolvu";
+                $temp_id = '1107164450685654320';
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                $messagestatus = $sms_status['data']['status'] ?? null;
+                // dd($messagestatus);
+                if ($messagestatus == "success") {
+                    DB::table('redington_webhook_details')->where('notice_id', $failedmessage->notice_id)->where('message_type',$failedmessage->message_type)->where('stu_teacher_id',$failedmessage->stu_teacher_id)->update(['sms_sent' => 'Y']);
+
+                }
+            }
+            
+            return response([
+                'status'=>200,
+                'message'=>'messages sended successfully.',
+                'success'=>true
+                ]);
+         
+     }
+     
+     public function sendPendingSMSForEvent(Request $request,$unq_id){
+            
+            $message_type = ['event'];
+            $failedMessages = DB::table('redington_webhook_details')
+                                    ->where('notice_id', $unq_id)
+                                    ->whereIn('message_type',$message_type)
+                                    ->where('sms_sent', 'N')
+                                    ->get();
+           
+            foreach ($failedMessages as $failedmessage){
+                $staffmessage = DB::table('events')
+                                    ->where('unq_id',$failedmessage->notice_id)
+                                    ->value('title');
+                // dd($staffmessage);
+                $message = "Dear Parent,".$staffmessage. ". Login to school application for details - Evolvu";
+                $temp_id = '1107164450685654320';
+                $sms_status = app('App\Http\Services\SmsService')->sendSms($failedmessage->phone_no, $message, $temp_id);
+                $messagestatus = $sms_status['data']['status'] ?? null;
+                
+                if ($messagestatus == "success") {
+                    DB::table('redington_webhook_details')->where('notice_id', $failedmessage->notice_id)->where('message_type',$failedmessage->message_type)->where('stu_teacher_id',$failedmessage->stu_teacher_id)->update(['sms_sent' => 'Y']);
+
+                }
+            }
+            
+            return response([
+                'status'=>200,
+                'message'=>'messages sended successfully.',
+                'success'=>true
+                ]);
+         
+     }
+     
+     public function getRemarkOfTeacher(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacherremark = DB::select("select * from(select  tr.*,0 as read_status from teachers_remark tr  join teacher  on teacher.teacher_id=tr.teachers_id where tr.remark_type='Remark' and tr.academic_yr='".$customClaims."' and tr.teachers_id='".$user->reg_id."'
+         AND t_remark_id not IN( select t_remark_id FROM tremarks_read_log where teachers_id='".$user->reg_id."'  )
+              UNION
+             select  tr.*,1 as read_status from teachers_remark tr  join teacher on teacher.teacher_id=tr.teachers_id where  tr.remark_type='Remark' and tr.academic_yr= '".$customClaims."'and tr.teachers_id='".$user->reg_id."'  AND t_remark_id IN(select t_remark_id FROM tremarks_read_log where teachers_id='".$user->reg_id."' ) )  as x ORDER BY publish_date DESC");
+             
+         return response([
+                'status'=>200,
+                'data' =>$teacherremark,
+                'message'=>'Teacher remark fetched successfully.',
+                'success'=>true
+                ]); 
+         
+     }
+     
+     public function saveAcknowledgeTeacher(Request $request,$remark_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $teacher_id = $user->reg_id; 
+         $read_date = now()->format('Y-m-d');
+         
+         DB::beginTransaction();
+    
+         try {
+            
+            DB::table('teachers_remark')
+                ->where('t_remark_id', $remark_id)
+                ->update([
+                    't_remark_id' => $remark_id,
+                    'teachers_id' => $teacher_id,
+                    'acknowledge' => 'Y'
+                ]);
+    
+            
+            $exists = DB::table('tremarks_read_log')
+                ->where('t_remark_id', $remark_id)
+                ->exists();
+    
+            if (!$exists) {
+                
+                DB::table('tremarks_read_log')->insert([
+                    't_remark_id' => $remark_id,
+                    'teachers_id' => $teacher_id,
+                    'date' => $read_date
+                ]);
+            } else {
+                
+                DB::table('tremarks_read_log')
+                    ->where('t_remark_id', $remark_id)
+                    ->update([
+                        'teachers_id' => $teacher_id,
+                        'date' => $read_date
+                    ]);
+            }
+    
+            DB::commit();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Teacher remark acknowledged successfully',
+                'status' => 200
+            ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+        
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'status' => 500
+                ]);
+            }
+         
+     }
+     
+     public function getViewRemarkTeacher(Request $request,$remark_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+          try {
+            $teacher_id = $user->reg_id;
+            $read_date = now()->format('Y-m-d');
+    
+            
+            $data = [
+                't_remark_id' => $remark_id,
+                'teachers_id' => $teacher_id,
+                'date' => $read_date
+            ];
+    
+            
+            $exists = DB::table('tremarks_read_log')
+                        ->where('t_remark_id', $remark_id)
+                        ->exists();
+    
+            if (!$exists) {
+                DB::table('tremarks_read_log')->insert($data);
+                $read_status = 'Inserted';
+            } else {
+                DB::table('tremarks_read_log')
+                    ->where('t_remark_id', $remark_id)
+                    ->update($data);
+                $read_status = 'Updated';
+            }
+           $teacherremark = DB::table('teachers_remark')
+                                ->join('teacher', 'teacher.teacher_id', '=', 'teachers_remark.teachers_id')
+                                ->select('teachers_remark.*','teacher.name as teachername')
+                                ->where('t_remark_id', $remark_id)
+                                ->first();
+                    
+    
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Teacher remark viewed successfully.',
+                'read_status' => $read_status,
+                'data' =>$teacherremark
+            ]);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+         
+     }
+     
+     public function getDailyNotesClassTeacherWise(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $class_id = $request->input('class_id');
+         $section_id = $request->input('section_id');
+         $query = DB::table('notes_master')
+                    ->select(
+                        'notes_master.*',
+                        'class.name as class_name',
+                        'section.name as sec_name',
+                        'subject_master.name as sub_name'
+                    )
+                    ->join('class', 'class.class_id', '=', 'notes_master.class_id')
+                    ->join('section', 'section.section_id', '=', 'notes_master.section_id')
+                    ->leftJoin('subject_master', 'notes_master.subject_id', '=', 'subject_master.sm_id')
+                    ->where('notes_master.class_id', $class_id)
+                    ->where('notes_master.section_id', $section_id)
+                    ->where('notes_master.academic_yr', $customClaims)
+                    ->where('notes_master.Publish', 'Y')
+                    ->get();
+                    
+         return response()->json([
+                'status' => 200,
+                'data' =>$query,
+                'success' => true,
+                'message' => 'Daily notes class teacherwise.'
+                
+            ]);
+         
+     }
+     
+     public function getViewDailyNotesClassTeacherWise(Request $request,$notes_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'|| $user->role_id == 'T'){
+            $notice_type = DB::table('notes_master')->where('notes_id',$notes_id)->first();
+
+                $notesData1 = DB::table('notes_master')
+                                ->select('notes_master.*', 'teacher.name' ,'class.class_id', DB::raw('GROUP_CONCAT(class.name ) as classnames'),'section.name as sectionname','subject_master.name as subjectname')
+                                ->join('teacher', 'notes_master.teacher_id', '=', 'teacher.teacher_id')
+                                ->join('class', 'notes_master.class_id', '=', 'class.class_id')
+                                ->join('section', 'notes_master.section_id', '=', 'section.section_id')
+                                ->join('subject_master', 'subject_master.sm_id', '=', 'notes_master.subject_id')
+                                ->where('notes_master.notes_id',$notes_id)
+                                ->orderBy('notes_master.notes_id', 'desc') 
+                                ->get();
+                $noticeimages=DB::table('notes_master')
+                                ->where('notes_master.notes_id',$notes_id)
+                                ->join('notes_detail','notes_detail.notes_id','=','notes_master.notes_id')
+                                ->where('notes_master.notes_id',$notice_type->notes_id)
+                                ->select('notes_detail.image_name','notes_detail.notes_id','notes_master.date')
+                                ->get();
+                // dd($noticeimages);             
+                $imageUrls = []; 
+                foreach($noticeimages as $image){
+                    $imageurl = ($codeigniter_app_url."uploads/daily_notes/".$image->date."/".$notes_id."/".$image->image_name);
+                    $imageUrls[] = $imageurl;
+                    
+                }
+                $noticeData['notesdata']= $notesData1;
+                $noticeData['notesimages']=$noticeimages;
+                $noticeData['imageurl'] = $imageUrls;
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Notes View Edit',
+                    'data' =>$noticeData,
+                    'success'=>true
+                    ]);
+                
+       }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Viewing of List',
+                'data' =>$user->role_id,
+                'success'=>false
+                ]);
+        }
+         
+     }
+     
+     public function getTeacherTimetable(Request $request){
+         $teacher_id = $request->input('teacher_id');
+         $day = $request->input('day');
+         $acd_yr = $request->input('acd_yr');
+
+         $tt_data = get_teacher_timetable_with_multiple_selection_for_teacher_app($day, $teacher_id, $acd_yr);
+ 
+         if (!empty($tt_data)) {
+            return response()->json([
+                'status' => true,
+                'tt_data' => $tt_data
+            ], 200);
+         } else {
+            return response()->json([
+                'status' => false,
+                'error_msg' => 'No Records Found'
+            ], 200);
+         }
+         
+     }
+     
+     public function getHomeworkClassTeacherwise(Request $request){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         $class_id = $request->input('class_id');
+         $section_id = $request->input('section_id');
+         $query = DB::table('homework')
+                    ->select(
+                        'homework.*',
+                        'class.name as class_name',
+                        'section.name as sec_name',
+                        'subject_master.name as sub_name'
+                    )
+                    ->join('class', 'class.class_id', '=', 'homework.class_id')
+                    ->join('section', 'section.section_id', '=', 'homework.section_id')
+                    ->leftJoin('subject_master', 'homework.sm_id', '=', 'subject_master.sm_id')
+                    ->where('homework.class_id', $class_id)
+                    ->where('homework.section_id', $section_id)
+                    ->where('homework.academic_yr', $customClaims)
+                    ->where('homework.Publish', 'Y')
+                    ->get();
+                    
+         return response()->json([
+                'status' => 200,
+                'data' =>$query,
+                'success' => true,
+                'message' => 'Homework class teacherwise.'
+                
+            ]);
+         
+     }
+     
+     public function getViewHomeworkClassTeacherwise(Request $request,$homework_id){
+         $user = $this->authenticateUser();
+         $customClaims = JWTAuth::getPayload()->get('academic_year');
+         
+         $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        if($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M'|| $user->role_id == 'T'){
+            $notice_type = DB::table('homework')->where('homework_id',$homework_id)->first();
+
+                $notesData1 = DB::table('homework')
+                                ->select('homework.*', 'teacher.name' ,'class.class_id', DB::raw('GROUP_CONCAT(class.name ) as classnames'),'section.name as sectionname','subject_master.name as subjectname')
+                                ->join('teacher', 'homework.teacher_id', '=', 'teacher.teacher_id')
+                                ->join('class', 'homework.class_id', '=', 'class.class_id')
+                                ->join('section', 'homework.section_id', '=', 'section.section_id')
+                                ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
+                                ->where('homework.homework_id',$homework_id)
+                                ->orderBy('homework.homework_id', 'desc') 
+                                ->get();
+                $noticeimages=DB::table('homework')
+                                ->where('homework.homework_id',$homework_id)
+                                ->join('homework_detail','homework_detail.homework_id','=','homework.homework_id')
+                                ->where('homework.homework_id',$notice_type->homework_id)
+                                ->select('homework_detail.image_name','homework_detail.homework_id',DB::raw('DATE(homework.start_date) as start_date'))
+                                ->get();
+                //  dd($noticeimages);             
+                $imageUrls = []; 
+                foreach($noticeimages as $image){
+                    $imageurl = ($codeigniter_app_url."uploads/homework/".$image->start_date."/".$homework_id."/".$image->image_name);
+                    $imageUrls[] = $imageurl;
+                    
+                }
+                $noticeData['homeworkdata']= $notesData1;
+                $noticeData['homeworkimages']=$noticeimages;
+                $noticeData['imageurl'] = $imageUrls;
+                return response()->json([
+                    'status'=> 200,
+                    'message'=>'Homework View Edit',
+                    'data' =>$noticeData,
+                    'success'=>true
+                    ]);
+                
+       }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Viewing of List',
+                'data' =>$user->role_id,
+                'success'=>false
+                ]);
+        }
+         
+     }
+     
+     public function studentAllotRollnoHouse(Request $request,$class_id,$section_id){
+        try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+                  $students = DB::table('student')
+                                ->where('class_id',$class_id)
+                                ->where('section_id',$section_id)
+                                ->where('academic_yr',$customClaims)
+                                ->select('student_id','first_name','mid_name','last_name','roll_no','reg_no','admission_date','stu_aadhaar_no','house')
+                                ->orderBy('reg_no','ASC')
+                                ->get();
+    
+                                $students = $students->map(function ($student) {
+                                    $student->full_name = ucwords(strtolower(getFullName($student->first_name, $student->mid_name, $student->last_name)));
+                                    return $student;
+                                });
+    
+                                return response()->json([
+                                    'status'=> 200,
+                                    'message'=>'Student List For Allot Roll no and House.',
+                                    'data'=>$students,
+                                    'success'=>true
+                                        ]);
+    
+            
+    
+            }
+            catch (Exception $e) {
+            \Log::error($e); 
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            }
+    
+       }
+
+   public function updateStudentAllotRollnoHouse(Request $request){
+    try{
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $studentsData = $request->input('students');
+            
+
+            foreach ($studentsData as $studentData) {
+                $studentId = $studentData['student_id'];
+                $house = $studentData['house'];
+                $rollNo = $studentData['roll_no'];
+    
+                // Find existing student by student_id
+                $student = Student::where('student_id', $studentId)->first();
+    
+                // If student exists, update the data
+                if ($student) {
+                    $student->update([
+                        'house' => $house,
+                        'roll_no' => $rollNo,
+                    ]);
+                } 
+            }
+    
+            // Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student data saved successfully!',
+                'success' => true
+            ], 200);
+
+        }
+        catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+
+   }
+     
+     public function sendPendingMessagesWhatsapp(Request $request){
+         $pendingmessages = DB::table('redington_webhook_details')
+                              ->whereBetween('webhook_id',[10540,10542])
+                              ->where('status','failed')
+                              ->where('sms_sent','N')
+                              ->get();
+         $message = $request->message;
+         foreach($pendingmessages as $pendingmessage){
+             $templateName = 'emergency_message';
+             $parameters = [$message];
+             $result = $this->whatsAppService->sendTextMessage(
+                                $pendingmessage->phone_no,
+                                $templateName,
+                                $parameters
+                            );
+                            if (isset($result['code']) && isset($result['message'])) {
+                                // Handle rate limit error
+                                Log::warning("Rate limit hit: Too many messages to same user", [
+                                    
+                                ]);
+                        
+                            } else {
+                                
+                                $wamid = $result['messages'][0]['id'];
+                                $phone_no = $result['contacts'][0]['input'];
+                        
+                                DB::table('redington_webhook_details')
+                                ->where('webhook_id',$pendingmessage->webhook_id)
+                                ->update([
+                                    'wa_id' => $wamid
+                                ]);
+                            }
+             
+         }
+          return response()->json([
+                'status' => 200,
+                'message' => 'Messages Sent Successfully.',
+                'success' => true
+            ], 200);
+         
+         
+     }
+     
+     public function updateFrequentTabs(Request $request){
+        $user = $this->authenticateUser();
+        $reg_id = $user->reg_id; 
+
+        
+        $validated = $request->validate([
+            'menu_id' => 'required|integer',
+            'name' => 'required|string|max:255',
+            'url' => 'required|string|max:255',
+        ]);
+        if ($validated['url'] === '#' || strtolower($validated['url']) === 'comingSoon') {
+        return response()->json([
+            'status' => 400,
+            'message' => 'Skipped saving placeholder tab',
+            'success' => false,
+            ]);
+        }
+    
+        
+        $frequentTab = DB::table('frequent_tabs')
+            ->where('reg_id', $reg_id)
+            ->where('menu_id', $validated['menu_id'])
+            ->first();
+    
+        if ($frequentTab) {
+            
+            DB::table('frequent_tabs')
+                ->where('frequent_id', $frequentTab->frequent_id)
+                ->update([
+                    'count' => $frequentTab->count + 1,
+                ]);
+        } else {
+            DB::table('frequent_tabs')->insert([
+                'menu_id' => $validated['menu_id'],
+                'name' => $validated['name'],
+                'url' => $validated['url'],
+                'reg_id' => $reg_id,
+                'count' => 1,
+            ]);
+        }
+    
+        return response()->json([
+                   'status' => 200,
+                   'message'=> 'Frequent tab count updated',
+                   'success'=>true
+        
+        ]);
+         
+         
+     }
+     
+     public function getFrequentTabs(Request $request){
+        $user = $this->authenticateUser();
+        $reg_id = $user->reg_id;
+    
+        
+        $frequentTabs = DB::table('frequent_tabs')
+            ->where('reg_id', $reg_id)
+            ->orderByDesc('count')
+            ->limit(5)
+            ->get(['menu_id', 'name', 'url', 'count']); 
+    
+        
+        return response()->json([
+            'status' => 200,
+            'message' => 'Top 5 frequent tabs fetched successfully',
+            'data' => $frequentTabs,
+            'success' => true,
+        ]);
+         
+         
+     }
+     
      
      private function validateDate($date, $format)
     {

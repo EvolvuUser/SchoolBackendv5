@@ -36,6 +36,7 @@ class Teacher extends Model
         'class_id',
         'section_id',
         'isDelete',
+        'tc_id'
     ];  //getTeacher
 
     public function getTeacher()
