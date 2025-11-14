@@ -215,7 +215,8 @@ class CertificateController extends Controller
                 'permant_add'=>$request->permant_add,
                 'reg_no'=>$request->reg_no,
                 'caste'=>$request->caste,
-                'religion'=>$request->religion
+                'religion'=>$request->religion,
+                'birth_place'=>$request->birth_place
     
             ];
             
@@ -390,7 +391,7 @@ class CertificateController extends Controller
         
     }
 
-     public function updateBonafideCertificate(Request $request,$sr_no){
+    public function updateBonafideCertificate(Request $request,$sr_no){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -436,6 +437,7 @@ class CertificateController extends Controller
                 $bonafidecertificate->reg_no=$request->reg_no;
                 $bonafidecertificate->caste=$request->caste;
                 $bonafidecertificate->religion=$request->religion;
+                $bonafidecertificate->birth_place=$request->birth_place;
                 $bonafidecertificate->update();
     
                 $data= DB::table('bonafide_certificate')
@@ -543,6 +545,7 @@ class CertificateController extends Controller
 
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $shortname = JWTAuth::getPayload()->get('short_name');
         $data = [
             'stud_name'=>$request->stud_name,
             'father_name'=>$request->father_name,
@@ -563,9 +566,13 @@ class CertificateController extends Controller
         
         $data= DB::table('simple_bonafide_certificate')->orderBy('sr_no', 'desc')->first();
         $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
-        // Load a view and pass the data to it
+        if($shortname == 'SACS'){
         $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
-        // Download the generated PDF
+        }
+        elseif($shortname == 'HSCS'){
+            $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+        }
+        
         return response()->stream(
             function () use ($pdf) {
                 echo $pdf->output();
@@ -669,9 +676,20 @@ class CertificateController extends Controller
 
     public function simpleBonafideDownload(Request $request,$sr_no){
         try{
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = SimpleBonafide::find($sr_no);
             $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
+            if($shortname == 'SACS'){
             $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            }
+            else{
+                
+            }
         // Download the generated PDF
             return response()->stream(
                 function () use ($pdf) {
@@ -713,6 +731,7 @@ class CertificateController extends Controller
 
     public function updateSimpleBonafide(Request $request,$sr_no){
         try{
+           $shortname = JWTAuth::getPayload()->get('short_name');
            $bonafidecertificate = SimpleBonafide::find($sr_no);
            $bonafidecertificate->stud_name = $request->stud_name;
            $bonafidecertificate->father_name = $request->father_name;
@@ -725,8 +744,15 @@ class CertificateController extends Controller
 
            $data= DB::table('simple_bonafide_certificate')->where('sr_no',$sr_no)->first();
            $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
-            // Load a view and pass the data to it
+           if($shortname == 'SACS'){
             $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            }
+            else{
+                
+            }
             // Download the generated PDF
             return response()->stream(
                 function () use ($pdf) {
@@ -816,6 +842,7 @@ class CertificateController extends Controller
 
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = [
                 'reg_no' => $request->reg_no,
                 'stud_name'=>$request->stud_name,
@@ -858,7 +885,16 @@ class CertificateController extends Controller
                     ->orderBy('sr_no', 'desc')
                     ->first();
            // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           if($shortname == 'SACS'){
+               $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           }
+           elseif($shortname == 'HSCS'){
+               $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+           }
+           else{
+               $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           }
+            
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -964,7 +1000,7 @@ class CertificateController extends Controller
 
     public function CasteBonafideDownload(Request $request,$sr_no){
         try{
-
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('bonafide_caste_certificate')
                     ->join('student','student.student_id','=','bonafide_caste_certificate.stud_id')
                     ->join('parent','parent.parent_id','=','student.parent_id')
@@ -972,8 +1008,15 @@ class CertificateController extends Controller
                     ->where('sr_no',$sr_no)
                     ->orderBy('sr_no', 'desc')
                     ->first();
-           // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1021,6 +1064,7 @@ class CertificateController extends Controller
 
     public function updateCasteBonafide(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $castebonafide = CasteBonafide::find($sr_no);
             $castebonafide->reg_no = $request->reg_no;
             $castebonafide->stud_name = $request->stud_name;
@@ -1055,8 +1099,15 @@ class CertificateController extends Controller
                     ->where('sr_no',$sr_no)
                     ->orderBy('sr_no', 'desc')
                     ->first();
-           // Load a view and pass the data to it
-            $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+           if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1149,6 +1200,7 @@ class CertificateController extends Controller
 
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data = [
                 'stud_name'=>$request->stud_name,
                 'class_division'=>$request->class_division,
@@ -1169,8 +1221,16 @@ class CertificateController extends Controller
             
             $data= DB::table('character_certificate')->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1275,10 +1335,19 @@ class CertificateController extends Controller
 
     public function CharacterBonafideDownload(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1318,6 +1387,7 @@ class CertificateController extends Controller
 
     public function updateCharacterBonafide(Request $request,$sr_no){
         try{
+            $shortname = JWTAuth::getPayload()->get('short_name');
             $charactercertificate = CharacterCertificate::find($sr_no);
             $charactercertificate->stud_name = $request->stud_name;
             $charactercertificate->class_division = $request->class_division;
@@ -1331,7 +1401,15 @@ class CertificateController extends Controller
             $data= DB::table('character_certificate')->where('sr_no',$sr_no)->orderBy('sr_no', 'desc')->first();
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.charactercertificate', compact('data'))->setPaper('A4','landscape');
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
+            }
+            else{
+                
+            }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
             return response()->stream(
@@ -1491,7 +1569,7 @@ class CertificateController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            
+            $shortname = JWTAuth::getPayload()->get('short_name');
             
             $percentageCertificate = PercentageCertificate::create([
             'roll_no' => $request->roll_no,
@@ -1528,8 +1606,16 @@ class CertificateController extends Controller
                    ->orderBy('sr_no', 'desc')->first();
             $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
             // Load a view and pass the data to it
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+            }
+            else{
+                
+            }
             
-            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -1632,7 +1718,7 @@ class CertificateController extends Controller
 
     public function PercentageDownload(Request $request,$sr_no){
         try{
-             
+            $shortname = JWTAuth::getPayload()->get('short_name'); 
             $data= DB::table('percentage_certificate')
                    ->join('student','student.student_id','=','percentage_certificate.stud_id')
                    ->where('percentage_certificate.sr_no',$sr_no)
@@ -1641,7 +1727,15 @@ class CertificateController extends Controller
             $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
             // Load a view and pass the data to it
             
-            $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            if($shortname == 'SACS'){
+                $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+            }
+            elseif($shortname == 'HSCS'){
+                $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+            }
+            else{
+                
+            }
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -1742,6 +1836,7 @@ class CertificateController extends Controller
 
     public function updatePercentagePDF(Request $request,$sr_no){
         try{
+              $shortname = JWTAuth::getPayload()->get('short_name');
               $percentagecertificateinfo = PercentageCertificate::find($sr_no);
               $percentagecertificateinfo->roll_no = $request->roll_no;
               $percentagecertificateinfo->stud_name = $request->stud_name;
@@ -1767,7 +1862,15 @@ class CertificateController extends Controller
                 $dynamicFilename = "Percentage_Certificate_$data->stud_name.pdf";
                 // Load a view and pass the data to it
                 
+                if($shortname == 'SACS'){
                 $pdf = PDF::loadView('pdf.percentagecertificate', compact('data'));
+                }
+                elseif($shortname == 'HSCS'){
+                    $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
+                }
+                else{
+                    
+                }
                 return response()->stream(
                     function () use ($pdf) {
                         echo $pdf->output();
@@ -4270,7 +4373,13 @@ class CertificateController extends Controller
                             ->where('a.role_id', 'P')
                             ->where('b.parent_id', $studentinfo->parent_id)
                             ->value('a.user_id');
-                    
+                        $schoolsettings =getSchoolSettingsData();
+                        $school_id = $schoolsettings->school_id;
+                            $user_data1 = [
+                                "user_id" => $user_id,
+                                "school_id" => $school_id
+                            ];
+                            
                             $response = deleteParentUser($user_id);
                             
                             
@@ -4437,7 +4546,7 @@ class CertificateController extends Controller
                                             ->where('b.parent_id', $parent_id)
                                             ->select('a.user_id as user_id')
                                             ->first();
-
+                        
                         $response = createUserInEvolvu($currentUserName);
                         
                         $token_data = $response->body();

@@ -836,12 +836,13 @@ class SubstituteTeacher extends Controller
                     'IsDelete' => 'N'
                 ];
                 $parentId = DB::table('parent')->insertGetId($parentData);
-
+                $settingsData = getSchoolSettingsData();
+                $defaultPassword = $settingsData->default_pwd;
                 // Create user since we already checked it doesn't exist
                 UserMaster::create([
                     'user_id' => $userId,
                     'name' => $request->input('father_name'),
-                    'password' => bcrypt('arnolds'),
+                    'password' => bcrypt($defaultPassword),
                     'reg_id' => $parentId,
                     'role_id' => 'P'
                 ]);

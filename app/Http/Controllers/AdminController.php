@@ -56,6 +56,7 @@ use File;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use PDF;
 use App\Http\Services\WhatsAppService;
+use Illuminate\Support\Str;
 use App\Http\Services\SmsService;
 // use Maatwebsite\Excel\Facades\Excel;
 // use App\Exports\IdCardExport;
@@ -302,7 +303,7 @@ ORDER BY teacher_id ASC;
     ->get()
     ->map(function ($event) {
         // Strip only if it is fully wrapped in <p>...</p>
-        $event->event_desc = $event->event_desc;
+        $event->event_desc =  $event->event_desc;
         return $event;
     });
 
@@ -399,7 +400,7 @@ public function getClassDivisionTotalStudents(Request $request)
         return response()->json(['error' => 'Academic year is missing'], 400);
     }
 
-    $results = DB::table('class as c')
+     $results = DB::table('class as c')
         ->leftJoin('section as s', 'c.class_id', '=', 's.class_id')
         ->leftJoin(DB::raw("
             (SELECT section_id, COUNT(student_id) AS students_count
@@ -410,13 +411,16 @@ public function getClassDivisionTotalStudents(Request $request)
              GROUP BY section_id) as st
         "), 's.section_id', '=', 'st.section_id')
         ->select(
+            'c.class_id',
             DB::raw("CONCAT(c.name, ' ', COALESCE(s.name, 'No division assigned')) AS class_division"),
             DB::raw("SUM(st.students_count) AS total_students"),
             'c.name as class_name',
             's.name as section_name'
         )
+        ->where('s.academic_yr',$academicYr)
+        ->where('c.academic_yr',$academicYr)
         ->groupBy('c.name', 's.name')
-        ->orderBy('c.name')
+        ->orderBy('c.class_id')
         ->orderBy('s.name')
         ->get();
 
@@ -1775,8 +1779,8 @@ public function updateStaff(Request $request, $id)
             'experience' => 'nullable|string|max:255',
             'aadhar_card_no' => 'nullable|string',
             'teacher_image_name' => 'nullable|string', // Base64 string
-            // 'role' => 'required|string|max:255',
             'tc_id'=>'nullable|string|max:255',
+            // 'role' => 'required|string|max:255',
         ], $messages);
 
         if (isset($validatedData['academic_qual']) && is_array($validatedData['academic_qual'])) {
@@ -1784,22 +1788,71 @@ public function updateStaff(Request $request, $id)
         }
          
 
-        $staff = Teacher::findOrFail($id);
+    //     $staff = Teacher::findOrFail($id);
+            
+    //         // Get the existing image URL for comparison
+    //         $existingImageUrl = Storage::url('teacher_images/' . $staff->teacher_image_name);
+    //         // Handle base64 image
+    // if ($request->has('teacher_image_name') && !empty($request->input('teacher_image_name'))) {
+    //     $newImageData = $request->input('teacher_image_name');
 
-    // Get the existing image URL for comparison
-        $existingImageUrl = $staff->teacher_image_name;
+    //     // Check if the new image data matches the existing image URL
+    //     if ($existingImageUrl !== $newImageData) {
+    //         if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
+    //             $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
+    //             $type = strtolower($type[1]); // jpg, png, gif
 
-    // Handle base64 image
-    if ($request->has('teacher_image_name')) {
-        $newImageData = $request->input('teacher_image_name');
+    //             if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+    //                 throw new \Exception('Invalid image type');
+    //             }
+                
+    //             $newImageData = base64_decode($newImageData);
+    //             if ($newImageData === false) {
+    //                 throw new \Exception('Base64 decode failed');
+    //             }
+                
+    //             // Generate a filename for the new image
+    //             $filename = 'teacher_' . time() . '.' . $type;
+    //             $filePath = storage_path('app/public/teacher_images/' . $filename);
+                
+    //             // Ensure directory exists
+    //             $directory = dirname($filePath);
+    //             if (!is_dir($directory)) {
+    //                 mkdir($directory, 0755, true);
+    //             }
 
-        // Check if the new image data is null
-        if ($newImageData === null || $newImageData === 'null') {
-            // If the new image data is null, keep the existing filename
-            $validatedData['teacher_image_name'] = $staff->teacher_image_name;
-        } elseif (!empty($newImageData)) {
-            // Check if the new image data matches the existing image URL
-            if ($existingImageUrl !== $newImageData) {
+    //             // Save the new image to file
+    //             if (file_put_contents($filePath, $newImageData) === false) {
+    //                 throw new \Exception('Failed to save image file');
+    //             }
+
+    //             // Update the validated data with the new filename
+    //             $validatedData['teacher_image_name'] = $filename;
+    //         } else {
+    //             throw new \Exception('Invalid image data');
+    //         }
+    //     } else {
+    //         // If the image is the same, keep the existing filename
+    //         $validatedData['teacher_image_name'] = $staff->teacher_image_name;
+    //     }
+    // }
+
+    $staff = Teacher::findOrFail($id);
+
+// Get the existing image URL for comparison
+    $existingImageUrl = $staff->teacher_image_name;
+
+// Handle base64 image
+if ($request->has('teacher_image_name')) {
+    $newImageData = $request->input('teacher_image_name');
+
+    // Check if the new image data is null
+    if ($newImageData === null || $newImageData === 'null') {
+        // If the new image data is null, keep the existing filename
+        $validatedData['teacher_image_name'] = $staff->teacher_image_name;
+    } elseif (!empty($newImageData)) {
+        // Check if the new image data matches the existing image URL
+        if ($existingImageUrl !== $newImageData) {
             if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
                 $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
                 $type = strtolower($type[1]); // jpg, png, gif
@@ -1851,7 +1904,6 @@ public function updateStaff(Request $request, $id)
         $teacher = Teacher::findOrFail($id);
         $teacher->fill($validatedData);
         $teacher->updated_by = $user->reg_id;
-
         if (!$teacher->save()) {
             DB::rollBack(); // Rollback the transaction
             return response()->json([
@@ -1925,7 +1977,6 @@ public function deleteStaff($id)
         $teacher = Teacher::findOrFail($id);
         $teacher->isDelete = 'Y';
         $teacher->deleted_by = $user->reg_id;
-
         if ($teacher->save()) {
             $user = UserMaster::where('reg_id', $id)->first();
             Log::info($user);
@@ -2294,10 +2345,12 @@ public function getStudentById($studentId)
         return response()->json(['error' => 'Student not found'], 404);
     }
 
-    
-    if (!empty($student->image_name)) {       
+    // Append the image URL for the student
+    if (!empty($student->image_name)) {
+        // Generate the full URL for the student image based on their unique image_name
         $student->image_name = asset('storage/uploads/student_image/' . $student->image_name);
     } else {
+        // Set a default image if no image is available
         $student->image_name = asset('storage/uploads/student_image/default.png');
     }
 
@@ -2311,7 +2364,7 @@ public function getStudentsList(Request $request){
     $section_id = $request->section_id;
     $student_id = $request->student_id;
     $reg_no =$request->reg_no;
-
+    $user = $this->authenticateUser();
     $payload = getTokenPayload($request);  
     $academicYr = $payload->get('academic_year');
 
@@ -2350,6 +2403,29 @@ public function getStudentsList(Request $request){
    }
    elseif ($reg_no) {
        $query->where('reg_no', $reg_no)->where('isDelete','N')->where('academic_yr',$academicYr)->where('parent_id','!=','0');
+       if ($user->role_id == 'T') {
+        $teacherSubjects = DB::table('subject')
+            ->select('class_id', 'section_id')
+            ->where('teacher_id', $user->reg_id)
+            ->where('academic_yr',$academicYr)
+            ->get();
+    
+        $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+        $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+    
+        if (!empty($classIds) && !empty($sectionIds)) {
+            $query->whereIn('class_id', $classIds)
+                  ->whereIn('section_id', $sectionIds);
+        } else {
+            
+            return response()->json([
+                'status'=>402,
+                'message' => 'No assigned classes found',
+                'success'=>false
+                
+                ]);
+        }
+    }
    }
 
     else {
@@ -2398,6 +2474,8 @@ public function getStudentsList(Request $request){
         }
         
     });
+    
+    
 
     
     if ($students->isEmpty()) {
@@ -2407,6 +2485,13 @@ public function getStudentsList(Request $request){
         ], 404);
     }
 
+    $students->transform(function ($student) {
+    if (isset($student->religion)) {
+        // Force proper camel case (first letter lowercase)
+        $student->religion = ucfirst(strtolower($student->religion));
+    }
+    return $student;
+    });
     
     return response()->json([
         'status' => 'success',
@@ -2574,13 +2659,13 @@ public function toggleActiveStudent($studentId)
         $settingsData = getSchoolSettingsData();
         $defaultPassword = $settingsData->default_pwd;
         $password = $defaultPassword;
-        $user->password=$password;
+        $user->password= Hash::make($password);
         $user->save();
         
         return response()->json(
                       [
                         'Status' => 200 ,
-                         'Message' => "Password is reset to ".$password." . "
+                         'Message' => "Your password has been successfully reset to ".$password." . "
                       ]
                       );
      }
@@ -3004,8 +3089,11 @@ public function toggleActiveStudent($studentId)
         try {
             $payload = getTokenPayload($request);  
             $academicYr = $payload->get('academic_year');
+            Log::info("Starting updateStudentAndParent for student ID: {$studentId}");
             DB::enableQueryLog();
+            
             $validatedData = $request->validate([
+                // Student model fields
                 'first_name' => 'nullable|string|max:100',
                 'mid_name' => 'nullable|string|max:100',
                 'last_name' => 'nullable|string|max:100',
@@ -3045,6 +3133,8 @@ public function toggleActiveStudent($studentId)
                 'blood_group'=>'nullable|string',
                 'permant_add'=>'nullable|string',
                 'transport_mode'=>'nullable|string',
+            
+                // Parent model fields
                 'father_name' => 'nullable|string|max:100',
                 'father_occupation' => 'nullable|string|max:100',
                 'f_office_add' => 'nullable|string|max:200',
@@ -3063,11 +3153,16 @@ public function toggleActiveStudent($studentId)
                 'm_emailid' => 'nullable|string|max:50',
                 'm_adhar_no' => 'nullable|string|max:14',
                 'm_blood_group' => 'nullable|string',
+                
+            
+                // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
+                // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
 
             $validator = Validator::make($request->all(),[
+        
                 'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,'. $studentId . ',student_id,academic_yr,'. $academicYr,
                 'stu_aadhaar_no' => 'nullable|string|max:255|unique:student,stu_aadhaar_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
                 'udise_pen_no' => 'nullable|string|max:255|unique:student,udise_pen_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
@@ -3079,6 +3174,11 @@ public function toggleActiveStudent($studentId)
                         'errors' => $validator->errors(),
                     ], 422);
                 }
+
+            Log::info("Validation passed for student ID: {$studentId}");
+            Log::info("Validation passed for student ID: {$request->SetEmailIDAsUsername}");
+            //echo "Validation passed for student ID: {$studentId}";
+            // Convert relevant fields to uppercase
             $fieldsToUpper = [
                 'first_name', 'mid_name', 'last_name', 'house', 'emergency_name', 
                 'emergency_contact', 'nationality', 'city', 'state', 'birth_place', 
@@ -3090,21 +3190,32 @@ public function toggleActiveStudent($studentId)
                     $validatedData[$field] = strtoupper(trim($validatedData[$field]));
                 }
             }
+            //echo "msg1";
+            // Additional fields for parent model that need to be converted to uppercase
             $parentFieldsToUpper = [
                 'father_name', 'mother_name', 'f_blood_group', 'm_blood_group', 'student_blood_group'
             ];
+            //echo "msg2";
             foreach ($parentFieldsToUpper as $field) {
                 if (isset($validatedData[$field])) {
                     $validatedData[$field] = strtoupper(trim($validatedData[$field]));
                 }
             }
+            //echo "msg3";
+            // Retrieve the token payload
             $payload = getTokenPayload($request);
             $academicYr = $payload->get('academic_year');
+
+            Log::info("Academic year: {$academicYr} for student ID: {$studentId}");
+            //echo "msg4";
+            // Find the student by ID
             $student = Student::find($studentId);
             if (!$student) {
                 Log::error("Student not found: ID {$studentId}");
                 return response()->json(['error' => 'Student not found'], 404);
             }
+            //echo "msg5";
+            // Check if specified fields have changed
             $fieldsToCheck = ['first_name', 'mid_name', 'last_name', 'class_id', 'section_id', 'roll_no'];
             $isModified = false;
 
@@ -3114,6 +3225,8 @@ public function toggleActiveStudent($studentId)
                     break;
                 }
             }
+            //echo "msg6";
+            // If any of the fields are modified, set 'is_modify' to 'Y'
             if ($isModified) {
                 $validatedData['is_modify'] = 'Y';
             }
@@ -4781,18 +4894,18 @@ public function downloadCsvTemplateWithData(Request $request, $section_id)
         'blood_group as *Blood Group',
         'caste as caste',
         'subcaste as Sub Caste',
-        'class.name as Class', // Specify the table name
+        'class.name as Class', 
         'section.name as Division',
-        'mother_name as *Mother Name', // Assuming you have this field
-        'mother_occupation as Mother Occupation', // Assuming you have this field
-        'm_mobile as *Mother Mobile No.(Only Indian Numbers)', // Assuming you have this field
+        'mother_name as *Mother Name', 
+        'mother_occupation as Mother Occupation', 
+        'm_mobile as *Mother Mobile No.(Only Indian Numbers)',
         'm_emailid as *Mother Email-Id', // Assuming you have this field
         'father_name as *Father Name', // Assuming you have this field
         'father_occupation as Father Occupation', // Assuming you have this field
         'f_mobile as *Father Mobile No.(Only Indian Numbers)', // Assuming you have this field
-        'f_email as *Father Email-Id', // Assuming you have this field
-        'm_adhar_no as *Mother Aadhaar No.', // Assuming you have this field
-        'parent_adhar_no as *Father Aadhaar No.', // Assuming you have this field
+        'f_email as *Father Email-Id', 
+        'm_adhar_no as *Mother Aadhaar No.',
+        'parent_adhar_no as *Father Aadhaar No.', 
         'permant_add as *Address',
         'city as *City',
         'state as *State',
@@ -5703,7 +5816,6 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
         $defaultPassword = $settingsData->default_pwd;
         $websiteUrl = $settingsData->website_url;
         $shortName = $settingsData->short_name;
-        $whatsappIntegration = $settingsData->whatsapp_integration;
         $validator = Validator::make($request->all(),[
         
         'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,'. $studentId . ',student_id,academic_yr,'. $academicYr,
@@ -5988,13 +6100,8 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     if($studentAcademicYr == get_active_academic_year()){
                     $templateName = 'send_user_id';
                     $parameters =[$validatedData['first_name'],$user_id];
-                    if($whatsappIntegration == 'Y'){
-                        $result = $this->whatsAppService->sendTextMessage(
-                            $phoneNo,
-                            $templateName,
-                            $parameters
-                        );
-                    }
+                
+                    
                     
                         $recipients = array_filter([
                                 $validatedData['f_email'] ?? null,
@@ -6016,17 +6123,7 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
             // Update parent details if provided
             $parent = Parents::find($parentId);
             if ($parent) {
-                Log::info("msggg1");
-                $parent->update($request->only([
-                    'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
-                    'f_mobile', 'f_email', 'parent_adhar_no', 'mother_name',
-                    'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
-                    'm_emailid', 'm_adhar_no','m_dob','f_dob','f_blood_group','m_blood_group'
-                ]));
-
                 
-                Log::info("msggg2");
-                // Determine the phone number based on the 'SetToReceiveSMS' input
                 $phoneNo = null;
                 $setToReceiveSMS = $request->input('SetToReceiveSMS');
                 if ($setToReceiveSMS == 'Father') {
@@ -6096,13 +6193,8 @@ public function updateNewStudentAndParentData(Request $request, $studentId, $par
                     if($studentAcademicYr == get_active_academic_year()){
                     $templateName = 'send_existing_user_id';
                     $parameters =[$validatedData['first_name'],$user->user_id];
-                    if($whatsappIntegration == 'Y'){
-                    $result = $this->whatsAppService->sendTextMessage(
-                        $phoneNo,
-                        $templateName,
-                        $parameters
-                    );
-                    }
+                
+                    
                     
                     $recipients = array_filter([
                                 $parent->f_email ?? null,
@@ -8129,6 +8221,7 @@ public function getStudentIdCard(Request $request){
                                 ->join('class', 'student.class_id', '=', 'class.class_id')
                                 ->join('section', 'student.section_id', '=', 'section.section_id')
                                 ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                                ->leftjoin('house','student.house','=','house.house_id')
                                 ->select(
                                     'confirmation_idcard.*',
                                     'student.first_name',
@@ -8146,15 +8239,7 @@ public function getStudentIdCard(Request $request){
                                     'parent.m_mobile',
                                     'class.name as class_name',
                                     'section.name as sec_name',
-                                    DB::raw("
-                                        CASE
-                                            WHEN student.house = 'E' THEN 'Emerald'
-                                            WHEN student.house = 'R' THEN 'Ruby'
-                                            WHEN student.house = 'S' THEN 'Sapphire'
-                                            WHEN student.house = 'D' THEN 'Diamond'
-                                            ELSE 'Unknown House'
-                                        END as house
-                                    ")
+                                    'house.house_name as house'
                                 )
                                 ->where('student.section_id', $section_id)
                                 ->where('confirmation_idcard.confirm', 'Y')
@@ -9493,30 +9578,40 @@ public function getTeacherIdCard(Request $request){
             return $teachers;
         }
 
-        public function getTeacherByTeacherIddd( $teacher_id)
+        public function getTeacherByTeacherIddd($teacher_id)
         {
-            // dd($class_id,$section_id,$subname);
             $teacher = DB::table('teacher')
                         ->select('name')
                         ->where('teacher_id', $teacher_id)
                         ->first();
-                
-                    if ($teacher && !empty($teacher->name)) {
-                        $nameParts = explode(' ', trim($teacher->name));
-                    
-                        // List of titles to skip
-                        $titlesToSkip = ['Mr.', 'Ms.', 'Mrs.', 'Miss', 'Fr.', 'Dr.'];
-                    
-                        // Loop through parts and find the first non-title word
-                        foreach ($nameParts as $part) {
-                            if (!in_array($part, $titlesToSkip)) {
-                                $firstName = ucfirst(strtolower($part));
-                                return $firstName;
-                            }
-                        }
-                    }
-                
-                    return null;
+        
+            if (!$teacher || empty($teacher->name)) {
+                return null;
+            }
+        
+            // Split name into parts
+            $nameParts = preg_split('/\s+/', trim($teacher->name));
+        
+            // Titles to skip (make all lowercase)
+            $titlesToSkip = [
+                'mr.', 'ms.', 'mrs.', 'miss', 'fr.', 'dr.','mrs'
+            ];
+        
+            $filtered = [];
+        
+            foreach ($nameParts as $part) {
+                $lower = strtolower($part);
+        
+                // Skip if this part is a title
+                if (in_array($lower, $titlesToSkip)) {
+                    continue;
+                }
+        
+                // Otherwise add normalized name part
+                $filtered[] = ucfirst($lower);
+            }
+        
+            return implode(' ', $filtered); // Full name without titles
         }
         
         public function getSubjectnameBySubjectId( $subject_id)
@@ -16131,6 +16226,7 @@ public function updateStudentPhotoForIdCard(Request $request){
                         $ext = 'jpg';
                     }
                     $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                    $ext='jpg';
                     $dataI = base64_decode($base64Data);
                     $imgNameEnd = $studentId . '.' . $ext;
                     $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
@@ -16375,12 +16471,12 @@ public function getSchoolName(Request $request){
 //API for the Forgot Password Dev Name- Manish Kumar Sharma 06-05-2025
 public function updateForgotPassword(Request $request){
     $shortName = $request->input('short_name');
-     if ($shortName && array_key_exists($shortName, config('database.connections'))) {
-                config(['database.default' => $shortName]);
-            } elseif($shortName) {
-                dd("No database configuration for the given short_name");
-            }
-    $settingsData = getSchoolSettingsData();
+     if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd("No database configuration for the given short_name");
+        }
+    $settingsData = getSettingsDataForActive();
     $loginUrl = $settingsData->website_url;
     $shortName = $settingsData->short_name;
     $defaultPassword = $settingsData->default_pwd;
@@ -16444,11 +16540,11 @@ public function updateForgotPassword(Request $request){
 public function generateNewPassword(Request $request)
    {
         $shortName = $request->input('short_name');
-     if ($shortName && array_key_exists($shortName, config('database.connections'))) {
-                config(['database.default' => $shortName]);
-            } elseif($shortName) {
-                dd("No database configuration for the given short_name");
-            }
+        if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd("No database configuration for the given short_name");
+        }
        $userId = trim($request->input('user_id'));
        // dd($userId);
 
@@ -16550,14 +16646,14 @@ public function sendwhatsappmessages(Request $request){
     $phone = '6367379170';
 
     $templateName = 'emergency_message';
-    $parameters =['Manish'];
+    $parameters =[$request->message];
 
     $result = $this->whatsAppService->sendTextMessage(
         $phone,
         $templateName,
         $parameters
     );
-     // dd($result);
+     dd($result);
      $wamid = $result['messages'][0]['id'];
      $phone_no = $result['contacts'][0]['input'];
     // dd($phone_no);
@@ -16611,11 +16707,16 @@ public function getAbsentStudentForToday(Request $request){
           $class_id = $request->input('class_id');
           $section_id = $request->input('section_id');
         //   dd($class_id,$section_id);
-          $only_date = $request->input('date');
+          $only_date = Carbon::today()->toDateString();
           $absentstudents = DB::table('attendance')
                                 ->join('student','student.student_id','=','attendance.student_id')
                                 ->join('class','class.class_id','=','attendance.class_id')
                                 ->join('section','section.section_id','=','attendance.section_id')
+                                ->leftJoin('redington_webhook_details', function ($join) use ($only_date) {
+                                    $join->on('redington_webhook_details.stu_teacher_id', '=', 'student.student_id')
+                                         ->where('redington_webhook_details.message_type', '=', 'student_daily_attendance_shortage')
+                                         ->whereDate('redington_webhook_details.created_at', '=', $only_date);
+                                })
                                 ->where('attendance.attendance_status','1')
                                 ->where('only_date',$only_date)
                                 ->where('student.isDelete','N')
@@ -16625,7 +16726,28 @@ public function getAbsentStudentForToday(Request $request){
                                     ->when($section_id, function ($query) use ($section_id) {
                                         return $query->where('attendance.section_id', $section_id);
                                     })
-                                ->select('student.first_name','student.mid_name','student.last_name','class.name as classname','section.name as sectionname','class.class_id','section.section_id')
+                                ->select('student.first_name','student.mid_name','student.last_name','class.name as classname','section.name as sectionname','class.class_id','section.section_id','student.student_id',DB::raw('COUNT(redington_webhook_details.webhook_id) as messages_sent_count'),
+                                        DB::raw('MAX(redington_webhook_details.created_at) as last_message_sent_at'),
+                                        DB::raw('MAX(redington_webhook_details.webhook_id) as webhook_id'),
+                                
+                                        
+                                        DB::raw("
+                                            CASE 
+                                                WHEN COUNT(redington_webhook_details.webhook_id) = 0 THEN 'not_try'
+                                                WHEN SUM(CASE WHEN redington_webhook_details.sms_sent = 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y'
+                                                ELSE 'N'
+                                            END as sms_sent_status
+                                        "))
+                                    ->groupBy(
+                                    'student.student_id',
+                                    'student.first_name',
+                                    'student.mid_name',
+                                    'student.last_name',
+                                    'class.name',
+                                    'section.name',
+                                    'class.class_id',
+                                    'section.section_id'
+                                )
                                 
                                 ->orderBy('section_id')
                                 ->get();
@@ -17050,7 +17172,7 @@ public function getCountNonApprovedLessonPlan(Request $request)
     }
 
     //API for the Sending whatsapp messages to late teachers Dev Name- Manish Kumar Sharma 15-06-2025
-    public function sendWhatsappLateComing(Request $request){
+   public function sendWhatsappLateComing(Request $request){
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -17143,7 +17265,7 @@ public function getCountNonApprovedLessonPlan(Request $request)
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
+            //  if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                  $timetables = DB::table('timetable')
                                    ->where('class_id', $class_id)
                                    ->where('section_id', $section_id)
@@ -17499,16 +17621,16 @@ public function getCountNonApprovedLessonPlan(Request $request)
                    'success'=>true
                ]);
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+            //  }
+            //  else
+            //      {
+            //         return response()->json([
+            //             'status'=> 401,
+            //             'message'=>'This User Doesnot have Permission for the getting of department list.',
+            //             'data' =>$user->role_id,
+            //             'success'=>false
+            //             ]);
+            //         }
 
                }
               catch (Exception $e) {
