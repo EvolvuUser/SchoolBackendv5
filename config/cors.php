@@ -30,7 +30,12 @@ return [
     'http://103.159.85.174:8509',
     'https://hscstestl.evolvu.in',
     'https://sacstest.evolvu.in',
-    'https://hscstestlx.evolvu.in'
+    'https://hscstestlx.evolvu.in',
+    'https://sms.arnoldcentralschool.org',
+    'https://holyspiritconvent.evolvu.in',
+    'https://holyspiritconvent.evolvu.in/test/hscs_test/',
+    'https://edsstage.evolvu.in',
+    'https://eds.evolvu.in'
 ],
 
 

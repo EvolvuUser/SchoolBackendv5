@@ -1232,6 +1232,49 @@
         Route::delete('/books/delete/{book_id}', [LibraryController::class, 'deleteBook']);
         Route::get('/books/max-copy-id', [LibraryController::class, 'getMaxCopyId']);
 
+        Route::get('/library-members', [LibraryController::class, 'getLibraryMembersInfo']);
+        Route::post('/library-member/status', [LibraryController::class, 'updateLibraryMemberStatus']);
+        
+        Route::post('/generate_barcode', [LibraryController::class, 'getAccessionNoFromAndTo']);
+
+        // Issue Book Dev Name - Mahima Chaudhari 20-11-2025
+        Route::post('/get_library_members', [LibraryController::class, 'getLibraryIssuedMembers']);
+        Route::post('/library/issued_books', [LibraryController::class, 'getIssuedBooksByMember']);
+        Route::post('/library/get_book_by_copy', [LibraryController::class, 'getBookByAccession']);
+        Route::get('/library/get_due_date/{memberType}/{issueDate}', [LibraryController::class, 'getDueDate']);
+        Route::post('/issue_book', [LibraryController::class, 'issueBook']);
+        
+        
+        // Principal Reports (HSCS) Dev Name - Mahima Chaudhari 24-11-2025
+        // Student Marks Upload Status Report
+        Route::post('/get_exams_by_class', [ReportController::class, 'getExamsByClassId']);
+        Route::post('/marks_upload_status', [ReportController::class, 'marksUploadStatus']);
+        
+        Route::post('members/issued_books', [LibraryController::class, 'getMembersForIssuedBook']);
+        Route::get('issue_book_details', [LibraryController::class, 'BooksIssueAPI']);
+        Route::post('library/book_return_reissue', [LibraryController::class, 'returnOrReissue']);
+        Route::get('issue/member_on_accession/{copy_id}', [LibraryController::class, 'getMemberOnAccession']);
+        Route::get('issue/member_on_grno/{reg_no}', [LibraryController::class, 'getMemberOnGrno']);
+        Route::get('issue/records', [LibraryController::class, 'getIssueReturn']); 
+        Route::get('issue/student_data', [LibraryController::class, 'getMemDataTypeStudent']); 
+        Route::get('issue/staff_data', [LibraryController::class, 'getMemDataTypeStaff']); 
+        
+        
+        Route::get('/exams_academicyr/{academic_yr}', [AssessmentController::class, 'getExamsByYear']);
+        Route::post('marks/pull_prev_year', [AssessmentController::class, 'pullFromPrevYear']);
+        Route::post('marks_pull_allotment', [AssessmentController::class, 'pullMarksAllotment']);
+        Route::post('grades/pull_prev_year', [AssessmentController::class, 'pullPreviousAcademicGrades']);
+        
+        Route::put('update_teacherdetails/{id}', [AssessmentController::class, 'updateStaffDetails']);
+        Route::get('get_teacheridcarddetails', [AssessmentController::class, 'getTeacherIdCardDetails']);
+        
+        // Update Teacher Profile Image Dev - Mahima Chaudhari 03-12-2025
+        Route::post('update_teacher_profile_image', [AssessmentController::class, 'UpdateTeacherProfileImage']);
+        
+        Route::get('get_pendingteacheridcardreport', [AssessmentController::class, 'getpendingteacheridcardreport']);
+        
+        Route::get('show_report_card',[AssessmentController::class,'showReportCard']);
+
     });
 
 });
@@ -1243,7 +1286,6 @@
    
       
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
-
 
 
 Route::get('/clear-all', function () {
@@ -1259,6 +1301,23 @@ Route::get('/clear-all', function () {
         'status' => 'success',
         'message' => 'All caches cleared and optimized.',
     ]);
+});
+
+Route::get('/test-mail', function () {
+    try {
+        $mailer = new SmartMailer();
+
+        $mailer->send(
+            'manishnehwal@gmail.com',   // Replace with your test email
+            'Test Email from SmartMailer',
+            'emails.test',                 // Blade view path
+            ['name' => 'Manish']           // Data for the view
+        );
+
+        return "Mail sent successfully!";
+    } catch (\Exception $e) {
+        return "Error: " . $e->getMessage();
+    }
 });
 
 //Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025

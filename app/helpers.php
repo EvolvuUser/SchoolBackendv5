@@ -1257,3 +1257,57 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
             return ['error' => $e->getMessage()];
         }
     }
+
+    function getIssuedMembers($memberType, $classId = null, $sectionId = null)
+    {
+        if ($memberType === 'S') {
+    
+            $query = DB::table('student')
+                ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
+                ->where('library_member.member_type', 'S')
+                ->where('library_member.status', 'A');
+    
+            if ($classId) {
+                $query->where('student.class_id', $classId);
+            }
+    
+            if ($sectionId) {
+                $query->where('student.section_id', $sectionId);
+            }
+    
+            $data = $query->get();
+    
+            // Convert results into autocomplete format
+            return $data->map(function ($item) {
+                return [
+                    'member_id' => $item->member_id,
+                    'label' => trim($item->first_name . ' ' . $item->mid_name . ' ' . $item->last_name),
+                    'value' => $item->student_id,
+                    'member_type' => 'S',
+                    'status' => $item->status ?? 'A'
+    
+                ];
+            })->toArray();
+        }
+    
+        if ($memberType === 'T') {
+    
+            $data = DB::table('teacher')
+                ->join('library_member', 'teacher.teacher_id', '=', 'library_member.member_id')
+                ->where('library_member.member_type', 'T')
+                ->where('library_member.status', 'A')
+                ->get();
+    
+            return $data->map(function ($item) {
+                return [
+                    'member_id' => $item->member_id,
+                    'label' => $item->name,
+                    'value' => $item->teacher_id,
+                    'member_type' => 'T',
+                    'status' => $item->status ?? 'A'
+                ];
+            })->toArray();
+        }
+    
+        return [];
+    }

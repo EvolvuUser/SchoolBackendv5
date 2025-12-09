@@ -128,7 +128,7 @@ public function connectByShortName(Request $request){
             
             
             $userrole = UserMaster::where('user_id', $credentials['user_id'])
-                        ->whereIn('role_id', ['A', 'M','U','T','P','L'])
+                        ->whereIn('role_id', ['A', 'M','U','T','P','L','E'])
                         ->first();
             if($userrole){
 
@@ -206,7 +206,7 @@ public function connectByShortName(Request $request){
             else{
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
             $schoolName = Setting::where('active', 'Y')->first()->institute_name;
-            $settings =  Setting::where('active', 'Y')->first();
+            $settings =  DB::table('school_settings')->where('is_active', 'Y')->first();
             $customClaims = [
                 'role_id' => $user->role_id,
                 'reg_id' => $user->reg_id,
@@ -389,6 +389,8 @@ public function connectByShortName(Request $request){
                 'class_id' => 'nullable|integer',
                 'section_id' => 'nullable|integer',
                 'isDelete' => 'nullable|string|in:Y,N',
+                'emergency_phone' => 'nullable|string|max:10',
+                'permanent_address' => 'nullable|string|max:255',
             ]);
 
             if (isset($validatedData['academic_qual']) && is_array($validatedData['academic_qual'])) {

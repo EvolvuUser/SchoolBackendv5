@@ -658,6 +658,7 @@ class AssessmentController extends Controller
             $allot_mark_heading->exam_id = $request->input('exam_id');
             $allot_mark_heading->marks_headings_id = $highest_marks_allocation['marks_heading_id'];
             $allot_mark_heading->highest_marks = $highest_marks_allocation['highest_marks'];
+            $allot_mark_heading->reportcard_highest_marks = $highest_marks_allocation['reportcard_highest_marks'];
             $allot_mark_heading->academic_yr = $academicYr;
             $allot_mark_heading->save();
             $status_msg="Marks heading is allocated successfully.";
@@ -732,6 +733,7 @@ class AssessmentController extends Controller
             
             // Update the Marksheading
             $allot_mark_heading->highest_marks = $request->input('highest_marks');
+            $allot_mark_heading->reportcard_highest_marks = $request->input('reportcard_highest_marks');
             $allot_mark_heading->save();
         
             // Return success response
@@ -814,7 +816,7 @@ class AssessmentController extends Controller
 
     public function getMarkheadingsForClassSubExam($class_id,$subject_id,$exam_id)
     {
-        $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks']);
+        $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks','reportcard_highest_marks']);
         
               
         if (!$allot_mark_heading) {
@@ -7534,6 +7536,26 @@ class AssessmentController extends Controller
         
             $data['publish'] = 'N';
 
+             // check if chapter_number_already_exists
+            $exists = DB::table('chapters')->where([
+                ['class_id', '=', $data['class_id']],
+                ['subject_id', '=', $data['subject_id']],
+                ['chapter_no', '=', $data['chapter_no']],
+                ['IsDelete', '=', 'N'],
+            ])
+            ->when(!empty($data['sub_subject']), function($q) use ($data) {
+                return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
+            })
+            ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status' => 409,
+                    'message' => 'Duplicate lesson number is not allowed',
+                    'success' => false,
+                ],409);
+            }
+
             DB::table('chapters')->insert($data);
 
             return response()->json([
@@ -7545,7 +7567,13 @@ class AssessmentController extends Controller
         
     }
     
+    // LEO CHANGES - 09/12/2025 11:23 - START
     public function savenpublishChapters(Request $request){
+
+        /*
+            Duplicate lesson number is created
+        */
+
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validated = $request->validate([
@@ -7573,6 +7601,27 @@ class AssessmentController extends Controller
         
             $data['publish'] = 'Y';
 
+            // check if chapter_number_already_exists
+            $exists = DB::table('chapters')->where([
+                ['class_id', '=', $data['class_id']],
+                ['subject_id', '=', $data['subject_id']],
+                ['chapter_no', '=', $data['chapter_no']],
+                ['IsDelete', '=', 'N'],
+            ])
+            ->when(!empty($data['sub_subject']), function($q) use ($data) {
+                return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
+            })
+            ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status' => 409,
+                    'message' => 'Duplicate lesson number is not allowed',
+                    'success' => false,
+                ],409);
+            }
+
+
             DB::table('chapters')->insert($data);
 
             return response()->json([
@@ -7583,6 +7632,7 @@ class AssessmentController extends Controller
         
         
     }
+    // LEO CHANGES - 09/12/2025 11:23 - END
     
     public function deleteChapters(Request $request,$chapter_id){
         $chapter = DB::table('chapters')->where('chapter_id', $chapter_id)->first();
@@ -7798,6 +7848,25 @@ class AssessmentController extends Controller
             'sub_subject'  => $validated['sub_subject'] ?? null,
             'description'  => $validated['description'] ?? null,
         ];
+
+        $exists = DB::table('chapters')->where([
+            ['class_id', '=', $data['class_id']],
+            ['subject_id', '=', $data['subject_id']],
+            ['chapter_no', '=', $data['chapter_no']],
+            ['IsDelete', '=', 'N'],
+        ])
+        ->when(!empty($data['sub_subject']), function($q) use ($data) {
+            return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
+        })
+        ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'status' => 409,
+                'message' => 'Duplicate lesson number is not allowed',
+                'success' => false,
+            ],409);
+        }
         
         $updated = DB::table('chapters')
                     ->where('chapter_id', $chapter_id)
@@ -7810,7 +7879,7 @@ class AssessmentController extends Controller
                 'success' => true
             ]);
         
-   }
+    }
    
     public function generateCsvFileForChapters(Request $request)
     {
@@ -7844,7 +7913,13 @@ class AssessmentController extends Controller
         ]);
     }
     
+    // LEO CHANGES - 09/12/2025 - START
     public function uploadChaptersThroughExcelsheet(Request $request){
+
+        /*
+            On entering same lesson no in excel sheet , chapter is created . Error msg not shown for unique chapter no.
+        */
+
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validator = Validator::make($request->all(), [
@@ -7880,6 +7955,7 @@ class AssessmentController extends Controller
         $row = 1;
         $errors = [];
         $insertData = [];
+        $seen = []; // to track duplicates inside the CSV
 
         while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
             if ($row === 1) {
@@ -7900,6 +7976,14 @@ class AssessmentController extends Controller
             $sub_subject= isset($data[2]) ? strtoupper(trim($data[2])) : null;
             $description= isset($data[3]) ? trim($data[3]) : null;
 
+            $key = $chapter_no . '_' . strtoupper($sub_subject ?? '');
+
+            if (isset($seen[$key])) {
+                $errors[] = "Row $row: Duplicate Lesson Number '$chapter_no' in the CSV file.";
+            } else {
+                $seen[$key] = true;
+            }
+
             // Validation
             if (!$chapter_no || !$name) {
                 $errors[] = "Row $row: Lesson Number and Name are required.";
@@ -7917,7 +8001,7 @@ class AssessmentController extends Controller
                     ->where('chapter_no', $chapter_no)
                     ->where('IsDelete', 'N')
                     ->when($sub_subject, function($q) use ($sub_subject) {
-                        return $q->whereRaw('UPPER(sub_subject) = ?', [$sub_subject]);
+                        return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($sub_subject)]);
                     })
                     ->exists();
 
@@ -7962,6 +8046,7 @@ class AssessmentController extends Controller
         ]);
         
     }
+    // LEO CHANGES - 09/12/2025 - END
     
     public function saveLessonPlanHeading(Request $request){
         $user = $this->authenticateUser();
@@ -9821,6 +9906,612 @@ class AssessmentController extends Controller
                 'message' => 'Error deleting stationery requisition: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getExamsByYear($academic_yr)
+    {
+        try {
+            $exams = DB::table('exam')
+                ->where('academic_yr', $academic_yr)
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $exams
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function pullFromPrevYear(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Only roles A or U allowed
+            if (!in_array($user->role_id, ['A', 'U'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $request->validate([
+                'exam_from_id' => 'required|integer',
+                'exam_to_id'   => 'required|integer|different:exam_from_id',
+            ]);
+
+            $examFromId = $request->exam_from_id;
+            $examToId   = $request->exam_to_id;
+
+            $fromRows = DB::table('allot_mark_headings')
+                ->where('exam_id', $examFromId)
+                ->get();
+
+            if ($fromRows->isEmpty()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'No data found for exam_from_id.'
+                ]);
+            }
+
+            foreach ($fromRows as $row) {
+                // Get class name from previous year
+                $className = DB::table('class')
+                    ->where('class_id', $row->class_id)
+                    ->value('name');
+
+                if (!$className) continue;
+
+                // Get class_id for the current academic year
+                $classIdNew = DB::table('class')
+                    ->where('name', $className)
+                    ->where('academic_yr', $academicYear)
+                    ->value('class_id');
+
+                if (!$classIdNew) continue;
+
+                // Check if data already exists
+                $exists = DB::table('allot_mark_headings')
+                    ->where('class_id', $classIdNew)
+                    ->where('exam_id', $examToId)
+                    ->where('sm_id', $row->sm_id)
+                    ->where('marks_headings_id', $row->marks_headings_id)
+                    ->exists();
+
+                if ($exists) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Data is already pulled'
+                    ], 400);
+                }
+
+                // Insert the data
+                DB::table('allot_mark_headings')->insert([
+                    'class_id'          => $classIdNew,
+                    'exam_id'           => $examToId,
+                    'sm_id'             => $row->sm_id,
+                    'marks_headings_id' => $row->marks_headings_id,
+                    'academic_yr'       => $academicYear,
+                    'highest_marks'     => $row->highest_marks,
+                    'reportcard_highest_marks' => $row->reportcard_highest_marks
+                ]);
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Marks Allotment Data pulled successfully!'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    // Pull Marks Allotment
+    public function pullMarksAllotment(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Only roles A or U allowed
+            if (!in_array($user->role_id, ['A', 'U'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Validate input
+            $request->validate([
+                'exam_from_id' => 'required|integer',
+                'exam_to_id' => 'required|integer'
+            ]);
+
+            // Start transaction
+            DB::beginTransaction();
+
+            // Fetch headings from source exam
+            $fromHeadings = DB::table('allot_mark_headings')
+                ->where('exam_id', $request->exam_from_id)
+                ->get();
+
+            foreach ($fromHeadings as $row) {
+
+                // Check if record already exists in target exam
+                $exists = DB::table('allot_mark_headings')
+                    ->where('class_id', $row->class_id)
+                    ->where('exam_id', $request->exam_to_id)
+                    ->where('sm_id', $row->sm_id)
+                    ->where('marks_headings_id', $row->marks_headings_id)
+                    ->exists();
+
+                if ($exists) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Data is already pulled.'
+                    ], 400);
+                }
+
+                // Insert new record
+                DB::table('allot_mark_headings')->insert([
+                    'class_id'          => $row->class_id,
+                    'exam_id'           => $request->exam_to_id,
+                    'sm_id'             => $row->sm_id,
+                    'marks_headings_id' => $row->marks_headings_id,
+                    'academic_yr'       => $row->academic_yr,
+                    'highest_marks'     => $row->highest_marks,
+                    'reportcard_highest_marks' => $row->reportcard_highest_marks,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Marks Allotment Data pulled successfully!'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'An error occurred while pulling data',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Pull Previous Year Grades Data
+    public function pullPreviousAcademicGrades(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $currentAcdYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Allow only user type U or A
+            if (!in_array($user->role_id, ['A', 'U'])) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            DB::beginTransaction();
+
+            //---------------------------------------
+            // STEP 1: Check if grades already exist
+            //---------------------------------------
+            $existingGrades = DB::table('grade')
+                ->join('class', 'class.class_id', '=', 'grade.class_id')
+                ->where('grade.academic_yr', $currentAcdYear)
+                ->count();
+
+            if ($existingGrades > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Data already present. Data cannot be pulled!'
+                ]);
+            }
+
+            //---------------------------------------
+            // STEP 2: Get current academic year details
+            //---------------------------------------
+            $acdDetails = DB::table('settings')
+                ->where('academic_yr', $currentAcdYear)
+                ->first();
+
+            if (!$acdDetails) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Academic year details not found.'
+                ]);
+            }
+
+            // Extract from and to years
+            $fromYear = date('Y', strtotime($acdDetails->academic_yr_from));
+            $toYear   = date('Y', strtotime($acdDetails->academic_yr_to));
+
+            //---------------------------------------
+            // STEP 3: Calculate previous academic year
+            //---------------------------------------
+            $prevAcademicYr = ($fromYear - 1) . "-" . ($toYear - 1);
+
+            //---------------------------------------
+            // STEP 4: Get previous year’s grades
+            //---------------------------------------
+            $prevGrades = DB::table('grade')
+                ->join('class', 'grade.class_id', '=', 'class.class_id')
+                ->where('grade.academic_yr', $prevAcademicYr)
+                ->select('grade.*', 'class.name as class_name')
+                ->orderBy('class.name')
+                ->orderBy('grade.name')
+                ->get();
+
+            if ($prevGrades->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => false,
+                    'message' => "No grades found for previous academic year: $prevAcademicYr"
+                ]);
+            }
+
+            //---------------------------------------
+            // STEP 5: Insert into current academic year
+            //---------------------------------------
+            foreach ($prevGrades as $row) {
+
+                $className = $row->class_name;
+
+                // Get class id in the current academic year
+                $newClass = DB::table('class')
+                    ->where('name', $className)
+                    ->where('academic_yr', $currentAcdYear)
+                    ->first();
+
+                if (!$newClass) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => false,
+                        'message' => "Class mapping not found for class: $className"
+                    ]);
+                }
+
+                // Insert grade
+                DB::table('grade')->insert([
+                    'name'              => $row->name,
+                    'class_id'          => $newClass->class_id,  // FIXED
+                    'subject_type'      => $row->subject_type,
+                    'grade_point_from'  => $row->grade_point_from,
+                    'grade_point_upto'  => $row->grade_point_upto,
+                    'mark_from'         => $row->mark_from,
+                    'mark_upto'         => $row->mark_upto,
+                    'comment'           => $row->comment,
+                    'academic_yr'       => $currentAcdYear,
+                    'created_at'        => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Data pulled successfully!'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+            return response()->json([
+                'status'  => false,
+                'message' => 'An error occurred while pulling data.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function updateStaffDetails(Request $request, $id)
+    {
+        $user = $this->authenticateUser();
+
+        DB::beginTransaction();
+
+        try {
+            // Fetch teacher record
+            $teacher = Teacher::findOrFail($id);
+
+            // Fields to update
+            $updateData = [
+                'name'              => $request->name,
+                'sex'               => $request->sex,
+                'address'           => $request->address,
+                'permanent_address' => $request->permanent_address,
+                'phone'             => trim($request->phone),
+                'emergency_phone'   => trim($request->emergency_phone),
+                'employee_id'       => $request->employee_id,
+                'blood_group'       => $request->blood_group,
+            ];
+
+            // Update teacher record
+            $teacher->fill($updateData);
+            $teacher->updated_by = $user->reg_id;
+            $teacher->save();
+
+            // Get primary key
+            $teacherPrimaryKey = $teacher->getKey();
+
+            // =======================
+            // 🔹 Handle confirmation
+            // =======================
+            $confirmValue = $request->confirm_status == "Y" ? "Y" : "N";
+
+            // Check existing record
+            $existing = DB::table('confirmation_teacher_idcard')
+                ->where('teacher_id', $teacherPrimaryKey)
+                ->first();
+
+            if ($existing) {
+                // Update
+                DB::table('confirmation_teacher_idcard')
+                    ->where('teacher_id', $teacherPrimaryKey)
+                    ->update([
+                        'confirm' => $confirmValue
+                    ]);
+            } else {
+                // Insert
+                DB::table('confirmation_teacher_idcard')
+                    ->insert([
+                        'teacher_id' => $teacherPrimaryKey,
+                        'confirm' => $confirmValue
+                    ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Teacher updated successfully!',
+                'teacher' => $teacher,
+                'confirm_status' => $confirmValue
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'An error occurred while updating the teacher',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getTeacherIdCardDetails(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
+
+                $globalVariables = App::make('global_variables');
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+                $tc_id = $request->tc_id;
+                $teacher_id = $request->teacher_id;
+
+                //    both tc_id and teacher_id
+                if (!empty($tc_id) && !empty($teacher_id)) {
+
+                    $teacher = DB::table('teacher')
+                        ->where('isDelete', 'N')
+                        ->where('teacher_id', $teacher_id)
+                        ->first();
+
+                    if (!$teacher) {
+                        return response()->json([
+                            'status' => 404,
+                            'message' => 'Teacher not found.',
+                            'success' => false
+                        ]);
+                    }
+
+                    // Check if tc_id matches
+                    if ($teacher->tc_id != $tc_id) {
+                        return response()->json([
+                            'status' => 400,
+                            'message' => 'This teacher is not present in that particular teacher category.',
+                            'success' => false
+                        ]);
+                    }
+
+                    // If tc_id matches → return the teacher
+                    $teacher->teacher_image_url = $teacher->teacher_image_name
+                        ? $codeigniter_app_url . 'uploads/teacher_image/' . $teacher->teacher_image_name
+                        : null;
+
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'Teacher details matched successfully.',
+                        'data' => $teacher,
+                        'success' => true
+                    ]);
+                }
+
+                //   tc_id
+                $query = DB::table('teacher')->where('isDelete', 'N');
+
+                if (!empty($tc_id)) {
+                    $query->where('tc_id', $tc_id);
+                }
+
+                //    teacher_id
+                if (!empty($teacher_id)) {
+                    $query->where('teacher_id', $teacher_id);
+                }
+
+                //  fetch all
+                $staffdata = $query->orderBy('teacher_id', 'asc')->get()
+                    ->map(function ($staff) use ($codeigniter_app_url) {
+                        $imgUrl = $codeigniter_app_url . 'uploads/teacher_image/';
+                        $staff->teacher_image_url = $staff->teacher_image_name
+                            ? $imgUrl . $staff->teacher_image_name
+                            : null;
+                        return $staff;
+                    });
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Teacher ID card details.',
+                    'data' => $staffdata,
+                    'success' => true
+                ]);
+            }
+
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthorized user.',
+                'success' => false
+            ]);
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function UpdateTeacherProfileImage(Request $request)
+    {
+        $id = $request->teacher_id;
+        $filename = $request->filename;
+        $doc_type_folder = 'teacher_image';
+        $base64File = $request->base64;
+
+        upload_teacher_profile_image_into_folder($id, $filename, $doc_type_folder, $base64File);
+        return response()->json([
+            'status' => 200,
+            'message' => 'Teacher profile image update successfully.',
+            'success' => true
+        ]);
+    }
+    
+    public function getpendingteacheridcardreport(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
+
+                $globalVariables = App::make('global_variables');
+                $parent_app_url = $globalVariables['parent_app_url'];
+                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+                // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
+                $staffdata = DB::table('teacher as t')
+                    ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+                    ->select('t.*', 'c.confirm')
+                    ->where('t.isDelete', 'N')
+                    ->where('c.confirm', 'N')      // Only confirmed teachers
+                    ->orderBy('t.teacher_id', 'asc')
+                    ->get()
+                    ->map(function ($staff) use ($codeigniter_app_url) {
+
+                        $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+
+                        if ($staff->teacher_image_name) {
+                            $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+                        } else {
+                            $staff->teacher_image_url = null;
+                        }
+
+                        return $staff;
+                    });
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'ID card details for the Staffs.',
+                    'data' => $staffdata,
+                    'success' => true
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'This user does not have permission.',
+                    'data' => $user->role_id,
+                    'success' => false
+                ]);
+            }
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+    
+    public function showReportCard(Request $request){
+        $short_name = JWTAuth::getPayload()->get('short_name');
+        $class_id = $request->input('class_id');
+        $academic_yr = $request->input('academic_yr');
+        $student_id = $request->input('student_id');
+        $class_name = DB::table('class')->where('class_id',$class_id)->value('name');
+        if($short_name == 'SACS'){
+            switch ($class_name) {
+                case 'Nursery':
+                    return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('student_id','class_id','academic_yr'))->stream();
+                    break;
+        
+                case 'LKG':
+                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id','class_id','academic_yr'))->stream();
+                    break;
+        
+                case 'UKG':
+                    $view = 'assessment.ukg_report_card';
+                    break;
+        
+                case '1':
+                case '2':
+                    $view = 'assessment.class1to2_report_card';
+                    break;
+        
+                case '3':
+                case '4':
+                case '5':
+                    $view = 'assessment.class3to5_report_card';
+                    break;
+        
+                case '6':
+                case '7':
+                case '8':
+                    $view = 'assessment.class6to8_report_card';
+                    break;
+        
+                case '9':
+                case '10':
+                    $view = 'assessment.class9to10_report_card';
+                    break;
+        
+                default:
+                    abort(404, 'Invalid class');
+            }
+            
+        }
+        elseif($short_name == 'HSCS'){
+            
+        }
+        else{
+            
+        }
+    
+        $pdf = PDF::loadView('pdf.template', compact('data'));
+        
+        // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+        
     }
     
    

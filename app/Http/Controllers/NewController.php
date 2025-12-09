@@ -1670,7 +1670,6 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M' || $user->role_id == 'T'){
                  
                  $data=getTicketListForRespondent($user->role_id,$user->reg_id);
                  return response()->json([
@@ -1680,16 +1679,7 @@ class NewController extends Controller
                         'success'=>true
                     ]);
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+             
 
                }
               catch (Exception $e) {
@@ -1703,7 +1693,6 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                 $data =  getTicketListViewInfo($ticket_id);
                 return response()->json([
                         'status'=>200,
@@ -1712,16 +1701,7 @@ class NewController extends Controller
                         'success'=>true
                     ]);
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+             
 
                }
               catch (Exception $e) {
@@ -1736,7 +1716,6 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                  $data = updateStatusforTicketList();
                  return response()->json([
                         'status'=>200,
@@ -1745,16 +1724,7 @@ class NewController extends Controller
                         'success'=>true
                     ]);
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+             
 
                }
               catch (Exception $e) {
@@ -1769,7 +1739,6 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                  $currentDate = Carbon::now()->format('d-M-Y');
 
                 // Fetch appointment window data
@@ -1821,16 +1790,7 @@ class NewController extends Controller
                     'success'=>true
                 ]);
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+        
 
                }
               catch (Exception $e) {
@@ -1845,7 +1805,6 @@ class NewController extends Controller
          try{
              $user = $this->authenticateUser();
              $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
                  $data =getTicketComments($ticket_id);
                  return response()->json([
                     'status' => 200,
@@ -1855,16 +1814,7 @@ class NewController extends Controller
                 ]);
                  
                  
-             }
-             else
-                 {
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the getting of department list.',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                        ]);
-                    }
+             
 
                }
               catch (Exception $e) {

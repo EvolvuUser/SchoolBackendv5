@@ -44,4 +44,95 @@ function get_proficiency_certificate_publish_value($student_id, $term_id)
         return $row->publish;
     }
 }
+
+function get_published_terms($class_id, $section_id)
+    {
+        $query = DB::select("SELECT a.term_id, b.name FROM report_card_publish a, term b WHERE a.term_id=b.term_id and a.class_id=".$class_id." and a.section_id=".$section_id." and a.publish='Y' order by a.term_id");
+        return $query;
+    }
+    
+function get_subjects_by_class_section($class_id,$section_id,$acd_yr)       
+	{
+        $query=DB::select("select distinct c.sub_rc_master_id as sub_rc_master_id,c.name as name from subject as a join sub_subreportcard_mapping as b on a.sm_id=b.sm_id join subjects_on_report_card_master as c on b.sub_rc_master_id=c.sub_rc_master_id where a.class_id = ".$class_id." and a.section_id = ".$section_id." and a.academic_yr= '".$acd_yr."' order by a.section_id asc,c.sequence asc");
+		return $query;
+    }
+    
+function get_exams_by_class_per_term($class_id,$term_id,$acd_yr)
+    {
+       $query=DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE class_id = ".$class_id." and term_id = ".$term_id." AND allot_mark_headings.academic_yr = '".$acd_yr."' order by exam.start_date") ;
+       return $query;
+    }
+    
+function get_marks($exam_id, $class_id, $section_id, $subject_id, $student_id, $acd_yr)
+{
+    $res = DB::table('student_marks')
+        ->select('student_marks.*')
+        ->where('student_marks.exam_id', $exam_id)
+        // ->where('student_marks.class_id', $class_id)   // commented same as CI
+        // ->where('student_marks.section_id', $section_id)
+        ->where('student_marks.subject_id', $subject_id)
+        ->where('student_marks.academic_yr', $acd_yr)
+        ->where('student_marks.student_id', $student_id)
+        ->where('student_marks.publish', 'Y')
+        ->get()
+        ->toArray();   // returns array of objects
+
+    return json_decode(json_encode($res), true);  // convert to array of arrays (CI style)
+}
+
+function get_marks_headings_name_by_class_and_subject($class_id,$sm_id,$acd_yr)
+    {
+        $query=DB::select("SELECT distinct(allot_mark_headings.marks_headings_id), marks_headings.name FROM `allot_mark_headings` JOIN marks_headings on allot_mark_headings.marks_headings_id = marks_headings.marks_headings_id WHERE class_id= '".$class_id."' and allot_mark_headings.sm_id = '".$sm_id."' and allot_mark_headings.academic_yr = '".$acd_yr."' order by marks_headings.sequence");
+		//print_r($this->db->last_query()); 
+        return $query;
+    }
+    
+function get_reportcard_remark_of_a_student($student_id,$term_id)
+    {
+		$query=DB::select("select remark from report_card_remarks where student_id=".$student_id." and term_id=".$term_id);
+		//print_r($this->db->last_query()); 		
+		$res= $query; 
+		foreach($res as $row)
+			return $row->remark;
+    }
+    
+function get_grade_based_on_marks($mark,$subject_type,$class_id)        
+	{	
+	   if(is_nan($mark)){
+	       return "";
+	    }
+	    if(is_numeric($mark) ){
+			$query	=	DB::select("Select name from grade where class_id=".$class_id." and subject_type='".$subject_type."' and mark_from<=".$mark." and mark_upto>=".$mark);
+			//print_r($this->db->last_query()); 
+			$res= $query;
+			if(count($res)>0){
+				foreach($res as $row)
+					return $row->name;
+			}else{
+				return "";
+			}
+		}else{
+			return "";
+		}
+	}
+	
+function get_promote_to_of_a_student($student_id,$term_id)
+    {
+		$query=DB::select("select promot from report_card_remarks where student_id=".$student_id." and term_id=".$term_id);
+		//print_r($this->db->last_query()); 		
+		$res= $query; 
+		foreach($res as $row)
+			return $row['promot'];
+    }
+    
+function get_school_reopen_date($class_id,$section_id)
+    {
+        $query = DB::select("Select * from report_card_publish WHERE class_id =".$class_id." and section_id =".$section_id);
+        $res= $query; 
+        //print_r($this->db->last_query());
+		foreach($res as $row)
+			return $row->reopen_date;
+    }
+    
+
     

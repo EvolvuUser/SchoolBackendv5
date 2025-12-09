@@ -428,7 +428,6 @@ class ReportController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
                 // dd("Hello");
                 $staff_id = $request->input('staff_id');
                 $query = DB::table('leave_allocation')
@@ -468,15 +467,7 @@ class ReportController extends Controller
                         'success'=>true
                     ]);
 
-            }
-            else{
-                return response()->json([
-                    'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Balance Leave Report',
-                    'data' =>$user->role_id,
-                    'success'=>false
-                        ]);
-                }
+            
     
             }
             catch (Exception $e) {
@@ -5293,6 +5284,211 @@ class ReportController extends Controller
                 ]);
                 
             }
+
+            public function getExamsByClassId(Request $request)
+    {
+        $request->validate([
+            'academic_yr' => 'required',
+            'class_id' => 'nullable',
+            'class_name' => 'nullable'
+        ]);
+
+        if (!$request->class_id && !$request->class_name) {
+            return response()->json([
+                'status' => false,
+                'message' => "Either class_id or class_name is required."
+            ]);
+        }
+
+        $academicYear = $request->academic_yr;
+
+
+        if ($request->class_id && is_numeric($request->class_id)) {
+            $classIds = [$request->class_id];
+        } else {
+
+            $classNames = explode(',', $request->class_name);
+
+            // Trim spaces
+            $classNames = array_map('trim', $classNames);
+
+            // Fetch multiple class_ids
+            $classIds = DB::table('class')
+                ->whereIn('name', $classNames)
+                ->where('academic_yr', $academicYear)
+                ->pluck('class_id')
+                ->toArray();
+
+            if (empty($classIds)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Class names not found."
+                ]);
+            }
+        }
+
+        // Fetch exams for all class IDs
+        $exams = DB::table('allot_mark_headings')
+            ->join('exam', 'allot_mark_headings.exam_id', '=', 'exam.exam_id')
+            ->whereIn('allot_mark_headings.class_id', $classIds)
+            ->where('allot_mark_headings.academic_yr', $academicYear)
+            ->select('exam.exam_id', 'exam.name')
+            ->distinct()
+            ->orderBy('exam.start_date')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $exams
+        ]);
+    }
+
+    public function marksUploadStatus(Request $request)
+    {
+        $request->validate([
+            'class_ids' => 'required|array',
+            'exam_id' => 'required|integer',
+            'academic_yr' => 'required'
+        ]);
+
+        $classInputs = $request->class_ids;
+        $examId = $request->exam_id;
+        $academicYear = $request->academic_yr;
+
+        $response = [];
+
+        foreach ($classInputs as $classInput) {
+
+            if (is_string($classInput) && str_contains($classInput, ',')) {
+                $parts = array_map('trim', explode(',', $classInput));
+            } else {
+                $parts = [$classInput];
+            }
+
+            foreach ($parts as $singleInput) {
+
+                //Always convert to string to match class_name properly
+                $singleInput = trim((string)$singleInput);
+
+                //Now search by class_name (your class names are like "1", "2")
+                $classRecord = DB::table('class')
+                    ->where('name', $singleInput)
+                    ->where('academic_yr',$academicYear)
+                    ->first();
+
+                // If class not found
+                if (!$classRecord) {
+                    $response[] = [
+                        "class_input" => $singleInput,
+                        "error" => "Class not found"
+                    ];
+                    continue;
+                }
+
+                $classId = $classRecord->class_id;
+                $className = $classRecord->name;
+
+                // -------- Fetch subjects ----------
+                $subjects = DB::table('subjects_on_report_card')
+                    ->join(
+                        'subjects_on_report_card_master',
+                        'subjects_on_report_card_master.sub_rc_master_id',
+                        '=',
+                        'subjects_on_report_card.sub_rc_master_id'
+                    )
+                    ->where('subjects_on_report_card.class_id', $classId)
+                    ->where('subjects_on_report_card.academic_yr', $academicYear)
+                    ->orderBy('subjects_on_report_card.sub_rc_master_id', 'ASC')
+                    ->select(
+                        'subjects_on_report_card_master.sub_rc_master_id',
+                        'subjects_on_report_card_master.name'
+                    )
+                    ->get();
+
+                // -------- Fetch sections ----------
+                $sections = DB::table('section')
+                    ->where('class_id', $classId)
+                    ->where('academic_yr', $academicYear)
+                    ->get();
+
+                $sectionData = [];
+
+                foreach ($sections as $section) {
+                    $subjectsData = [];
+
+                    foreach ($subjects as $subject) {
+
+                        $statusRow = DB::table('student_marks')
+                            ->selectRaw('COUNT(*) as total_count, publish, data_entry_by')
+                            ->where('class_id', $classId)
+                            ->where('section_id', $section->section_id)
+                            ->where('exam_id', $examId)
+                            ->where('subject_id', $subject->sub_rc_master_id)
+                            ->first();
+
+                        if ($statusRow->total_count > 0) {
+                            $statusText = $statusRow->publish == 'Y'
+                                ? "Published"
+                                : "Uploaded";
+                        } else {
+                            $statusText = "Not uploaded";
+                        }
+
+                        // ---------- Teacher ----------
+                        $teacher = DB::table('subjects_on_report_card_master')
+                            ->join(
+                                'sub_subreportcard_mapping',
+                                'sub_subreportcard_mapping.sub_rc_master_id',
+                                '=',
+                                'subjects_on_report_card_master.sub_rc_master_id'
+                            )
+                            ->join(
+                                'subject',
+                                'subject.sm_id',
+                                '=',
+                                'sub_subreportcard_mapping.sm_id'
+                            )
+                            ->join(
+                                'teacher',
+                                'teacher.teacher_id',
+                                '=',
+                                'subject.teacher_id'
+                            )
+                            ->where('subject.class_id', $classId)
+                            ->where('subject.section_id', $section->section_id)
+                            ->where('subjects_on_report_card_master.sub_rc_master_id', $subject->sub_rc_master_id)
+                            ->select('teacher.name')
+                            ->first();
+
+                        $teacherName = $teacher ? "(" . $teacher->name . ")" : "";
+
+                        $subjectsData[] = [
+                            "subject_name" => $subject->name,
+                            "status" => $statusText,
+                            "teacher" => $teacherName
+                        ];
+                    }
+
+                    $sectionData[] = [
+                        "class" => $className,
+                        "section" => $section->name,
+                        "subjects" => $subjectsData
+                    ];
+                }
+
+                $response[] = [
+                    "class_id" => $classId,
+                    "class_name" => $className,
+                    "table" => $sectionData
+                ];
+            }
+        }
+
+        return response()->json([
+            "status" => true,
+            "data" => $response
+        ]);
+    }
         
     
     

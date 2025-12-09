@@ -130,7 +130,7 @@
                         //$to_year = '2024';
      ?>
     <p>
-        This is to certify that Master / Miss {{$data->stud_name}} was a Bonafide student of our school studying in Std {{$data->class_division}} in the year {{$data->academic_yr}}. Her / His date of birth as per the General Register of the school is {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') . ' [ ' . $data->dob_words . ' ]' }}.She / He holds a good moral character.She / He has passed her /his CBSE Std. {{$data->class_division}} Examination of Feb / March <?php echo $to_year;?> in the <?php echo $data->attempt;?>
+        This is to certify that Master / Miss {{$data->stud_name}} was a bonafide student of our school studying in Std {{$data->class_division}} in the year {{$data->academic_yr}}. Her / His date of birth as per the General Register of the school is {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') . ' [ ' . $data->dob_words . ' ]' }}. She / He holds a good moral character. She / He has passed her /his CBSE Std. {{$data->class_division}} Examination of Feb / March <?php echo $to_year;?> in the <?php echo $data->attempt;?>
     </p>
 
     <p><b>Details:</b></p>

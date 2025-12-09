@@ -231,7 +231,7 @@ ORDER BY teacher_id ASC;
              $studentBirthday = Student::where('IsDelete','N')
                             ->join('class','class.class_id','=','student.class_id')
                             ->join('section','section.section_id','=','student.section_id')
-                            ->join('contact_details','contact_details.id','=','student.parent_id')
+                            ->leftjoin('contact_details','contact_details.id','=','student.parent_id')
                             ->whereMonth('dob', $currentDate->month) 
                             ->whereDay('dob', $currentDate->day)
                             ->where('student.academic_yr',$academicYr)
@@ -1405,7 +1405,7 @@ public function getStaffList(Request $request) {
     try{       
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+            
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -1447,15 +1447,6 @@ public function getStaffList(Request $request) {
     });
     
     return response()->json($stafflist);
-    }
-        else{
-            return response()->json([
-                'status'=> 401,
-                'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-                'data' =>$user->role_id,
-                'success'=>false
-                    ]);
-            }
 
         }
         catch (Exception $e) {
@@ -1561,6 +1552,8 @@ public function storeStaff(Request $request)
             'teacher_image_name' => 'nullable|string', // Base64 string or null
             'role' => 'required|string|max:255',
             'tc_id'=>'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:10',
+            'permanent_address' => 'nullable|string|max:255',
         ], $messages);
 
         // Concatenate academic qualifications into a string if they exist
@@ -1780,6 +1773,8 @@ public function updateStaff(Request $request, $id)
             'aadhar_card_no' => 'nullable|string',
             'teacher_image_name' => 'nullable|string', // Base64 string
             'tc_id'=>'nullable|string|max:255',
+            'emergency_phone' => 'nullable|string|max:10',
+            'permanent_address' => 'nullable|string|max:255',
             // 'role' => 'required|string|max:255',
         ], $messages);
 
@@ -2645,29 +2640,406 @@ public function toggleActiveStudent($studentId)
 }
 
 
-     public function resetPasssword($user_id){  
+      public function resetPasssword($user_id){  
+        $userinfo = $this->authenticateUser(); 
+        $shortname = JWTAuth::getPayload()->get('short_name');
+        if($shortname == 'SACS'){
+            $user = UserMaster::find($user_id);
+
+            if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+            }
+            $userinfouserid = $userinfo->user_id;
+            $userinforoleid = $userinfo->role_id;
+            // dd($userinfo->user_id);
+            $role_id = $user->role_id;
+            $loginuserid = $userinfo->reg_id;
+            if($userinforoleid == 'A'){
+                if ($role_id == 'M') {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => "You are not authorised to change password for this user"
+                    ]);
+                }
+                if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+                }
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
             
-        $user = UserMaster::find($user_id);
-        if(!$user){
-            return response()->json( [
-                'Status' => 404 ,
-                 'Error' => "User Id not found"
-              ]);
+                // 4. Get default password
+                $settingsData = getSchoolSettingsData();
+                $defaultPassword = $settingsData->default_pwd;
+            
+                // 5. Update password
+                $user->password = Hash::make($defaultPassword);
+                $user->changed_by = $userinfo->reg_id;
+                $user->save();
+            
+                return response()->json([
+                    'Status' => 200,
+                    'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                ]);
+                
+            }
+            else{
+                if($userinforoleid == 'M'){
+                     if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                    
+                }
+                
+                if($role_id == 'P'){
+                    if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                    }
+                    $customClaims = JWTAuth::getPayload()->get('academic_year');
+                
+                    // 4. Get default password
+                    $settingsData = getSchoolSettingsData();
+                    $defaultPassword = $settingsData->default_pwd;
+                
+                    // 5. Update password
+                    $user->password = Hash::make($defaultPassword);
+                    $user->changed_by = $userinfo->reg_id;
+                    $user->save();
+                
+                    return response()->json([
+                        'Status' => 200,
+                        'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                    ]);
+                    
+                }
+                else{
+                    if(strtolower($userinfouserid) == strtolower($user_id)){
+                        if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                        
+                    }
+                    else{
+                        return response()->json([
+                            'status' => 400,
+                            'message' => "You are not authorised to change password for this user"
+                        ]);
+                    }
+                    
+                    
+                }
+                
+            }
+            
         }
-        $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_year');
-        $settingsData = getSchoolSettingsData();
-        $defaultPassword = $settingsData->default_pwd;
-        $password = $defaultPassword;
-        $user->password= Hash::make($password);
-        $user->save();
+        elseif($shortname == 'HSCS'){
+            $user = UserMaster::find($user_id);
+            if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+            }
+            $userinfouserid = $userinfo->user_id;
+            $userinforoleid = $userinfo->role_id;
+            // dd($userinfo->user_id);
+            $role_id = $user->role_id;
+            $loginuserid = $userinfo->reg_id;
+            if($loginuserid == '52'){
+                if ($role_id == 'M') {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => "You are not authorised to change password for this user"
+                    ]);
+                }
+                if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+                }
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+            
+                // 4. Get default password
+                $settingsData = getSchoolSettingsData();
+                $defaultPassword = $settingsData->default_pwd;
+            
+                // 5. Update password
+                $user->password = Hash::make($defaultPassword);
+                $user->changed_by = $userinfo->reg_id;
+                $user->save();
+            
+                return response()->json([
+                    'Status' => 200,
+                    'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                ]);
+                
+            }
+            else{
+                if($userinforoleid == 'M'){
+                     if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                    
+                }
+                
+                if($role_id == 'P'){
+                    if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                    }
+                    $customClaims = JWTAuth::getPayload()->get('academic_year');
+                
+                    // 4. Get default password
+                    $settingsData = getSchoolSettingsData();
+                    $defaultPassword = $settingsData->default_pwd;
+                
+                    // 5. Update password
+                    $user->password = Hash::make($defaultPassword);
+                    $user->changed_by = $userinfo->reg_id;
+                    $user->save();
+                
+                    return response()->json([
+                        'Status' => 200,
+                        'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                    ]);
+                    
+                }
+                else{
+                    if(strtolower($userinfouserid) == strtolower($user_id)){
+                        if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                        
+                    }
+                    else{
+                        return response()->json([
+                            'status' => 400,
+                            'message' => "You are not authorised to change password for this user"
+                        ]);
+                    }
+                    
+                    
+                }
+                
+            }
+            
+            
+        }
+        else{
+            $user = UserMaster::find($user_id);
+
+            if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+            }
+            $userinfouserid = $userinfo->user_id;
+            $userinforoleid = $userinfo->role_id;
+            // dd($userinfo->user_id);
+            $role_id = $user->role_id;
+            $loginuserid = $userinfo->reg_id;
+            if($userinforoleid == 'A'){
+                if ($role_id == 'M') {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => "You are not authorised to change password for this user"
+                    ]);
+                }
+                if (!$user) {
+                return response()->json([
+                    'Status' => 404,
+                    'Error' => "User Id not found"
+                ]);
+                }
+                $customClaims = JWTAuth::getPayload()->get('academic_year');
+            
+                // 4. Get default password
+                $settingsData = getSchoolSettingsData();
+                $defaultPassword = $settingsData->default_pwd;
+            
+                // 5. Update password
+                $user->password = Hash::make($defaultPassword);
+                $user->changed_by = $userinfo->reg_id;
+                $user->save();
+            
+                return response()->json([
+                    'Status' => 200,
+                    'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                ]);
+                
+            }
+            else{
+                if($userinforoleid == 'M'){
+                     if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                    
+                }
+                
+                if($role_id == 'P'){
+                    if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                    }
+                    $customClaims = JWTAuth::getPayload()->get('academic_year');
+                
+                    // 4. Get default password
+                    $settingsData = getSchoolSettingsData();
+                    $defaultPassword = $settingsData->default_pwd;
+                
+                    // 5. Update password
+                    $user->password = Hash::make($defaultPassword);
+                    $user->changed_by = $userinfo->reg_id;
+                    $user->save();
+                
+                    return response()->json([
+                        'Status' => 200,
+                        'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                    ]);
+                    
+                }
+                else{
+                    if(strtolower($userinfouserid) == strtolower($user_id)){
+                        if (!$user) {
+                        return response()->json([
+                            'Status' => 404,
+                            'Error' => "User Id not found"
+                        ]);
+                        }
+                        $customClaims = JWTAuth::getPayload()->get('academic_year');
+                    
+                        // 4. Get default password
+                        $settingsData = getSchoolSettingsData();
+                        $defaultPassword = $settingsData->default_pwd;
+                    
+                        // 5. Update password
+                        $user->password = Hash::make($defaultPassword);
+                        $user->changed_by = $userinfo->reg_id;
+                        $user->save();
+                    
+                        return response()->json([
+                            'Status' => 200,
+                            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
+                        ]);
+                        
+                    }
+                    else{
+                        return response()->json([
+                            'status' => 400,
+                            'message' => "You are not authorised to change password for this user"
+                        ]);
+                    }
+                    
+                    
+                }
+                
+            }
+            
+        }
         
-        return response()->json(
-                      [
-                        'Status' => 200 ,
-                         'Message' => "Your password has been successfully reset to ".$password." . "
-                      ]
-                      );
      }
    
 
@@ -8686,53 +9058,104 @@ public function fieldsForTimetable(Request $request){
 
 //   }
 
-public function getTeacherIdCard(Request $request){
-    try{
+// public function getTeacherIdCard(Request $request){
+//     try{
+//         $user = $this->authenticateUser();
+//         $customClaims = JWTAuth::getPayload()->get('academic_year');
+//         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+//             $globalVariables = App::make('global_variables');
+//             $parent_app_url = $globalVariables['parent_app_url'];
+//             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+//             $staffdata = DB::table('teacher')
+//                             ->orderBy('teacher_id', 'asc')
+//                             ->where('isDelete','N')
+//                             ->get()
+//                             ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
+//                                 $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
+//                                 if ($staff->teacher_image_name) {
+//                                     $staff->teacher_image_url = $concatprojecturl.""."$staff->teacher_image_name";
+//                                 } else {
+//                                     $staff->teacher_image_url = null; 
+//                                 }
+//                                 return $staff;
+//                             });
+//                             return response()->json([
+//                                 'status'=> 200,
+//                                 'message'=>'Id card details for the Staffs.',
+//                                 'data'=>$staffdata,
+//                                 'success'=>true
+//                                     ]);
+             
+
+//         }
+//         else{
+//             return response()->json([
+//                 'status'=> 401,
+//                 'message'=>'This User Doesnot have Permission for the Deleting of Data',
+//                 'data' =>$user->role_id,
+//                 'success'=>false
+//                     ]);
+//             }
+
+//         }
+//         catch (Exception $e) {
+//         \Log::error($e); 
+//         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+//         }
+
+// }
+public function getTeacherIdCard(Request $request)
+{
+    try {
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
+
+        if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
+
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            $staffdata = DB::table('teacher')
-                            ->orderBy('teacher_id', 'asc')
-                            ->where('isDelete','N')
-                            ->get()
-                            ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
-                                $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
-                                if ($staff->teacher_image_name) {
-                                    $staff->teacher_image_url = $concatprojecturl.""."$staff->teacher_image_name";
-                                } else {
-                                    $staff->teacher_image_url = null; 
-                                }
-                                return $staff;
-                            });
-                            return response()->json([
-                                'status'=> 200,
-                                'message'=>'Id card details for the Staffs.',
-                                'data'=>$staffdata,
-                                'success'=>true
-                                    ]);
-             
 
-        }
-        else{
+            // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
+            $staffdata = DB::table('teacher as t')
+                ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+                ->select('t.*', 'c.confirm')
+                ->where('t.isDelete', 'N')
+                ->where('c.confirm', 'Y')      // Only confirmed teachers
+                ->orderBy('t.teacher_id', 'asc')
+                ->get()
+                ->map(function ($staff) use ($codeigniter_app_url) {
+
+                    $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+
+                    if ($staff->teacher_image_name) {
+                        $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+                    } else {
+                        $staff->teacher_image_url = null;
+                    }
+
+                    return $staff;
+                });
+
             return response()->json([
-                'status'=> 401,
-                'message'=>'This User Doesnot have Permission for the Deleting of Data',
-                'data' =>$user->role_id,
-                'success'=>false
-                    ]);
-            }
-
+                'status' => 200,
+                'message' => 'ID card details for the Staffs.',
+                'data' => $staffdata,
+                'success' => true
+            ]);
+        } else {
+            return response()->json([
+                'status' => 401,
+                'message' => 'This user does not have permission.',
+                'data' => $user->role_id,
+                'success' => false
+            ]);
         }
-        catch (Exception $e) {
-        \Log::error($e); 
+    } catch (Exception $e) {
+        \Log::error($e);
         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
-
+    }
 }
-
  public function getTeacherzipimages(Request $request){
     try{
         $user = $this->authenticateUser();
@@ -8799,7 +9222,6 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
        $data = [
            'name'=>$request->name
        ];
@@ -8810,15 +9232,7 @@ public function getTeacherIdCard(Request $request){
             'data'=>$savestationery,
             'success'=>true
                 ]);
-            }
-            else{
-                return response()->json([
-                    'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
-                    'data' =>$user->role_id,
-                    'success'=>false
-                        ]);
-                }
+            
     
             }
             catch (Exception $e) {
@@ -8829,10 +9243,8 @@ public function getTeacherIdCard(Request $request){
    }
    //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
    public function getStationeryList(){
-    try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
        
         $stationerylist = DB::table('stationery_master')->get();
         return response()->json([
@@ -8842,21 +9254,9 @@ public function getTeacherIdCard(Request $request){
             'success'=>true
                 ]);
 
-            }
-            else{
-                return response()->json([
-                    'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
-                    'data' =>$user->role_id,
-                    'success'=>false
-                        ]);
-                }
+            
     
-            }
-            catch (Exception $e) {
-            \Log::error($e); 
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-            }
+            
 
    }
    //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
@@ -8864,7 +9264,6 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
         $updateStationery=DB::table('stationery_master')
                             ->where('stationery_id', $stationery_id)  // Find the user with id = 1
                             ->update(['name' => $request->name]);
@@ -8874,15 +9273,7 @@ public function getTeacherIdCard(Request $request){
                         'data'=>$updateStationery,
                         'success'=>true
                             ]);
-                }
-                else{
-                    return response()->json([
-                        'status'=> 401,
-                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
-                        'data' =>$user->role_id,
-                        'success'=>false
-                            ]);
-                    }
+                
         
                 }
                 catch (Exception $e) {
@@ -8896,22 +9287,13 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
         DB::table('stationery_master')->where('stationery_id',$stationery_id)->delete();
         return response()->json([
             'status'=> 200,
             'message'=>'Stationery Deleted Successfully.',
             'success'=>true
                 ]);
-            }
-            else{
-                return response()->json([
-                    'status'=> 401,
-                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
-                    'data' =>$user->role_id,
-                    'success'=>false
-                        ]);
-                }
+            
     
             }
             catch (Exception $e) {

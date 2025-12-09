@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\App;
 use App\Http\Services\SmartMailer;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Student;
 
   function get_teacher_timetable_with_multiple_selection_for_teacher_app($column_name, $teacher_id, $acd_yr)
     {
@@ -1034,3 +1035,47 @@ use Carbon\Carbon;
         return true;
     }
     
+    function get_student_info($student_id, $acd_yr)
+    {
+        return Student::where('student_id', $student_id)
+                      ->where('academic_yr', $acd_yr)
+                      ->get()
+                      ->toArray();
+    }
+    
+    function get_class_name($class_id)
+    {
+        return DB::table('class')->where('class_id',$class_id)->value('name');
+    }
+    
+    function get_section_name($section_id)
+    {
+        return DB::table('section')->where('section_id',$section_id)->value('name');
+    }
+    
+    function get_total_stu_attendance_till_a_month($student_id,$date_from,$date_to,$acd_yr)
+    {
+		$query=DB::select("SELECT sum(if(attendance_status = 0, 1, 0)) as total_present_days FROM `attendance` WHERE student_id=".$student_id." and only_date>= '".$date_from."' and only_date<= '".$date_to."' and academic_yr='".$acd_yr."'");
+
+		$result= $query;
+		
+        foreach($result as $r)
+        {
+            $total_attendance = $r->total_present_days;
+        }
+		//print_r($this->db->last_query());
+        return $total_attendance;
+    }
+    
+    function get_total_stu_workingday_till_a_month($student_id,$date_from,$date_to,$acd_yr)
+    {
+		$query=DB::select("SELECT count(*) as total_working_days FROM `attendance` WHERE student_id=".$student_id." and only_date>= '".$date_from."' and only_date<= '".$date_to."' and academic_yr='".$acd_yr."'");
+
+		$result= $query;
+		
+        foreach($result as $r)
+        {
+            $total_working_days = $r->total_working_days;
+        }
+        return $total_working_days;
+    }
