@@ -16,7 +16,7 @@ class WhatsAppService
 
     public function sendTextMessage($phoneNumber, $templateName, $parameters = [])
     {
-        
+
         $payload = [
             "to" => $phoneNumber,
             "type" => "template",
@@ -44,6 +44,7 @@ class WhatsAppService
 
         return $response->json();
     }
+
     
     protected function sanitizeSingleLine(string $text): string
     {

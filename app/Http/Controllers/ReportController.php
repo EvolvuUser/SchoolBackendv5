@@ -428,6 +428,7 @@ class ReportController extends Controller
         try{
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            
                 // dd("Hello");
                 $staff_id = $request->input('staff_id');
                 $query = DB::table('leave_allocation')
@@ -466,8 +467,6 @@ class ReportController extends Controller
                         'message'=>'Balance Leave Report',
                         'success'=>true
                     ]);
-
-            
     
             }
             catch (Exception $e) {
@@ -5148,8 +5147,8 @@ class ReportController extends Controller
                     ]);
                 }
             }
-
-              public function getFeePendingForTeachersReport(Request $request){
+            
+            public function getFeePendingForTeachersReport(Request $request){
                 $user = $this->authenticateUser(); // Assume you have this
                 $academicYear = JWTAuth::getPayload()->get('academic_year');
                 $request->validate([
@@ -5284,8 +5283,8 @@ class ReportController extends Controller
                 ]);
                 
             }
-
-            public function getExamsByClassId(Request $request)
+            
+    public function getExamsByClassId(Request $request)
     {
         $request->validate([
             'academic_yr' => 'required',

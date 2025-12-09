@@ -22,6 +22,7 @@ class ConnectSchoolDatabase
         if ($request->is('api/connectdatabase') || $request->is('api/login')) {
         return $next($request);
     }
+
         $payload = JWTAuth::parseToken()->getPayload();
         $shortName = $payload->get('short_name');
         // dd($shortName);

@@ -267,6 +267,7 @@ public function navMenulisttest(Request $request)
                    ->where('academic_yr',$customClaims)
                    ->pluck('role')
                    ->toArray();
+    
     $assignedMenuIdsss = RolesAndMenu::whereIn('role_id', $roleIds)
     ->pluck('menu_id')
     ->unique()
@@ -738,7 +739,7 @@ public function getSubMenus($parentId, $assignedMenuIds)
         
         
     }
-
+    
     public function navLeafMenus(Request $request)
     {
         $user = $this->authenticateUser();

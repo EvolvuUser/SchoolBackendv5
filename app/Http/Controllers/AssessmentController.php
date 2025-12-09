@@ -6544,6 +6544,7 @@ class AssessmentController extends Controller
             ];
 
             if ($existingMarks) {
+                
                 DB::table('student_marks')->where('marks_id', $marksIds[$i])->update($marksData);
 
                 // Log changes if marks changed and already published
@@ -9907,7 +9908,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-
+    
     public function getExamsByYear($academic_yr)
     {
         try {

@@ -697,7 +697,7 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
    
        return $data;
    }
-
+   
    public function getFieldsForUpdateStudent(Request $request){
        $fields = DB::table('update_studentdata_settings')
                 ->get();
@@ -793,7 +793,8 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
             'success' => true
         ]);
    }
-
+   
+   
    public function getPendingBooksForReturn(Request $request){
        $student_id = $request->input('student_id');
        $books = DB::select("select a.*,b.book_title, s.first_name,s.last_name,s.class_id,s.section_id from issue_return a, book b, student s where a.book_id = b.book_id and a.member_id = s.student_id and member_type='S' and return_date='0000-00-00' and member_id IN (".$student_id.") order by issue_date asc");
@@ -808,7 +809,7 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
        
        
    }
-
+   
    public function getStudentListAttendance(Request $request){
         $user = $this->authenticateUser();
         $settingsData = JWTAuth::getPayload()->get('settings');
@@ -899,8 +900,8 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
             return null;
         }
     }
-
-     public function getStudentsByClassSection(Request $request){
+    
+    public function getStudentsByClassSection(Request $request){
         $user = $this->authenticateUser();
         $academicYear = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');

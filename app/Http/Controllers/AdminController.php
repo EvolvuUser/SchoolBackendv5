@@ -1405,7 +1405,7 @@ public function getStaffList(Request $request) {
     try{       
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'L'){
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -1447,6 +1447,15 @@ public function getStaffList(Request $request) {
     });
     
     return response()->json($stafflist);
+    }
+        else{
+            return response()->json([
+                'status'=> 401,
+                'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
+                'data' =>$user->role_id,
+                'success'=>false
+                    ]);
+            }
 
         }
         catch (Exception $e) {
@@ -2640,7 +2649,7 @@ public function toggleActiveStudent($studentId)
 }
 
 
-      public function resetPasssword($user_id){  
+     public function resetPasssword($user_id){  
         $userinfo = $this->authenticateUser(); 
         $shortname = JWTAuth::getPayload()->get('short_name');
         if($shortname == 'SACS'){
@@ -9156,6 +9165,7 @@ public function getTeacherIdCard(Request $request)
         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
     }
 }
+
  public function getTeacherzipimages(Request $request){
     try{
         $user = $this->authenticateUser();
@@ -9243,8 +9253,10 @@ public function getTeacherIdCard(Request $request)
    }
    //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
    public function getStationeryList(){
+    
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        
        
         $stationerylist = DB::table('stationery_master')->get();
         return response()->json([
@@ -9255,8 +9267,6 @@ public function getTeacherIdCard(Request $request)
                 ]);
 
             
-    
-            
 
    }
    //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
@@ -9264,6 +9274,7 @@ public function getTeacherIdCard(Request $request)
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+       
         $updateStationery=DB::table('stationery_master')
                             ->where('stationery_id', $stationery_id)  // Find the user with id = 1
                             ->update(['name' => $request->name]);
@@ -9287,6 +9298,7 @@ public function getTeacherIdCard(Request $request)
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+        
         DB::table('stationery_master')->where('stationery_id',$stationery_id)->delete();
         return response()->json([
             'status'=> 200,

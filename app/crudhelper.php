@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\App;
 use App\Http\Services\SmartMailer;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+
 use App\Models\Student;
 
   function get_teacher_timetable_with_multiple_selection_for_teacher_app($column_name, $teacher_id, $acd_yr)
@@ -1035,6 +1036,7 @@ use App\Models\Student;
         return true;
     }
     
+
     function get_student_info($student_id, $acd_yr)
     {
         return Student::where('student_id', $student_id)

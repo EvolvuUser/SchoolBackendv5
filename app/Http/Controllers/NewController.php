@@ -1789,8 +1789,6 @@ class NewController extends Controller
                     'message'=>'Appointment time!',
                     'success'=>true
                 ]);
-                 
-        
 
                }
               catch (Exception $e) {
@@ -1813,8 +1811,6 @@ class NewController extends Controller
                     'success'=>true
                 ]);
                  
-                 
-             
 
                }
               catch (Exception $e) {

@@ -1232,6 +1232,7 @@
         Route::delete('/books/delete/{book_id}', [LibraryController::class, 'deleteBook']);
         Route::get('/books/max-copy-id', [LibraryController::class, 'getMaxCopyId']);
 
+
         Route::get('/library-members', [LibraryController::class, 'getLibraryMembersInfo']);
         Route::post('/library-member/status', [LibraryController::class, 'updateLibraryMemberStatus']);
         
@@ -1275,6 +1276,7 @@
         
         Route::get('show_report_card',[AssessmentController::class,'showReportCard']);
 
+
     });
 
 });
@@ -1286,6 +1288,7 @@
    
       
 Route::post('sendnotification',[SubstituteTeacher::class,'sendNotification']);
+
 
 
 Route::get('/clear-all', function () {
@@ -1302,6 +1305,7 @@ Route::get('/clear-all', function () {
         'message' => 'All caches cleared and optimized.',
     ]);
 });
+
 
 Route::get('/test-mail', function () {
     try {

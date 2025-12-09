@@ -45,6 +45,7 @@ function get_proficiency_certificate_publish_value($student_id, $term_id)
     }
 }
 
+
 function get_published_terms($class_id, $section_id)
     {
         $query = DB::select("SELECT a.term_id, b.name FROM report_card_publish a, term b WHERE a.term_id=b.term_id and a.class_id=".$class_id." and a.section_id=".$section_id." and a.publish='Y' order by a.term_id");

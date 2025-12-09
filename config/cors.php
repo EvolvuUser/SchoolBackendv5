@@ -35,7 +35,8 @@ return [
     'https://holyspiritconvent.evolvu.in',
     'https://holyspiritconvent.evolvu.in/test/hscs_test/',
     'https://edsstage.evolvu.in',
-    'https://eds.evolvu.in'
+    'https://eds.evolvu.in',
+    'https://hscstestlx.evolvu.in'
 ],
 
 

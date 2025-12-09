@@ -231,7 +231,7 @@ ORDER BY teacher_id ASC;
              $studentBirthday = Student::where('IsDelete','N')
                                     ->join('class','class.class_id','=','student.class_id')
                                     ->join('section','section.section_id','=','student.section_id')
-                                    ->leftjoin('contact_details','contact_details.id','=','student.parent_id')
+                                    ->join('contact_details','contact_details.id','=','student.parent_id')
                                     ->whereMonth('dob', $currentDate->month) 
                                     ->whereDay('dob', $currentDate->day)
                                     ->where('student.academic_yr',$academicYr)
@@ -1457,7 +1457,7 @@ public function getStaffList(Request $request) {
     try{       
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'|| $user->role_id == 'L'){
+            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -2698,32 +2698,26 @@ public function toggleActiveStudent($studentId)
      public function resetPasssword($user_id){  
             
         $user = UserMaster::find($user_id);
-
-        if (!$user) {
-            return response()->json([
-                'Status' => 404,
-                'Error' => "User Id not found"
-            ]);
+        if(!$user){
+            return response()->json( [
+                'Status' => 404 ,
+                 'Error' => "User Id not found"
+              ]);
         }
-    
-        // 2. Remove this line (this breaks your logic)
-        // $user = $this->authenticateUser();
-    
-        // 3. Get custom claims if needed
+        $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    
-        // 4. Get default password
         $settingsData = getSchoolSettingsData();
         $defaultPassword = $settingsData->default_pwd;
-    
-        // 5. Update password
-        $user->password = Hash::make($defaultPassword);
+        $password = $defaultPassword;
+        $user->password= Hash::make($password);
         $user->save();
-    
-        return response()->json([
-            'Status' => 200,
-            'Message' => "Your password has been successfully reset to " . $defaultPassword . " . "
-        ]);
+        
+        return response()->json(
+                      [
+                        'Status' => 200 ,
+                         'Message' => "Your password has been successfully reset to ".$password." . "
+                      ]
+                      );
      }
    
 
@@ -8879,7 +8873,7 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
        $data = [
            'name'=>$request->name
        ];
@@ -8890,7 +8884,15 @@ public function getTeacherIdCard(Request $request){
             'data'=>$savestationery,
             'success'=>true
                 ]);
-            
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
     
             }
             catch (Exception $e) {
@@ -8904,7 +8906,7 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
        
         $stationerylist = DB::table('stationery_master')->get();
         return response()->json([
@@ -8914,7 +8916,15 @@ public function getTeacherIdCard(Request $request){
             'success'=>true
                 ]);
 
-            
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
     
             }
             catch (Exception $e) {
@@ -8928,7 +8938,7 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
         $updateStationery=DB::table('stationery_master')
                             ->where('stationery_id', $stationery_id)  // Find the user with id = 1
                             ->update(['name' => $request->name]);
@@ -8938,7 +8948,15 @@ public function getTeacherIdCard(Request $request){
                         'data'=>$updateStationery,
                         'success'=>true
                             ]);
-                
+                }
+                else{
+                    return response()->json([
+                        'status'=> 401,
+                        'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                        'data' =>$user->role_id,
+                        'success'=>false
+                            ]);
+                    }
         
                 }
                 catch (Exception $e) {
@@ -8952,14 +8970,22 @@ public function getTeacherIdCard(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+        if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
         DB::table('stationery_master')->where('stationery_id',$stationery_id)->delete();
         return response()->json([
             'status'=> 200,
             'message'=>'Stationery Deleted Successfully.',
             'success'=>true
                 ]);
-            
+            }
+            else{
+                return response()->json([
+                    'status'=> 401,
+                    'message'=>'This User Doesnot have Permission for the Deleting of Data',
+                    'data' =>$user->role_id,
+                    'success'=>false
+                        ]);
+                }
     
             }
             catch (Exception $e) {
