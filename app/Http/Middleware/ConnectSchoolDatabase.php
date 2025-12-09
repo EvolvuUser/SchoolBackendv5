@@ -22,7 +22,6 @@ class ConnectSchoolDatabase
         if ($request->is('api/connectdatabase') || $request->is('api/login')) {
         return $next($request);
     }
-        //This is middleware for dynamic database switching
         $payload = JWTAuth::parseToken()->getPayload();
         $shortName = $payload->get('short_name');
         // dd($shortName);
