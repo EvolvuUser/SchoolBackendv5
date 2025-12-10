@@ -22,3 +22,4 @@ yarn-error.log
 /config/cors.php
 /public/fcm.json
 fcm.json
+/app/Http/Middleware/ConnectSchoolDatabase.php
