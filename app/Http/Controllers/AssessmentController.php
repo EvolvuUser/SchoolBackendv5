@@ -10461,7 +10461,7 @@ class AssessmentController extends Controller
                     )
                     ->select('t.*')
                     ->where('t.isDelete', 'N')
-                    ->whereNull('c.teacher_id') // ✅ NOT present in confirmation table
+                    ->whereNull('c.teacher_id') //  NOT present in confirmation table
                     ->orderBy('t.teacher_id', 'asc')
                     ->get()
                     ->map(function ($staff) use ($codeigniter_app_url) {
@@ -10551,5 +10551,97 @@ class AssessmentController extends Controller
 
         // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
 
+    }
+
+    // tecaher data using reg_id for teacher id card detials
+    // public function teacherDataIdCard($id)
+    // {
+    //     try {
+    //         // Find the teacher by ID
+    //         $teacher = DB::table('teacher')
+    //             ->where('teacher.teacher_id', $id)
+    //             ->select('teacher.*') // or any user fields you need
+    //             ->first();
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //         $concatprojecturl = $codeigniter_app_url . "" . 'uploads/teacher_image/';
+
+    //         // Check if the teacher has an image and generate the URL if it exists
+    //         if ($teacher->teacher_image_name) {
+    //             $teacher->teacher_image_name = $concatprojecturl . "" . "$teacher->teacher_image_name";
+    //         } else {
+    //             $teacher->teacher_image_name = null;
+    //         }
+
+
+    //         // Find the associated user record
+    //         $user = DB::table('user_master')->where('reg_id', $id)->whereNotIn('role_id', ['P', 'S'])->first();
+
+    //         return response()->json([
+    //             'teacher' => $teacher,
+    //             'user' => $user,
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'An error occurred while fetching the teacher details',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function teacherDataIdCard($id)
+    {
+        try {
+            $teacher = DB::table('teacher as t')
+                ->leftJoin(
+                    'confirmation_teacher_idcard as c',
+                    'c.teacher_id',
+                    '=',
+                    't.teacher_id'
+                )
+                ->where('t.teacher_id', $id)
+                ->select(
+                    't.*',
+                    DB::raw("CASE 
+                    WHEN c.teacher_id IS NOT NULL THEN 'Y' 
+                    ELSE 'N' 
+                END as confirm")
+                )
+                ->first();
+
+            if (!$teacher) {
+                return response()->json([
+                    'message' => 'Teacher not found'
+                ], 404);
+            }
+
+            $globalVariables = App::make('global_variables');
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+
+            // ✅ Image handling
+            if (!empty($teacher->teacher_image_name)) {
+                $teacher->teacher_image_name = $concatprojecturl . $teacher->teacher_image_name;
+            } else {
+                $teacher->teacher_image_name = null;
+            }
+
+            // ✅ User data (excluding Parent & Student)
+            $user = DB::table('user_master')
+                ->where('reg_id', $id)
+                ->whereNotIn('role_id', ['P', 'S'])
+                ->first();
+
+            return response()->json([
+                'teacher' => $teacher,
+                'user' => $user,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while fetching the teacher details',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
