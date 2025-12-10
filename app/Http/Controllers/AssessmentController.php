@@ -8210,20 +8210,65 @@ class AssessmentController extends Controller
         
     }
     
-    public function getLessonPlanTemplate(Request $request){
-        $class_id = $request->input('class_id');
+    // public function getLessonPlanTemplate(Request $request){
+    //     $class_id = $request->input('class_id');
+    //     $subject_id = $request->input('subject_id');
+    //     $chapter_id = $request->input('chapter_id');
+        
+    //     $lessonplantemplate = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,lesson_plan_heading.name from lesson_plan_template,lesson_plan_template_details,lesson_plan_heading where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_heading.lesson_plan_headings_id = lesson_plan_template_details.lesson_plan_headings_id and lesson_plan_template.chapter_id='".$chapter_id."' and subject_id='".$subject_id."' and class_id='".$class_id."'");
+        
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' =>$lessonplantemplate,
+    //         'message' => 'Lesson plan template fetched successfully.',
+    //         'status'  =>200
+    //     ]);
+        
+    // }
+    
+
+    public function getLessonPlanTemplate(Request $request)
+    {
+        $class_id   = $request->input('class_id');
         $subject_id = $request->input('subject_id');
         $chapter_id = $request->input('chapter_id');
         
-        $lessonplantemplate = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,lesson_plan_heading.name from lesson_plan_template,lesson_plan_template_details,lesson_plan_heading where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_heading.lesson_plan_headings_id = lesson_plan_template_details.lesson_plan_headings_id and lesson_plan_template.chapter_id='".$chapter_id."' and subject_id='".$subject_id."' and class_id='".$class_id."'");
-        
+        // Authenticate user
+        $user    = $this->authenticateUser();
+        $reg_id  = JWTAuth::getPayload()->get('reg_id');
+    
+        $lessonplantemplate = DB::select("
+            SELECT lpt.*, lptd.*, lph.name
+            FROM lesson_plan_template AS lpt
+            JOIN lesson_plan_template_details AS lptd 
+                ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
+            JOIN lesson_plan_heading AS lph 
+                ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
+            WHERE lpt.chapter_id = ?
+            AND lpt.subject_id = ?
+            AND lpt.class_id = ?
+            AND lpt.reg_id = ? 
+        ", [$chapter_id, $subject_id, $class_id , $reg_id]);
+    
+    
+        // 🚨 FIX: Check if no template exists
+        if (count($lessonplantemplate) === 0) {
+            
+            return response()->json([
+                'success' => false,
+                'data'    => [],
+                'message' => 'No lesson plan template found.',
+                'status'  => 404
+            ], 404);
+        }
+
         return response()->json([
             'success' => true,
-            'data' =>$lessonplantemplate,
+            'data'    => $lessonplantemplate,
             'message' => 'Lesson plan template fetched successfully.',
-            'status'  =>200
+            'status'  => 200
         ]);
-        
+
     }
     
     public function getLessonPlanHeadingNonDaily(Request $request){
