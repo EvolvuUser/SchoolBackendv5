@@ -43,22 +43,22 @@ class AssessmentController extends Controller
 {
     public function getMarksheadingsList(Request $request)
     {
-         
+
         $marks_headings = MarksHeadings::orderBy('sequence')->get();
-        
+
         return response()->json($marks_headings);
     }
-    
+
     public function saveMarksheadings(Request $request)
     {
-        
+
         $messages = [
             'name.required' => 'Name field is required.',
             'written_exam.required' => 'Written exam field is required.',
             'sequence.required' => 'Sequence field is required.',
             'sequence.unique'   => 'Sequence field Should be unique.',
-         ];
-    
+        ];
+
         try {
             $validatedData = $request->validate([
                 'name' => [
@@ -68,7 +68,8 @@ class AssessmentController extends Controller
                     'required'
                 ],
                 'sequence' => [
-                    'required','unique:marks_headings,sequence',
+                    'required',
+                    'unique:marks_headings,sequence',
                 ],
             ], $messages);
         } catch (ValidationException $e) {
@@ -77,14 +78,14 @@ class AssessmentController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         }
-    
+
         $marks_headings = new MarksHeadings();
         $marks_headings->name = trim($validatedData['name']);
         $marks_headings->written_exam = $validatedData['written_exam'];
         $marks_headings->sequence = $validatedData['sequence'];
 
-         // Check if mark heading exists, if not, create one
-        
+        // Check if mark heading exists, if not, create one
+
         $existing_markheading = MarksHeadings::where('name', $validatedData['name'])->first();
         if (!$existing_markheading) {
             $marks_headings->save();
@@ -92,29 +93,29 @@ class AssessmentController extends Controller
                 'status' => 201,
                 'message' => 'Marksheading is saved successfully.',
             ], 201);
-        }else{
+        } else {
             return response()->json([
                 'error' => 404,
                 'message' => 'Marksheading already exists.',
             ], 404);
         }
-    }    
-        public function updateMarksheadings(Request $request, $marks_headings_id)
-        {
-            $messages = [
-                'name.required' => 'Name field is required.',
-                'written_exam.required' => 'Written exam field is required.',
-                'sequence.required' => 'Sequence field is required.',
-                'name.unique' => 'Name field should be unique.',
-                'sequence.unique'   => 'Sequence field should be unique',
-            ];
-    
-            try {
-                $validatedData = $request->validate([
-                    'name' => [
+    }
+    public function updateMarksheadings(Request $request, $marks_headings_id)
+    {
+        $messages = [
+            'name.required' => 'Name field is required.',
+            'written_exam.required' => 'Written exam field is required.',
+            'sequence.required' => 'Sequence field is required.',
+            'name.unique' => 'Name field should be unique.',
+            'sequence.unique'   => 'Sequence field should be unique',
+        ];
+
+        try {
+            $validatedData = $request->validate([
+                'name' => [
                     'required',
                     Rule::unique('marks_headings') // Ensure uniqueness of name
-                         ->ignore($marks_headings_id, 'marks_headings_id') // Ignore the current record
+                        ->ignore($marks_headings_id, 'marks_headings_id') // Ignore the current record
                 ],
                 'written_exam' => [
                     'required'
@@ -122,57 +123,55 @@ class AssessmentController extends Controller
                 'sequence' => [
                     'required',
                     Rule::unique('marks_headings')
-                    ->ignore($marks_headings_id, 'marks_headings_id')
+                        ->ignore($marks_headings_id, 'marks_headings_id')
                 ],
-                ], $messages);
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json([
-                    'status' => 422,
-                    'errors' => $e->errors(),
-                ], 422);
-            }
-
-            $marks_headings = MarksHeadings::find($marks_headings_id);
-            if (!$marks_headings) {
-                return response()->json(['message' => 'Marksheading not found', 'success' => false], 404);
-            }
-            
-            // Update the Marksheading
-            $marks_headings->name = trim($validatedData['name']);
-            $marks_headings->written_exam = $validatedData['written_exam'];
-            $marks_headings->sequence = $validatedData['sequence'];
-            $marks_headings->save();
-        
-            // Return success response
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => 200,
-                'message' => 'Marksheading updated successfully',
-            ]);
-
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
         }
-    
+
+        $marks_headings = MarksHeadings::find($marks_headings_id);
+        if (!$marks_headings) {
+            return response()->json(['message' => 'Marksheading not found', 'success' => false], 404);
+        }
+
+        // Update the Marksheading
+        $marks_headings->name = trim($validatedData['name']);
+        $marks_headings->written_exam = $validatedData['written_exam'];
+        $marks_headings->sequence = $validatedData['sequence'];
+        $marks_headings->save();
+
+        // Return success response
+        return response()->json([
+            'status' => 200,
+            'message' => 'Marksheading updated successfully',
+        ]);
+    }
+
     public function deleteMarksheading($marks_headings_id)
     {
         $heading = DB::table('allot_mark_headings')
-                        ->where('marks_headings_id', $marks_headings_id)
-                        ->first();
+            ->where('marks_headings_id', $marks_headings_id)
+            ->first();
 
         if ($heading) {
             return response()->json([
                 'error' => 'This markheadings is in use. Deletion failed!'
             ], 400);
-
         }
 
         $marks_headings = MarksHeadings::find($marks_headings_id);
-    
+
         if (!$marks_headings) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Marksheading not found',
             ]);
-        }else{
-        
+        } else {
+
             $marks_headings->delete();
 
             return response()->json([
@@ -182,40 +181,40 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     public function editMarksheading($marks_headings_id)
     {
         $marks_headings = MarksHeadings::find($marks_headings_id);
-              
+
         if (!$marks_headings) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Marksheading data not found',
             ]);
         }
-    
+
         return response()->json($marks_headings);
     }
 
     public function getGradesList(Request $request)
     {
-         
+
         //$grades = Grades::orderBy('grade_id')->get();
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         $query = Grades::with('Class');
         $grades = $query
-                 ->where('academic_yr',$customClaims)
-                 ->orderBy('grade_id', 'DESC') 
-                             ->get();
- 
+            ->where('academic_yr', $customClaims)
+            ->orderBy('grade_id', 'DESC')
+            ->get();
+
         return response()->json($grades);
     }
-    
+
     public function saveGrades(Request $request)
     {
-        $status_msg="";
-        $payload = getTokenPayload($request);  
+        $status_msg = "";
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $messages = [
             'class_id.required' => 'Class field is required.',
@@ -223,7 +222,7 @@ class AssessmentController extends Controller
             'name.required' => 'Name is required.',
             'mark_from.required' => 'Marks from is required.',
             'mark_upto.required' => 'Marks upto is required.'
-           ];
+        ];
 
         // Validate the request parameters
         $request->validate([
@@ -247,7 +246,7 @@ class AssessmentController extends Controller
         ]);
 
 
-    /*
+        /*
         try {
             $validatedData = $request->validate([
                 'class_id' => [
@@ -276,40 +275,37 @@ class AssessmentController extends Controller
             ], 422);
         }
     */
-        
+
         $class_id_list = $request->input('class_id');
         foreach ($class_id_list as $class_id) {
             $grades = new Grades();
             $grades->class_id = $class_id;
             $grades->subject_type = $request->input('subject_type'); //$validatedData['subject_type'];
-            $grades->name = $request->input('name');//$validatedData['name'];
-            $grades->mark_from = $request->input('mark_from');//$validatedData['mark_from'];
-            $grades->mark_upto = $request->input('mark_upto');//$validatedData['mark_upto'];
-            $grades->comment = $request->input('comment');//$validatedData['comment'];
+            $grades->name = $request->input('name'); //$validatedData['name'];
+            $grades->mark_from = $request->input('mark_from'); //$validatedData['mark_from'];
+            $grades->mark_upto = $request->input('mark_upto'); //$validatedData['mark_upto'];
+            $grades->comment = $request->input('comment'); //$validatedData['comment'];
             $grades->academic_yr = $academicYr;
 
             $existing_grades = Grades::where('name', $request->input('name'))->where('class_id', $class_id)->where('subject_type', $request->input('subject_type'))->first();
             if (!$existing_grades) {
                 $grades->save();
-                $status=201;
-                $status_msg="Grade is saved successfully.";
-                
-            }
-            else{
+                $status = 201;
+                $status_msg = "Grade is saved successfully.";
+            } else {
                 $status = 400;
-                $status_msg="Grade already exist for this class.";
+                $status_msg = "Grade already exist for this class.";
             }
-
         }
         return response()->json([
             'status' => $status,
             'message' => $status_msg,
         ]);
-    }    
+    }
 
     public function updateGrades(Request $request, $grade_id)
     {
-        $payload = getTokenPayload($request);  
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $messages = [
             'class_id.required' => 'Class field is required.',
@@ -322,23 +318,23 @@ class AssessmentController extends Controller
         try {
             $validatedData = $request->validate([
                 'class_id' => [
-                'required'
-            ],
-            'subject_type' => [
-                'required'
-            ],
-            'name' => [
-                'required'
-            ],
-            'mark_from' => [
-                'required'
-            ],
-            'mark_upto' => [
-                'required'
-            ],
-            'comment' => [
-                'nullable'
-            ],
+                    'required'
+                ],
+                'subject_type' => [
+                    'required'
+                ],
+                'name' => [
+                    'required'
+                ],
+                'mark_from' => [
+                    'required'
+                ],
+                'mark_upto' => [
+                    'required'
+                ],
+                'comment' => [
+                    'nullable'
+                ],
             ], $messages);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -351,7 +347,7 @@ class AssessmentController extends Controller
         if (!$grades) {
             return response()->json(['message' => 'Grade not found', 'success' => false], 404);
         }
-        
+
         // Update the Marksheading
         $grades->class_id = $validatedData['class_id'];
         $grades->subject_type = $validatedData['subject_type'];
@@ -361,26 +357,25 @@ class AssessmentController extends Controller
         $grades->comment = $validatedData['comment'];
         $grades->academic_yr = $academicYr;
         $grades->save();
-    
+
         // Return success response
         return response()->json([
             'status' => 200,
             'message' => 'Grade updated successfully',
         ]);
-
     }
-    
+
     public function deleteGrades($grade_id)
     {
         $grades = Grades::find($grade_id);
-    
+
         if (!$grades) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Grade not found',
             ]);
-        }else{
-        
+        } else {
+
             $grades->delete();
 
             return response()->json([
@@ -390,41 +385,41 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     public function editGrades($grade_id)
     {
         $grades = Grades::find($grade_id);
-              
+
         if (!$grades) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Grade data not found',
             ]);
         }
-    
+
         return response()->json($grades);
     }
 
     public function getTerm(Request $request)
     {
         $term = Term::orderBy('term_id')->get();
-       
+
         return response()->json($term);
     }
 
     public function getExamsList(Request $request)
     {
-        $payload = getTokenPayload($request);  
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
 
-        $exams = Exams::where('academic_yr', $academicYr)->orderBy('exam_id','DESC')->get();
-       
+        $exams = Exams::where('academic_yr', $academicYr)->orderBy('exam_id', 'DESC')->get();
+
         return response()->json($exams);
     }
-    
+
     public function saveExams(Request $request)
     {
-        $payload = getTokenPayload($request);  
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $messages = [
             'name.required' => 'Name field is required.',
@@ -432,8 +427,8 @@ class AssessmentController extends Controller
             'start_date.required' => 'Start date is required.',
             'end_date.required' => 'End date is required.',
             'open_day.required' => 'Open day date is required.'
-          ];
-    
+        ];
+
         try {
             $validatedData = $request->validate([
                 'name' => [
@@ -458,7 +453,7 @@ class AssessmentController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         }
-    
+
         $exams = new Exams();
         $exams->name = trim($validatedData['name']);
         $exams->term_id = $validatedData['term_id'];
@@ -470,14 +465,13 @@ class AssessmentController extends Controller
 
         $exams->save();
         return response()->json([
-                'status' => 201,
-                'message' => 'Exam is saved successfully.',
-            ], 201);
-        
-    }    
+            'status' => 201,
+            'message' => 'Exam is saved successfully.',
+        ], 201);
+    }
     public function updateExam(Request $request, $exam_id)
     {
-        $payload = getTokenPayload($request);  
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $messages = [
             'name.required' => 'Name field is required.',
@@ -516,7 +510,7 @@ class AssessmentController extends Controller
         if (!$exams) {
             return response()->json(['message' => 'Exam not found', 'success' => false], 404);
         }
-        
+
         // Update the Exam
         $exams->name = trim($validatedData['name']);
         $exams->term_id = $validatedData['term_id'];
@@ -526,20 +520,19 @@ class AssessmentController extends Controller
         $exams->comment = $request->comment;
         $exams->academic_yr = $academicYr;
         $exams->save();
-    
+
         // Return success response
         return response()->json([
             'status' => 200,
             'message' => 'Exam updated successfully',
         ]);
-
     }
-    
+
     public function deleteExam($exam_id)
     {
         $examInUse = DB::table('allot_mark_headings')
-                    ->where('exam_id', $exam_id)
-                    ->count();
+            ->where('exam_id', $exam_id)
+            ->count();
 
         if ($examInUse > 0) {
             return response()->json([
@@ -548,24 +541,24 @@ class AssessmentController extends Controller
         }
 
         $examInUsee = DB::table('exam_timetable')
-                    ->where('exam_id', $exam_id)
-                    ->count();
+            ->where('exam_id', $exam_id)
+            ->count();
 
         if ($examInUsee > 0) {
             return response()->json([
                 'error' => 'This Exam is in use. Deletion failed!'
             ], 400);
         }
-        
+
         $exams = Exams::find($exam_id);
-    
+
         if (!$exams) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Exam not found',
             ]);
-        }else{
-        
+        } else {
+
             $exams->delete();
 
             return response()->json([
@@ -575,18 +568,18 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     public function editExam($exam_id)
     {
         $exams = Exams::find($exam_id);
-              
+
         if (!$exams) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Exam data not found',
             ]);
         }
-    
+
         return response()->json($exams);
     }
 
@@ -597,12 +590,12 @@ class AssessmentController extends Controller
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
         $academicYr = $payload->get('academic_year');
-                
-        $allot_mark_headings = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('class_id', $class_id)->where('academic_yr', $academicYr)->get();
-        
+
+        $allot_mark_headings = Allot_mark_headings::with('getClass', 'getSubject', 'getExam', 'getMarksheading')->where('class_id', $class_id)->where('academic_yr', $academicYr)->get();
+
         return response()->json($allot_mark_headings);
     }
-    
+
     public function saveAllotMarksheadings(Request $request)
     {
         $payload = getTokenPayload($request);
@@ -615,8 +608,8 @@ class AssessmentController extends Controller
             'class_id.required' => 'Class is required.',
             'subject_id.required' => 'Subject is required.',
             'exam_id.required' => 'Exam is required.'
-         ];
-    
+        ];
+
         try {
             $validatedData = $request->validate([
                 'class_id' => [
@@ -637,21 +630,20 @@ class AssessmentController extends Controller
         }
         //Check if allot mark heading exist for selected class_id, sm_id and exam_id
         $existingMarkheadingsAllotments = Allot_mark_headings::where('class_id',  $request->input('class_id'))
-                                    ->where('sm_id', $request->input('subject_id'))
-                                    ->where('exam_id', $request->input('exam_id'))
-                                    ->where('academic_yr', $academicYr) 
-                                    ->get();
+            ->where('sm_id', $request->input('subject_id'))
+            ->where('exam_id', $request->input('exam_id'))
+            ->where('academic_yr', $academicYr)
+            ->get();
 
         foreach ($existingMarkheadingsAllotments as $result) {
             $allot_mark_heading = Allot_mark_headings::find($result->allot_markheadings_id);
             $allot_mark_heading->delete();
-            
-        }  
-        
+        }
+
         $highest_marks_allocation_list = $request->input('highest_marks_allocation');
-        
+
         foreach ($highest_marks_allocation_list as $highest_marks_allocation) {
-            
+
             $allot_mark_heading = new Allot_mark_headings();
             $allot_mark_heading->class_id = $request->input('class_id');
             $allot_mark_heading->sm_id = $request->input('subject_id');
@@ -661,27 +653,26 @@ class AssessmentController extends Controller
             $allot_mark_heading->reportcard_highest_marks = $highest_marks_allocation['reportcard_highest_marks'];
             $allot_mark_heading->academic_yr = $academicYr;
             $allot_mark_heading->save();
-            $status_msg="Marks heading is allocated successfully.";
+            $status_msg = "Marks heading is allocated successfully.";
         }
         return response()->json([
             'status' => 201,
             'message' => $status_msg,
         ], 201);
-    
-    }   
-    
+    }
+
     public function deleteAllotMarkheading($allot_markheadings_id)
     {
 
         $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
-    
+
         if (!$allot_mark_heading) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Allot markheading not found',
             ]);
-        }else{
-        
+        } else {
+
             $allot_mark_heading->delete();
 
             return response()->json([
@@ -691,141 +682,131 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     public function editAllotMarkheadings($allot_markheadings_id)
     {
-        $allot_mark_heading = Allot_mark_headings::with('getClass', 'getSubject', 'getExam','getMarksheading')->where('allot_markheadings_id', $allot_markheadings_id)->get();
-        
-              
+        $allot_mark_heading = Allot_mark_headings::with('getClass', 'getSubject', 'getExam', 'getMarksheading')->where('allot_markheadings_id', $allot_markheadings_id)->get();
+
+
         if (!$allot_mark_heading) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Allot markheading data not found',
             ]);
         }
-    
+
         return response()->json($allot_mark_heading);
     }
 
     public function updateAllotMarkheadings(Request $request, $allot_markheadings_id)
-        {
-            $messages = [
-                'highest_marks.required' => 'Highest marks is required.'
-            ];
-    
-            try {
-                $validatedData = $request->validate([
-                    'highest_marks' => [
+    {
+        $messages = [
+            'highest_marks.required' => 'Highest marks is required.'
+        ];
+
+        try {
+            $validatedData = $request->validate([
+                'highest_marks' => [
                     'required'
                 ]
-                ], $messages);
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json([
-                    'status' => 422,
-                    'errors' => $e->errors(),
-                ], 422);
-            }
-
-            $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
-            if (!$allot_mark_heading) {
-                return response()->json(['message' => 'Allot markheading not found', 'success' => false], 404);
-            }
-            
-            // Update the Marksheading
-            $allot_mark_heading->highest_marks = $request->input('highest_marks');
-            $allot_mark_heading->reportcard_highest_marks = $request->input('reportcard_highest_marks');
-            $allot_mark_heading->save();
-        
-            // Return success response
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => 200,
-                'message' => 'Allot markheading data updated successfully',
-            ]);
-
-    }
-
-    public function deleteAllotMarksheadingg(Request $request,$class_id,$subject_id,$exam_id){
-        $allotmarkheading = DB::table('student_marks')->where('class_id',$class_id)->where('subject_id',$subject_id)->where('exam_id',$exam_id)->first();
-        if ($allotmarkheading) {
-            $classname = DB::table('class')->where('class_id',$class_id)->select('name')->first();
-            //  dd($classname);
-            if ($classname) {
-                $className = $classname->name;
-               
-            } else {
-                $className = 'Unknown Class'; // If class not found, provide a default name
-            }
-            $examname = DB::table('exam')->where('exam_id',$exam_id)->select('name')->first();
-            if ($examname) {
-                $examName = $examname->name;
-               
-            } else {
-                $examName = 'Unknown Exam'; // If class not found, provide a default name
-            }
-            
-            $subjectname = DB::table('subject_master')->where('sm_id',$subject_id)->select('name')->first();
-            if ($subjectname) {
-                $subjectName = $subjectname->name;
-               
-            } else {
-                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
-            }
-            
-             return response([
-                   'status'=>400,
-                   'message'=>"This Allot marks heading for class ".$className." , Exam ".$examName." and subject ".$subjectName." is in use. Delete failed!!!",
-                   'success'=>false
-              ]);
-         
-        } 
-        else {
-          DB::table('allot_mark_headings')->where('class_id',$class_id)->where('sm_id',$subject_id)->where('exam_id',$exam_id)->delete();
-          $classname = DB::table('class')->where('class_id',$class_id)->select('name')->first();
-            //  dd($classname);
-            if ($classname) {
-                $className = $classname->name;
-               
-            } else {
-                $className = 'Unknown Class'; // If class not found, provide a default name
-            }
-            $examname = DB::table('exam')->where('exam_id',$exam_id)->select('name')->first();
-            if ($examname) {
-                $examName = $examname->name;
-               
-            } else {
-                $examName = 'Unknown Exam'; // If class not found, provide a default name
-            }
-            
-            $subjectname = DB::table('subject_master')->where('sm_id',$subject_id)->select('name')->first();
-            if ($subjectname) {
-                $subjectName = $subjectname->name;
-               
-            } else {
-                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
-            }
-          return response([
-                   'status'=>200,
-                   'message'=>"Allot Mark Headings for class ".$className." , Exam ".$examName." and subject ".$subjectName." Deleted Successfully.",
-                   'success'=>true
-              
-              ]);
-            
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
         }
-        
+
+        $allot_mark_heading = Allot_mark_headings::find($allot_markheadings_id);
+        if (!$allot_mark_heading) {
+            return response()->json(['message' => 'Allot markheading not found', 'success' => false], 404);
+        }
+
+        // Update the Marksheading
+        $allot_mark_heading->highest_marks = $request->input('highest_marks');
+        $allot_mark_heading->reportcard_highest_marks = $request->input('reportcard_highest_marks');
+        $allot_mark_heading->save();
+
+        // Return success response
+        return response()->json([
+            'status' => 200,
+            'message' => 'Allot markheading data updated successfully',
+        ]);
     }
 
-    public function getMarkheadingsForClassSubExam($class_id,$subject_id,$exam_id)
+    public function deleteAllotMarksheadingg(Request $request, $class_id, $subject_id, $exam_id)
     {
-        $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks','reportcard_highest_marks']);
-        
-              
+        $allotmarkheading = DB::table('student_marks')->where('class_id', $class_id)->where('subject_id', $subject_id)->where('exam_id', $exam_id)->first();
+        if ($allotmarkheading) {
+            $classname = DB::table('class')->where('class_id', $class_id)->select('name')->first();
+            //  dd($classname);
+            if ($classname) {
+                $className = $classname->name;
+            } else {
+                $className = 'Unknown Class'; // If class not found, provide a default name
+            }
+            $examname = DB::table('exam')->where('exam_id', $exam_id)->select('name')->first();
+            if ($examname) {
+                $examName = $examname->name;
+            } else {
+                $examName = 'Unknown Exam'; // If class not found, provide a default name
+            }
+
+            $subjectname = DB::table('subject_master')->where('sm_id', $subject_id)->select('name')->first();
+            if ($subjectname) {
+                $subjectName = $subjectname->name;
+            } else {
+                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
+            }
+
+            return response([
+                'status' => 400,
+                'message' => "This Allot marks heading for class " . $className . " , Exam " . $examName . " and subject " . $subjectName . " is in use. Delete failed!!!",
+                'success' => false
+            ]);
+        } else {
+            DB::table('allot_mark_headings')->where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->delete();
+            $classname = DB::table('class')->where('class_id', $class_id)->select('name')->first();
+            //  dd($classname);
+            if ($classname) {
+                $className = $classname->name;
+            } else {
+                $className = 'Unknown Class'; // If class not found, provide a default name
+            }
+            $examname = DB::table('exam')->where('exam_id', $exam_id)->select('name')->first();
+            if ($examname) {
+                $examName = $examname->name;
+            } else {
+                $examName = 'Unknown Exam'; // If class not found, provide a default name
+            }
+
+            $subjectname = DB::table('subject_master')->where('sm_id', $subject_id)->select('name')->first();
+            if ($subjectname) {
+                $subjectName = $subjectname->name;
+            } else {
+                $subjectName = 'Unknown Subject'; // If class not found, provide a default name
+            }
+            return response([
+                'status' => 200,
+                'message' => "Allot Mark Headings for class " . $className . " , Exam " . $examName . " and subject " . $subjectName . " Deleted Successfully.",
+                'success' => true
+
+            ]);
+        }
+    }
+
+    public function getMarkheadingsForClassSubExam($class_id, $subject_id, $exam_id)
+    {
+        $allot_mark_heading = Allot_mark_headings::where('class_id', $class_id)->where('sm_id', $subject_id)->where('exam_id', $exam_id)->get(['marks_headings_id', 'highest_marks', 'reportcard_highest_marks']);
+
+
         if (!$allot_mark_heading) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Allot markheading data not found',
             ]);
         }
-    
+
         return response()->json($allot_mark_heading);
     }
 
@@ -955,10 +936,10 @@ class AssessmentController extends Controller
         try {
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
-    
+
             // Allow only specific roles
             if (in_array($user->role_id, ['A', 'U', 'M'])) {
-    
+
                 $subjectmappinglist = DB::table('sub_subreportcard_mapping')
                     ->select(
                         'sub_subreportcard_mapping.sub_mapping',
@@ -986,12 +967,12 @@ class AssessmentController extends Controller
                         'subjects_on_report_card_master.sub_rc_master_id'
                     )
                     ->get();
-    
+
                 // Attach class names using helper
                 foreach ($subjectmappinglist as $subject) {
                     $subject->class_names = getClassNamesBySubject($subject->sm_id);
                 }
-    
+
                 return response()->json([
                     'status' => 200,
                     'message' => 'Subject Mapping List fetched successfully.',
@@ -1045,7 +1026,7 @@ class AssessmentController extends Controller
     //                     'success' => false,
     //                 ]);
     //             }
-                
+
     //             // Check for duplicate mapping (excluding current record)
     //             $exists = DB::table('sub_subreportcard_mapping')
     //                 ->where('sm_id', $sm_id)
@@ -1089,7 +1070,7 @@ class AssessmentController extends Controller
     //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
     //     }
     // }
-    
+
     public function updateSubjectMapping(Request $request, $id)
     {
         try {
@@ -1250,7 +1231,7 @@ class AssessmentController extends Controller
     }
 
     // Book Requistion
-     // Book Requistion
+    // Book Requistion
     public function createBookRequisition(Request $request)
     {
         try {
@@ -1264,14 +1245,13 @@ class AssessmentController extends Controller
                 'author'    => 'nullable|string',
                 'publisher' => 'nullable|string',
             ]);
-            $library_member = DB::table('library_member')->where('member_id',$user->reg_id)->first();
-            if(!$library_member){
+            $library_member = DB::table('library_member')->where('member_id', $user->reg_id)->first();
+            if (!$library_member) {
                 return response()->json([
-                'status' => 400,
-                'message' => 'This user is not a library member!',
-                'success' => false
-            ]);
-                
+                    'status' => 400,
+                    'message' => 'This user is not a library member!',
+                    'success' => false
+                ]);
             }
 
             // 4. Prepare data
@@ -1551,8 +1531,8 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
-     public function createImportantLink(Request $request)
+
+    public function createImportantLink(Request $request)
     {
         try {
             // 1. Authenticate user
@@ -1882,7 +1862,7 @@ class AssessmentController extends Controller
                 ]);
             }
 
-           
+
 
             // 4. Prepare data
             $data = [
@@ -1906,14 +1886,14 @@ class AssessmentController extends Controller
                 $filename = $image->getClientOriginalName();
                 $folder = 'news/'  . $newsId;
                 $path = $image->storeAs($folder, $filename, 'public');
-            
+
                 $publicUrl = Storage::url($path);
                 $docTypeFolder = 'news';
-                $uploadDate= '2025-08-12';
+                $uploadDate = '2025-08-12';
                 $datafiles[] = base64_encode(file_get_contents($image->getRealPath()));
                 $filenames[] = $image->getClientOriginalName();
                 $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $newsId);
-    
+
 
                 // Update DB with image name
                 DB::table('news')->where('news_id', $newsId)->update([
@@ -1947,17 +1927,17 @@ class AssessmentController extends Controller
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            
+
             $news = DB::table('news')
-                        ->orderBy('date_posted', 'DESC')
-                        ->get()
-                        ->map(function ($item) use ($codeigniter_app_url) {
-                            $concatprojecturl = $codeigniter_app_url . 'uploads/news/' . $item->news_id . '/';
-                            $item->image_name = $item->image_name 
-                                ? $concatprojecturl . $item->image_name 
-                                : null;
-                            return $item;
-                        });
+                ->orderBy('date_posted', 'DESC')
+                ->get()
+                ->map(function ($item) use ($codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . 'uploads/news/' . $item->news_id . '/';
+                    $item->image_name = $item->image_name
+                        ? $concatprojecturl . $item->image_name
+                        : null;
+                    return $item;
+                });
 
             // 5. Return the result
             return response()->json([
@@ -1992,7 +1972,7 @@ class AssessmentController extends Controller
 
             $news = DB::table('news')
                 ->where('news_id', $id)
-                ->where('IsDelete', '!=', 'Y') 
+                ->where('IsDelete', '!=', 'Y')
                 ->first();
 
             // 4. Check if found
@@ -2035,14 +2015,14 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            
+
 
             // 4. Check if news exists
             $news = DB::table('news')->where('news_id', $id)->first();
             $filenottobedeleted = $request->input('filenottobedeleted');
             DB::table('news')->where('news_id', $id)->update([
-                'image_name'=>$filenottobedeleted
-                ]);
+                'image_name' => $filenottobedeleted
+            ]);
             if (!$news) {
                 return response()->json([
                     'status' => 404,
@@ -2065,14 +2045,14 @@ class AssessmentController extends Controller
                 $filename = $image->getClientOriginalName();
                 $folder = 'news/'  . $id;
                 $path = $image->storeAs($folder, $filename, 'public');
-            
+
                 $publicUrl = Storage::url($path);
                 $docTypeFolder = 'news';
-                $uploadDate= '2025-08-12';
+                $uploadDate = '2025-08-12';
                 $datafiles[] = base64_encode(file_get_contents($image->getRealPath()));
                 $filenames[] = $image->getClientOriginalName();
                 $response = upload_files_for_laravel($filenames, $datafiles, $uploadDate, $docTypeFolder, $id);
-                
+
                 $updateData['image_name'] = $filename;
             }
 
@@ -2191,7 +2171,7 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     // Approve Stationery
 
     public function getStationeryApprove()
@@ -2297,7 +2277,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     // View Book Availability
 
     public function getBooksOnCopyId(Request $request, $copy_id)
@@ -2556,38 +2536,38 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     // Methods for  Subject Master  API 
     public function getHPCSubjects(Request $request)
     {
         $subjects = DB::table('HPC_subject_master')->get();
         return response()->json([
-            'status'=>200,
-            'message'=>'HPC subjects',
-            'data'=>$subjects,
-            'success'=>true
-            ]);
+            'status' => 200,
+            'message' => 'HPC subjects',
+            'data' => $subjects,
+            'success' => true
+        ]);
     }
-    
+
     public function checkHPCSubjectName(Request $request)
     {
-        
+
         // Validate the request data
         $validatedData = $request->validate([
             'name' => 'required|string|max:30',
             'subject_type' => 'required|string|max:30',
         ]);
-    
+
         $name = $validatedData['name'];
         $subjectType = $validatedData['subject_type'];
-    
+
         // Check if the combination of name and subject_type exists
         $exists = DB::table('HPC_subject_master')->whereRaw('LOWER(name) = ? AND LOWER(subject_type) = ?', [strtolower($name), strtolower($subjectType)])->exists();
-        
+
         return response()->json(['exists' => $exists]);
     }
-    
-    
+
+
     public function storeHPCSubject(Request $request)
     {
         $messages = [
@@ -2596,7 +2576,7 @@ class AssessmentController extends Controller
             'subject_type.required' => 'The subject type field is required.',
             'subject_type.unique' => 'The subject type has already been taken.',
         ];
-    
+
         try {
             $validatedData = $request->validate([
                 'name' => [
@@ -2617,83 +2597,83 @@ class AssessmentController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         }
-    
+
         DB::table('HPC_subject_master')->insert([
             'name' => $validatedData['name'],
             'subject_type' => $validatedData['subject_type']
         ]);
-    
+
         return response()->json([
             'status' => 200,
             'message' => 'Subject created successfully',
-            'success'=>true
+            'success' => true
         ], 201);
     }
-    
-    public function updateHPCSubject(Request $request, $id)
-        {
-            $payload = getTokenPayload($request);
-            $academicYr = $payload->get('academic_year');
-            $subjectType = $request->subject_type;
-            // dd($subjectType);
-            $messages = [
-                'name.required' => 'The name field is required.',
-                // 'name.unique' => 'The name has already been taken.',
-                'subject_type.required' => 'The subject type field is required.',
-                // 'subject_type.unique' => 'The subject type has already been taken.',
-            ];
-    
-            try {
-                $validatedData = $request->validate([
-                    'name' => [
-                        'required',
-                        'string',
-                        'max:30',
-                        Rule::unique('HPC_subject_master')
-                                ->ignore($id, 'hpc_sm_id')
-                                ->where(function ($query) use ($subjectType) {
-                                    $query->where('subject_type', $subjectType);
-                                })
-                    ],
-                    'subject_type' => [
-                        'required',
-                        'string',
-                        'max:255'
-                    ],
-                ], $messages);
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                return response()->json([
-                    'status' => 422,
-                    'errors' => $e->errors(),
-                ], 422);
-            }
-    
-            $subject = DB::table('HPC_subject_master')->where('hpc_sm_id', $id)->first();
 
-            if (!$subject) {
-                return response()->json([
-                    'status' => 404,
-                    'message' => 'Subject not found',
-                ], 404);
-            }
-            
-            // Update the record
-            DB::table('HPC_subject_master')
-                ->where('hpc_sm_id', $id)
-                ->update([
-                    'name' => $validatedData['name'],
-                    'subject_type' => $validatedData['subject_type']
-                ]);
-            
+    public function updateHPCSubject(Request $request, $id)
+    {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+        $subjectType = $request->subject_type;
+        // dd($subjectType);
+        $messages = [
+            'name.required' => 'The name field is required.',
+            // 'name.unique' => 'The name has already been taken.',
+            'subject_type.required' => 'The subject type field is required.',
+            // 'subject_type.unique' => 'The subject type has already been taken.',
+        ];
+
+        try {
+            $validatedData = $request->validate([
+                'name' => [
+                    'required',
+                    'string',
+                    'max:30',
+                    Rule::unique('HPC_subject_master')
+                        ->ignore($id, 'hpc_sm_id')
+                        ->where(function ($query) use ($subjectType) {
+                            $query->where('subject_type', $subjectType);
+                        })
+                ],
+                'subject_type' => [
+                    'required',
+                    'string',
+                    'max:255'
+                ],
+            ], $messages);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => 200,
-                'message' => 'Subject updated successfully',
-                'success' => true
-            ]);
+                'status' => 422,
+                'errors' => $e->errors(),
+            ], 422);
         }
-    
-    
-    
+
+        $subject = DB::table('HPC_subject_master')->where('hpc_sm_id', $id)->first();
+
+        if (!$subject) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Subject not found',
+            ], 404);
+        }
+
+        // Update the record
+        DB::table('HPC_subject_master')
+            ->where('hpc_sm_id', $id)
+            ->update([
+                'name' => $validatedData['name'],
+                'subject_type' => $validatedData['subject_type']
+            ]);
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Subject updated successfully',
+            'success' => true
+        ]);
+    }
+
+
+
     public function editHPCSubject($id)
     {
         $subject = DB::table('HPC_subject_master')->where('hpc_sm_id', $id)->first();
@@ -2704,7 +2684,7 @@ class AssessmentController extends Controller
                 'message' => 'Subject not found',
             ], 404);
         }
-        
+
         return response()->json([
             'status' => 200,
             'data' => $subject,
@@ -2712,11 +2692,11 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
-    
+
     public function deleteHPCSubject($id)
     {
         $subject = DB::table('HPC_subject_master')->where('hpc_sm_id', $id)->first();
-    
+
         if (!$subject) {
             return response()->json([
                 'status' => 404,
@@ -2730,130 +2710,129 @@ class AssessmentController extends Controller
                 'message' => 'Subject cannot be deleted because it is associated with other records.',
             ]);
         }
-        
+
         $domainmasterexists = DB::table('domain_master')->where('HPC_sm_id', $id)->exists();
         if ($domainmasterexists) {
             return response()->json([
                 'status' => 400,
                 'message' => 'Subject cannot be deleted because it is associated with other records.',
-                'success' =>false
+                'success' => false
             ]);
         }
         DB::table('HPC_subject_master')->where('hpc_sm_id', $id)->delete();
-    
+
         return response()->json([
             'status' => 200,
             'message' => 'Subject deleted successfully',
             'success' => true
         ]);
     }
-    
+
     // Method for Subject Allotment for the report Card 
- 
-    public function getHPCSubjectAllotmentForReportCard(Request $request,$class_id)
-    {  
-         $payload = getTokenPayload($request);    
+
+    public function getHPCSubjectAllotmentForReportCard(Request $request, $class_id)
+    {
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
-       $subjectAllotments = DB::table('HPC_subject')
-                                    ->leftJoin('HPC_subject_master as s', 'HPC_subject.hpc_sm_id', '=', 's.hpc_sm_id')
-                                    ->leftJoin('class as c', 'HPC_subject.class_id', '=', 'c.class_id')
-                                    ->where('HPC_subject.academic_yr', $academicYr)
-                                    ->where('HPC_subject.class_id', $class_id)
-                                    ->select(
-                                        'HPC_subject.*',
-                                        's.name as subject_name',
-                                        's.subject_type',
-                                        'c.name as classname'
-                                    )
-                                    ->get();
-    
+
+        $subjectAllotments = DB::table('HPC_subject')
+            ->leftJoin('HPC_subject_master as s', 'HPC_subject.hpc_sm_id', '=', 's.hpc_sm_id')
+            ->leftJoin('class as c', 'HPC_subject.class_id', '=', 'c.class_id')
+            ->where('HPC_subject.academic_yr', $academicYr)
+            ->where('HPC_subject.class_id', $class_id)
+            ->select(
+                'HPC_subject.*',
+                's.name as subject_name',
+                's.subject_type',
+                'c.name as classname'
+            )
+            ->get();
+
         return response()->json([
-            'status'=>200,
-            'message'=>'HPC Subject allotment by class.',
+            'status' => 200,
+            'message' => 'HPC Subject allotment by class.',
             'subjectAllotments' => $subjectAllotments,
-            'success'=>true
+            'success' => true
         ]);
     }
-    
-    
+
+
     // for delete
     public function deleteHPCSubjectAllotmentforReportcard($sub_reportcard_id)
     {
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         $subjectAllotment = DB::table('HPC_subject')
-                                ->where('hpc_subject_id', $sub_reportcard_id)
-                                ->first();
+            ->where('hpc_subject_id', $sub_reportcard_id)
+            ->first();
         if (!$subjectAllotment) {
             return response()->json(['error' => 'Subject Allotment not found'], 404);
         }
-        
-        $exists =DB::table('domain_master')
-                    ->where('HPC_sm_id',$subjectAllotment->hpc_sm_id)
-                    ->exists();
-        if($exists){
+
+        $exists = DB::table('domain_master')
+            ->where('HPC_sm_id', $subjectAllotment->hpc_sm_id)
+            ->exists();
+        if ($exists) {
             return response()->json([
                 'status' => 400,
                 'message' => 'Subject allotment cannot be deleted because it is associated with other records.',
-                'success' =>false
+                'success' => false
             ]);
-            
         }
-        
+
         DB::table('HPC_subject')
-                ->where('hpc_subject_id', $sub_reportcard_id)
-                ->delete();
-    
+            ->where('hpc_subject_id', $sub_reportcard_id)
+            ->delete();
+
         return response()->json([
-            'status'=>200,
+            'status' => 200,
             'message' => 'Subject allotment deleted successfully',
-            'success'=>true
-            ]);
+            'success' => true
+        ]);
     }
 
     public function createOrUpdateHPCSubjectAllotment(Request $request, $class_id)
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year'); // Extract academic year
-    
+
         // Validate request input
         $request->validate([
             'subject_ids'   => 'array',
             'subject_ids.*' => 'integer',
         ]);
-    
+
         // Get subject IDs safely
         $inputSubjectIds = $request->input('subject_ids', []);
-    
+
         Log::info('Received request to create/update subject allotment', [
             'class_id'     => $class_id,
             'subject_ids'  => $inputSubjectIds,
             'academic_yr'  => $academicYr,
         ]);
-    
+
         // Fetch existing allotments
         $existingAllotments = DB::table('HPC_subject')
             ->where('class_id', $class_id)
             ->where('academic_yr', $academicYr)
             ->pluck('hpc_sm_id')
             ->toArray();
-    
+
         Log::info('Fetched existing subject allotments', [
             'existingAllotments' => $existingAllotments
         ]);
-    
+
         // Determine differences
         $newSubjectIds      = array_diff($inputSubjectIds, $existingAllotments);
         $deallocateSubjectIds = array_diff($existingAllotments, $inputSubjectIds);
         $updateSubjectIds   = array_intersect($inputSubjectIds, $existingAllotments);
-    
+
         Log::info('Comparison results', [
             'newSubjectIds'       => $newSubjectIds,
             'updateSubjectIds'    => $updateSubjectIds,
-            'deallocateSubjectIds'=> $deallocateSubjectIds
+            'deallocateSubjectIds' => $deallocateSubjectIds
         ]);
-    
+
         // 1. Bulk Insert New Allotments
         if (!empty($newSubjectIds)) {
             $insertData = [];
@@ -2866,14 +2845,14 @@ class AssessmentController extends Controller
                     'updated_at'  => now(),
                 ];
             }
-    
+
             DB::table('HPC_subject')->insert($insertData);
-    
+
             Log::info('Created new subject allotments', [
                 'inserted_subjects' => $newSubjectIds
             ]);
         }
-    
+
         // 2. Update Existing Allotments (only timestamps or extra fields if needed)
         if (!empty($updateSubjectIds)) {
             $updatedRows = DB::table('HPC_subject')
@@ -2883,13 +2862,13 @@ class AssessmentController extends Controller
                 ->update([
                     'updated_at' => now(),
                 ]);
-    
+
             Log::info('Updated existing subject allotments', [
                 'updated_subjects' => $updateSubjectIds,
                 'affected_rows'    => $updatedRows
             ]);
         }
-    
+
         // 3. Bulk Deallocate Subjects
         if (!empty($deallocateSubjectIds)) {
             $deletedRows = DB::table('HPC_subject')
@@ -2897,49 +2876,50 @@ class AssessmentController extends Controller
                 ->where('academic_yr', $academicYr)
                 ->whereIn('hpc_sm_id', $deallocateSubjectIds)
                 ->delete();
-    
+
             Log::info('Deallocated subject allotments', [
                 'deleted_subjects' => $deallocateSubjectIds,
                 'affected_rows'    => $deletedRows
             ]);
         }
-    
+
         Log::info('Subject allotments successfully processed', [
             'class_id'    => $class_id,
             'academic_yr' => $academicYr
         ]);
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Subject allotments updated successfully',
             'success' => true
         ]);
     }
-    
+
     public function editHPCSubjectAllotmentforReportCard(Request $request, $class_id)
-    {   
-        $payload = getTokenPayload($request);    
+    {
+        $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         // Fetch the list of subjects for the selected class_id and subject_type
         $subjectAllotments = DB::table('HPC_subject as h')
-                                ->join('HPC_subject_master as s', 'h.hpc_sm_id', '=', 's.hpc_sm_id') 
-                                ->where('h.academic_yr', $academicYr)
-                                ->where('h.class_id', $class_id)
-                                ->select('h.*', 's.name as subject_name', 's.subject_type')
-                                ->get();
-    
+            ->join('HPC_subject_master as s', 'h.hpc_sm_id', '=', 's.hpc_sm_id')
+            ->where('h.academic_yr', $academicYr)
+            ->where('h.class_id', $class_id)
+            ->select('h.*', 's.name as subject_name', 's.subject_type')
+            ->get();
+
         // Check if subject allotments are found
         if ($subjectAllotments->isEmpty()) {
             return response()->json([]);
         }
-    
+
         return response()->json([
             'message' => 'Subject allotments retrieved successfully',
             'subjectAllotments' => $subjectAllotments,
         ]);
     }
-    
-    public function saveDomainCompetencies(Request $request){
+
+    public function saveDomainCompetencies(Request $request)
+    {
         $competenciesname = $request->name;
         DB::table('domain_competencies')->insert([
             'name' => $competenciesname
@@ -2949,67 +2929,66 @@ class AssessmentController extends Controller
             'message' => 'Domain competency created successfully.',
             'success' => true
         ]);
-        
     }
-    
-    public function getDomainCompetencies(Request $request){
+
+    public function getDomainCompetencies(Request $request)
+    {
         $competencies = DB::table('domain_competencies')->get();
-        
+
         return response()->json([
             'status'  => 200,
-            'data' =>$competencies,
+            'data' => $competencies,
             'message' => 'Domain competency list.',
             'success' => true
         ]);
-        
     }
-    
-    public function updateDomainCompetencies(Request $request,$dm_competency_id){
+
+    public function updateDomainCompetencies(Request $request, $dm_competency_id)
+    {
         $competenciesname = $request->name;
         DB::table('domain_competencies')
-        ->where('dm_competency_id', $dm_competency_id)
-        ->update(['name' => $competenciesname]);
+            ->where('dm_competency_id', $dm_competency_id)
+            ->update(['name' => $competenciesname]);
 
         return response()->json([
-            'status' =>200,
+            'status' => 200,
             'message' => 'Domain competency updated successfully.',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function deleteDomainCompetencies(Request $request,$dm_competency_id){
+
+    public function deleteDomainCompetencies(Request $request, $dm_competency_id)
+    {
         $exists = DB::table('domain_parameter_details')
-                     ->where('dm_competency_id',$dm_competency_id)
-                     ->exists();
-        if($exists){
+            ->where('dm_competency_id', $dm_competency_id)
+            ->exists();
+        if ($exists) {
             return response()->json([
-            'status' =>409,
-            'message' => 'Cannot delete.Domain competency is in use.',
-            'success' =>false
+                'status' => 409,
+                'message' => 'Cannot delete.Domain competency is in use.',
+                'success' => false
             ]);
-            
         }
         DB::table('domain_competencies')
-        ->where('dm_competency_id', $dm_competency_id)
-        ->delete();
+            ->where('dm_competency_id', $dm_competency_id)
+            ->delete();
 
         return response()->json([
-            'status' =>200,
+            'status' => 200,
             'message' => 'Domain competency deleted successfully.',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function saveDomainParameters(Request $request){
+
+    public function saveDomainParameters(Request $request)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $class_id = $request->input('class_id');
         $hpc_sm_id = $request->input('hpc_sm_id');
         $name = $request->input('name');
         $curriculum_goal = $request->input('curriculum_goal');
-        
+
         $dm_id = DB::table('domain_master')->insertGetId([
             'academic_yr'      => $academicYr,
             'class_id'         => $class_id,
@@ -3017,9 +2996,9 @@ class AssessmentController extends Controller
             'name'             => $name,
             'curriculum_goal'  => $curriculum_goal,
         ]);
-        
-        $parameters = $request->input('parameters'); 
-        
+
+        $parameters = $request->input('parameters');
+
         $insertData = [];
         foreach ($parameters as $param) {
             $insertData[] = [
@@ -3029,45 +3008,46 @@ class AssessmentController extends Controller
                 'academic_yr'       => $academicYr
             ];
         }
-        
+
         DB::table('domain_parameter_details')->insert($insertData);
-        
+
         return response()->json([
-            'status' =>200,
+            'status' => 200,
             'message' => 'Domain master and parameters saved successfully.',
-            'success'=>true
+            'success' => true
         ]);
-        
     }
-    
-    public function getDomainParameters(Request $request){
+
+    public function getDomainParameters(Request $request)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
+
         $domains = DB::table('domain_master as dm')
-            ->join('class','dm.class_id','=','class.class_id')
-            ->leftjoin('HPC_subject_master','HPC_subject_master.hpc_sm_id','=','dm.HPC_sm_id')
+            ->join('class', 'dm.class_id', '=', 'class.class_id')
+            ->leftjoin('HPC_subject_master', 'HPC_subject_master.hpc_sm_id', '=', 'dm.HPC_sm_id')
             ->where('dm.academic_yr', $academicYr)
-            ->select('class.name as classname','dm.name as domainname','HPC_subject_master.name as subjectname','dm.dm_id')
+            ->select('class.name as classname', 'dm.name as domainname', 'HPC_subject_master.name as subjectname', 'dm.dm_id')
             ->get();
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'data' => $domains
         ]);
     }
-    
-    public function editDomainParameters(Request $request,$dm_id){
+
+    public function editDomainParameters(Request $request, $dm_id)
+    {
         // dd($dm_id);
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
+
         $domain = DB::table('domain_master')
             ->where('dm_id', $dm_id)
             ->where('academic_yr', $academicYr)
             ->first();
-    
+
         if (!$domain) {
             return response()->json([
                 'status' => 404,
@@ -3075,13 +3055,13 @@ class AssessmentController extends Controller
                 'success' => false
             ]);
         }
-    
+
         $parameters = DB::table('domain_parameter_details')
-            ->leftjoin('domain_competencies','domain_competencies.dm_competency_id','=','domain_parameter_details.dm_competency_id')
+            ->leftjoin('domain_competencies', 'domain_competencies.dm_competency_id', '=', 'domain_parameter_details.dm_competency_id')
             ->where('domain_parameter_details.dm_id', $dm_id)
             ->where('domain_parameter_details.academic_yr', $academicYr)
             ->get();
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -3092,12 +3072,12 @@ class AssessmentController extends Controller
             ]
         ]);
     }
-    
+
     public function updateDomainParameters(Request $request, $dm_id)
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
+
         // Update main domain record
         DB::table('domain_master')
             ->where('dm_id', $dm_id)
@@ -3108,13 +3088,13 @@ class AssessmentController extends Controller
                 'name'            => $request->input('name'),
                 'curriculum_goal' => $request->input('curriculum_goal'),
             ]);
-    
+
         // Delete old parameters
         DB::table('domain_parameter_details')
             ->where('dm_id', $dm_id)
             ->where('academic_yr', $academicYr)
             ->delete();
-    
+
         // Insert new parameters
         $insertData = [];
         foreach ($request->input('parameters', []) as $param) {
@@ -3125,60 +3105,60 @@ class AssessmentController extends Controller
                 'academic_yr'       => $academicYr
             ];
         }
-    
+
         if (!empty($insertData)) {
             DB::table('domain_parameter_details')->insert($insertData);
         }
-    
+
         return response()->json([
             'status' => 200,
             'message' => 'Domain and parameters updated successfully.',
             'success' => true
         ]);
     }
-    
+
     public function deleteDomainParameters(Request $request, $dm_id)
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-        $studentdomaindetails = DB::table('student_domain_details')->where('dm_id',$dm_id)->exists();
-        if($studentdomaindetails){
+        $studentdomaindetails = DB::table('student_domain_details')->where('dm_id', $dm_id)->exists();
+        if ($studentdomaindetails) {
             return response()->json([
-            'status' =>409,
-            'message' => 'This domain is in use. Delete failed!!!',
-            'success' =>false
+                'status' => 409,
+                'message' => 'This domain is in use. Delete failed!!!',
+                'success' => false
             ]);
-            
         }
         DB::table('domain_parameter_details')
             ->where('dm_id', $dm_id)
             ->where('academic_yr', $academicYr)
             ->delete();
-    
+
 
         DB::table('domain_master')
             ->where('dm_id', $dm_id)
             ->where('academic_yr', $academicYr)
             ->delete();
-    
+
         return response()->json([
             'status' => 200,
             'message' => 'Domain and its parameters deleted successfully.',
             'success' => true
         ]);
     }
-    
-    public function getStudentParameterValue(Request $request){
+
+    public function getStudentParameterValue(Request $request)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
+
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $dm_id = $request->input('dm_id');
         $term_id = $request->input('term_id');
         $subject_id = $request->input('subject_id');
-        
-    
+
+
         // Fetch students (same as get_students)
         $students = DB::table('student as a')
             ->leftJoin('parent as b', 'a.parent_id', '=', 'b.parent_id')
@@ -3195,12 +3175,12 @@ class AssessmentController extends Controller
             ->orderBy('a.reg_no')
             ->select('a.student_id', 'a.roll_no', 'a.first_name', 'a.last_name', 'b.*', 'c.user_id', 'd.name as class_name', 'e.name as sec_name', 'f.house_name')
             ->get();
-    
+
         // Fetch parameters (same as get_parameter_by_dm_id)
         $parameters = DB::table('domain_parameter_details')
             ->where('dm_id', $dm_id)
             ->get();
-    
+
         // Fetch existing parameter values (like get_domain_parameter_value_by_id)
         $existingValues = DB::table('student_domain_details')
             ->where('term_id', $term_id)
@@ -3227,16 +3207,16 @@ class AssessmentController extends Controller
                     'value' => $existingValues[$key][0]->parameter_value ?? null
                 ];
             }
-            
+
             $response[] = [
                 'student_id' => $student->student_id,
                 'roll_no' => $student->roll_no,
                 'name' => $student->first_name . ' ' . $student->last_name,
                 'parameters' => $paramData
-                
+
             ];
         }
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -3244,26 +3224,27 @@ class AssessmentController extends Controller
             'publish' => $publish
         ]);
     }
-    
-    public function saveStudentParameterValue(Request $request){
-         $user = $this->authenticateUser();
-         $payload = getTokenPayload($request);
-         $academicYr = $payload->get('academic_year');
-        
-         $term_id = $request->input('term_id');
-         $class_id = $request->input('class_id');
-         $section_id = $request->input('section_id');
-         $dm_id = $request->input('dm_id');
-         $records = $request->input('records'); 
-         $subject_id = $request->input('subject_id', 0);
-    
-         DB::beginTransaction();
-         try {
+
+    public function saveStudentParameterValue(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        $term_id = $request->input('term_id');
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $dm_id = $request->input('dm_id');
+        $records = $request->input('records');
+        $subject_id = $request->input('subject_id', 0);
+
+        DB::beginTransaction();
+        try {
             foreach ($records as $record) {
                 $student_id = $record['student_id'];
                 $parameter_id = $record['parameter_id'];
                 $parameter_value = $record['value'];
-    
+
                 // Delete existing record (if any)
                 DB::table('student_domain_details')
                     ->where('term_id', $term_id)
@@ -3272,7 +3253,7 @@ class AssessmentController extends Controller
                     ->where('student_id', $student_id)
                     ->where('parameter_id', $parameter_id)
                     ->delete();
-    
+
                 // Insert new
                 DB::table('student_domain_details')->insert([
                     'parameter_value' => $parameter_value,
@@ -3280,7 +3261,7 @@ class AssessmentController extends Controller
                     'section_id' => $section_id,
                     'parameter_id' => $parameter_id,
                     'student_id' => $student_id,
-                    'hpc_sm_id' =>$subject_id,
+                    'hpc_sm_id' => $subject_id,
                     'term_id' => $term_id,
                     'dm_id' => $dm_id,
                     'date' => now(),
@@ -3288,16 +3269,15 @@ class AssessmentController extends Controller
                     'data_entry_by' => $user->reg_id,
                     'publish' => 'N'
                 ]);
-             }
-    
+            }
+
             DB::commit();
             return response()->json([
                 'status' => 200,
                 'success' => true,
                 'message' => 'Domain data saved successfully.'
             ]);
-    
-         } catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'status' => 500,
@@ -3307,26 +3287,27 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
-    public function savenpublishStudentParameterValue(Request $request){
+
+    public function savenpublishStudentParameterValue(Request $request)
+    {
         $user = $this->authenticateUser();
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
-    
+
         $term_id = $request->input('term_id');
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $dm_id = $request->input('dm_id');
-        $records = $request->input('records'); 
+        $records = $request->input('records');
         $subject_id = $request->input('subject_id');
-    
+
         DB::beginTransaction();
         try {
             foreach ($records as $record) {
                 $student_id = $record['student_id'];
                 $parameter_id = $record['parameter_id'];
                 $parameter_value = $record['value'];
-    
+
                 DB::table('student_domain_details')
                     ->where('term_id', $term_id)
                     ->where('dm_id', $dm_id)
@@ -3334,14 +3315,14 @@ class AssessmentController extends Controller
                     ->where('student_id', $student_id)
                     ->where('parameter_id', $parameter_id)
                     ->delete();
-    
+
                 DB::table('student_domain_details')->insert([
                     'parameter_value' => $parameter_value,
                     'class_id' => $class_id,
                     'section_id' => $section_id,
                     'parameter_id' => $parameter_id,
                     'student_id' => $student_id,
-                    'hpc_sm_id' =>$subject_id,
+                    'hpc_sm_id' => $subject_id,
                     'term_id' => $term_id,
                     'dm_id' => $dm_id,
                     'date' => now(),
@@ -3350,14 +3331,13 @@ class AssessmentController extends Controller
                     'publish' => 'Y'
                 ]);
             }
-    
+
             DB::commit();
             return response()->json([
                 'status' => 200,
                 'success' => true,
                 'message' => 'Domain saved and published successfully.'
             ]);
-    
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -3367,10 +3347,10 @@ class AssessmentController extends Controller
                 'error' => $e->getMessage()
             ]);
         }
-        
     }
-    
-    public function unpublishStudentParameterValue(Request $request){
+
+    public function unpublishStudentParameterValue(Request $request)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $term_id = $request->input('term_id');
@@ -3378,7 +3358,7 @@ class AssessmentController extends Controller
         $section_id = $request->input('section_id');
         $dm_id = $request->input('dm_id');
         $subject_id = $request->input('subject_id');
-    
+
         DB::table('student_domain_details')
             ->where('term_id', $term_id)
             ->where('dm_id', $dm_id)
@@ -3387,15 +3367,16 @@ class AssessmentController extends Controller
             ->where('section_id', $section_id)
             ->where('hpc_sm_id', $subject_id)
             ->update(['publish' => 'N']);
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'message' => 'Domain unpublished successfully.'
         ]);
     }
-    
-    public function publishStudentParameterValue(Request $request){
+
+    public function publishStudentParameterValue(Request $request)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $term_id = $request->input('term_id');
@@ -3403,7 +3384,7 @@ class AssessmentController extends Controller
         $section_id = $request->input('section_id');
         $dm_id = $request->input('dm_id');
         $subject_id = $request->input('subject_id');
-    
+
         DB::table('student_domain_details')
             ->where('term_id', $term_id)
             ->where('dm_id', $dm_id)
@@ -3412,36 +3393,37 @@ class AssessmentController extends Controller
             ->where('section_id', $section_id)
             ->where('hpc_sm_id', $subject_id)
             ->update(['publish' => 'Y']);
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'message' => 'Domain published successfully.'
         ]);
     }
-    
-    public function getDomainsClass(Request $request,$class_id){
+
+    public function getDomainsClass(Request $request, $class_id)
+    {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
         $subject_id = $request->input('subject_id');
-    
+
         $query = DB::table('domain_master as dm')
             ->where('dm.class_id', $class_id)
             ->where('dm.academic_yr', $academicYr);
-    
+
         if (!empty($subject_id)) {
             $query->where('dm.HPC_sm_id', $subject_id);
         }
-    
+
         $domains = $query->select('dm.name as domainname', 'dm.dm_id')->get();
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'data' => $domains
         ]);
     }
-    
+
     public function getStudentsforReportCard(Request $request)
     {
         $class_id = $request->input('class_id');
@@ -3601,33 +3583,34 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
-    public function getReportCardPublishValue(Request $request){
+
+    public function getReportCardPublishValue(Request $request)
+    {
         $classId = $request->input('class_id');
         $sectionId = $request->input('section_id');
         $termId = $request->input('term_id');
-    
+
         $query = DB::table('report_card_publish')
-                    ->where('class_id', $classId)
-                    ->where('section_id', $sectionId);
-    
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId);
+
         if (!empty($termId)) {
             $query->where('term_id', $termId);
         }
-    
+
         $publish = $query->first();
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'data' => $publish,
             'message' => 'Report card publish value.'
         ]);
-                    
     }
-    
-    public function saveReportCardPublishValue(Request $request){
-         $data = [
+
+    public function saveReportCardPublishValue(Request $request)
+    {
+        $data = [
             'class_id'   => $request->class_id,
             'section_id' => $request->section_id,
             'term_id'    => $request->term_id,
@@ -3647,14 +3630,14 @@ class AssessmentController extends Controller
                 ->where('term_id', $data['term_id'])
                 ->update($data);
 
-            $message = $request->publish == 'N' 
-                ? 'Report Card unpublished successfully!!!' 
+            $message = $request->publish == 'N'
+                ? 'Report Card unpublished successfully!!!'
                 : 'Report Card published successfully!!!';
         } else {
             DB::table('report_card_publish')->insert($data);
 
-            $message = $request->publish == 'N' 
-                ? 'Report Card unpublished successfully!!!' 
+            $message = $request->publish == 'N'
+                ? 'Report Card unpublished successfully!!!'
                 : 'Report Card published successfully!!!';
         }
 
@@ -3664,8 +3647,9 @@ class AssessmentController extends Controller
             'message' => $message,
         ]);
     }
-    
-    public function saveReportCardReopenDate(Request $request){
+
+    public function saveReportCardReopenDate(Request $request)
+    {
         $data = [
             'class_id'    => $request->class_id,
             'section_id'  => $request->section_id,
@@ -3694,14 +3678,15 @@ class AssessmentController extends Controller
             'message' => 'Re-open date saved successfully!!!',
         ]);
     }
-    
-    public function getReportCardRemarkValue(Request $request){
+
+    public function getReportCardRemarkValue(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId   = $request->input('class_id');
         $sectionId = $request->input('section_id');
         $termId    = $request->input('term_id');
-    
+
         $students = DB::table('student as a')
             ->leftJoin('parent as b', 'a.parent_id', '=', 'b.parent_id')
             ->join('user_master as c', 'a.parent_id', '=', 'c.reg_id')
@@ -3728,39 +3713,39 @@ class AssessmentController extends Controller
             ->orderBy('a.roll_no')
             ->orderBy('a.reg_no')
             ->get();
-    
-        
+
+
         $students = $students->map(function ($student) use ($termId) {
             $remarkData = DB::table('report_card_remarks')
                 ->where('student_id', $student->student_id)
                 ->where('term_id', $termId)
                 ->select('remark', 'promot')
                 ->first();
-    
+
             $student->remark = $remarkData->remark ?? null;
             $student->promote_to = $remarkData->promot ?? null;
-    
+
             return $student;
         });
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
             'data' => $students,
             'message' => 'Students with report card remarks and promotion info'
         ]);
-        
     }
-    
-    public function getPromoteToValue(Request $request){
+
+    public function getPromoteToValue(Request $request)
+    {
         $classId  = $request->input('class_id');
-        $termName = $request->input('term_name');  
-    
+        $termName = $request->input('term_name');
+
         // Fetch current class
         $class = DB::table('class')
             ->where('class_id', $classId)
             ->first();
-        
+
         if (!$class) {
             return response()->json([
                 'status' => 404,
@@ -3768,13 +3753,13 @@ class AssessmentController extends Controller
                 'message' => 'Class not found.'
             ]);
         }
-    
-        $className = $class->name; 
-    
+
+        $className = $class->name;
+
         // Get next class (by incrementing id)
         $nextClass = null;
         $next_class_id = $classId + 1;
-    
+
         $nextClassObj = DB::table('class')
             ->where('class_id', $next_class_id)
             ->first();
@@ -3782,10 +3767,10 @@ class AssessmentController extends Controller
         if ($nextClassObj) {
             $nextClass = $nextClassObj->name;
         }
-    
+
         // Prepare promote options
         $options = [];
-    
+
         if ($termName !== 'Term 1') {
             if ($className === '9') {
                 $options = [
@@ -3799,7 +3784,7 @@ class AssessmentController extends Controller
                 $options = [$nextClass];
             }
         }
-    
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -3807,8 +3792,9 @@ class AssessmentController extends Controller
             'message' => 'Promote to options fetched successfully.'
         ]);
     }
-    
-    public function saveReportCardRemark(Request $request){
+
+    public function saveReportCardRemark(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $termId     = $request->input('term_id');
@@ -3859,13 +3845,14 @@ class AssessmentController extends Controller
             'message' => 'Remarks updated successfully!'
         ]);
     }
-    
-    
-    
-    public function saveSelfAssessmentMaster(Request $request){
+
+
+
+    public function saveSelfAssessmentMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
-        
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -3873,13 +3860,13 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable'
         ]);
-    
-        if (in_array($data['control_type'], ['checkbox', 'radio','rating'])) {
+
+        if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
             $options = json_encode($data['options']);
         } else {
             $options = null;
         }
-    
+
         // Insert record
         $id = DB::table('self_assessment_master')->insertGetId([
             'parameter'    => $data['parameter'],
@@ -3888,16 +3875,16 @@ class AssessmentController extends Controller
             'options'      => $options,
             'academic_yr'  => $academicYr
         ]);
-    
+
         $saved = DB::table('self_assessment_master')->where('sam_id', $id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Self assessment question saved successfully.',
             'data'    => $saved,
             'success' => true
         ]);
-        
+
         // $id = DB::table('self_assessment_master')->insertGetId([
         //     'parameter'   => $request->parameter,
         //     'class_id'    => $request->class_id,
@@ -3912,25 +3899,27 @@ class AssessmentController extends Controller
         //     'success' =>true
         // ], 201);
     }
-    
-    public function getSelfAssessmentMaster(Request $request){
+
+    public function getSelfAssessmentMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $records = DB::table('self_assessment_master')
-                       ->join('class','class.class_id','=','self_assessment_master.class_id')
-                       ->where('self_assessment_master.academic_yr',$academicYr)
-                       ->select('self_assessment_master.*','class.name as classname')
-                       ->get();
+            ->join('class', 'class.class_id', '=', 'self_assessment_master.class_id')
+            ->where('self_assessment_master.academic_yr', $academicYr)
+            ->select('self_assessment_master.*', 'class.name as classname')
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'Self assessment master listing.',
-            'success'=>true
+            'message' => 'Self assessment master listing.',
+            'success' => true
         ]);
     }
-    
-    public function updateSelfAssessmentMaster(Request $request,$sam_id){
+
+    public function updateSelfAssessmentMaster(Request $request, $sam_id)
+    {
         $record = DB::table('self_assessment_master')->where('sam_id', $sam_id)->first();
 
         if (!$record) {
@@ -3939,7 +3928,7 @@ class AssessmentController extends Controller
                 'message' => 'Record not found'
             ], 404);
         }
-    
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -3947,22 +3936,22 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable',
         ]);
-    
+
         $updateData = [];
-    
+
         if (isset($data['parameter'])) {
             $updateData['parameter'] = $data['parameter'];
         }
-    
+
         if (isset($data['class_id'])) {
             $updateData['class_id'] = $data['class_id'];
         }
-    
+
         if (isset($data['control_type'])) {
             $updateData['control_type'] = $data['control_type'];
-    
-            
-            if (in_array($data['control_type'], ['checkbox','radio','rating'])) {
+
+
+            if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
                 $updateData['options'] = isset($data['options'])
                     ? json_encode($data['options'])
                     : null;
@@ -3970,31 +3959,31 @@ class AssessmentController extends Controller
                 $updateData['options'] = null;
             }
         } elseif (isset($data['options'])) {
-            
+
             $updateData['options'] = json_encode($data['options']);
         }
-    
+
         if (!empty($updateData)) {
             DB::table('self_assessment_master')
                 ->where('sam_id', $sam_id)
                 ->update($updateData);
         }
-    
+
         $updated = DB::table('self_assessment_master')->where('sam_id', $sam_id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Self assessment master updated successfully',
             'data'    => $updated,
             'success' => true
         ]);
-        
     }
-    
-    public function deleteSelfAssessmentMaster(Request $request,$sam_id){
+
+    public function deleteSelfAssessmentMaster(Request $request, $sam_id)
+    {
         $exists = DB::table('self_assessment')
-        ->where('sam_id', $sam_id)
-        ->exists();
+            ->where('sam_id', $sam_id)
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -4008,10 +3997,10 @@ class AssessmentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => 'Record deleted successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
+
     public function getSelfAssessment(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4043,11 +4032,11 @@ class AssessmentController extends Controller
 
 
         $publish = DB::table('self_assessment')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('term_id',$term_id)
-                    ->where('academic_yr', $academic_yr)
-                    ->value('publish') ?? 'N';
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->value('publish') ?? 'N';
         // Get assessments for each student+parameter
         $results = [];
         foreach ($students as $stu) {
@@ -4064,7 +4053,7 @@ class AssessmentController extends Controller
                     'sam_id'   => $param->sam_id,
                     'parameter_name' => $param->parameter,
                     'options'  => $param->options,
-                    'control_type'=>$param->control_type,
+                    'control_type' => $param->control_type,
                     'value'          => $value ?? ''
                 ];
             }
@@ -4081,12 +4070,12 @@ class AssessmentController extends Controller
             'status'     => 200,
             'parameters' => $parameters,
             'students'   => $results,
-            'publish'    =>$publish,
+            'publish'    => $publish,
             'message'    => 'Self assessment.',
-            'success'    =>true
+            'success'    => true
         ]);
     }
-    
+
     public function saveSelfAssessment(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4094,106 +4083,104 @@ class AssessmentController extends Controller
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                    DB::table('self_assessment')
-                        ->where('student_id', $item['student_id'])
-                        ->where('sam_id', $item['sam_id'])
-                        ->where('term_id', $term_id)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
+            DB::table('self_assessment')
+                ->where('student_id', $item['student_id'])
+                ->where('sam_id', $item['sam_id'])
+                ->where('term_id', $term_id)
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('self_assessment')->insert([
-                    'student_id'      => $item['student_id'],
-                    'sam_id'          => $item['sam_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'N'
-                ]);
-            
+
+            DB::table('self_assessment')->insert([
+                'student_id'      => $item['student_id'],
+                'sam_id'          => $item['sam_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'N'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Self assessments saved successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-     public function savenPublishSelfAssessment(Request $request)
+
+    public function savenPublishSelfAssessment(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-               DB::table('self_assessment')
+            DB::table('self_assessment')
                 ->where('student_id', $item['student_id'])
                 ->where('sam_id', $item['sam_id'])
                 ->where('term_id', $term_id)
                 ->where('academic_yr', $academic_yr)
                 ->delete();
-                
-                DB::table('self_assessment')->insert([
-                    'student_id'      => $item['student_id'],
-                    'sam_id'          => $item['sam_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'Y'
-                ]);
 
-            
+            DB::table('self_assessment')->insert([
+                'student_id'      => $item['student_id'],
+                'sam_id'          => $item['sam_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'Y'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Self assessments saved and published successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function unpublishSelfAssessment(Request $request){
+
+    public function unpublishSelfAssessment(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->input('class_id');
         $section_id = $request->input('section_id');
         $term_id    = $request->input('term_id');
         DB::table('self_assessment')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('term_id', $term_id)
-                ->where('academic_yr', $academic_yr) 
-                ->update([
-                    'publish'         => 'N',
-                ]);
-                
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->update([
+                'publish'         => 'N',
+            ]);
+
         return response()->json([
             'status'  => 200,
             'message' => 'Self assessments unpublished successfully',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function savePeerFeedbackMaster(Request $request){
-         $user = $this->authenticateUser();
+
+    public function savePeerFeedbackMaster(Request $request)
+    {
+        $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
-        
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -4201,13 +4188,13 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable'
         ]);
-    
-        if (in_array($data['control_type'], ['checkbox', 'radio','rating'])) {
+
+        if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
             $options = json_encode($data['options']);
         } else {
             $options = null;
         }
-    
+
         // Insert record
         $id = DB::table('peer_feedback_master')->insertGetId([
             'parameter'    => $data['parameter'],
@@ -4216,37 +4203,38 @@ class AssessmentController extends Controller
             'options'      => $options,
             'academic_yr'  => $academicYr
         ]);
-    
+
         $saved = DB::table('peer_feedback_master')->where('pfm_id', $id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Peer feedback saved successfully.',
             'data'    => $saved,
             'success' => true
         ]);
-        
     }
-    
-    public function getPeerFeedbackMaster(Request $request){
+
+    public function getPeerFeedbackMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $records = DB::table('peer_feedback_master')
-                       ->join('class','class.class_id','=','peer_feedback_master.class_id')
-                       ->where('peer_feedback_master.academic_yr',$academicYr)
-                       ->select('peer_feedback_master.*','class.name as classname')
-                       ->get();
+            ->join('class', 'class.class_id', '=', 'peer_feedback_master.class_id')
+            ->where('peer_feedback_master.academic_yr', $academicYr)
+            ->select('peer_feedback_master.*', 'class.name as classname')
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'Peer feedback master listing.',
-            'success'=>true
+            'message' => 'Peer feedback master listing.',
+            'success' => true
         ]);
     }
-    
-    public function updatePeerFeedbackMaster(Request $request,$pfm_id){
-        
+
+    public function updatePeerFeedbackMaster(Request $request, $pfm_id)
+    {
+
         $record = DB::table('peer_feedback_master')->where('pfm_id', $pfm_id)->first();
 
         if (!$record) {
@@ -4255,7 +4243,7 @@ class AssessmentController extends Controller
                 'message' => 'Record not found'
             ], 404);
         }
-    
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -4263,22 +4251,22 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable',
         ]);
-    
+
         $updateData = [];
-    
+
         if (isset($data['parameter'])) {
             $updateData['parameter'] = $data['parameter'];
         }
-    
+
         if (isset($data['class_id'])) {
             $updateData['class_id'] = $data['class_id'];
         }
-    
+
         if (isset($data['control_type'])) {
             $updateData['control_type'] = $data['control_type'];
-    
-            
-            if (in_array($data['control_type'], ['checkbox','radio','rating'])) {
+
+
+            if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
                 $updateData['options'] = isset($data['options'])
                     ? json_encode($data['options'])
                     : null;
@@ -4286,18 +4274,18 @@ class AssessmentController extends Controller
                 $updateData['options'] = null;
             }
         } elseif (isset($data['options'])) {
-            
+
             $updateData['options'] = json_encode($data['options']);
         }
-    
+
         if (!empty($updateData)) {
             DB::table('peer_feedback_master')
                 ->where('pfm_id', $pfm_id)
                 ->update($updateData);
         }
-    
+
         $updated = DB::table('peer_feedback_master')->where('pfm_id', $pfm_id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Peer feedback master updated successfully.',
@@ -4305,11 +4293,12 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
-    
-    public function deletePeerFeedbackMaster(Request $request,$pfm_id){
+
+    public function deletePeerFeedbackMaster(Request $request, $pfm_id)
+    {
         $exists = DB::table('peer_feedback')
-        ->where('pfm_id', $pfm_id)
-        ->exists();
+            ->where('pfm_id', $pfm_id)
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -4323,10 +4312,10 @@ class AssessmentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => 'Record deleted successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
+
     public function getPeerFeedback(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4358,11 +4347,11 @@ class AssessmentController extends Controller
 
 
         $publish = DB::table('peer_feedback')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('term_id',$term_id)
-                    ->where('academic_yr', $academic_yr)
-                    ->value('publish') ?? 'N';
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->value('publish') ?? 'N';
         // Get assessments for each student+parameter
         $results = [];
         foreach ($students as $stu) {
@@ -4379,7 +4368,7 @@ class AssessmentController extends Controller
                     'pfm_id'   => $param->pfm_id,
                     'parameter_name' => $param->parameter,
                     'options'  => $param->options,
-                    'control_type'=>$param->control_type,
+                    'control_type' => $param->control_type,
                     'value'          => $value ?? ''
                 ];
             }
@@ -4396,12 +4385,12 @@ class AssessmentController extends Controller
             'status'     => 200,
             'parameters' => $parameters,
             'students'   => $results,
-            'publish'    =>$publish,
+            'publish'    => $publish,
             'message'    => 'Peer feedback.',
-            'success'    =>true
+            'success'    => true
         ]);
     }
-    
+
     public function savePeerFeedback(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4409,106 +4398,104 @@ class AssessmentController extends Controller
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                    DB::table('peer_feedback')
-                        ->where('student_id', $item['student_id'])
-                        ->where('pfm_id', $item['pfm_id'])
-                        ->where('term_id', $term_id)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
+            DB::table('peer_feedback')
+                ->where('student_id', $item['student_id'])
+                ->where('pfm_id', $item['pfm_id'])
+                ->where('term_id', $term_id)
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('peer_feedback')->insert([
-                    'student_id'      => $item['student_id'],
-                    'pfm_id'          => $item['pfm_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'N'
-                ]);
-            
+
+            DB::table('peer_feedback')->insert([
+                'student_id'      => $item['student_id'],
+                'pfm_id'          => $item['pfm_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'N'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Peer feedback saved successfully.',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-     public function savenPublishPeerFeedback(Request $request)
+
+    public function savenPublishPeerFeedback(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                DB::table('peer_feedback')
-                        ->where('student_id', $item['student_id'])
-                        ->where('pfm_id', $item['pfm_id'])
-                        ->where('term_id', $term_id)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
+            DB::table('peer_feedback')
+                ->where('student_id', $item['student_id'])
+                ->where('pfm_id', $item['pfm_id'])
+                ->where('term_id', $term_id)
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('peer_feedback')->insert([
-                    'student_id'      => $item['student_id'],
-                    'pfm_id'          => $item['pfm_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'Y'
-                ]);
 
-            
+            DB::table('peer_feedback')->insert([
+                'student_id'      => $item['student_id'],
+                'pfm_id'          => $item['pfm_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'Y'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Peer feedback saved and published successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function unpublishPeerFeedback(Request $request){
+
+    public function unpublishPeerFeedback(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->input('class_id');
         $section_id = $request->input('section_id');
         $term_id    = $request->input('term_id');
         DB::table('peer_feedback')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('term_id', $term_id)
-                ->where('academic_yr', $academic_yr) 
-                ->update([
-                    'publish'         => 'N',
-                ]);
-                
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->update([
+                'publish'         => 'N',
+            ]);
+
         return response()->json([
             'status'  => 200,
             'message' => 'Peer feedback unpublished successfully',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    
-    
-    public function saveAllAboutMeMaster(Request $request){
+
+
+
+    public function saveAllAboutMeMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $id = DB::table('allaboutme_master')->insertGetId([
@@ -4521,28 +4508,30 @@ class AssessmentController extends Controller
             'status'  => 200,
             'message' => 'All about me saved successfully.',
             'data'    => DB::table('allaboutme_master')->where('am_id', $id)->first(),
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function getAllAboutMeMaster(Request $request){
+
+    public function getAllAboutMeMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $records = DB::table('allaboutme_master')
-                       ->join('class','class.class_id','=','allaboutme_master.class_id')
-                       ->where('allaboutme_master.academic_yr',$academicYr)
-                       ->select('allaboutme_master.*','class.name as classname')
-                       ->get();
+            ->join('class', 'class.class_id', '=', 'allaboutme_master.class_id')
+            ->where('allaboutme_master.academic_yr', $academicYr)
+            ->select('allaboutme_master.*', 'class.name as classname')
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'All about me master listing.',
-            'success'=>true
+            'message' => 'All about me master listing.',
+            'success' => true
         ]);
     }
-    
-    public function updateAllAboutMeMaster(Request $request,$am_id){
+
+    public function updateAllAboutMeMaster(Request $request, $am_id)
+    {
         $record = DB::table('allaboutme_master')->where('am_id', $am_id)->first();
 
         if (!$record) {
@@ -4565,14 +4554,15 @@ class AssessmentController extends Controller
             'status'  => 200,
             'message' => 'All about me master updated successfully',
             'data'    => $updated,
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function deleteAllAboutMeMaster(Request $request,$am_id){
+
+    public function deleteAllAboutMeMaster(Request $request, $am_id)
+    {
         $exists = DB::table('student_allaboutme_details')
-        ->where('am_id', $am_id)
-        ->exists();
+            ->where('am_id', $am_id)
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -4586,10 +4576,10 @@ class AssessmentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => 'Record deleted successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
+
     public function getAllAboutMe(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4600,8 +4590,8 @@ class AssessmentController extends Controller
 
         // Get master parameters
         $parameters = DB::table('allaboutme_master')
-                        ->where('am_id',$am_id)
-                        ->get();
+            ->where('am_id', $am_id)
+            ->get();
 
         // Get students in class/section
         $students = DB::select("
@@ -4621,11 +4611,11 @@ class AssessmentController extends Controller
 
 
         $publish = DB::table('student_allaboutme_details')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('am_id',$am_id)
-                    ->where('academic_yr', $academic_yr)
-                    ->value('publish') ?? 'N';
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('am_id', $am_id)
+            ->where('academic_yr', $academic_yr)
+            ->value('publish') ?? 'N';
         // Get assessments for each student+parameter
         $results = [];
         foreach ($students as $stu) {
@@ -4656,12 +4646,12 @@ class AssessmentController extends Controller
             'status'     => 200,
             'parameters' => $parameters,
             'students'   => $results,
-            'publish'    =>$publish,
+            'publish'    => $publish,
             'message'    => 'All about me.',
-            'success'    =>true
+            'success'    => true
         ]);
     }
-    
+
     public function saveAllAboutMe(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4669,103 +4659,101 @@ class AssessmentController extends Controller
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $am_id    = $request->am_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                DB::table('student_allaboutme_details')
-                    ->where('student_id', $item['student_id'])
-                    ->where('am_id', $item['am_id'])
-                    ->where('academic_yr', $academic_yr)
-                    ->delete();
+            DB::table('student_allaboutme_details')
+                ->where('student_id', $item['student_id'])
+                ->where('am_id', $item['am_id'])
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('student_allaboutme_details')->insert([
-                    'student_id'      => $item['student_id'],
-                    'am_id'          => $item['am_id'],
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'aboutme_value' => $item['value'],
-                    'publish'         => 'N'
-                ]);
-            
+
+            DB::table('student_allaboutme_details')->insert([
+                'student_id'      => $item['student_id'],
+                'am_id'          => $item['am_id'],
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'aboutme_value' => $item['value'],
+                'publish'         => 'N'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'All about me saved successfully.',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-     public function savenPublishAllAboutMe(Request $request)
+
+    public function savenPublishAllAboutMe(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $am_id    = $request->am_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                DB::table('student_allaboutme_details')
-                    ->where('student_id', $item['student_id'])
-                    ->where('am_id', $item['am_id'])
-                    ->where('academic_yr', $academic_yr)
-                    ->delete();
+            DB::table('student_allaboutme_details')
+                ->where('student_id', $item['student_id'])
+                ->where('am_id', $item['am_id'])
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('student_allaboutme_details')->insert([
-                    'student_id'      => $item['student_id'],
-                    'am_id'          => $item['am_id'],
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'aboutme_value' => $item['value'],
-                    'publish'         => 'Y'
-                ]);
 
-            
+            DB::table('student_allaboutme_details')->insert([
+                'student_id'      => $item['student_id'],
+                'am_id'          => $item['am_id'],
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'aboutme_value' => $item['value'],
+                'publish'         => 'Y'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Student all about me saved and published successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function unpublishAllAboutme(Request $request){
+
+    public function unpublishAllAboutme(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->input('class_id');
         $section_id = $request->input('section_id');
         $am_id    =   $request->input('am_id');
         DB::table('student_allaboutme_details')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('am_id', $am_id)
-                ->where('academic_yr', $academic_yr) 
-                ->update([
-                    'publish'         => 'N',
-                ]);
-                
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('am_id', $am_id)
+            ->where('academic_yr', $academic_yr)
+            ->update([
+                'publish'         => 'N',
+            ]);
+
         return response()->json([
             'status'  => 200,
             'message' => 'All about me unpublished successfully',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function saveParentFeedbackMaster(Request $request){
+
+    public function saveParentFeedbackMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
-    
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -4773,13 +4761,13 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable'
         ]);
-    
-        if (in_array($data['control_type'], ['checkbox', 'radio','rating'])) {
+
+        if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
             $options = json_encode($data['options']);
         } else {
             $options = null;
         }
-    
+
         // Insert record
         $id = DB::table('parent_feedback_master')->insertGetId([
             'parameter'    => $data['parameter'],
@@ -4788,9 +4776,9 @@ class AssessmentController extends Controller
             'options'      => $options,
             'academic_yr'  => $academicYr
         ]);
-    
+
         $saved = DB::table('parent_feedback_master')->where('pfm_id', $id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Parent feedback question saved successfully.',
@@ -4798,25 +4786,27 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
-    
-    public function getParentFeedbackMaster(Request $request){
+
+    public function getParentFeedbackMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $records = DB::table('parent_feedback_master')
-                       ->join('class','class.class_id','=','parent_feedback_master.class_id')
-                       ->where('parent_feedback_master.academic_yr',$academicYr)
-                       ->select('parent_feedback_master.*','class.name as classname')
-                       ->get();
+            ->join('class', 'class.class_id', '=', 'parent_feedback_master.class_id')
+            ->where('parent_feedback_master.academic_yr', $academicYr)
+            ->select('parent_feedback_master.*', 'class.name as classname')
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'Parent feedback master listing.',
-            'success'=>true
+            'message' => 'Parent feedback master listing.',
+            'success' => true
         ]);
     }
-    
-    public function updateParentFeedbackMaster(Request $request,$pfm_id){
+
+    public function updateParentFeedbackMaster(Request $request, $pfm_id)
+    {
         $record = DB::table('parent_feedback_master')->where('pfm_id', $pfm_id)->first();
 
         if (!$record) {
@@ -4825,7 +4815,7 @@ class AssessmentController extends Controller
                 'message' => 'Record not found'
             ], 404);
         }
-    
+
         // Validate input
         $data = $request->validate([
             'parameter'     => 'required',
@@ -4833,22 +4823,22 @@ class AssessmentController extends Controller
             'control_type'  => 'required',
             'options'       => 'nullable',
         ]);
-    
+
         $updateData = [];
-    
+
         if (isset($data['parameter'])) {
             $updateData['parameter'] = $data['parameter'];
         }
-    
+
         if (isset($data['class_id'])) {
             $updateData['class_id'] = $data['class_id'];
         }
-    
+
         if (isset($data['control_type'])) {
             $updateData['control_type'] = $data['control_type'];
-    
-            
-            if (in_array($data['control_type'], ['checkbox','radio','rating'])) {
+
+
+            if (in_array($data['control_type'], ['checkbox', 'radio', 'rating'])) {
                 $updateData['options'] = isset($data['options'])
                     ? json_encode($data['options'])
                     : null;
@@ -4856,18 +4846,18 @@ class AssessmentController extends Controller
                 $updateData['options'] = null;
             }
         } elseif (isset($data['options'])) {
-            
+
             $updateData['options'] = json_encode($data['options']);
         }
-    
+
         if (!empty($updateData)) {
             DB::table('parent_feedback_master')
                 ->where('pfm_id', $pfm_id)
                 ->update($updateData);
         }
-    
+
         $updated = DB::table('parent_feedback_master')->where('pfm_id', $pfm_id)->first();
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Parent feedback master updated successfully',
@@ -4875,11 +4865,12 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
-    
-    public function deleteParentFeedbackMaster(Request $request,$pfm_id){
+
+    public function deleteParentFeedbackMaster(Request $request, $pfm_id)
+    {
         $exists = DB::table('parent_feedback')
-                    ->where('pfm_id', $pfm_id)
-                    ->exists();
+            ->where('pfm_id', $pfm_id)
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -4893,10 +4884,10 @@ class AssessmentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => 'Record deleted successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
+
     public function getParentFeedback(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4928,11 +4919,11 @@ class AssessmentController extends Controller
 
 
         $publish = DB::table('parent_feedback')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('term_id',$term_id)
-                    ->where('academic_yr', $academic_yr)
-                    ->value('publish') ?? 'N';
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->value('publish') ?? 'N';
         // Get assessments for each student+parameter
         $results = [];
         foreach ($students as $stu) {
@@ -4948,7 +4939,7 @@ class AssessmentController extends Controller
                 $stu_assessments[] = [
                     'pfm_id'   => $param->pfm_id,
                     'options'  => $param->options,
-                    'control_type'=>$param->control_type,
+                    'control_type' => $param->control_type,
                     'parameter_name' => $param->parameter,
                     'value'          => $value ?? ''
                 ];
@@ -4966,12 +4957,12 @@ class AssessmentController extends Controller
             'status'     => 200,
             'parameters' => $parameters,
             'students'   => $results,
-            'publish'    =>$publish,
+            'publish'    => $publish,
             'message'    => 'Parent feedback.',
-            'success'    =>true
+            'success'    => true
         ]);
     }
-    
+
     public function saveParentFeedback(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4979,451 +4970,444 @@ class AssessmentController extends Controller
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                    DB::table('parent_feedback')
-                        ->where('student_id', $item['student_id'])
-                        ->where('pfm_id', $item['pfm_id'])
-                        ->where('term_id', $term_id)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
+            DB::table('parent_feedback')
+                ->where('student_id', $item['student_id'])
+                ->where('pfm_id', $item['pfm_id'])
+                ->where('term_id', $term_id)
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('parent_feedback')->insert([
-                    'student_id'      => $item['student_id'],
-                    'pfm_id'          => $item['pfm_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'N'
-                ]);
-            
+
+            DB::table('parent_feedback')->insert([
+                'student_id'      => $item['student_id'],
+                'pfm_id'          => $item['pfm_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'N'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Parent feedback saved successfully.',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-     public function savenPublishParentFeedback(Request $request)
+
+    public function savenPublishParentFeedback(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                DB::table('parent_feedback')
-                        ->where('student_id', $item['student_id'])
-                        ->where('pfm_id', $item['pfm_id'])
-                        ->where('term_id', $term_id)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
+            DB::table('parent_feedback')
+                ->where('student_id', $item['student_id'])
+                ->where('pfm_id', $item['pfm_id'])
+                ->where('term_id', $term_id)
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('parent_feedback')->insert([
-                    'student_id'      => $item['student_id'],
-                    'pfm_id'          => $item['pfm_id'],
-                    'term_id'         => $term_id,
-                    'class_id'        => $class_id,
-                    'section_id'      => $section_id,
-                    'academic_yr'     => $academic_yr,
-                    'date'            => now()->toDateString(),
-                    'data_entry_by'   => $user->reg_id,
-                    'parameter_value' => $item['value'],
-                    'publish'         => 'Y'
-                ]);
 
-            
+            DB::table('parent_feedback')->insert([
+                'student_id'      => $item['student_id'],
+                'pfm_id'          => $item['pfm_id'],
+                'term_id'         => $term_id,
+                'class_id'        => $class_id,
+                'section_id'      => $section_id,
+                'academic_yr'     => $academic_yr,
+                'date'            => now()->toDateString(),
+                'data_entry_by'   => $user->reg_id,
+                'parameter_value' => $item['value'],
+                'publish'         => 'Y'
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Parent feedback saved and published successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function unpublishParentFeedback(Request $request){
+
+    public function unpublishParentFeedback(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id   = $request->input('class_id');
         $section_id = $request->input('section_id');
         $term_id    = $request->input('term_id');
         DB::table('parent_feedback')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('term_id', $term_id)
-                ->where('academic_yr', $academic_yr) 
-                ->update([
-                    'publish'         => 'N',
-                ]);
-                
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('term_id', $term_id)
+            ->where('academic_yr', $academic_yr)
+            ->update([
+                'publish'         => 'N',
+            ]);
+
         return response()->json([
             'status'  => 200,
             'message' => 'Parent feedback unpublished successfully',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function gethpcreportcard(Request $request){
+
+    public function gethpcreportcard(Request $request)
+    {
         $studentId = $request->input('student_id');
         $studentdata = DB::table('student')
-                           ->join('class','student.class_id','=','class.class_id')
-                           ->join('section','student.section_id','=','section.section_id')
-                           ->where('student.student_id',$studentId)
-                           ->select('student.first_name','student.mid_name','student.last_name','student.dob','class.name as classname','section.name as sectionname','student.academic_yr')
-                           ->first();
-            $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
-            
-            $classId   = $studentDetails->class_id;
-            $sectionId= $studentDetails->section_id;
-            $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
-            $studentData = DB::table('student')
-                ->leftJoin('parent', 'student.parent_id', '=', 'parent.parent_id')
-                ->join('class', 'student.class_id', '=', 'class.class_id')
-                ->join('section', 'student.section_id', '=', 'section.section_id')
-                ->where('student.student_id', $studentId)
-                ->select(
-                    'student.student_id',
-                    'student.first_name',
-                    'student.mid_name',
-                    'student.last_name',
-                    'student.dob',
-                    'class.name as classname',
-                    'section.name as sectionname',
-                    'student.image_name',
-                    'parent.family_image_name'
-                )
-                ->first();
-        
-            if (!$studentData) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Student not found',
-                    'data' => null
-                ], 404);
-            }
-        
-            
-            $allAboutMe = DB::table('allaboutme_master')
-                ->leftJoin('student_allaboutme_details', function ($join) use ($studentId) {
-                    $join->on('allaboutme_master.am_id', '=', 'student_allaboutme_details.am_id')
-                         ->where('student_allaboutme_details.student_id', '=', $studentId)
-                         ->where('student_allaboutme_details.publish', '=', 'Y');
-                })
-                ->where('allaboutme_master.class_id', $classId)
-                ->select(
-                    'allaboutme_master.am_id',
-                    'allaboutme_master.name',
-                    'student_allaboutme_details.aboutme_value',
-                    'student_allaboutme_details.publish'
-                )
-                ->get();
-        
-            $termList = DB::table('term')->whereIn('term_id',$publishedTerms)->get();
-            $termDates = get_term_dates($studentdata->academic_yr, count($termList))?? [];
-            $attendanceData = [];
-        
-            foreach ($termDates as $index => $term) {
-                $present = get_total_stu_attendance($studentId, $term['from'], $term['to'], $studentdata->academic_yr);
-                $working = get_total_stu_workingdays($studentId, $term['from'], $term['to'], $studentdata->academic_yr);
-        
-                $attendanceData[] = [
-                    'term' => 'Term ' . ($index + 1),
-                    'from' => $term['from'],
-                    'to'   => $term['to'],
-                    'present' => $present,
-                    'working' => $working,
-                ];
-            }
-            // $globalVariables = App::make('global_variables');
-            $baseUrl = 'https://sms.arnoldcentralschool.org/';
-        
-            $studentImage = $studentData->image_name 
-                ? $baseUrl . 'uploads/student_image/' . $studentData->image_name 
-                : null;
-        
-            $familyImage = $studentData->family_image_name 
-                ? $baseUrl . 'uploads/family_image/' . $studentData->family_image_name 
-                : null;
-        
-            
-            $data = [
-                'student' => [
-                    'student_id' => $studentData->student_id,
-                    'first_name' => $studentData->first_name,
-                    'mid_name' => $studentData->mid_name,
-                    'last_name' => $studentData->last_name,
-                    'dob' => $studentData->dob,
-                    'classname' => $studentData->classname,
-                    'sectionname' => $studentData->sectionname,
-                    'studentimage' => $studentImage,
-                    'familyimage' => $familyImage,
-                ],
-                'attendance' => $attendanceData,
-                'allAboutMe' => $allAboutMe
-            ];
-        $academicYr = $studentdata->academic_yr;    
-        $studentDomains = DB::table('domain_master as dm')
-                            ->leftjoin('HPC_subject_master as sm', 'sm.hpc_sm_id', '=', 'dm.HPC_sm_id')
-                            ->join('domain_parameter_details as dpd', 'dpd.dm_id', '=', 'dm.dm_id')
-                            ->leftJoin('domain_competencies as dc', 'dc.dm_competency_id', '=', 'dpd.dm_competency_id')
-                            ->leftJoin('student_domain_details as sdd', function($join) use ($studentId, $academicYr) {
-                                $join->on('sdd.dm_id', '=', 'dpd.dm_id')
-                                     ->on('sdd.parameter_id', '=', 'dpd.parameter_id')
-                                     ->where('sdd.student_id', '=', $studentId)
-                                     ->where('sdd.academic_yr', '=', $academicYr)
-                                     ->where('sdd.publish', '=', 'Y');
-                            })
-                            ->where('dm.class_id', $classId)
-                            ->select(
-                                'sm.hpc_sm_id',
-                                'dm.class_id',
-                                'sm.name as subjectname',
-                                'dm.name as domainname',
-                                'dm.color_code',
-                                'dm.curriculum_goal',
-                                'dc.name as competency',
-                                'dpd.learning_outcomes',
-                                'sdd.parameter_value',
-                                'sdd.term_id',
-                                'sdd.publish',
-                            )
-                            
-                            ->orderBy('sm.hpc_sm_id')
-                            ->get()
-                            ->filter(function($item) use ($publishedTerms) {
-                                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                            });
-                            // dd($studentDomains);
-                        $terms = DB::table('term')->pluck('name', 'term_id');
+            ->join('class', 'student.class_id', '=', 'class.class_id')
+            ->join('section', 'student.section_id', '=', 'section.section_id')
+            ->where('student.student_id', $studentId)
+            ->select('student.first_name', 'student.mid_name', 'student.last_name', 'student.dob', 'class.name as classname', 'section.name as sectionname', 'student.academic_yr')
+            ->first();
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
 
-            $subjectsGrouped = $studentDomains->groupBy(function($item){
-                return $item->subjectname.'||'.$item->domainname;
-            })->map(function($subjectItems) use ($terms) {
-                $first = $subjectItems->first();
-            
-                // Group by competency
-                $competenciesGrouped = $subjectItems->groupBy('competency')->map(function($compItems) use ($terms) {
-                    // Group learning outcomes
-                    $details = $compItems->groupBy('learning_outcomes')->map(function($outcomeItems) use ($terms) {
-                        $termValues = [];
-                        foreach($outcomeItems as $item){
-                            if($item->term_id) {
-                                $termName = $item->term_id;
-                                $termValues[$termName] = $item->parameter_value;
-                            }
+        $classId   = $studentDetails->class_id;
+        $sectionId = $studentDetails->section_id;
+        $publishedTerms = DB::table('hpc_report_card_publish')
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
+        $studentData = DB::table('student')
+            ->leftJoin('parent', 'student.parent_id', '=', 'parent.parent_id')
+            ->join('class', 'student.class_id', '=', 'class.class_id')
+            ->join('section', 'student.section_id', '=', 'section.section_id')
+            ->where('student.student_id', $studentId)
+            ->select(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'student.dob',
+                'class.name as classname',
+                'section.name as sectionname',
+                'student.image_name',
+                'parent.family_image_name'
+            )
+            ->first();
+
+        if (!$studentData) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Student not found',
+                'data' => null
+            ], 404);
+        }
+
+
+        $allAboutMe = DB::table('allaboutme_master')
+            ->leftJoin('student_allaboutme_details', function ($join) use ($studentId) {
+                $join->on('allaboutme_master.am_id', '=', 'student_allaboutme_details.am_id')
+                    ->where('student_allaboutme_details.student_id', '=', $studentId)
+                    ->where('student_allaboutme_details.publish', '=', 'Y');
+            })
+            ->where('allaboutme_master.class_id', $classId)
+            ->select(
+                'allaboutme_master.am_id',
+                'allaboutme_master.name',
+                'student_allaboutme_details.aboutme_value',
+                'student_allaboutme_details.publish'
+            )
+            ->get();
+
+        $termList = DB::table('term')->whereIn('term_id', $publishedTerms)->get();
+        $termDates = get_term_dates($studentdata->academic_yr, count($termList)) ?? [];
+        $attendanceData = [];
+
+        foreach ($termDates as $index => $term) {
+            $present = get_total_stu_attendance($studentId, $term['from'], $term['to'], $studentdata->academic_yr);
+            $working = get_total_stu_workingdays($studentId, $term['from'], $term['to'], $studentdata->academic_yr);
+
+            $attendanceData[] = [
+                'term' => 'Term ' . ($index + 1),
+                'from' => $term['from'],
+                'to'   => $term['to'],
+                'present' => $present,
+                'working' => $working,
+            ];
+        }
+        // $globalVariables = App::make('global_variables');
+        $baseUrl = 'https://sms.arnoldcentralschool.org/';
+
+        $studentImage = $studentData->image_name
+            ? $baseUrl . 'uploads/student_image/' . $studentData->image_name
+            : null;
+
+        $familyImage = $studentData->family_image_name
+            ? $baseUrl . 'uploads/family_image/' . $studentData->family_image_name
+            : null;
+
+
+        $data = [
+            'student' => [
+                'student_id' => $studentData->student_id,
+                'first_name' => $studentData->first_name,
+                'mid_name' => $studentData->mid_name,
+                'last_name' => $studentData->last_name,
+                'dob' => $studentData->dob,
+                'classname' => $studentData->classname,
+                'sectionname' => $studentData->sectionname,
+                'studentimage' => $studentImage,
+                'familyimage' => $familyImage,
+            ],
+            'attendance' => $attendanceData,
+            'allAboutMe' => $allAboutMe
+        ];
+        $academicYr = $studentdata->academic_yr;
+        $studentDomains = DB::table('domain_master as dm')
+            ->leftjoin('HPC_subject_master as sm', 'sm.hpc_sm_id', '=', 'dm.HPC_sm_id')
+            ->join('domain_parameter_details as dpd', 'dpd.dm_id', '=', 'dm.dm_id')
+            ->leftJoin('domain_competencies as dc', 'dc.dm_competency_id', '=', 'dpd.dm_competency_id')
+            ->leftJoin('student_domain_details as sdd', function ($join) use ($studentId, $academicYr) {
+                $join->on('sdd.dm_id', '=', 'dpd.dm_id')
+                    ->on('sdd.parameter_id', '=', 'dpd.parameter_id')
+                    ->where('sdd.student_id', '=', $studentId)
+                    ->where('sdd.academic_yr', '=', $academicYr)
+                    ->where('sdd.publish', '=', 'Y');
+            })
+            ->where('dm.class_id', $classId)
+            ->select(
+                'sm.hpc_sm_id',
+                'dm.class_id',
+                'sm.name as subjectname',
+                'dm.name as domainname',
+                'dm.color_code',
+                'dm.curriculum_goal',
+                'dc.name as competency',
+                'dpd.learning_outcomes',
+                'sdd.parameter_value',
+                'sdd.term_id',
+                'sdd.publish',
+            )
+
+            ->orderBy('sm.hpc_sm_id')
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        // dd($studentDomains);
+        $terms = DB::table('term')->pluck('name', 'term_id');
+
+        $subjectsGrouped = $studentDomains->groupBy(function ($item) {
+            return $item->subjectname . '||' . $item->domainname;
+        })->map(function ($subjectItems) use ($terms) {
+            $first = $subjectItems->first();
+
+            // Group by competency
+            $competenciesGrouped = $subjectItems->groupBy('competency')->map(function ($compItems) use ($terms) {
+                // Group learning outcomes
+                $details = $compItems->groupBy('learning_outcomes')->map(function ($outcomeItems) use ($terms) {
+                    $termValues = [];
+                    foreach ($outcomeItems as $item) {
+                        if ($item->term_id) {
+                            $termName = $item->term_id;
+                            $termValues[$termName] = $item->parameter_value;
                         }
-                        return [
-                            'learning_outcomes' => $outcomeItems->first()->learning_outcomes,
-                            'parameter_value' => $termValues
-                        ];
-                    })->values();
-            
+                    }
                     return [
-                        'competency' => $compItems->first()->competency,
-                        'details' => $details
+                        'learning_outcomes' => $outcomeItems->first()->learning_outcomes,
+                        'parameter_value' => $termValues
                     ];
                 })->values();
-            
+
                 return [
-                    'subjectname' => $first->subjectname,
-                    'domainname' => $first->domainname,
-                    'curriculum_goal' => $first->curriculum_goal,
-                    'color_code' =>$first->color_code,
-                    'competencies' => $competenciesGrouped
+                    'competency' => $compItems->first()->competency,
+                    'details' => $details
                 ];
             })->values();
-            $rawResults = DB::table('self_assessment_master as sam')
-                        ->leftJoin('self_assessment as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.sam_id', '=', 'sa.sam_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.sam_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                        });
-                        $results = $rawResults->groupBy('sam_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'sam_id' => $first->sam_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true),
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
+
+            return [
+                'subjectname' => $first->subjectname,
+                'domainname' => $first->domainname,
+                'curriculum_goal' => $first->curriculum_goal,
+                'color_code' => $first->color_code,
+                'competencies' => $competenciesGrouped
+            ];
+        })->values();
+        $rawResults = DB::table('self_assessment_master as sam')
+            ->leftJoin('self_assessment as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.sam_id', '=', 'sa.sam_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.sam_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $results = $rawResults->groupBy('sam_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'sam_id' => $first->sam_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true),
+                'parameter_values' => $termValues
+            ];
+        })->values();
         $rawpeerfeedback = DB::table('peer_feedback_master as sam')
-                        ->leftJoin('peer_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.pfm_id', '=', 'sa.pfm_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.pfm_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $peerfeedback = $rawpeerfeedback->groupBy('pfm_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'pfm_id' => $first->pfm_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true), // decode JSON
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
+            ->leftJoin('peer_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.pfm_id', '=', 'sa.pfm_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.pfm_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $peerfeedback = $rawpeerfeedback->groupBy('pfm_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'pfm_id' => $first->pfm_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true), // decode JSON
+                'parameter_values' => $termValues
+            ];
+        })->values();
         $rawparentfeedback = DB::table('parent_feedback_master as sam')
-                        ->leftJoin('parent_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.pfm_id', '=', 'sa.pfm_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.pfm_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $parentfeedback = $rawparentfeedback->groupBy('pfm_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'pfm_id' => $first->pfm_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true), // decode JSON
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
+            ->leftJoin('parent_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.pfm_id', '=', 'sa.pfm_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.pfm_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $parentfeedback = $rawparentfeedback->groupBy('pfm_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'pfm_id' => $first->pfm_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true), // decode JSON
+                'parameter_values' => $termValues
+            ];
+        })->values();
         $rawclassteacherremark = DB::table('hpc_remark_master as sam')
-                        ->leftJoin('student_hpc_remarks as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.hpc_remark_master_id', '=', 'sa.hpc_remark_master_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.academic_yr', $academicYr);
-                        })
-                        ->select(
-                            'sam.hpc_remark_master_id',
-                            'sam.remark_head',
-                            'sa.term_id',
-                            'sa.remark'
-                        )
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $classteacherremark = $rawclassteacherremark->groupBy('hpc_remark_master_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->remark;
-                                }
-                            }
-                        
-                            return [
-                                'hpc_remark_master_id' => $first->hpc_remark_master_id,
-                                'parameter' => $first->remark_head,
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
+            ->leftJoin('student_hpc_remarks as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.hpc_remark_master_id', '=', 'sa.hpc_remark_master_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.academic_yr', $academicYr);
+            })
+            ->select(
+                'sam.hpc_remark_master_id',
+                'sam.remark_head',
+                'sa.term_id',
+                'sa.remark'
+            )
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $classteacherremark = $rawclassteacherremark->groupBy('hpc_remark_master_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->remark;
+                }
+            }
+
+            return [
+                'hpc_remark_master_id' => $first->hpc_remark_master_id,
+                'parameter' => $first->remark_head,
+                'parameter_values' => $termValues
+            ];
+        })->values();
         // dd($studentDomains); 
         //  return view('hpcreportcard.sacsstd2hpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
-        if(strtolower($studentdata->classname ?? '') == '2'){
-        $pdf = PDF::loadView('hpcreportcard.sacsstd2hpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
+        if (strtolower($studentdata->classname ?? '') == '2') {
+            $pdf = PDF::loadView('hpcreportcard.sacsstd2hpcreportcard', compact('studentdata', 'data', 'subjectsGrouped', 'results', 'peerfeedback', 'parentfeedback', 'classteacherremark'));
+        } elseif (strtolower($studentdata->classname ?? '') == '1') {
+            $pdf = PDF::loadView('hpcreportcard.sacsstd1hpcreportcard', compact('studentdata', 'data', 'subjectsGrouped', 'results', 'peerfeedback', 'parentfeedback', 'classteacherremark'));
+        } elseif (strtolower($studentdata->classname ?? '') == 'nursery') {
+            $pdf = PDF::loadView('hpcreportcard.sacsnurseryhpcreportcard', compact('studentdata', 'data', 'subjectsGrouped', 'results', 'peerfeedback', 'parentfeedback', 'classteacherremark'));
+        } elseif (strtolower($studentdata->classname ?? '') == 'lkg') {
+            $pdf = PDF::loadView('hpcreportcard.sacslkghpcreportcard', compact('studentdata', 'data', 'subjectsGrouped', 'results', 'peerfeedback', 'parentfeedback', 'classteacherremark'));
+        } elseif (strtolower($studentdata->classname ?? '') == 'ukg') {
+            $pdf = PDF::loadView('hpcreportcard.sacsukghpcreportcard', compact('studentdata', 'data', 'subjectsGrouped', 'results', 'peerfeedback', 'parentfeedback', 'classteacherremark'));
+        } else {
         }
-        elseif(strtolower($studentdata->classname ?? '') == '1'){
-            $pdf = PDF::loadView('hpcreportcard.sacsstd1hpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
-        }
-        elseif(strtolower($studentdata->classname ?? '') == 'nursery'){
-            $pdf = PDF::loadView('hpcreportcard.sacsnurseryhpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
-        }
-        elseif(strtolower($studentdata->classname ?? '') == 'lkg'){
-            $pdf = PDF::loadView('hpcreportcard.sacslkghpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
-        }
-        elseif(strtolower($studentdata->classname ?? '') == 'ukg'){
-            $pdf = PDF::loadView('hpcreportcard.sacsukghpcreportcard', compact('studentdata','data','subjectsGrouped','results','peerfeedback','parentfeedback','classteacherremark'));
-        }
-        else{
-            
-        }
-        $dynamicFilename = $studentdata->first_name."_".$studentdata->last_name."_HPC.pdf";
+        $dynamicFilename = $studentdata->first_name . "_" . $studentdata->last_name . "_HPC.pdf";
         //  return $pdf->stream($dynamicFilename);
         return $pdf->download($dynamicFilename);
     }
-    
-     public function saveClassTeacherRemarkMaster(Request $request){
+
+    public function saveClassTeacherRemarkMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $id = DB::table('hpc_remark_master')->insertGetId([
@@ -5434,25 +5418,27 @@ class AssessmentController extends Controller
             'status'  => 200,
             'message' => 'Save class teacher remark master saved successfully.',
             'data'    => DB::table('hpc_remark_master')->where('hpc_remark_master_id', $id)->first(),
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function getClassTeacherRemarkMaster(Request $request){
+
+    public function getClassTeacherRemarkMaster(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $records = DB::table('hpc_remark_master')
-                       ->get();
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'Class teacher remark master listing.',
-            'success'=>true
+            'message' => 'Class teacher remark master listing.',
+            'success' => true
         ]);
     }
-    
-    public function updateClassTeacherRemarkMaster(Request $request,$id){
+
+    public function updateClassTeacherRemarkMaster(Request $request, $id)
+    {
         $record = DB::table('hpc_remark_master')->where('hpc_remark_master_id', $id)->first();
 
         if (!$record) {
@@ -5474,14 +5460,15 @@ class AssessmentController extends Controller
             'status'  => 200,
             'message' => 'Class teacher remark master updated successfully',
             'data'    => $updated,
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function deleteClassTeacherRemarkMaster(Request $request,$id){
+
+    public function deleteClassTeacherRemarkMaster(Request $request, $id)
+    {
         $exists = DB::table('student_hpc_remarks')
-        ->where('hpc_remark_master_id', $id)
-        ->exists();
+            ->where('hpc_remark_master_id', $id)
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -5495,10 +5482,10 @@ class AssessmentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => 'Record deleted successfully',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
+
     public function getClassTeacherRemark(Request $request)
     {
         $user = $this->authenticateUser();
@@ -5509,7 +5496,7 @@ class AssessmentController extends Controller
 
         // Get master parameters
         $parameters = DB::table('hpc_remark_master')
-                        ->get();
+            ->get();
 
         // Get students in class/section
         $students = DB::select("
@@ -5528,21 +5515,21 @@ class AssessmentController extends Controller
             order by a.roll_no,a.reg_no", [$academic_yr, $class_id, $section_id]);
 
 
-        
-        
+
+
         $results = [];
         foreach ($students as $stu) {
             $stu_assessments = [];
             foreach ($parameters as $param) {
                 $value = DB::table('student_hpc_remarks')
                     ->where('student_id', $stu->student_id)
-                    ->where('hpc_remark_master_id',$param->hpc_remark_master_id)
+                    ->where('hpc_remark_master_id', $param->hpc_remark_master_id)
                     ->where('academic_yr', $academic_yr)
                     ->where('term_id', $term_id)
                     ->value('remark');
 
                 $stu_assessments[] = [
-                    'hpc_remark_master_id'=>$param->hpc_remark_master_id,
+                    'hpc_remark_master_id' => $param->hpc_remark_master_id,
                     'parameter_name' => $param->remark_head,
                     'value'          => $value ?? ''
                 ];
@@ -5561,10 +5548,10 @@ class AssessmentController extends Controller
             'parameters' => $parameters,
             'students'   => $results,
             'message'    => 'Class teacher remark.',
-            'success'    =>true
+            'success'    => true
         ]);
     }
-    
+
     public function saveClassTeacherRemark(Request $request)
     {
         $user = $this->authenticateUser();
@@ -5572,586 +5559,585 @@ class AssessmentController extends Controller
         $class_id   = $request->class_id;
         $section_id = $request->section_id;
         $term_id    = $request->term_id;
-        $assessments = $request->assessments; 
+        $assessments = $request->assessments;
 
         foreach ($assessments as $item) {
-                DB::table('student_hpc_remarks')
-                    ->where('student_id', $item['student_id'])
-                    ->where('term_id', $term_id)
-                    ->where('hpc_remark_master_id',$item['hpc_remark_master_id'])
-                    ->where('academic_yr', $academic_yr)
-                    ->delete();
+            DB::table('student_hpc_remarks')
+                ->where('student_id', $item['student_id'])
+                ->where('term_id', $term_id)
+                ->where('hpc_remark_master_id', $item['hpc_remark_master_id'])
+                ->where('academic_yr', $academic_yr)
+                ->delete();
 
-           
-                DB::table('student_hpc_remarks')->insert([
-                    'student_id'      => $item['student_id'],
-                    'term_id'          => $term_id,
-                    'academic_yr'     => $academic_yr,
-                    'hpc_remark_master_id'=>$item['hpc_remark_master_id'],
-                    'remark' => $item['value']
-                ]);
-            
+
+            DB::table('student_hpc_remarks')->insert([
+                'student_id'      => $item['student_id'],
+                'term_id'          => $term_id,
+                'academic_yr'     => $academic_yr,
+                'hpc_remark_master_id' => $item['hpc_remark_master_id'],
+                'remark' => $item['value']
+            ]);
         }
 
         return response()->json([
             'status'  => 200,
             'message' => 'Class teacher remark saved successfully.',
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function getAllAboutMeMasterByClassId(Request $request){
-       
+
+    public function getAllAboutMeMasterByClassId(Request $request)
+    {
+
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');
         $records = DB::table('allaboutme_master')
-                       ->join('class','class.class_id','=','allaboutme_master.class_id')
-                       ->where('allaboutme_master.academic_yr',$academicYr)
-                       ->where('allaboutme_master.class_id',$class_id)
-                       ->select('allaboutme_master.*','class.name as classname')
-                       ->get();
+            ->join('class', 'class.class_id', '=', 'allaboutme_master.class_id')
+            ->where('allaboutme_master.academic_yr', $academicYr)
+            ->where('allaboutme_master.class_id', $class_id)
+            ->select('allaboutme_master.*', 'class.name as classname')
+            ->get();
 
         return response()->json([
             'status'  => 200,
             'data'    => $records,
-            'message'=>'All about me master by classid listing.',
-            'success'=>true
+            'message' => 'All about me master by classid listing.',
+            'success' => true
         ]);
-        
     }
-    
+
     function getHSCClassesOfADepartment(Request $request)
     {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $dep_name =     'Higher Secondary';
         $classesdata =  getClassesOfADepartment($dep_name);
-                            
+
         return response()->json([
             'status'  => 200,
             'data'    => $classesdata,
-            'message'=>'Classes by department.',
-            'success'=>true
+            'message' => 'Classes by department.',
+            'success' => true
         ]);
     }
-    
-    public function getClassesOfClassTeacher(Request $request){
+
+    public function getClassesOfClassTeacher(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $teacher_id = $request->input('teacher_id');
         $classes = DB::table('class_teachers')
-        ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
-        ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
-        ->select(
-            'class.name as classname',
-            'section.name as sectionname',
-            'class_teachers.class_id',
-            'class_teachers.section_id',
-            DB::raw('1 as is_class_teacher')
-        )
-        ->where('class_teachers.teacher_id', $teacher_id)
-        ->where('class_teachers.academic_yr', $academicYr)
-        ->orderBy('class_teachers.section_id')
-        ->get();
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id',
+                DB::raw('1 as is_class_teacher')
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $academicYr)
+            ->orderBy('class_teachers.section_id')
+            ->get();
         return response()->json([
             'status'  => 200,
             'data'    => $classes,
-            'message'=>'Classes by class teacher.',
-            'success'=>true
+            'message' => 'Classes by class teacher.',
+            'success' => true
         ]);
     }
-    
-    public function getAllAboutMeByStudentId(Request $request){
-            $user = $this->authenticateUser();
-            $academicYr = JWTAuth::getPayload()->get('academic_year');
-            $studentId = $request->input('student_id');
-            $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
-            
-            $classId   = $request->input('class_id');
-            $sectionId= $studentDetails->section_id;
-            $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
-            $studentData = DB::table('student')
-                ->leftJoin('parent', 'student.parent_id', '=', 'parent.parent_id')
-                ->join('class', 'student.class_id', '=', 'class.class_id')
-                ->join('section', 'student.section_id', '=', 'section.section_id')
-                ->where('student.student_id', $studentId)
-                ->select(
-                    'student.student_id',
-                    'student.first_name',
-                    'student.mid_name',
-                    'student.last_name',
-                    'student.dob',
-                    'class.name as classname',
-                    'section.name as sectionname',
-                    'student.image_name',
-                    'parent.family_image_name'
-                )
-                ->first();
-        
-            if (!$studentData) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Student not found',
-                    'data' => null
-                ], 404);
-            }
-        
-            
-            $allAboutMe = DB::table('allaboutme_master')
-                ->leftJoin('student_allaboutme_details', function ($join) use ($studentId) {
-                    $join->on('allaboutme_master.am_id', '=', 'student_allaboutme_details.am_id')
-                         ->where('student_allaboutme_details.student_id', '=', $studentId)
-                         ->where('student_allaboutme_details.publish', '=', 'Y');
-                })
-                ->where('allaboutme_master.class_id', $classId)
-                ->select(
-                    'allaboutme_master.am_id',
-                    'allaboutme_master.name',
-                    'student_allaboutme_details.aboutme_value',
-                    'student_allaboutme_details.publish'
-                )
-                ->get();
-        
-            $termList = DB::table('term')->whereIn('term_id',$publishedTerms)->get();
-            $termDates = get_term_dates($academicYr, count($termList))?? [];
-            $attendanceData = [];
-        
-            foreach ($termDates as $index => $term) {
-                $present = get_total_stu_attendance($studentId, $term['from'], $term['to'], $academicYr);
-                $working = get_total_stu_workingdays($studentId, $term['from'], $term['to'], $academicYr);
-        
-                $attendanceData[] = [
-                    'term' => 'Term ' . ($index + 1),
-                    'from' => $term['from'],
-                    'to'   => $term['to'],
-                    'present' => $present,
-                    'working' => $working,
-                ];
-            }
-            $globalVariables = App::make('global_variables');
-            $baseUrl = $globalVariables['codeigniter_app_url'];
-        
-            $studentImage = $studentData->image_name 
-                ? $baseUrl . 'uploads/student_image/' . $studentData->image_name 
-                : null;
-        
-            $familyImage = $studentData->family_image_name 
-                ? $baseUrl . 'uploads/family_image/' . $studentData->family_image_name 
-                : null;
-        
-            
-            $data = [
-                'student' => [
-                    'student_id' => $studentData->student_id,
-                    'first_name' => $studentData->first_name,
-                    'mid_name' => $studentData->mid_name,
-                    'last_name' => $studentData->last_name,
-                    'dob' => $studentData->dob,
-                    'classname' => $studentData->classname,
-                    'sectionname' => $studentData->sectionname,
-                    'studentimage' => $studentImage,
-                    'familyimage' => $familyImage,
-                ],
-                'attendance' => $attendanceData,
-                'allAboutMe' => $allAboutMe
-            ];
 
-            return response()->json([
-                'status' => 200,
-                'message' => 'Student All About Me data fetched successfully',
-                'data' =>$data,
-                'success'=>true
-            ]);
-                          
-        
-    }
-    
-    public function getDomainDetailsByStudentId(Request $request){
+    public function getAllAboutMeByStudentId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $studentId = $request->input('student_id');
-        $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
-        $classId = $studentDetails->class_id;
-        $sectionId= $studentDetails->section_id;
-        $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
-        $studentDomains = DB::table('domain_master as dm')
-                            ->leftjoin('HPC_subject_master as sm', 'sm.hpc_sm_id', '=', 'dm.HPC_sm_id')
-                            ->join('domain_parameter_details as dpd', 'dpd.dm_id', '=', 'dm.dm_id')
-                            ->leftJoin('domain_competencies as dc', 'dc.dm_competency_id', '=', 'dpd.dm_competency_id')
-                            ->leftJoin('student_domain_details as sdd', function($join) use ($studentId, $academicYr) {
-                                $join->on('sdd.dm_id', '=', 'dpd.dm_id')
-                                     ->on('sdd.parameter_id', '=', 'dpd.parameter_id')
-                                     ->where('sdd.student_id', '=', $studentId)
-                                     ->where('sdd.academic_yr', '=', $academicYr)
-                                     ->where('sdd.publish', '=', 'Y');
-                            })
-                            ->where('dm.class_id', $classId)
-                            ->select(
-                                'sm.hpc_sm_id',
-                                'dm.class_id',
-                                'sm.name as subjectname',
-                                'dm.name as domainname',
-                                'dm.curriculum_goal',
-                                'dc.name as competency',
-                                'dpd.learning_outcomes',
-                                'sdd.parameter_value',
-                                'sdd.term_id',
-                                'sdd.publish',
-                            )
-                            
-                            ->orderBy('sm.hpc_sm_id')
-                            ->get()
-                            ->filter(function($item) use ($publishedTerms) {
-                                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                            });
-                            // dd($studentDomains);
-                        $terms = DB::table('term')->pluck('name', 'term_id');
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
 
-            $subjectsGrouped = $studentDomains->groupBy(function($item){
-                return $item->subjectname.'||'.$item->domainname;
-            })->map(function($subjectItems) use ($terms) {
-                $first = $subjectItems->first();
-            
-                // Group by competency
-                $competenciesGrouped = $subjectItems->groupBy('competency')->map(function($compItems) use ($terms) {
-                    // Group learning outcomes
-                    $details = $compItems->groupBy('learning_outcomes')->map(function($outcomeItems) use ($terms) {
-                        $termValues = [];
-                        foreach($outcomeItems as $item){
-                            if($item->term_id) {
-                                $termName = $item->term_id;
-                                $termValues[$termName] = $item->parameter_value;
-                            }
+        $classId   = $request->input('class_id');
+        $sectionId = $studentDetails->section_id;
+        $publishedTerms = DB::table('hpc_report_card_publish')
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
+        $studentData = DB::table('student')
+            ->leftJoin('parent', 'student.parent_id', '=', 'parent.parent_id')
+            ->join('class', 'student.class_id', '=', 'class.class_id')
+            ->join('section', 'student.section_id', '=', 'section.section_id')
+            ->where('student.student_id', $studentId)
+            ->select(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'student.dob',
+                'class.name as classname',
+                'section.name as sectionname',
+                'student.image_name',
+                'parent.family_image_name'
+            )
+            ->first();
+
+        if (!$studentData) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Student not found',
+                'data' => null
+            ], 404);
+        }
+
+
+        $allAboutMe = DB::table('allaboutme_master')
+            ->leftJoin('student_allaboutme_details', function ($join) use ($studentId) {
+                $join->on('allaboutme_master.am_id', '=', 'student_allaboutme_details.am_id')
+                    ->where('student_allaboutme_details.student_id', '=', $studentId)
+                    ->where('student_allaboutme_details.publish', '=', 'Y');
+            })
+            ->where('allaboutme_master.class_id', $classId)
+            ->select(
+                'allaboutme_master.am_id',
+                'allaboutme_master.name',
+                'student_allaboutme_details.aboutme_value',
+                'student_allaboutme_details.publish'
+            )
+            ->get();
+
+        $termList = DB::table('term')->whereIn('term_id', $publishedTerms)->get();
+        $termDates = get_term_dates($academicYr, count($termList)) ?? [];
+        $attendanceData = [];
+
+        foreach ($termDates as $index => $term) {
+            $present = get_total_stu_attendance($studentId, $term['from'], $term['to'], $academicYr);
+            $working = get_total_stu_workingdays($studentId, $term['from'], $term['to'], $academicYr);
+
+            $attendanceData[] = [
+                'term' => 'Term ' . ($index + 1),
+                'from' => $term['from'],
+                'to'   => $term['to'],
+                'present' => $present,
+                'working' => $working,
+            ];
+        }
+        $globalVariables = App::make('global_variables');
+        $baseUrl = $globalVariables['codeigniter_app_url'];
+
+        $studentImage = $studentData->image_name
+            ? $baseUrl . 'uploads/student_image/' . $studentData->image_name
+            : null;
+
+        $familyImage = $studentData->family_image_name
+            ? $baseUrl . 'uploads/family_image/' . $studentData->family_image_name
+            : null;
+
+
+        $data = [
+            'student' => [
+                'student_id' => $studentData->student_id,
+                'first_name' => $studentData->first_name,
+                'mid_name' => $studentData->mid_name,
+                'last_name' => $studentData->last_name,
+                'dob' => $studentData->dob,
+                'classname' => $studentData->classname,
+                'sectionname' => $studentData->sectionname,
+                'studentimage' => $studentImage,
+                'familyimage' => $familyImage,
+            ],
+            'attendance' => $attendanceData,
+            'allAboutMe' => $allAboutMe
+        ];
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Student All About Me data fetched successfully',
+            'data' => $data,
+            'success' => true
+        ]);
+    }
+
+    public function getDomainDetailsByStudentId(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+        $studentId = $request->input('student_id');
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
+        $classId = $studentDetails->class_id;
+        $sectionId = $studentDetails->section_id;
+        $publishedTerms = DB::table('hpc_report_card_publish')
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
+        $studentDomains = DB::table('domain_master as dm')
+            ->leftjoin('HPC_subject_master as sm', 'sm.hpc_sm_id', '=', 'dm.HPC_sm_id')
+            ->join('domain_parameter_details as dpd', 'dpd.dm_id', '=', 'dm.dm_id')
+            ->leftJoin('domain_competencies as dc', 'dc.dm_competency_id', '=', 'dpd.dm_competency_id')
+            ->leftJoin('student_domain_details as sdd', function ($join) use ($studentId, $academicYr) {
+                $join->on('sdd.dm_id', '=', 'dpd.dm_id')
+                    ->on('sdd.parameter_id', '=', 'dpd.parameter_id')
+                    ->where('sdd.student_id', '=', $studentId)
+                    ->where('sdd.academic_yr', '=', $academicYr)
+                    ->where('sdd.publish', '=', 'Y');
+            })
+            ->where('dm.class_id', $classId)
+            ->select(
+                'sm.hpc_sm_id',
+                'dm.class_id',
+                'sm.name as subjectname',
+                'dm.name as domainname',
+                'dm.curriculum_goal',
+                'dc.name as competency',
+                'dpd.learning_outcomes',
+                'sdd.parameter_value',
+                'sdd.term_id',
+                'sdd.publish',
+            )
+
+            ->orderBy('sm.hpc_sm_id')
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        // dd($studentDomains);
+        $terms = DB::table('term')->pluck('name', 'term_id');
+
+        $subjectsGrouped = $studentDomains->groupBy(function ($item) {
+            return $item->subjectname . '||' . $item->domainname;
+        })->map(function ($subjectItems) use ($terms) {
+            $first = $subjectItems->first();
+
+            // Group by competency
+            $competenciesGrouped = $subjectItems->groupBy('competency')->map(function ($compItems) use ($terms) {
+                // Group learning outcomes
+                $details = $compItems->groupBy('learning_outcomes')->map(function ($outcomeItems) use ($terms) {
+                    $termValues = [];
+                    foreach ($outcomeItems as $item) {
+                        if ($item->term_id) {
+                            $termName = $item->term_id;
+                            $termValues[$termName] = $item->parameter_value;
                         }
-                        return [
-                            'learning_outcomes' => $outcomeItems->first()->learning_outcomes,
-                            'parameter_value' => $termValues
-                        ];
-                    })->values();
-            
+                    }
                     return [
-                        'competency' => $compItems->first()->competency,
-                        'details' => $details
+                        'learning_outcomes' => $outcomeItems->first()->learning_outcomes,
+                        'parameter_value' => $termValues
                     ];
                 })->values();
-            
+
                 return [
-                    'subjectname' => $first->subjectname,
-                    'domainname' => $first->domainname,
-                    'curriculum_goal' => $first->curriculum_goal,
-                    'competencies' => $competenciesGrouped
+                    'competency' => $compItems->first()->competency,
+                    'details' => $details
                 ];
             })->values();
 
+            return [
+                'subjectname' => $first->subjectname,
+                'domainname' => $first->domainname,
+                'curriculum_goal' => $first->curriculum_goal,
+                'competencies' => $competenciesGrouped
+            ];
+        })->values();
+
         return response()->json([
-                'status' => 200,
-                'message' => 'Student domain details.',
-                'data' =>$subjectsGrouped,
-                'success'=>true
-            ]);
-        
+            'status' => 200,
+            'message' => 'Student domain details.',
+            'data' => $subjectsGrouped,
+            'success' => true
+        ]);
     }
-    
-    public function getSelfAssessmentByStudentId(Request $request){
+
+    public function getSelfAssessmentByStudentId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $studentId = $request->input('student_id');
-        $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
         $classId = $studentDetails->class_id;
-        $sectionId= $studentDetails->section_id;
+        $sectionId = $studentDetails->section_id;
         // dd($classId,$sectionId);
         $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
 
-        
+
         $rawResults = DB::table('self_assessment_master as sam')
-                        ->leftJoin('self_assessment as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.sam_id', '=', 'sa.sam_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.sam_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                        });
-                        $results = $rawResults->groupBy('sam_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'sam_id' => $first->sam_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true),
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
-    
-            return response()->json([
-                'status' => 200,
-                'message' => 'Student self assessment details.',
-                'data' =>$results,
-                'success'=>true
-            ]);
-        
-        
+            ->leftJoin('self_assessment as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.sam_id', '=', 'sa.sam_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.sam_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $results = $rawResults->groupBy('sam_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'sam_id' => $first->sam_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true),
+                'parameter_values' => $termValues
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Student self assessment details.',
+            'data' => $results,
+            'success' => true
+        ]);
     }
-    
-    public function getPeerFeedbackByStudentId(Request $request){
+
+    public function getPeerFeedbackByStudentId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $studentId = $request->input('student_id');
-        $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
         $classId = $studentDetails->class_id;
-        $sectionId= $studentDetails->section_id;
+        $sectionId = $studentDetails->section_id;
         // dd($classId,$sectionId);
         $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
 
-        
+
         $rawResults = DB::table('peer_feedback_master as sam')
-                        ->leftJoin('peer_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.pfm_id', '=', 'sa.pfm_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.pfm_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $results = $rawResults->groupBy('pfm_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'pfm_id' => $first->pfm_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true), // decode JSON
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
-    
-         return response()->json([
-                'status' => 200,
-                'message' => 'Student peer feedback details.',
-                'data' =>$results,
-                'success'=>true
-            ]);
-        
+            ->leftJoin('peer_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.pfm_id', '=', 'sa.pfm_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.pfm_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $results = $rawResults->groupBy('pfm_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'pfm_id' => $first->pfm_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true), // decode JSON
+                'parameter_values' => $termValues
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Student peer feedback details.',
+            'data' => $results,
+            'success' => true
+        ]);
     }
-    
-    public function getParentFeedbackByStudentId(Request $request){
+
+    public function getParentFeedbackByStudentId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $studentId = $request->input('student_id');
-        $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
         $classId = $studentDetails->class_id;
-        $sectionId= $studentDetails->section_id;
+        $sectionId = $studentDetails->section_id;
         $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
 
 
         $rawResults = DB::table('parent_feedback_master as sam')
-                        ->leftJoin('parent_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.pfm_id', '=', 'sa.pfm_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.class_id', $classId)
-                                ->where('sa.academic_yr', $academicYr)
-                                ->where('sa.publish', 'Y');
-                        })
-                        ->select(
-                            'sam.pfm_id',
-                            'sam.parameter',
-                            'sam.control_type',
-                            'sam.options',
-                            'sa.parameter_value',
-                            'sa.term_id'
-                        )
-                        ->where('sam.class_id', $classId)
-                        ->where('sam.academic_yr', $academicYr)
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $results = $rawResults->groupBy('pfm_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->parameter_value;
-                                }
-                            }
-                        
-                            return [
-                                'pfm_id' => $first->pfm_id,
-                                'parameter' => $first->parameter,
-                                'control_type' => $first->control_type,
-                                'options' => json_decode($first->options, true), // decode JSON
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
-    
-             return response()->json([
-                    'status' => 200,
-                    'message' => 'Student peer feedback details.',
-                    'data' =>$results,
-                    'success'=>true
-                ]);
-        
+            ->leftJoin('parent_feedback as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.pfm_id', '=', 'sa.pfm_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.class_id', $classId)
+                    ->where('sa.academic_yr', $academicYr)
+                    ->where('sa.publish', 'Y');
+            })
+            ->select(
+                'sam.pfm_id',
+                'sam.parameter',
+                'sam.control_type',
+                'sam.options',
+                'sa.parameter_value',
+                'sa.term_id'
+            )
+            ->where('sam.class_id', $classId)
+            ->where('sam.academic_yr', $academicYr)
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $results = $rawResults->groupBy('pfm_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->parameter_value;
+                }
+            }
+
+            return [
+                'pfm_id' => $first->pfm_id,
+                'parameter' => $first->parameter,
+                'control_type' => $first->control_type,
+                'options' => json_decode($first->options, true), // decode JSON
+                'parameter_values' => $termValues
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Student peer feedback details.',
+            'data' => $results,
+            'success' => true
+        ]);
     }
-    
-    public function getClassTeacherRemarkByStudentId(Request $request){
+
+    public function getClassTeacherRemarkByStudentId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $studentId = $request->input('student_id');
-        $studentDetails = DB::table('student')->where('student_id',$studentId)->first();
+        $studentDetails = DB::table('student')->where('student_id', $studentId)->first();
         $classId = $studentDetails->class_id;
-        $sectionId= $studentDetails->section_id;
+        $sectionId = $studentDetails->section_id;
         $publishedTerms = DB::table('hpc_report_card_publish')
-                        ->where('class_id', $classId)
-                        ->where('section_id', $sectionId)
-                        ->where('publish', 'Y')
-                        ->pluck('term_id')
-                        ->toArray();
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('publish', 'Y')
+            ->pluck('term_id')
+            ->toArray();
         $rawResults = DB::table('hpc_remark_master as sam')
-                        ->leftJoin('student_hpc_remarks as sa', function ($join) use ($studentId, $classId, $academicYr) {
-                            $join->on('sam.hpc_remark_master_id', '=', 'sa.hpc_remark_master_id')
-                                ->where('sa.student_id', $studentId)
-                                ->where('sa.academic_yr', $academicYr);
-                        })
-                        ->select(
-                            'sam.hpc_remark_master_id',
-                            'sam.remark_head',
-                            'sa.term_id',
-                            'sa.remark'
-                        )
-                        ->get()
-                        ->filter(function($item) use ($publishedTerms) {
-                            return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
-                           });
-                        $results = $rawResults->groupBy('hpc_remark_master_id')->map(function($items) {
-                            $first = $items->first();
-                            $termValues = [];
-                            foreach ($items as $row) {
-                                if ($row->term_id) {
-                                    $termValues[$row->term_id] = $row->remark;
-                                }
-                            }
-                        
-                            return [
-                                'hpc_remark_master_id' => $first->hpc_remark_master_id,
-                                'parameter' => $first->remark_head,
-                                'parameter_values' => $termValues
-                            ];
-                        })->values();
-    
-             return response()->json([
-                    'status' => 200,
-                    'message' => 'Student class teachers remark details.',
-                    'data' =>$results,
-                    'success'=>true
-                ]);
-        
+            ->leftJoin('student_hpc_remarks as sa', function ($join) use ($studentId, $classId, $academicYr) {
+                $join->on('sam.hpc_remark_master_id', '=', 'sa.hpc_remark_master_id')
+                    ->where('sa.student_id', $studentId)
+                    ->where('sa.academic_yr', $academicYr);
+            })
+            ->select(
+                'sam.hpc_remark_master_id',
+                'sam.remark_head',
+                'sa.term_id',
+                'sa.remark'
+            )
+            ->get()
+            ->filter(function ($item) use ($publishedTerms) {
+                return is_null($item->term_id) || in_array($item->term_id, $publishedTerms);
+            });
+        $results = $rawResults->groupBy('hpc_remark_master_id')->map(function ($items) {
+            $first = $items->first();
+            $termValues = [];
+            foreach ($items as $row) {
+                if ($row->term_id) {
+                    $termValues[$row->term_id] = $row->remark;
+                }
+            }
+
+            return [
+                'hpc_remark_master_id' => $first->hpc_remark_master_id,
+                'parameter' => $first->remark_head,
+                'parameter_values' => $termValues
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Student class teachers remark details.',
+            'data' => $results,
+            'success' => true
+        ]);
     }
-    
-    public function getHpcClasses(Request $request){
+
+    public function getHpcClasses(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $hpcclasses = DB::table('hpc_classes')
-                          ->join('class','class.class_id','=','hpc_classes.class_id')
-                          ->where('hpc_classes.academic_yr',$academicYr)
-                          ->select('class.class_id','class.name as classname')
-                          ->get();
-                          
+            ->join('class', 'class.class_id', '=', 'hpc_classes.class_id')
+            ->where('hpc_classes.academic_yr', $academicYr)
+            ->select('class.class_id', 'class.name as classname')
+            ->get();
+
         return response()->json([
-                    'status' => 200,
-                    'message' => 'Hpc classes.',
-                    'data' =>$hpcclasses,
-                    'success'=>true
-                ]);
+            'status' => 200,
+            'message' => 'Hpc classes.',
+            'data' => $hpcclasses,
+            'success' => true
+        ]);
     }
-    
-    public function getHpcReportCardPublishValue(Request $request){
+
+    public function getHpcReportCardPublishValue(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId = $request->input('class_id');
         $sectionId = $request->input('section_id');
         $termId = $request->input('term_id');
         $hpc_report_card_publish = DB::table('hpc_report_card_publish')
-                                        ->where('class_id',$classId)
-                                        ->where('section_id',$sectionId)
-                                        ->where('term_id',$termId)
-                                        ->first();
+            ->where('class_id', $classId)
+            ->where('section_id', $sectionId)
+            ->where('term_id', $termId)
+            ->first();
         $publish = $hpc_report_card_publish ? $hpc_report_card_publish->publish : 'N';
         return response()->json([
-                    'status' => 200,
-                    'message' => 'Publish details.',
-                    'data' =>$publish,
-                    'success'=>true
-                ]);
-        
-        
+            'status' => 200,
+            'message' => 'Publish details.',
+            'data' => $publish,
+            'success' => true
+        ]);
     }
-    
-    public function saveHpcReportCardPublishValue(Request $request){
+
+    public function saveHpcReportCardPublishValue(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId = $request->input('class_id');
@@ -6159,20 +6145,20 @@ class AssessmentController extends Controller
         $termId = $request->input('term_id');
         $publish = $request->input('publish');
         $existing = DB::table('hpc_report_card_publish')
-        ->where('class_id', $classId)
-        ->where('section_id', $sectionId)
-        ->where('term_id', $termId)
-        ->first();
-
-       if ($existing) {
-        // Update existing record
-        DB::table('hpc_report_card_publish')
             ->where('class_id', $classId)
             ->where('section_id', $sectionId)
             ->where('term_id', $termId)
-            ->update([
-                'publish'      => $publish
-            ]);
+            ->first();
+
+        if ($existing) {
+            // Update existing record
+            DB::table('hpc_report_card_publish')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('term_id', $termId)
+                ->update([
+                    'publish'      => $publish
+                ]);
         } else {
             // Insert new record
             DB::table('hpc_report_card_publish')->insert([
@@ -6182,22 +6168,21 @@ class AssessmentController extends Controller
                 'publish'      => $publish
             ]);
         }
-        
-         return response()->json([
-                    'status' => 200,
-                    'message' => 'Report card status saved.',
-                    'success'=>true
-                ]);
-        
-        
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Report card status saved.',
+            'success' => true
+        ]);
     }
-    
-    public function getSubjectByClass(Request $request){
+
+    public function getSubjectByClass(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId = $request->input('class_id');
         $sectionId = $request->input('section_id');
-        $classes = get_class_of_classteacher($user->reg_id,$academicYr);
+        $classes = get_class_of_classteacher($user->reg_id, $academicYr);
         // dd($classes);
         $isClassTeacher = collect($classes)->contains(function ($class) use ($classId, $sectionId) {
             return $class->class_id == $classId && $class->section_id == $sectionId;
@@ -6210,7 +6195,7 @@ class AssessmentController extends Controller
             // Case 2: Subject teacher → subjects by teacher
             $subjects = get_subjects_for_teacher($classId, $sectionId, $user->reg_id, $academicYr);
         }
-    
+
         // Prepare response
         $data = [];
         foreach ($subjects as $row) {
@@ -6219,57 +6204,55 @@ class AssessmentController extends Controller
                 'name' => $row->name,
             ];
         }
-    
+
         return response()->json([
             'status' => 200,
             'data' => $data,
             'message' => 'Subjects for the report card marks.',
-            'success' =>true
+            'success' => true
         ]);
-        
-        
     }
-    
-    public function getExamsByClassSubject(Request $request){
+
+    public function getExamsByClassSubject(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId = $request->input('class_id');
         $subjectrcId =  $request->input('sub_rc_master_id');
-        $exams = get_exams_by_class_subject($classId,$subjectrcId,$academicYr);
+        $exams = get_exams_by_class_subject($classId, $subjectrcId, $academicYr);
         return response()->json([
             'status' => 200,
             'data' => $exams,
             'message' => 'Exams for the classes.',
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function getMarksHeadingClass(Request $request){
+
+    public function getMarksHeadingClass(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $classId = $request->input('class_id');
         $subjectrcId =  $request->input('sub_rc_master_id');
         $examId =  $request->input('exam_id');
-        $marks_headings = get_marks_heading_class($classId,$subjectrcId,$examId,$academicYr);
+        $marks_headings = get_marks_heading_class($classId, $subjectrcId, $examId, $academicYr);
         return response()->json([
             'status' => 200,
             'data' => $marks_headings,
             'message' => 'Marks heading according to the class_id,subject_id,exam_id.',
-            'success' =>true
+            'success' => true
         ]);
-        
-        
     }
-    
-    public function updatePublishStudentMarks(Request $request){
+
+    public function updatePublishStudentMarks(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $examId     = $request->input('exam_id');
         $classId    = $request->input('class_id');
         $sectionId  = $request->input('section_id');
         $subjectId  = $request->input('subject_id');
-    
+
         // 1. Check if marks exist
         $exists = DB::table('student_marks')
             ->where('exam_id', $examId)
@@ -6277,7 +6260,7 @@ class AssessmentController extends Controller
             ->where('section_id', $sectionId)
             ->where('subject_id', $subjectId)
             ->exists();
-    
+
         if (! $exists) {
             return response()->json([
                 'status'  => 404,
@@ -6285,30 +6268,30 @@ class AssessmentController extends Controller
                 'success' => false,
             ]);
         }
-    
+
         DB::table('student_marks')
             ->where('exam_id', $examId)
             ->where('class_id', $classId)
             ->where('section_id', $sectionId)
             ->where('subject_id', $subjectId)
             ->update(['publish' => 'Y']);
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Marks published successfully!',
             'success' => true,
         ]);
-        
     }
-    
-    public function deleteStudentMarks(Request $request){
+
+    public function deleteStudentMarks(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
         $examId     = $request->input('exam_id');
         $classId    = $request->input('class_id');
         $sectionId  = $request->input('section_id');
         $subjectId  = $request->input('subject_id');
-    
+
         $deleted = DB::table('student_marks')
             ->where('exam_id', $examId)
             ->where('class_id', $classId)
@@ -6316,7 +6299,7 @@ class AssessmentController extends Controller
             ->where('subject_id', $subjectId)
             ->where('academic_yr', $academicYr)
             ->delete();
-    
+
         if (! $deleted) {
             return response()->json([
                 'status'  => 404,
@@ -6324,28 +6307,28 @@ class AssessmentController extends Controller
                 'success' => false,
             ]);
         }
-    
+
         return response()->json([
             'status'  => 200,
             'message' => 'Marks deleted successfully.',
             'success' => true,
         ]);
-        
     }
-    
-    public function getStudentMarks(Request $request){
-        $user = $this->authenticateUser(); 
+
+    public function getStudentMarks(Request $request)
+    {
+        $user = $this->authenticateUser();
         $class_id   = $request->input('class_id');
         $section_id = $request->input('section_id');
         $subject_id = $request->input('subject_id');
         $exam_id    = $request->input('exam_id');
         $acd_yr     = JWTAuth::getPayload()->get('academic_year');
-        $open_day = get_open_day($exam_id); 
+        $open_day = get_open_day($exam_id);
         // Get class name
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
-    
+
         $student_marks = [];
-    
+
         if (in_array($class_name, [11, 12])) {
             $student_marks = DB::table(DB::raw("(
                 SELECT b.student_id, b.first_name, b.mid_name, b.last_name, b.roll_no, b.reg_no, a.marks_id, a.present, a.mark_obtained, a.highest_marks, a.comment
@@ -6365,12 +6348,12 @@ class AssessmentController extends Controller
                     WHERE class_id = ? AND subject_id = ? AND exam_id = ?
                 )
             ) as x"))
-            ->setBindings([$class_id, $section_id, $subject_id, $exam_id, $acd_yr, $class_id, $section_id, $subject_id, $class_id, $subject_id, $exam_id])
-            ->orderBy('roll_no')
-            ->orderBy('reg_no')
-            ->orderBy('student_id')
-            ->get();
-            
+                ->setBindings([$class_id, $section_id, $subject_id, $exam_id, $acd_yr, $class_id, $section_id, $subject_id, $class_id, $subject_id, $exam_id])
+                ->orderBy('roll_no')
+                ->orderBy('reg_no')
+                ->orderBy('student_id')
+                ->get();
+
             // If no marks found, get HSC students
             if ($student_marks->isEmpty()) {
                 $student_marks = DB::table('student as a')
@@ -6406,12 +6389,12 @@ class AssessmentController extends Controller
                     WHERE class_id = ? AND section_id = ? AND subject_id = ? AND exam_id = ?
                 )
             ) as x"))
-            ->setBindings([$class_id, $section_id, $subject_id, $exam_id, $acd_yr, $class_id, $section_id, $class_id, $section_id, $subject_id, $exam_id])
-            ->orderBy('roll_no')
-            ->orderBy('reg_no')
-            ->orderBy('student_id')
-            ->get();
-    
+                ->setBindings([$class_id, $section_id, $subject_id, $exam_id, $acd_yr, $class_id, $section_id, $class_id, $section_id, $subject_id, $exam_id])
+                ->orderBy('roll_no')
+                ->orderBy('reg_no')
+                ->orderBy('student_id')
+                ->get();
+
             // If no marks found, get all students
             if ($student_marks->isEmpty()) {
                 $student_marks = DB::table('student as a')
@@ -6431,23 +6414,24 @@ class AssessmentController extends Controller
                     ->get();
             }
         }
-    
+
         // Attach highest marks for each mark heading if needed
         foreach ($student_marks as $student) {
             // Example: attach highest_marks array for frontend
             $student->highest_marks_array = []; // populate as needed using DB query
         }
-    
+
         return response()->json([
             'status' => 200,
             'open_day' => $open_day,
             'data' => $student_marks,
-            'message'=>'Student marks.',
-            'success'=>true
+            'message' => 'Student marks.',
+            'success' => true
         ]);
     }
-    
-    public function saveStudentMarks(Request $request){
+
+    public function saveStudentMarks(Request $request)
+    {
         $user = $this->authenticateUser();
         $userId = $user->reg_id;
         $academicYr = JWTAuth::getPayload()->get('academic_year');
@@ -6458,7 +6442,7 @@ class AssessmentController extends Controller
         $studentIds = $request->input('student_id');
         $marksIds = $request->input('marks_id', []);
 
-        $marksHeadings = DB::select("SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = ".$classId." AND allot_mark_headings.sm_id = ".$subjectId." AND allot_mark_headings.exam_id = ".$examId." and allot_mark_headings.academic_yr = '".$academicYr."' order by marks_headings.sequence");
+        $marksHeadings = DB::select("SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = " . $classId . " AND allot_mark_headings.sm_id = " . $subjectId . " AND allot_mark_headings.exam_id = " . $examId . " and allot_mark_headings.academic_yr = '" . $academicYr . "' order by marks_headings.sequence");
         // dd($marksHeadings);
 
         foreach ($studentIds as $i => $studentId) {
@@ -6485,7 +6469,7 @@ class AssessmentController extends Controller
 
             foreach ($marksHeadings as $heading) {
                 $id = $heading->marks_headings_id;
-                
+
                 $markBeforeChange = $request->input("mark_before_change_$id")[$i] ?? null;
                 $markObtained = $request->input("mark_obtained_$id")[$i] ?? null;
                 $highestMarks = $request->input("highest_marks_$id")[$i] ?? null;
@@ -6514,9 +6498,9 @@ class AssessmentController extends Controller
                 $reportcardHighestMarksData[$heading->marks_headings_name] = $reportcardHighestMarks;
             }
 
-            $percent = $totalReportcardHighestMarks > 0 
-                        ? ($totalReportcardMarksObtained * 100) / $totalReportcardHighestMarks 
-                        : 0;
+            $percent = $totalReportcardHighestMarks > 0
+                ? ($totalReportcardMarksObtained * 100) / $totalReportcardHighestMarks
+                : 0;
 
             // Replace with your own grade logic
             // $grade = $this->getGrade($percent, $classId, $subjectId);
@@ -6544,7 +6528,7 @@ class AssessmentController extends Controller
             ];
 
             if ($existingMarks) {
-                
+
                 DB::table('student_marks')->where('marks_id', $marksIds[$i])->update($marksData);
 
                 // Log changes if marks changed and already published
@@ -6566,88 +6550,90 @@ class AssessmentController extends Controller
         }
 
         return response()->json([
-                 'status' => 200,
-                 'message' => 'Marks saved successfully.',
-                 'success' => true
-                 ]);
+            'status' => 200,
+            'message' => 'Marks saved successfully.',
+            'success' => true
+        ]);
     }
-    
-    public function getMarksGenerateCsv(Request $request){
+
+    public function getMarksGenerateCsv(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = JWTAuth::getPayload()->get('academic_year');
-    
+
         $classId   = $request->input('class_id');
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
         $examId    = $request->input('exam_id');
-    
+
         if (empty($classId) || empty($sectionId)) {
             return response()->json(['error' => 'Class ID and Section ID are required'], 400);
         }
-    
+
         // === Get names for filename ===
         $className   = DB::table('class')->where('class_id', $classId)->value('name');
         $sectionName = DB::table('section')->where('section_id', $sectionId)->value('name');
         $subjectName = DB::table('subjects_on_report_card_master')->where('sub_rc_master_id', $subjectId)->value('name');
         $examName    = DB::table('exam')->where('exam_id', $examId)->value('name');
-    
+
         $filename = $className . $sectionName . "_" .
-                    str_replace([' ', '/'], '', $subjectName) . "_" .
-                    str_replace(' ', '', $examName) . ".csv";
-    
+            str_replace([' ', '/'], '', $subjectName) . "_" .
+            str_replace(' ', '', $examName) . ".csv";
+
         // === Fetch marks headings ===
-        $marksHeadings = DB::select("SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = ".$classId." AND allot_mark_headings.sm_id = ".$subjectId." AND allot_mark_headings.exam_id = ".$examId." and allot_mark_headings.academic_yr = '".$academicYr."' order by marks_headings.sequence");
-    
+        $marksHeadings = DB::select("SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = " . $classId . " AND allot_mark_headings.sm_id = " . $subjectId . " AND allot_mark_headings.exam_id = " . $examId . " and allot_mark_headings.academic_yr = '" . $academicYr . "' order by marks_headings.sequence");
+
         // === Fetch students ===
         if ($className == 11) {
-            $students =DB::select("select a.*,b.father_name from student a, parent b, view_hsc_student_rc_subjects c where a.IsDelete='N' and a.academic_yr='".$academicYr."' and a.parent_id=b.parent_id and a.class_id='".$classId."' and a.section_id='".$sectionId."' and a.student_id=c.student_id and c.sub_rc_master_id=".$subjectId." order by a.roll_no,a.reg_no,a.student_id");
+            $students = DB::select("select a.*,b.father_name from student a, parent b, view_hsc_student_rc_subjects c where a.IsDelete='N' and a.academic_yr='" . $academicYr . "' and a.parent_id=b.parent_id and a.class_id='" . $classId . "' and a.section_id='" . $sectionId . "' and a.student_id=c.student_id and c.sub_rc_master_id=" . $subjectId . " order by a.roll_no,a.reg_no,a.student_id");
         } else {
-            $students =DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='".$academicYr."'  and a.class_id='".$classId."' and a.section_id='".$sectionId."' and c.role_id='P' order by a.roll_no,a.reg_no");
+            $students = DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='" . $academicYr . "'  and a.class_id='" . $classId . "' and a.section_id='" . $sectionId . "' and c.role_id='P' order by a.roll_no,a.reg_no");
         }
-    
+
         $headers = [
             'Content-Type'        => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
-    
+
         $callback = function () use ($classId, $sectionId, $subjectId, $examId, $className, $sectionName, $subjectName, $examName, $marksHeadings, $students) {
             $file = fopen('php://output', 'w');
-    
+
             // === First rows (headers info) ===
             fputcsv($file, [$classId . "/" . $sectionId . "/" . $subjectId . "/" . $examId, $className . $sectionName, $subjectName, $examName]);
             fputcsv($file, ['']); // empty line
-    
+
             // === Column headings ===
             $headingRow = ['Code', 'Roll No.', 'Name'];
             $highestMarksRow = ['', '', ''];
-    
+
             foreach ($marksHeadings as $mh) {
                 $headingRow[] = $mh->marks_headings_id . '/ ' . $mh->marks_headings_name;
                 $highestMarksRow[] = 'Out of-' . $mh->highest_marks;
             }
-    
+
             fputcsv($file, $headingRow);
             fputcsv($file, $highestMarksRow);
-    
+
             // === Student rows ===
             foreach ($students as $stu) {
                 $fullName = trim($stu->first_name . " " . $stu->mid_name . " " . $stu->last_name);
                 $row = [$stu->student_id, $stu->roll_no, $fullName];
-    
+
                 foreach ($marksHeadings as $mh) {
                     $row[] = ''; // empty marks columns
                 }
-    
+
                 fputcsv($file, $row);
             }
-    
+
             fclose($file);
         };
-    
+
         return response()->stream($callback, 200, $headers);
     }
-    
-    public function saveUploadsMarksCsv(Request $request){
+
+    public function saveUploadsMarksCsv(Request $request)
+    {
         $user = $this->authenticateUser();
         $academicYr = '2025-2026';
         $request->validate([
@@ -6685,7 +6671,7 @@ class AssessmentController extends Controller
                         ], 400);
                     }
 
-                    $acd_yr = $academicYr ;
+                    $acd_yr = $academicYr;
                 }
 
                 if ($c == 3) {
@@ -6696,7 +6682,7 @@ class AssessmentController extends Controller
                             $val = trim($filesop[$i + 3]);
 
                             $marks_headings_id_array[] = substr($val, 0, strpos($val, '/'));
-                            $marks_headings_name_array[] = trim(substr($val, strpos($val, '/') + 2)); 
+                            $marks_headings_name_array[] = trim(substr($val, strpos($val, '/') + 2));
                         } else {
                             return response()->json([
                                 'status' => 'error',
@@ -6705,382 +6691,381 @@ class AssessmentController extends Controller
                         }
                     }
                 }
-                if($c>=5){ 
+                if ($c >= 5) {
                     // dd("Hello");
-						$percent = "";
-						$grade ="";
-						$present="";
-						$student_id=trim($filesop[0]);
-						if($student_id==''){
-							return response()->json([
-							    'status' =>400,
-                                'success' => false,
-                                'message' => "Please do not delete the Code for " . $filesop[2] . "."
-                            ], 400);
-						}else{
-							$master_data	=	array('exam_id' => $exam_id,
-										'class_id' => $class_id,
-										'section_id' => $section_id,
-										'academic_yr' =>$acd_yr ,
-										'subject_id' => $subject_id,
-										'student_id' => $student_id
-										);
-				// 			dd($master_data);
-							$query = DB::table('student_marks')
-                                    ->where($master_data)
-                                    ->get();
-							$class_name=DB::table('class')->where('class_id',$class_id)->value('name'); //Lija for report card
-							$term_id=DB::table('exam')
-                                        ->where('exam_id', $exam_id)
-                                        ->value('term_id');
-							
-							$present_string="{";
-							$marks_obtained_string="{";
-							$highest_marks_string="{";
-							$percent_string="{";
-							//$grade_markheading_wise_string="{";
-							$grade_string="{";
-							$reportcard_marks_string="{"; //Lija for report card
-							$reportcard_highest_marks_string="{"; //Lija for report card
-							
-							//$total_marks_obtained=0;
-							//$total_highest_marks=0;
-							$total_reportcard_marks_obtained=0;
-							$total_reportcard_highest_marks=0;
-							$present="";
-							$percent = "";
-							$grade="";
-							//$grade_markheading_wise="";
-							$subject_det=DB::table('subjects_on_report_card as a')
-                                             ->join('subjects_on_report_card_master as b', 'a.sub_rc_master_id', '=', 'b.sub_rc_master_id')
-                                             ->select('a.subject_type as subject_type', 'b.name as subject_name')
-                                             ->where('a.class_id', $class_id)
-                                             ->where('a.sub_rc_master_id', $subject_id)
-                                             ->get();
-                            // dd($subject_det);                 
-							foreach($subject_det as $sub_row){
-							 //   dd($sub_row);
-								$subject_type=$sub_row->subject_type;
-								$subject_name=$sub_row->subject_name;
-								// dd($subject_type,$subject_name);
-							}
-							
-							for($i=0;$i<$marks_headings_count;$i++){
-								$marks_obtained=trim($filesop[$i+3]);
-								$marks_headings_id=$marks_headings_id_array[$i];
-								$marks_headings_name=$marks_headings_name_array[$i]; //Lija for report card
-								
-								if($marks_obtained<>""){
-									if (is_numeric($marks_obtained)==false) {
-										$studentName = $this->crud_model->get_student_name($student_id);
-                                        $markHeadingName = $this->assessment_model->get_mark_heading_name($marks_headings_id);
-                                        
-                                        return response()->json([
-                                            'success' => false,
-                                            'message' => "Incorrect marks. Please enter a blank or numeric value for $studentName for $markHeadingName."
-                                        ], 400);
-									}
-								}
-								if($marks_obtained<>''){
-									$present='Y';
-								}else{
-									$present='N';
-								}
-								
-								$highest_marks=DB::table('allot_mark_headings')
-                                                ->where('exam_id', $exam_id)
-                                                ->where('class_id', $class_id)
-                                                ->where('marks_headings_id', $marks_headings_id)
-                                                ->where('academic_yr', $acd_yr)
-                                                ->value('highest_marks');
-								//$total_highest_marks=$total_highest_marks+$highest_marks;
-								
-								if ($marks_obtained>$highest_marks){
-								    // dd($marks_obtained,$highest_marks);
-									$this->session->set_flashdata('error_message', 'Incorrect marks. Marks entered is greater than the highest marks for '.$this->crud_model->get_student_name($student_id).' for '.$this->assessment_model->get_mark_heading_name($marks_headings_id));
-									redirect(base_url() . 'index.php/assessment/student_marks/'.$exam_id.'/'.$class_id.'/'.$section_id.'/'.$subject_id, 'refresh');
-								}
-								
-								
-								/*if($marks_obtained<>""){
+                    $percent = "";
+                    $grade = "";
+                    $present = "";
+                    $student_id = trim($filesop[0]);
+                    if ($student_id == '') {
+                        return response()->json([
+                            'status' => 400,
+                            'success' => false,
+                            'message' => "Please do not delete the Code for " . $filesop[2] . "."
+                        ], 400);
+                    } else {
+                        $master_data    =    array(
+                            'exam_id' => $exam_id,
+                            'class_id' => $class_id,
+                            'section_id' => $section_id,
+                            'academic_yr' => $acd_yr,
+                            'subject_id' => $subject_id,
+                            'student_id' => $student_id
+                        );
+                        // 			dd($master_data);
+                        $query = DB::table('student_marks')
+                            ->where($master_data)
+                            ->get();
+                        $class_name = DB::table('class')->where('class_id', $class_id)->value('name'); //Lija for report card
+                        $term_id = DB::table('exam')
+                            ->where('exam_id', $exam_id)
+                            ->value('term_id');
+
+                        $present_string = "{";
+                        $marks_obtained_string = "{";
+                        $highest_marks_string = "{";
+                        $percent_string = "{";
+                        //$grade_markheading_wise_string="{";
+                        $grade_string = "{";
+                        $reportcard_marks_string = "{"; //Lija for report card
+                        $reportcard_highest_marks_string = "{"; //Lija for report card
+
+                        //$total_marks_obtained=0;
+                        //$total_highest_marks=0;
+                        $total_reportcard_marks_obtained = 0;
+                        $total_reportcard_highest_marks = 0;
+                        $present = "";
+                        $percent = "";
+                        $grade = "";
+                        //$grade_markheading_wise="";
+                        $subject_det = DB::table('subjects_on_report_card as a')
+                            ->join('subjects_on_report_card_master as b', 'a.sub_rc_master_id', '=', 'b.sub_rc_master_id')
+                            ->select('a.subject_type as subject_type', 'b.name as subject_name')
+                            ->where('a.class_id', $class_id)
+                            ->where('a.sub_rc_master_id', $subject_id)
+                            ->get();
+                        // dd($subject_det);                 
+                        foreach ($subject_det as $sub_row) {
+                            //   dd($sub_row);
+                            $subject_type = $sub_row->subject_type;
+                            $subject_name = $sub_row->subject_name;
+                            // dd($subject_type,$subject_name);
+                        }
+
+                        for ($i = 0; $i < $marks_headings_count; $i++) {
+                            $marks_obtained = trim($filesop[$i + 3]);
+                            $marks_headings_id = $marks_headings_id_array[$i];
+                            $marks_headings_name = $marks_headings_name_array[$i]; //Lija for report card
+
+                            if ($marks_obtained <> "") {
+                                if (is_numeric($marks_obtained) == false) {
+                                    $studentName = $this->crud_model->get_student_name($student_id);
+                                    $markHeadingName = $this->assessment_model->get_mark_heading_name($marks_headings_id);
+
+                                    return response()->json([
+                                        'success' => false,
+                                        'message' => "Incorrect marks. Please enter a blank or numeric value for $studentName for $markHeadingName."
+                                    ], 400);
+                                }
+                            }
+                            if ($marks_obtained <> '') {
+                                $present = 'Y';
+                            } else {
+                                $present = 'N';
+                            }
+
+                            $highest_marks = DB::table('allot_mark_headings')
+                                ->where('exam_id', $exam_id)
+                                ->where('class_id', $class_id)
+                                ->where('marks_headings_id', $marks_headings_id)
+                                ->where('academic_yr', $acd_yr)
+                                ->value('highest_marks');
+                            //$total_highest_marks=$total_highest_marks+$highest_marks;
+
+                            if ($marks_obtained > $highest_marks) {
+                                // dd($marks_obtained,$highest_marks);
+                                $this->session->set_flashdata('error_message', 'Incorrect marks. Marks entered is greater than the highest marks for ' . $this->crud_model->get_student_name($student_id) . ' for ' . $this->assessment_model->get_mark_heading_name($marks_headings_id));
+                                redirect(base_url() . 'index.php/assessment/student_marks/' . $exam_id . '/' . $class_id . '/' . $section_id . '/' . $subject_id, 'refresh');
+                            }
+
+
+                            /*if($marks_obtained<>""){
 									$total_marks_obtained=$total_marks_obtained+(float)$marks_obtained;
 									//$percent = $marks_obtained * 100 / $highest_marks;
 									//$grade = $this->assessment_model->get_grade_based_on_marks($marks_obtained,$class_id); //Lija for report card
 								}*/
-								$present_string=$present_string.'"'.$marks_headings_id.'":"'.$present.'",';								
-								$marks_obtained_string=$marks_obtained_string.'"'.$marks_headings_id.'":"'.$marks_obtained.'",';
-								$highest_marks_string=$highest_marks_string.'"'.$marks_headings_id.'":"'.$highest_marks.'",';
-								//$percent_string=$percent_string.'"'.$marks_headings_id.'":"'.$percent.'",';
-								
-								//Calculate repord card marks and set the string //Lija report card
-								
-								$reportcard_marks="";
-								$reportcard_highest_marks="";
-								    //echo "marks_obtained ".$marks_obtained."<br/>";
-									//echo "highest_marks ".$highest_marks."<br/>";
-									switch ($class_name) {
-									case "Nursery":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											if($highest_marks==25){
-												if($marks_obtained<=25 && $marks_obtained>=24){
-													//echo "msg 1<br/>";
-													$reportcard_marks=3;
-												}elseif($marks_obtained<=23 && $marks_obtained>=15){
-													//echo "msg 2<br/>";
-													$reportcard_marks=2;
-												}elseif($marks_obtained<15){
-													//echo "msg 3<br/>";
-													$reportcard_marks=1;
-												}
-											//Lija 28-02-22
-											}elseif($highest_marks==15){
-												if($marks_obtained<=15 && $marks_obtained>=14){
-													$reportcard_marks=3;
-												}elseif($marks_obtained<=13 && $marks_obtained>=10){
-													$reportcard_marks=2;
-												}elseif($marks_obtained<10){
-													$reportcard_marks=1;
-												}
-											}elseif($highest_marks==10){
-												if($marks_obtained<=10 && $marks_obtained>=9){
-													//echo "msg 4<br/>";
-													$reportcard_marks=3;
-												}elseif($marks_obtained<=8 && $marks_obtained>=6){
-													//echo "msg 5<br/>";
-													$reportcard_marks=2;
-												}elseif($marks_obtained<6){
-													//echo "msg 6<br/>";
-													$reportcard_marks=1;
-												}
-											}elseif($highest_marks==5){
-												if($marks_obtained<=5 && $marks_obtained>=4){
-													//echo "msg 7<br/>";
-													$reportcard_marks=3;
-												}elseif($marks_obtained<=3 && $marks_obtained>=2){
-													//echo "msg 8<br/>";
-													$reportcard_marks=2;
-												}elseif($marks_obtained<2){
-													//echo "msg 9<br/>";
-													$reportcard_marks=1;
-												}
-											}
-										}
-										$reportcard_highest_marks=3;
-										break;
-										
-									case "LKG":
-									    //$reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
-										$reportcard_highest_marks=$highest_marks;//22-09-22 Lija This is from acd yr 2022-2023
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											//$reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
-											$reportcard_marks = $marks_obtained;//22-09-22 Lija This is from acd yr 2022-2023
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											
-										}
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									case "UKG":
-										//$reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
-										$reportcard_highest_marks=$highest_marks;//22-09-22 Lija This is from acd yr 2022-2023
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											//$reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
-											$reportcard_marks = $marks_obtained;//22-09-22 Lija This is from acd yr 2022-2023
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											
-										}
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									case "1":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									case "2":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									case "3":
-										if($subject_type=='Scholastic'){
-											if($term_id==1){//Lija seperated Term 1 n Term 2 condition 07-12-20
-												if($marks_obtained==""){
-													$reportcard_marks='Ab';
-												}else{
-													//$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
-													$reportcard_marks = $marks_obtained; //Lija 10-07-21
-													$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-												}
-												//$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
-												$reportcard_highest_marks=$highest_marks; //Lija 10-07-21
-												$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-											//Lija added Term 2 condition 07-12-20
-											}else{
-												if($present=='N'){
-													$reportcard_marks='Ab';
-												}else{
-													$reportcard_marks = $marks_obtained;
-													$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-												}
-												$reportcard_highest_marks=$highest_marks;
-												$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-											}
-										}elseif($subject_type=='Co-Scholastic'){
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
-										break;
-									case "4":
-										if($subject_type=='Scholastic'){
-											if($term_id==1){//Lija seperated Term 1 n Term 2 condition 07-12-20
-												if($marks_obtained==""){
-													$reportcard_marks='Ab';
-												}else{
-													//$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
-													$reportcard_marks = $marks_obtained; //Lija 10-07-21
-													$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-												}
-												//$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
-												$reportcard_highest_marks=$highest_marks; //Lija 10-07-21
-												$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-											//Lija added Term 2 condition 07-12-20
-											}else{
-												if($present=='N'){
-													$reportcard_marks='Ab';
-												}else{
-													$reportcard_marks = $marks_obtained;
-													$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-												}
-												$reportcard_highest_marks=$highest_marks;
-												$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-											}
-										}elseif($subject_type=='Co-Scholastic'){
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
-										break;
-									case "5":
-										if($subject_type=='Scholastic'){
-											if($term_id==1){//Lija seperated Term 1 n Term 2 condition 07-12-20
-												if($marks_headings_name=='Internal'){
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}else{
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														//$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
-													    $reportcard_marks = $marks_obtained; //Lija 10-07-21
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													//$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
-												    $reportcard_highest_marks=$highest_marks; //Lija 10-07-21
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}
-											//Lija added Term 2 condition 07-12-20
-											}else{
-												if($present=='N'){
-													$reportcard_marks='Ab';
-												}else{
-													$reportcard_marks = $marks_obtained;
-													$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-												}
-												$reportcard_highest_marks=$highest_marks;
-												$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-											}
-										}elseif($subject_type=='Co-Scholastic'){
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
-										break;
-									case "6":
-										//Lija 13-03-21
-										if($subject_type=='Scholastic'){
-											//if($term_id==1){ //Lija 10-09-21
-												//Lija term marks was doubled for Term 1 2020-2021
-												if(($marks_headings_name=='Term' || $marks_headings_name=='Practical') && !($subject_name=='Marathi' || $subject_name=='Sanskrit')  && $acd_yr=='2020-2021' && $term_id==1){//Lija 10-09-21	
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($marks_headings_name=='Periodic Test'){
-													//07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
-													
-													if($present=='N'){
-														$reportcard_marks='Ab';
-													}else{
+                            $present_string = $present_string . '"' . $marks_headings_id . '":"' . $present . '",';
+                            $marks_obtained_string = $marks_obtained_string . '"' . $marks_headings_id . '":"' . $marks_obtained . '",';
+                            $highest_marks_string = $highest_marks_string . '"' . $marks_headings_id . '":"' . $highest_marks . '",';
+                            //$percent_string=$percent_string.'"'.$marks_headings_id.'":"'.$percent.'",';
 
-														$reportcard_marks = ($marks_obtained/$highest_marks)*10;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=10;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($subject_name=='Computer Applications' || $subject_name=='Computer'){
-													if($marks_obtained==""){
-														//print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}else{
-													//print_r("In else present".$present."<br/>");
-													if($marks_obtained==""){
-														//print_r("In else absentt<br/>");
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}
-											/*}elseif($term_id==2){
+                            //Calculate repord card marks and set the string //Lija report card
+
+                            $reportcard_marks = "";
+                            $reportcard_highest_marks = "";
+                            //echo "marks_obtained ".$marks_obtained."<br/>";
+                            //echo "highest_marks ".$highest_marks."<br/>";
+                            switch ($class_name) {
+                                case "Nursery":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        if ($highest_marks == 25) {
+                                            if ($marks_obtained <= 25 && $marks_obtained >= 24) {
+                                                //echo "msg 1<br/>";
+                                                $reportcard_marks = 3;
+                                            } elseif ($marks_obtained <= 23 && $marks_obtained >= 15) {
+                                                //echo "msg 2<br/>";
+                                                $reportcard_marks = 2;
+                                            } elseif ($marks_obtained < 15) {
+                                                //echo "msg 3<br/>";
+                                                $reportcard_marks = 1;
+                                            }
+                                            //Lija 28-02-22
+                                        } elseif ($highest_marks == 15) {
+                                            if ($marks_obtained <= 15 && $marks_obtained >= 14) {
+                                                $reportcard_marks = 3;
+                                            } elseif ($marks_obtained <= 13 && $marks_obtained >= 10) {
+                                                $reportcard_marks = 2;
+                                            } elseif ($marks_obtained < 10) {
+                                                $reportcard_marks = 1;
+                                            }
+                                        } elseif ($highest_marks == 10) {
+                                            if ($marks_obtained <= 10 && $marks_obtained >= 9) {
+                                                //echo "msg 4<br/>";
+                                                $reportcard_marks = 3;
+                                            } elseif ($marks_obtained <= 8 && $marks_obtained >= 6) {
+                                                //echo "msg 5<br/>";
+                                                $reportcard_marks = 2;
+                                            } elseif ($marks_obtained < 6) {
+                                                //echo "msg 6<br/>";
+                                                $reportcard_marks = 1;
+                                            }
+                                        } elseif ($highest_marks == 5) {
+                                            if ($marks_obtained <= 5 && $marks_obtained >= 4) {
+                                                //echo "msg 7<br/>";
+                                                $reportcard_marks = 3;
+                                            } elseif ($marks_obtained <= 3 && $marks_obtained >= 2) {
+                                                //echo "msg 8<br/>";
+                                                $reportcard_marks = 2;
+                                            } elseif ($marks_obtained < 2) {
+                                                //echo "msg 9<br/>";
+                                                $reportcard_marks = 1;
+                                            }
+                                        }
+                                    }
+                                    $reportcard_highest_marks = 3;
+                                    break;
+
+                                case "LKG":
+                                    //$reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                    $reportcard_highest_marks = $highest_marks; //22-09-22 Lija This is from acd yr 2022-2023
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        //$reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_marks = $marks_obtained; //22-09-22 Lija This is from acd yr 2022-2023
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                case "UKG":
+                                    //$reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                    $reportcard_highest_marks = $highest_marks; //22-09-22 Lija This is from acd yr 2022-2023
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        //$reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_marks = $marks_obtained; //22-09-22 Lija This is from acd yr 2022-2023
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                case "1":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                case "2":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                case "3":
+                                    if ($subject_type == 'Scholastic') {
+                                        if ($term_id == 1) { //Lija seperated Term 1 n Term 2 condition 07-12-20
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                //$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_marks = $marks_obtained; //Lija 10-07-21
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            //$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                            $reportcard_highest_marks = $highest_marks; //Lija 10-07-21
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            //Lija added Term 2 condition 07-12-20
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
+                                    break;
+                                case "4":
+                                    if ($subject_type == 'Scholastic') {
+                                        if ($term_id == 1) { //Lija seperated Term 1 n Term 2 condition 07-12-20
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                //$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_marks = $marks_obtained; //Lija 10-07-21
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            //$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                            $reportcard_highest_marks = $highest_marks; //Lija 10-07-21
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            //Lija added Term 2 condition 07-12-20
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
+                                    break;
+                                case "5":
+                                    if ($subject_type == 'Scholastic') {
+                                        if ($term_id == 1) { //Lija seperated Term 1 n Term 2 condition 07-12-20
+                                            if ($marks_headings_name == 'Internal') {
+                                                if ($marks_obtained == "") {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } else {
+                                                if ($marks_obtained == "") {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    //$reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_marks = $marks_obtained; //Lija 10-07-21
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                //$reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_highest_marks = $highest_marks; //Lija 10-07-21
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                            //Lija added Term 2 condition 07-12-20
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
+                                    break;
+                                case "6":
+                                    //Lija 13-03-21
+                                    if ($subject_type == 'Scholastic') {
+                                        //if($term_id==1){ //Lija 10-09-21
+                                        //Lija term marks was doubled for Term 1 2020-2021
+                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit')  && $acd_yr == '2020-2021' && $term_id == 1) { //Lija 10-09-21	
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($marks_headings_name == 'Periodic Test') {
+                                            //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                            if ($marks_obtained == "") {
+                                                //print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            //print_r("In else present".$present."<br/>");
+                                            if ($marks_obtained == "") {
+                                                //print_r("In else absentt<br/>");
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        /*}elseif($term_id==2){
 												if($subject_name=='Computer Applications'){
 													if($marks_obtained==""){
 														//print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
@@ -7116,64 +7101,64 @@ class AssessmentController extends Controller
 													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
 												}
 											}*/
-										}elseif($subject_type=='Co-Scholastic'){
-											
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained*2;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks*2;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
+                                    } elseif ($subject_type == 'Co-Scholastic') {
 
-										break;
-									case "7"://Lija 13-03-21
-										if($subject_type=='Scholastic'){
-											//if($term_id==1){ //Lija 10-09-21
-												//Lija term marks was doubled for Term 1 2020-2021
-												if(($marks_headings_name=='Term' || $marks_headings_name=='Practical') && !($subject_name=='Marathi' || $subject_name=='Sanskrit')  && $acd_yr=='2020-2021' && $term_id==1){//Lija 10-09-21
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($marks_headings_name=='Periodic Test'){
-													//07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
-													
-													if($present=='N'){
-														$reportcard_marks='Ab';
-													}else{
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained * 2;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks * 2;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
 
-														$reportcard_marks = ($marks_obtained/$highest_marks)*10;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=10;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($subject_name=='Computer Applications' || $subject_name=='Computer'){
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}else{
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}
-											/*}elseif($term_id==2){
+                                    break;
+                                case "7": //Lija 13-03-21
+                                    if ($subject_type == 'Scholastic') {
+                                        //if($term_id==1){ //Lija 10-09-21
+                                        //Lija term marks was doubled for Term 1 2020-2021
+                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit')  && $acd_yr == '2020-2021' && $term_id == 1) { //Lija 10-09-21
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($marks_headings_name == 'Periodic Test') {
+                                            //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        /*}elseif($term_id==2){
 												if($subject_name=='Computer Applications'){
 													if($marks_obtained==""){
 														$reportcard_marks='Ab';
@@ -7206,62 +7191,62 @@ class AssessmentController extends Controller
 													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
 												}
 											}*/
-										}elseif($subject_type=='Co-Scholastic'){
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained*2;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks*2;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
-										break;
-									case "8": //Lija 13-03-21
-										if($subject_type=='Scholastic'){
-											//if($term_id==1){ //Lija 10-09-21
-												//Lija term marks was doubled for Term 1 2020-2021
-												if(($marks_headings_name=='Term' || $marks_headings_name=='Internal') && !($subject_name=='Marathi' || $subject_name=='Sanskrit') && $acd_yr=='2020-2021' && $term_id==1){//Lija 10-09-21
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($marks_headings_name=='Periodic Test'){
-													//07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
-													
-													if($present=='N'){
-														$reportcard_marks='Ab';
-													}else{
+                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained * 2;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks * 2;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
+                                    break;
+                                case "8": //Lija 13-03-21
+                                    if ($subject_type == 'Scholastic') {
+                                        //if($term_id==1){ //Lija 10-09-21
+                                        //Lija term marks was doubled for Term 1 2020-2021
+                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Internal') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) { //Lija 10-09-21
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($marks_headings_name == 'Periodic Test') {
+                                            //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
 
-														$reportcard_marks = ($marks_obtained/$highest_marks)*10;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=10;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}elseif($subject_name=='Artificial Intelligence'){
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained*2;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks*2;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}else{
-													if($marks_obtained==""){
-														$reportcard_marks='Ab';
-													}else{
-														$reportcard_marks = $marks_obtained;
-														$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-													}
-													$reportcard_highest_marks=$highest_marks;
-													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-												}
-											/*}elseif($term_id==2){
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } elseif ($subject_name == 'Artificial Intelligence') {
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($marks_obtained == "") {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        /*}elseif($term_id==2){
 												if($subject_name=='Artificial Intelligence'){
 													if($marks_obtained==""){
 														$reportcard_marks='Ab';
@@ -7294,137 +7279,137 @@ class AssessmentController extends Controller
 													$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
 												}
 											}*/
-										}elseif($subject_type=='Co-Scholastic'){
-											if($marks_obtained==""){
-												$reportcard_marks='Ab';
-											}else{
-												$reportcard_marks = $marks_obtained*2;
-												$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-											}
-											$reportcard_highest_marks=$highest_marks*2;
-											$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										}
-										break;
-									case "9":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									case "10":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									//Lija 15-07-21
-									case "11":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									//Lija 14-07-22
-									case "12":
-										if($marks_obtained==""){
-											$reportcard_marks='Ab';
-										}else{
-											$reportcard_marks = $marks_obtained;
-											$total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
-										}
-										$reportcard_highest_marks=$highest_marks;
-										$total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
-										break;
-									default:
-									}
-								
-								$reportcard_marks_string=$reportcard_marks_string.'"'.$marks_headings_name.'":"'.$reportcard_marks.'",';
-								$reportcard_highest_marks_string=$reportcard_highest_marks_string.'"'.$marks_headings_name.'":"'.$reportcard_highest_marks.'",';
-								
-								/*if($reportcard_marks<>""){
+                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        if ($marks_obtained == "") {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained * 2;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks * 2;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    }
+                                    break;
+                                case "9":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                case "10":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                //Lija 15-07-21
+                                case "11":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                //Lija 14-07-22
+                                case "12":
+                                    if ($marks_obtained == "") {
+                                        $reportcard_marks = 'Ab';
+                                    } else {
+                                        $reportcard_marks = $marks_obtained;
+                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                    }
+                                    $reportcard_highest_marks = $highest_marks;
+                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                    break;
+                                default:
+                            }
+
+                            $reportcard_marks_string = $reportcard_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_marks . '",';
+                            $reportcard_highest_marks_string = $reportcard_highest_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_highest_marks . '",';
+
+                            /*if($reportcard_marks<>""){
 									$grade_markheading_wise = $this->assessment_model->get_grade_based_on_marks($reportcard_marks,$subject_type,$class_id); //Lija for report card
 								}
 								$grade_markheading_wise_string=$grade_markheading_wise_string.'"'.$marks_headings_name.'":"'.$grade_markheading_wise.'",';
 								*/
-							}
-							
-							$present_string=rtrim($present_string,",");
-							$present_string=$present_string."}";
-							
-							$marks_obtained_string=rtrim($marks_obtained_string,",");
-							$marks_obtained_string=$marks_obtained_string."}";
-							
-							$highest_marks_string=rtrim($highest_marks_string,",");
-							$highest_marks_string=$highest_marks_string."}";
-							
-							//$grade_markheading_wise_string=rtrim($grade_markheading_wise_string,",");
-							//$grade_markheading_wise_string=$grade_markheading_wise_string."}";
-							
-							$reportcard_marks_string=rtrim($reportcard_marks_string,","); //Lija report card
-							$reportcard_marks_string=$reportcard_marks_string."}";
-							
-							$reportcard_highest_marks_string=rtrim($reportcard_highest_marks_string,","); //Lija report card
-							$reportcard_highest_marks_string=$reportcard_highest_marks_string."}";
-                            // dd($total_reportcard_marks_obtained);
-							if($total_reportcard_marks_obtained<>""){
-								$percent = $total_reportcard_marks_obtained * 100 / $total_reportcard_highest_marks;
-								if($class_name=='LKG' || $class_name=='UKG'){
-									$grade = $this->getGradeBasedOnMarks($percent,$subject_type,$class_id); 
-								}else{
-									$grade = $this->getGradeBasedOnMarks($total_reportcard_marks_obtained,$subject_type,$class_id); 
-								}
-							}
-							
-							//print_r("reportcard_marks_string".$reportcard_marks_string."<br/>");
-							//exit;
-							$marksData = [
+                        }
+
+                        $present_string = rtrim($present_string, ",");
+                        $present_string = $present_string . "}";
+
+                        $marks_obtained_string = rtrim($marks_obtained_string, ",");
+                        $marks_obtained_string = $marks_obtained_string . "}";
+
+                        $highest_marks_string = rtrim($highest_marks_string, ",");
+                        $highest_marks_string = $highest_marks_string . "}";
+
+                        //$grade_markheading_wise_string=rtrim($grade_markheading_wise_string,",");
+                        //$grade_markheading_wise_string=$grade_markheading_wise_string."}";
+
+                        $reportcard_marks_string = rtrim($reportcard_marks_string, ","); //Lija report card
+                        $reportcard_marks_string = $reportcard_marks_string . "}";
+
+                        $reportcard_highest_marks_string = rtrim($reportcard_highest_marks_string, ","); //Lija report card
+                        $reportcard_highest_marks_string = $reportcard_highest_marks_string . "}";
+                        // dd($total_reportcard_marks_obtained);
+                        if ($total_reportcard_marks_obtained <> "") {
+                            $percent = $total_reportcard_marks_obtained * 100 / $total_reportcard_highest_marks;
+                            if ($class_name == 'LKG' || $class_name == 'UKG') {
+                                $grade = $this->getGradeBasedOnMarks($percent, $subject_type, $class_id);
+                            } else {
+                                $grade = $this->getGradeBasedOnMarks($total_reportcard_marks_obtained, $subject_type, $class_id);
+                            }
+                        }
+
+                        //print_r("reportcard_marks_string".$reportcard_marks_string."<br/>");
+                        //exit;
+                        $marksData = [
+                            'exam_id' => $exam_id,
+                            'class_id' => $class_id,
+                            'section_id' => $section_id,
+                            'academic_yr' => $acd_yr,
+                            'subject_id' => $subject_id,
+                            'student_id' => $student_id,
+                            'present' => $present_string,
+                            'mark_obtained' => $marks_obtained_string,
+                            'highest_marks' => $highest_marks_string,
+                            'reportcard_marks' => $reportcard_marks_string,
+                            'reportcard_highest_marks' => $reportcard_highest_marks_string,
+                            // 'grade_marksheading_wise' => $grade_markheading_wise_string,
+                            'total_marks' => $total_reportcard_marks_obtained,
+                            'highest_total_marks' => $total_reportcard_highest_marks,
+                            'percent' => $percent,
+                            'grade' => $grade,
+                            'date' => date('Y-m-d'),
+                            'publish' => 'N',
+                            'comment' => '',
+                            'data_entry_by' => $user->reg_id
+                        ];
+
+                        // Using updateOrInsert (best for your case)
+                        DB::table('student_marks')->updateOrInsert(
+                            [
                                 'exam_id' => $exam_id,
                                 'class_id' => $class_id,
                                 'section_id' => $section_id,
-                                'academic_yr' => $acd_yr,
                                 'subject_id' => $subject_id,
                                 'student_id' => $student_id,
-                                'present' => $present_string,
-                                'mark_obtained' => $marks_obtained_string,
-                                'highest_marks' => $highest_marks_string,
-                                'reportcard_marks' => $reportcard_marks_string,
-                                'reportcard_highest_marks' => $reportcard_highest_marks_string,
-                                // 'grade_marksheading_wise' => $grade_markheading_wise_string,
-                                'total_marks' => $total_reportcard_marks_obtained,
-                                'highest_total_marks' => $total_reportcard_highest_marks,
-                                'percent' => $percent,
-                                'grade' => $grade,
-                                'date' => date('Y-m-d'),
-                                'publish' => 'N',
-                                'comment' => '',
-                                'data_entry_by' => $user->reg_id
-                            ];
-                            
-                            // Using updateOrInsert (best for your case)
-                            DB::table('student_marks')->updateOrInsert(
-                                [
-                                    'exam_id' => $exam_id,
-                                    'class_id' => $class_id,
-                                    'section_id' => $section_id,
-                                    'subject_id' => $subject_id,
-                                    'student_id' => $student_id,
-                                ],
-                                $marksData
-                            );
-						}	
-					}
+                            ],
+                            $marksData
+                        );
+                    }
+                }
 
                 $c++;
             }
@@ -7450,27 +7435,27 @@ class AssessmentController extends Controller
             'status' => 'error',
             'message' => "Unable to read uploaded file."
         ], 400);
-        
     }
-    
+
     function getGradeBasedOnMarks($mark, $subject_type, $class_id)
     {
         // Check for invalid marks
         if (is_nan($mark) || !is_numeric($mark)) {
             return "";
         }
-    
+
         $grade = DB::table('grade')
             ->where('class_id', $class_id)
             ->where('subject_type', $subject_type)
             ->where('mark_from', '<=', $mark)
             ->where('mark_upto', '>=', $mark)
             ->value('name'); // fetch only the "name" column
-    
+
         return $grade ?? "";
     }
-    
-    public function getPublishDeleteStatusStudentMarks(Request $request){
+
+    public function getPublishDeleteStatusStudentMarks(Request $request)
+    {
         $exam_id    = $request->exam_id;
         $class_id   = $request->class_id;
         $subject_id = $request->subject_id;
@@ -7505,11 +7490,12 @@ class AssessmentController extends Controller
             'status' => 200,
             'show_publish' => $unpublishedCount > 0,
             'show_delete' => $totalCount > 0,
-            'success' =>true
+            'success' => true
         ]);
     }
-    
-    public function saveChapters(Request $request){
+
+    public function saveChapters(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validated = $request->validate([
@@ -7521,7 +7507,7 @@ class AssessmentController extends Controller
             'description'  => 'nullable|string',
         ]);
 
-        
+
         $data = [
             'class_id'     => $validated['class_id'],
             'subject_id'   => $validated['subject_id'],
@@ -7534,42 +7520,41 @@ class AssessmentController extends Controller
             'academic_yr'  => JWTAuth::getPayload()->get('academic_year')
         ];
 
-        
-            $data['publish'] = 'N';
 
-             // check if chapter_number_already_exists
-            $exists = DB::table('chapters')->where([
-                ['class_id', '=', $data['class_id']],
-                ['subject_id', '=', $data['subject_id']],
-                ['chapter_no', '=', $data['chapter_no']],
-                ['IsDelete', '=', 'N'],
-            ])
-            ->when(!empty($data['sub_subject']), function($q) use ($data) {
+        $data['publish'] = 'N';
+
+        // check if chapter_number_already_exists
+        $exists = DB::table('chapters')->where([
+            ['class_id', '=', $data['class_id']],
+            ['subject_id', '=', $data['subject_id']],
+            ['chapter_no', '=', $data['chapter_no']],
+            ['IsDelete', '=', 'N'],
+        ])
+            ->when(!empty($data['sub_subject']), function ($q) use ($data) {
                 return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
             })
             ->exists();
 
-            if ($exists) {
-                return response()->json([
-                    'status' => 409,
-                    'message' => 'Duplicate lesson number is not allowed',
-                    'success' => false,
-                ],409);
-            }
-
-            DB::table('chapters')->insert($data);
-
+        if ($exists) {
             return response()->json([
-                'status'  => 200,
-                'message' => 'Chapter Created Successfully!',
-                'success' =>true
-            ]);
-        
-        
+                'status' => 409,
+                'message' => 'Duplicate lesson number is not allowed',
+                'success' => false,
+            ], 409);
+        }
+
+        DB::table('chapters')->insert($data);
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Chapter Created Successfully!',
+            'success' => true
+        ]);
     }
-    
+
     // LEO CHANGES - 09/12/2025 11:23 - START
-    public function savenpublishChapters(Request $request){
+    public function savenpublishChapters(Request $request)
+    {
 
         /*
             Duplicate lesson number is created
@@ -7586,7 +7571,7 @@ class AssessmentController extends Controller
             'description'  => 'nullable|string',
         ]);
 
-        
+
         $data = [
             'class_id'     => $validated['class_id'],
             'subject_id'   => $validated['subject_id'],
@@ -7599,43 +7584,42 @@ class AssessmentController extends Controller
             'academic_yr'  => JWTAuth::getPayload()->get('academic_year')
         ];
 
-        
-            $data['publish'] = 'Y';
 
-            // check if chapter_number_already_exists
-            $exists = DB::table('chapters')->where([
-                ['class_id', '=', $data['class_id']],
-                ['subject_id', '=', $data['subject_id']],
-                ['chapter_no', '=', $data['chapter_no']],
-                ['IsDelete', '=', 'N'],
-            ])
-            ->when(!empty($data['sub_subject']), function($q) use ($data) {
+        $data['publish'] = 'Y';
+
+        // check if chapter_number_already_exists
+        $exists = DB::table('chapters')->where([
+            ['class_id', '=', $data['class_id']],
+            ['subject_id', '=', $data['subject_id']],
+            ['chapter_no', '=', $data['chapter_no']],
+            ['IsDelete', '=', 'N'],
+        ])
+            ->when(!empty($data['sub_subject']), function ($q) use ($data) {
                 return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
             })
             ->exists();
 
-            if ($exists) {
-                return response()->json([
-                    'status' => 409,
-                    'message' => 'Duplicate lesson number is not allowed',
-                    'success' => false,
-                ],409);
-            }
-
-
-            DB::table('chapters')->insert($data);
-
+        if ($exists) {
             return response()->json([
-                'status'  => 200,
-                'message' => 'Chapter created and published successfully!',
-                'success' =>true
-            ]);
-        
-        
+                'status' => 409,
+                'message' => 'Duplicate lesson number is not allowed',
+                'success' => false,
+            ], 409);
+        }
+
+
+        DB::table('chapters')->insert($data);
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Chapter created and published successfully!',
+            'success' => true
+        ]);
     }
     // LEO CHANGES - 09/12/2025 11:23 - END
-    
-    public function deleteChapters(Request $request,$chapter_id){
+
+    public function deleteChapters(Request $request, $chapter_id)
+    {
         $chapter = DB::table('chapters')->where('chapter_id', $chapter_id)->first();
 
         if (!$chapter) {
@@ -7651,7 +7635,7 @@ class AssessmentController extends Controller
             return response()->json([
                 'status'  => 200,
                 'message' => 'Chapter permanently deleted.',
-                'success' =>true
+                'success' => true
             ]);
         } else {
             $lessonPlanExists = DB::table('lesson_plan_template')
@@ -7667,103 +7651,102 @@ class AssessmentController extends Controller
                 'message' => $lessonPlanExists
                     ? 'Chapter marked as deleted (linked lesson plan found).'
                     : 'Chapter marked as deleted.',
-                'success' =>true
+                'success' => true
             ]);
         }
     }
-    
-    public function getChapters(Request $request){
+
+    public function getChapters(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        
+
         if ($user->role_id === 'U') {
-            
+
             $chapters_list = DB::table('chapters')
-                                ->select([
-                                    'chapters.*',
-                                    'class.name as class_name',
-                                    'subject_master.name as sub_name',
-                                    'subject.sm_id',
-                                    'subject.teacher_id',
-                                    'teacher.name as tec_name'
-                                ])
-                                ->join('class', 'chapters.class_id', '=', 'class.class_id')
-                                ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
-                                ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
-                                ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
-                                ->whereColumn('chapters.class_id', 'subject.class_id')
-                                ->where('chapters.academic_yr', $academic_yr)
-                                ->groupBy('chapters.chapter_id')
-                                ->orderBy('chapters.class_id', 'asc')
-                                ->orderBy('chapters.subject_id', 'asc')
-                                ->orderBy('chapters.chapter_no', 'asc')
-                                ->get();
-                    
+                ->select([
+                    'chapters.*',
+                    'class.name as class_name',
+                    'subject_master.name as sub_name',
+                    'subject.sm_id',
+                    'subject.teacher_id',
+                    'teacher.name as tec_name'
+                ])
+                ->join('class', 'chapters.class_id', '=', 'class.class_id')
+                ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
+                ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
+                ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
+                ->whereColumn('chapters.class_id', 'subject.class_id')
+                ->where('chapters.academic_yr', $academic_yr)
+                ->groupBy('chapters.chapter_id')
+                ->orderBy('chapters.class_id', 'asc')
+                ->orderBy('chapters.subject_id', 'asc')
+                ->orderBy('chapters.chapter_no', 'asc')
+                ->get();
         } else {
-            
+
             $chapters_list = DB::table('chapters')
-                                ->select([
-                                    'chapters.*',
-                                    'class.name as class_name',
-                                    'subject_master.name as sub_name',
-                                    'subject.sm_id',
-                                    'subject.teacher_id',
-                                    'teacher.name as tec_name'
-                                ])
-                                ->join('class', 'chapters.class_id', '=', 'class.class_id')
-                                ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
-                                ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
-                                ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
-                                ->whereColumn('chapters.class_id', 'subject.class_id')
-                                ->where('chapters.academic_yr', $academic_yr)
-                                ->where('subject.teacher_id', $user->reg_id)
-                                ->groupBy('chapters.chapter_id')
-                                ->orderBy('chapters.class_id', 'asc')
-                                ->orderBy('chapters.subject_id', 'asc')
-                                ->orderBy('chapters.chapter_no', 'asc')
-                                ->get();
+                ->select([
+                    'chapters.*',
+                    'class.name as class_name',
+                    'subject_master.name as sub_name',
+                    'subject.sm_id',
+                    'subject.teacher_id',
+                    'teacher.name as tec_name'
+                ])
+                ->join('class', 'chapters.class_id', '=', 'class.class_id')
+                ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
+                ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
+                ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
+                ->whereColumn('chapters.class_id', 'subject.class_id')
+                ->where('chapters.academic_yr', $academic_yr)
+                ->where('subject.teacher_id', $user->reg_id)
+                ->groupBy('chapters.chapter_id')
+                ->orderBy('chapters.class_id', 'asc')
+                ->orderBy('chapters.subject_id', 'asc')
+                ->orderBy('chapters.chapter_no', 'asc')
+                ->get();
         }
 
         return response()->json([
             'status' => 200,
             'data'   => $chapters_list,
-            'success' =>true
+            'success' => true
         ]);
-        
-        
     }
-    
-    public function getChapter(Request $request){
+
+    public function getChapter(Request $request)
+    {
         $chapter_id = $request->input('chapter_id');
         $chapters_list = DB::table('chapters')
-                                ->select([
-                                    'chapters.*',
-                                    'class.name as class_name',
-                                    'subject_master.name as sub_name',
-                                    'subject.sm_id',
-                                    'subject.teacher_id',
-                                    'teacher.name as tec_name'
-                                ])
-                                ->join('class', 'chapters.class_id', '=', 'class.class_id')
-                                ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
-                                ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
-                                ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
-                                ->whereColumn('chapters.class_id', 'subject.class_id')
-                                ->where('chapters.chapter_id', $chapter_id)
-                                ->groupBy('chapters.chapter_id')
-                                ->orderBy('chapters.class_id', 'asc')
-                                ->orderBy('chapters.subject_id', 'asc')
-                                ->orderBy('chapters.chapter_no', 'asc')
-                                ->get();
+            ->select([
+                'chapters.*',
+                'class.name as class_name',
+                'subject_master.name as sub_name',
+                'subject.sm_id',
+                'subject.teacher_id',
+                'teacher.name as tec_name'
+            ])
+            ->join('class', 'chapters.class_id', '=', 'class.class_id')
+            ->join('subject_master', 'chapters.subject_id', '=', 'subject_master.sm_id')
+            ->join('subject', 'chapters.subject_id', '=', 'subject.sm_id')
+            ->join('teacher', 'chapters.created_by', '=', 'teacher.teacher_id')
+            ->whereColumn('chapters.class_id', 'subject.class_id')
+            ->where('chapters.chapter_id', $chapter_id)
+            ->groupBy('chapters.chapter_id')
+            ->orderBy('chapters.class_id', 'asc')
+            ->orderBy('chapters.subject_id', 'asc')
+            ->orderBy('chapters.chapter_no', 'asc')
+            ->get();
         return response()->json([
             'status' => 200,
             'data'   => $chapters_list,
-            'success' =>true
+            'success' => true
         ]);
-        
     }
-    
-    public function publishChapters(Request $request){
+
+    public function publishChapters(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validated = $request->validate([
@@ -7772,7 +7755,7 @@ class AssessmentController extends Controller
         ]);
 
         $chapterIds = $validated['chapter_ids'];
-        
+
         $updateData = [
             'publish'      => 'Y',
         ];
@@ -7786,50 +7769,50 @@ class AssessmentController extends Controller
                 'status'  => 200,
                 'message' => 'Selected chapters have been published successfully.',
                 'count'   => $affectedRows,
-                'success' =>true
+                'success' => true
             ], 200);
         }
 
         return response()->json([
             'status'  => 400,
             'message' => 'No chapters were updated. Please check the IDs.',
-            'success' =>true
+            'success' => true
         ], 400);
-        
     }
-    
-    public function getOnlyClassesAllotedToTeacher(Request $request){
+
+    public function getOnlyClassesAllotedToTeacher(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        
-        $classes = DB::select("select class.name as class_name, subject.class_id from subject, class where subject.class_id = class.class_id and subject.teacher_id= ".$user->reg_id." AND subject.academic_yr = '".$academic_yr."' GROUP BY class_id;");
-        
-        
+
+        $classes = DB::select("select class.name as class_name, subject.class_id from subject, class where subject.class_id = class.class_id and subject.teacher_id= " . $user->reg_id . " AND subject.academic_yr = '" . $academic_yr . "' GROUP BY class_id;");
+
+
         return response()->json([
-                'status'  => 200,
-                'message' => 'Classes list by teacher id.',
-                'data'   => $classes,
-                'success' =>true
-            ]);
-        
+            'status'  => 200,
+            'message' => 'Classes list by teacher id.',
+            'data'   => $classes,
+            'success' => true
+        ]);
     }
-    
-    public function getSubjectsAccordingClass(Request $request){
+
+    public function getSubjectsAccordingClass(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');
-        $subjects = DB::select("select subject_master.sm_id, subject_master.name from subject,subject_master where subject_master.sm_id= subject.sm_id and subject.class_id='".$class_id."' and subject.teacher_id='".$user->reg_id."' AND subject.academic_yr ='".$academic_yr."' group by subject.sm_id");
-        
+        $subjects = DB::select("select subject_master.sm_id, subject_master.name from subject,subject_master where subject_master.sm_id= subject.sm_id and subject.class_id='" . $class_id . "' and subject.teacher_id='" . $user->reg_id . "' AND subject.academic_yr ='" . $academic_yr . "' group by subject.sm_id");
+
         return response()->json([
-                'status'  => 200,
-                'message' => 'Subjects according to class',
-                'data'   => $subjects,
-                'success' =>true
-            ]);
-        
+            'status'  => 200,
+            'message' => 'Subjects according to class',
+            'data'   => $subjects,
+            'success' => true
+        ]);
     }
-    
-    public function updateChapters(Request $request,$chapter_id){
+
+    public function updateChapters(Request $request, $chapter_id)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validated = $request->validate([
@@ -7840,7 +7823,7 @@ class AssessmentController extends Controller
             'sub_subject'  => 'nullable|string|max:255',
             'description'  => 'nullable|string',
         ]);
-        
+
         $data = [
             'class_id'     => $validated['class_id'],
             'subject_id'   => $validated['subject_id'],
@@ -7856,32 +7839,31 @@ class AssessmentController extends Controller
             ['chapter_no', '=', $data['chapter_no']],
             ['IsDelete', '=', 'N'],
         ])
-        ->when(!empty($data['sub_subject']), function($q) use ($data) {
-            return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
-        })
-        ->exists();
+            ->when(!empty($data['sub_subject']), function ($q) use ($data) {
+                return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
+            })
+            ->exists();
 
         if ($exists) {
             return response()->json([
                 'status' => 409,
                 'message' => 'Duplicate lesson number is not allowed',
                 'success' => false,
-            ],409);
+            ], 409);
         }
-        
+
         $updated = DB::table('chapters')
-                    ->where('chapter_id', $chapter_id)
-                    ->update($data);
-        
-        
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Chapter updated !',
-                'success' => true
-            ]);
-        
+            ->where('chapter_id', $chapter_id)
+            ->update($data);
+
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Chapter updated !',
+            'success' => true
+        ]);
     }
-   
+
     public function generateCsvFileForChapters(Request $request)
     {
         $request->validate([
@@ -7900,7 +7882,7 @@ class AssessmentController extends Controller
 
 
         // Return CSV as a streamed response
-        return response()->stream(function()  {
+        return response()->stream(function () {
             $file = fopen('php://output', 'w');
 
             // Column headers
@@ -7913,9 +7895,10 @@ class AssessmentController extends Controller
             "Content-Disposition" => "attachment; filename=\"{$filename}\"",
         ]);
     }
-    
+
     // LEO CHANGES - 09/12/2025 - START
-    public function uploadChaptersThroughExcelsheet(Request $request){
+    public function uploadChaptersThroughExcelsheet(Request $request)
+    {
 
         /*
             On entering same lesson no in excel sheet , chapter is created . Error msg not shown for unique chapter no.
@@ -7947,7 +7930,7 @@ class AssessmentController extends Controller
             return response()->json([
                 'status'  => 422,
                 'message' => 'Empty CSV cannot be uploaded. Please add data!',
-                'success' =>false
+                'success' => false
             ]);
         }
 
@@ -7965,7 +7948,7 @@ class AssessmentController extends Controller
                     return response()->json([
                         'status'  => 422,
                         'message' => "Invalid CSV header. Please use the correct format.",
-                        'success' =>false
+                        'success' => false
                     ]);
                 }
                 $row++;
@@ -7974,8 +7957,8 @@ class AssessmentController extends Controller
 
             $chapter_no = isset($data[0]) ? trim($data[0]) : null;
             $name       = isset($data[1]) ? trim($data[1]) : null;
-            $sub_subject= isset($data[2]) ? strtoupper(trim($data[2])) : null;
-            $description= isset($data[3]) ? trim($data[3]) : null;
+            $sub_subject = isset($data[2]) ? strtoupper(trim($data[2])) : null;
+            $description = isset($data[3]) ? trim($data[3]) : null;
 
             $key = $chapter_no . '_' . strtoupper($sub_subject ?? '');
 
@@ -8001,7 +7984,7 @@ class AssessmentController extends Controller
                     ->where('subject_id', $sm_id)
                     ->where('chapter_no', $chapter_no)
                     ->where('IsDelete', 'N')
-                    ->when($sub_subject, function($q) use ($sub_subject) {
+                    ->when($sub_subject, function ($q) use ($sub_subject) {
                         return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($sub_subject)]);
                     })
                     ->exists();
@@ -8045,11 +8028,11 @@ class AssessmentController extends Controller
             'message' => 'Chapters uploaded successfully!',
             'success' => true
         ]);
-        
     }
     // LEO CHANGES - 09/12/2025 - END
-    
-    public function saveLessonPlanHeading(Request $request){
+
+    public function saveLessonPlanHeading(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $validated = $request->validate([
@@ -8057,83 +8040,82 @@ class AssessmentController extends Controller
             'sequence' => 'required|integer',
         ]);
 
-        
+
         $data = [
             'name' => $request->input('name'),
             'sequence' => $request->input('sequence'),
             'change_daily' => $request->input('change_daily'),
         ];
 
-        
-        
-            // Check if heading already exists
-            $exists = DB::table('lesson_plan_heading')
-                        ->where('name', $data['name'])
-                        ->exists();
 
-            if ($exists) {
-                return response()->json([
-                    'status' => 400,
-                    'message' => 'Lesson plan heading already exists!',
-                    'success' =>false
-                ]);
-            }
 
-            
-            $inserted = DB::table('lesson_plan_heading')->insert($data);
+        // Check if heading already exists
+        $exists = DB::table('lesson_plan_heading')
+            ->where('name', $data['name'])
+            ->exists();
 
-            if ($inserted) {
-                return response()->json([
-                    'status' => '200',
-                    'message' => 'Lesson plan heading created successfully!',
-                    'success' =>true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 400,
-                    'message' => 'Failed to create Lesson Plan Heading.',
-                    'success' =>false
-                ]);
-            }
-        
-        
+        if ($exists) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Lesson plan heading already exists!',
+                'success' => false
+            ]);
+        }
+
+
+        $inserted = DB::table('lesson_plan_heading')->insert($data);
+
+        if ($inserted) {
+            return response()->json([
+                'status' => '200',
+                'message' => 'Lesson plan heading created successfully!',
+                'success' => true
+            ]);
+        } else {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Failed to create Lesson Plan Heading.',
+                'success' => false
+            ]);
+        }
     }
-    
-    public function getLessonPlanHeading(Request $request){
+
+    public function getLessonPlanHeading(Request $request)
+    {
         $headings = DB::table('lesson_plan_heading')->orderBy('sequence', 'asc')->get();
 
         // Map each heading to include edit/delete flags
         $result = $headings->map(function ($heading) {
-                $usedCount = DB::table('lesson_plan_template_details')
-                    ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
-                    ->count();
-        
-                return [
-                    'lesson_plan_headings_id' => $heading->lesson_plan_headings_id,
-                    'name' => $heading->name,
-                    'sequence'=>$heading->sequence,
-                    'change_daily'=>$heading->change_daily,
-                    'edit' => $usedCount == 0 ? 'Y' : 'N',
-                    'delete' => $usedCount == 0 ? 'Y' : 'N',
-                ];
-            });
-        
-            return response()->json([
-                'status'=>200,
-                'data'=>$result,
-                'success'=>true
-                ]);
-            
+            $usedCount = DB::table('lesson_plan_template_details')
+                ->where('lesson_plan_headings_id', $heading->lesson_plan_headings_id)
+                ->count();
+
+            return [
+                'lesson_plan_headings_id' => $heading->lesson_plan_headings_id,
+                'name' => $heading->name,
+                'sequence' => $heading->sequence,
+                'change_daily' => $heading->change_daily,
+                'edit' => $usedCount == 0 ? 'Y' : 'N',
+                'delete' => $usedCount == 0 ? 'Y' : 'N',
+            ];
+        });
+
+        return response()->json([
+            'status' => 200,
+            'data' => $result,
+            'success' => true
+        ]);
     }
-    
-    public function deleteLessonPlanHeading(Request $request,$lesson_plan_heading_id){
-         $heading = DB::table('lesson_plan_heading')->where('lesson_plan_headings_id', $lesson_plan_heading_id)->first();
+
+    public function deleteLessonPlanHeading(Request $request, $lesson_plan_heading_id)
+    {
+        $heading = DB::table('lesson_plan_heading')->where('lesson_plan_headings_id', $lesson_plan_heading_id)->first();
 
         if (!$heading) {
             return response()->json([
                 'status' => 400,
                 'message' => 'Lesson plan heading not found.',
-                'success' =>false
+                'success' => false
             ]);
         }
 
@@ -8146,7 +8128,7 @@ class AssessmentController extends Controller
             return response()->json([
                 'status' => 400,
                 'message' => 'Cannot delete. This heading is in use.',
-                'success' =>false
+                'success' => false
             ]);
         }
 
@@ -8156,12 +8138,13 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => 200,
             'message' => 'Lesson plan heading deleted successfully.',
-            'success'=>true
+            'success' => true
         ]);
     }
-    
-    public function updateLessonPlanHeading(Request $request,$lesson_plan_heading_id){
-         $request->validate([
+
+    public function updateLessonPlanHeading(Request $request, $lesson_plan_heading_id)
+    {
+        $request->validate([
             'name' => 'required|string|max:255',
             'sequence' => 'required|integer',
             'change_daily' => 'nullable',
@@ -8173,72 +8156,70 @@ class AssessmentController extends Controller
             'change_daily' => $request->input('change_daily'),
         ];
 
-        
+
         $updated = DB::table('lesson_plan_heading')
             ->where('lesson_plan_headings_id', $lesson_plan_heading_id)
             ->update($data);
 
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Lesson Plan Heading updated successfully.',
-            'status'  =>200
+            'status'  => 200
         ]);
-        
-        
-        
     }
-    
-    public function getChapterInfoClassSubId(Request $request){
+
+    public function getChapterInfoClassSubId(Request $request)
+    {
         $class_id = $request->input('class_id');
         $subject_id = $request->input('subject_id');
-        
+
         $chapters = DB::table('chapters')
-        ->where('class_id', $class_id)
-        ->where('subject_id', $subject_id)
-        ->where('publish', 'Y')
-        ->where('isDelete', 'N')
-        ->get();
-        
+            ->where('class_id', $class_id)
+            ->where('subject_id', $subject_id)
+            ->where('publish', 'Y')
+            ->where('isDelete', 'N')
+            ->get();
+
         return response()->json([
             'success' => true,
-            'data' =>$chapters,
+            'data' => $chapters,
             'message' => 'Chatper according to class and subject.',
-            'status'  =>200
+            'status'  => 200
         ]);
 
         // leo is my name
-        
-        
+
+
     }
-    
+
     // public function getLessonPlanTemplate(Request $request){
     //     $class_id = $request->input('class_id');
     //     $subject_id = $request->input('subject_id');
     //     $chapter_id = $request->input('chapter_id');
-        
+
     //     $lessonplantemplate = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,lesson_plan_heading.name from lesson_plan_template,lesson_plan_template_details,lesson_plan_heading where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_heading.lesson_plan_headings_id = lesson_plan_template_details.lesson_plan_headings_id and lesson_plan_template.chapter_id='".$chapter_id."' and subject_id='".$subject_id."' and class_id='".$class_id."'");
-        
+
     //     return response()->json([
     //         'success' => true,
     //         'data' =>$lessonplantemplate,
     //         'message' => 'Lesson plan template fetched successfully.',
     //         'status'  =>200
     //     ]);
-        
+
     // }
-    
+
 
     public function getLessonPlanTemplate(Request $request)
     {
         $class_id   = $request->input('class_id');
         $subject_id = $request->input('subject_id');
         $chapter_id = $request->input('chapter_id');
-        
+
         // Authenticate user
         $user    = $this->authenticateUser();
         $reg_id  = JWTAuth::getPayload()->get('reg_id');
-    
+
         $lessonplantemplate = DB::select("
             SELECT lpt.*, lptd.*, lph.name
             FROM lesson_plan_template AS lpt
@@ -8250,12 +8231,12 @@ class AssessmentController extends Controller
             AND lpt.subject_id = ?
             AND lpt.class_id = ?
             AND lpt.reg_id = ? 
-        ", [$chapter_id, $subject_id, $class_id , $reg_id]);
-    
-    
+        ", [$chapter_id, $subject_id, $class_id, $reg_id]);
+
+
         // 🚨 FIX: Check if no template exists
         if (count($lessonplantemplate) === 0) {
-            
+
             return response()->json([
                 'success' => false,
                 'data'    => [],
@@ -8270,58 +8251,60 @@ class AssessmentController extends Controller
             'message' => 'Lesson plan template fetched successfully.',
             'status'  => 200
         ]);
-
     }
-    
-    public function getLessonPlanHeadingNonDaily(Request $request){
+
+    public function getLessonPlanHeadingNonDaily(Request $request)
+    {
         $lessonPlanHeadings = DB::table('lesson_plan_heading')
-                                    ->where('change_daily', '!=', 'Y')
-                                    ->orderBy('sequence', 'asc')
-                                    ->get();
-                                    
+            ->where('change_daily', '!=', 'Y')
+            ->orderBy('sequence', 'asc')
+            ->get();
+
         return response()->json([
             'success' => true,
-            'data' =>$lessonPlanHeadings,
+            'data' => $lessonPlanHeadings,
             'message' => 'Lesson plan headings non daily fetched successfully.',
-            'status'  =>200
+            'status'  => 200
         ]);
     }
-    
-    public function getLessonPlanHeadingDaily(Request $request){
+
+    public function getLessonPlanHeadingDaily(Request $request)
+    {
         $lessonPlanHeadings = DB::table('lesson_plan_heading')
-                                    ->where('change_daily', '=', 'Y')
-                                    ->orderBy('sequence', 'asc')
-                                    ->get();
-                                    
+            ->where('change_daily', '=', 'Y')
+            ->orderBy('sequence', 'asc')
+            ->get();
+
         return response()->json([
             'success' => true,
-            'data' =>$lessonPlanHeadings,
+            'data' => $lessonPlanHeadings,
             'message' => 'Lesson plan headings daily fetched successfully.',
-            'status'  =>200
+            'status'  => 200
         ]);
     }
-    
-    public function saveLessonPlanTemplate(Request $request){
+
+    public function saveLessonPlanTemplate(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $data = [
-        'class_id'    => $request->input('class_id'),
-        'subject_id'  => $request->input('subject_id'),
-        'chapter_id'  => $request->input('chapter_id'),
-        'reg_id'      => $user->reg_id,
-        'publish'     => 'N',
-        'academic_yr' => $academic_yr,
+            'class_id'    => $request->input('class_id'),
+            'subject_id'  => $request->input('subject_id'),
+            'chapter_id'  => $request->input('chapter_id'),
+            'reg_id'      => $user->reg_id,
+            'publish'     => 'N',
+            'academic_yr' => $academic_yr,
         ];
 
-    
+
         $templateId = $this->lessonPlanTemplateCreate($data);
 
         if (!$templateId) {
             return response()->json([
-                'status' =>400,
+                'status' => 400,
                 'message' => 'Template already exists.',
-                'success' =>false
-                ]);
+                'success' => false
+            ]);
         }
 
         // Handle all descriptions in one clean loop
@@ -8334,34 +8317,34 @@ class AssessmentController extends Controller
         }
 
         return response()->json([
-            'status'  =>200,
+            'status'  => 200,
             'message' => 'Lesson Plan Template Created Successfully!',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
-    public function savenPublishLessonPlanTemplate(Request $request){
+
+    public function savenPublishLessonPlanTemplate(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $data = [
-        'class_id'    => $request->input('class_id'),
-        'subject_id'  => $request->input('subject_id'),
-        'chapter_id'  => $request->input('chapter_id'),
-        'reg_id'      => $user->reg_id,
-        'publish'     => 'Y',
-        'academic_yr' => $academic_yr,
+            'class_id'    => $request->input('class_id'),
+            'subject_id'  => $request->input('subject_id'),
+            'chapter_id'  => $request->input('chapter_id'),
+            'reg_id'      => $user->reg_id,
+            'publish'     => 'Y',
+            'academic_yr' => $academic_yr,
         ];
 
-    
+
         $templateId = $this->lessonPlanTemplateCreate($data);
 
         if (!$templateId) {
             return response()->json([
-                'status' =>400,
+                'status' => 400,
                 'message' => 'Template already exists.',
-                'success' =>false
-                ]);
+                'success' => false
+            ]);
         }
 
         // Handle all descriptions in one clean loop
@@ -8374,13 +8357,12 @@ class AssessmentController extends Controller
         }
 
         return response()->json([
-            'status'  =>200,
+            'status'  => 200,
             'message' => 'Lesson Plan Template Created and Published Successfully!',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
+
     private function lessonPlanTemplateCreate(array $data)
     {
         $exists = DB::table('lesson_plan_template')
@@ -8388,49 +8370,49 @@ class AssessmentController extends Controller
             ->where('subject_id', $data['subject_id'])
             ->where('class_id', $data['class_id'])
             ->exists();
-    
+
         if ($exists) {
             return false;
         }
-    
+
         $k = DB::table('lesson_plan_template')->insertGetId($data);
         return $k;
     }
-    
-    
-    public function deleteLessonPlanTemplate(Request $request,$les_pln_temp_id){
-        
+
+
+    public function deleteLessonPlanTemplate(Request $request, $les_pln_temp_id)
+    {
+
         DB::table('lesson_plan_template_details')
-        ->where('les_pln_temp_id', $les_pln_temp_id)
-        ->delete();
+            ->where('les_pln_temp_id', $les_pln_temp_id)
+            ->delete();
 
         DB::table('lesson_plan_template')
             ->where('les_pln_temp_id', $les_pln_temp_id)
             ->delete();
-        
+
         return response()->json([
-            'status'  =>200,
+            'status'  => 200,
             'message' => 'lesson plan template deleted.',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
-    public function getLessonPlanTemplateList(Request $request){
+
+    public function getLessonPlanTemplateList(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        
-        $lessonplantemplatelist = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan_template,lesson_plan_template_details,class,chapters,subject_master where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.class_id=class.class_id and lesson_plan_template.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan_template.subject_id = subject_master.sm_id  and lesson_plan_template.reg_id='".$user->reg_id."' and lesson_plan_template.academic_yr='".$academic_yr."'  group by lesson_plan_template.les_pln_temp_id");
-        
+
+        $lessonplantemplatelist = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan_template,lesson_plan_template_details,class,chapters,subject_master where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.class_id=class.class_id and lesson_plan_template.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan_template.subject_id = subject_master.sm_id  and lesson_plan_template.reg_id='" . $user->reg_id . "' and lesson_plan_template.academic_yr='" . $academic_yr . "'  group by lesson_plan_template.les_pln_temp_id");
+
         return response()->json([
-            'status'  =>200,
-            'data'    =>$lessonplantemplatelist,
+            'status'  => 200,
+            'data'    => $lessonplantemplatelist,
             'message' => 'lesson plan template list.',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
+
     // Lesson Plan Template Dev Name :- Lesson Plan Template 
     public function updateLessonPlanTemplate(Request $request, $id)
     {
@@ -8598,7 +8580,7 @@ class AssessmentController extends Controller
             ]);
         }
     }
-    
+
     public function getLessonPlanTemplateID(Request $request)
     {
         $class_id = $request->input('class_id');
@@ -8664,21 +8646,22 @@ class AssessmentController extends Controller
             'status' => 200
         ]);
     }
-    
-    public function getSubSubjectByClassSub(Request $request){
+
+    public function getSubSubjectByClassSub(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');
         $subject_id = $request->input('subject_id');
         $subSubjects = DB::table('chapters')
-                            ->distinct()
-                            ->select('sub_subject')
-                            ->where('sub_subject', '<>', '')
-                            ->where('class_id', $class_id)
-                            ->where('subject_id', $subject_id)
-                            ->where('academic_yr', $academic_yr)
-                            ->get();
-        
+            ->distinct()
+            ->select('sub_subject')
+            ->where('sub_subject', '<>', '')
+            ->where('class_id', $class_id)
+            ->where('subject_id', $subject_id)
+            ->where('academic_yr', $academic_yr)
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $subSubjects,
@@ -8686,80 +8669,79 @@ class AssessmentController extends Controller
             'status' => 200
         ]);
     }
-    public function getLessonPlan(Request $request){
+    public function getLessonPlan(Request $request)
+    {
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $sm_id = $request->input('sm_id');
         $sub_subject = $request->input('sub_subject');
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        
+
 
         // if class_id OR section_id OR sm_id exists, call 1st query
         if (!empty($class_id) || !empty($section_id) || !empty($sm_id)) {
 
             $query = DB::table('lesson_plan')
-                        ->select(
-                            'lesson_plan.*',
-                            'class.name as c_name',
-                            'section.name as secname',
-                            'subject_master.name as sub_name',
-                            'chapters.chapter_no',
-                            'chapters.name',
-                            'chapters.sub_subject'
-                        )
-                        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
-                        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
-                        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
-                        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                        ->where('chapters.isDelete', '!=', 'Y')
-                        ->where('lesson_plan.reg_id', $user->reg_id)
-                        ->where('lesson_plan.class_id', $class_id)
-                        ->where('lesson_plan.section_id', $section_id)
-                        ->where('lesson_plan.academic_yr', $academic_yr);
-                
-                    // Optional filters
-                    if (!empty($sm_id)) {
-                        $query->where('lesson_plan.subject_id', $sm_id);
-                    }
-                
-                    if (!empty($sub_subject)) {
-                        $query->where('chapters.sub_subject', 'like', '%' . $sub_subject . '%');
-                    }
-                
-                    return $query->get();
+                ->select(
+                    'lesson_plan.*',
+                    'class.name as c_name',
+                    'section.name as secname',
+                    'subject_master.name as sub_name',
+                    'chapters.chapter_no',
+                    'chapters.name',
+                    'chapters.sub_subject'
+                )
+                ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                ->where('chapters.isDelete', '!=', 'Y')
+                ->where('lesson_plan.reg_id', $user->reg_id)
+                ->where('lesson_plan.class_id', $class_id)
+                ->where('lesson_plan.section_id', $section_id)
+                ->where('lesson_plan.academic_yr', $academic_yr);
 
+            // Optional filters
+            if (!empty($sm_id)) {
+                $query->where('lesson_plan.subject_id', $sm_id);
+            }
+
+            if (!empty($sub_subject)) {
+                $query->where('chapters.sub_subject', 'like', '%' . $sub_subject . '%');
+            }
+
+            return $query->get();
         } else {
             // otherwise call second query
-            $query = DB::select("select lesson_plan.*,lesson_plan_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan,lesson_plan_details,class,chapters,subject_master where lesson_plan.lesson_plan_id = lesson_plan_details.lesson_plan_id and lesson_plan.class_id=class.class_id and lesson_plan.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan.subject_id = subject_master.sm_id  and lesson_plan.reg_id='".$user->reg_id."' and lesson_plan.academic_yr='".$academic_yr."' group by lesson_plan.unq_id order by lesson_plan.lesson_plan_id DESC");
+            $query = DB::select("select lesson_plan.*,lesson_plan_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan,lesson_plan_details,class,chapters,subject_master where lesson_plan.lesson_plan_id = lesson_plan_details.lesson_plan_id and lesson_plan.class_id=class.class_id and lesson_plan.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan.subject_id = subject_master.sm_id  and lesson_plan.reg_id='" . $user->reg_id . "' and lesson_plan.academic_yr='" . $academic_yr . "' group by lesson_plan.unq_id order by lesson_plan.lesson_plan_id DESC");
         }
 
         // send API response
         return response()->json([
             'status' => 200,
             'data' => $query,
-            'success'=>true
+            'success' => true
         ]);
-        
     }
-    
-    public function getLPClassesByUnqId(Request $request){
+
+    public function getLPClassesByUnqId(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $unq_id = $request->input('unq_id');
-        $classes = DB::select("SELECT lesson_plan_id,a.class_id,a.section_id, b.name as class_name, c.name as sec_name FROM lesson_plan a, class b, section c WHERE a.class_id=b.class_id and a.section_id=c.section_id and a.academic_yr = '".$academic_yr."' and unq_id= $unq_id order by class_id");
-         return response()->json([
+        $classes = DB::select("SELECT lesson_plan_id,a.class_id,a.section_id, b.name as class_name, c.name as sec_name FROM lesson_plan a, class b, section c WHERE a.class_id=b.class_id and a.section_id=c.section_id and a.academic_yr = '" . $academic_yr . "' and unq_id= $unq_id order by class_id");
+        return response()->json([
             'status' => 200,
-            'message'=>'Lesson plan classes by unq id.',
+            'message' => 'Lesson plan classes by unq id.',
             'data' => $classes,
-            'success'=>true
+            'success' => true
         ]);
-        
-        
     }
-    
-    public function deleteLessonPlan(Request $request,$unq_id){
-         $lp_details = DB::table('lesson_plan')
+
+    public function deleteLessonPlan(Request $request, $unq_id)
+    {
+        $lp_details = DB::table('lesson_plan')
             ->select('lesson_plan_id')
             ->where('unq_id', $unq_id)
             ->get();
@@ -8770,22 +8752,22 @@ class AssessmentController extends Controller
                 DB::table('lesson_plan_details')
                     ->where('lesson_plan_id', $row->lesson_plan_id)
                     ->delete();
-    
+
                 DB::table('lesson_plan')
                     ->where('lesson_plan_id', $row->lesson_plan_id)
                     ->delete();
             }
         }
-    
+
         return response()->json([
-            'status' => 200, 
+            'status' => 200,
             'message' => 'Lesson Plan deleted successfully',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
-    public function updateStatusOfLessonPlan(Request $request,$unq_id){
+
+    public function updateStatusOfLessonPlan(Request $request, $unq_id)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         DB::table('lesson_plan')
@@ -8793,19 +8775,19 @@ class AssessmentController extends Controller
             ->update([
                 'status' => $request->status
             ]);
-        
+
         return response()->json([
-            'status' => 200, 
+            'status' => 200,
             'message' => 'Lesson Plan status updated successfully',
-            'success' =>true
-            ]);
-        
+            'success' => true
+        ]);
     }
-    
-    public function saveLessonPlan(Request $request){
+
+    public function saveLessonPlan(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-         DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $data = [];
             $data['class_id'] = $request->input('class_id');
@@ -8819,7 +8801,7 @@ class AssessmentController extends Controller
             $data['week_date'] = $request->input('weeklyDatePicker');
             $data['status'] = 'I';
             $data['les_pln_temp_id'] = $request->input('les_pln_temp_id');
-            $data['reg_id'] = $user->reg_id; 
+            $data['reg_id'] = $user->reg_id;
             $data['academic_yr'] = $academic_yr;
             $data['approve'] = $request->input('approve');
 
@@ -8841,9 +8823,9 @@ class AssessmentController extends Controller
 
                 // Non-daily headings
                 $lesson_plan_headings = DB::table('lesson_plan_heading')
-                                            ->where('change_daily', '!=', 'Y')
-                                            ->orderBy('sequence', 'asc')
-                                            ->get();
+                    ->where('change_daily', '!=', 'Y')
+                    ->orderBy('sequence', 'asc')
+                    ->get();
 
                 $d = 1;
                 foreach ($lesson_plan_headings as $heading) {
@@ -8862,9 +8844,9 @@ class AssessmentController extends Controller
 
                 for ($r = 1; $r <= $lph_daily_change; $r++) {
                     $lesson_plan_headings_daily_change = DB::table('lesson_plan_heading')
-                                                            ->where('change_daily', 'Y')
-                                                            ->orderBy('sequence', 'asc')
-                                                            ->get();
+                        ->where('change_daily', 'Y')
+                        ->orderBy('sequence', 'asc')
+                        ->get();
 
                     foreach ($lesson_plan_headings_daily_change as $heading) {
                         $data2 = [];
@@ -8883,9 +8865,8 @@ class AssessmentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Lesson Plan Created Successfully',
-                'status'  =>200
+                'status'  => 200
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -8893,14 +8874,13 @@ class AssessmentController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
-        
-        
     }
-    
-    public function getLessonPlanDetails(Request $request){
+
+    public function getLessonPlanDetails(Request $request)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        $classId = $request->query('class_id');       
+        $classId = $request->query('class_id');
         $subjectId = $request->query('sm_id');
         $chapterId = $request->query('chapter_id');
         $classIdArray = $request->query('class_id_array', '');
@@ -8914,11 +8894,11 @@ class AssessmentController extends Controller
             return response()->json([
                 'status' => 400,
                 'message' => 'Lesson Plan Template is not created!!!',
-                'success' =>false
+                'success' => false
             ]);
         }
 
-        
+
         $cIdArray = explode(',', $classIdArray);
         $secArray = [];
         foreach ($cIdArray as $val) {
@@ -8926,45 +8906,43 @@ class AssessmentController extends Controller
         }
         $sectionIds = implode(',', $secArray);
 
-        
+
         $pageData = [];
         $pageData['class_id'] = $classId;
         $pageData['section_id'] = $sectionIds;
         $pageData['sm_id'] = $subjectId;
         $pageData['chapter_id'] = $chapterId;
 
-        
-        $lessonPlanData = DB::select("select lesson_plan_template.*,lesson_plan_template_details.* from lesson_plan_template,lesson_plan_template_details where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.chapter_id='".$chapterId."' and subject_id='".$subjectId."' and class_id='".$classId."' and lesson_plan_template.publish='Y'");
+
+        $lessonPlanData = DB::select("select lesson_plan_template.*,lesson_plan_template_details.* from lesson_plan_template,lesson_plan_template_details where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.chapter_id='" . $chapterId . "' and subject_id='" . $subjectId . "' and class_id='" . $classId . "' and lesson_plan_template.publish='Y'");
 
         if (count($lessonPlanData) > 0) {
             $pageData['lesson_plan_info1'] = $lessonPlanData;
             $pageData['present_data'] = true;
             $lessonPlan = DB::table('lesson_plan')
-                            ->select('unq_id')
-                            ->where('chapter_id', $chapterId)
-                            ->where('subject_id', $subjectId)
-                            ->where('class_id', $classId)
-                            ->whereIn('section_id', explode(',', $sectionIds)) 
-                            ->first();
-                    
+                ->select('unq_id')
+                ->where('chapter_id', $chapterId)
+                ->where('subject_id', $subjectId)
+                ->where('class_id', $classId)
+                ->whereIn('section_id', explode(',', $sectionIds))
+                ->first();
+
             $pageData['unq_id'] = $lessonPlan->unq_id ?? null;
-            
-        } 
-        else {
+        } else {
             $pageData['header_info'] = 'N';
             $pageData['create'] = true;
         }
-        
+
 
         return response()->json([
-            'status' =>200,
-            'data'  =>$pageData,
-            'success'=>true
-            ]);
-        
+            'status' => 200,
+            'data'  => $pageData,
+            'success' => true
+        ]);
     }
-    
-    public function updateLessonPlan(Request $request,$unq_id){
+
+    public function updateLessonPlan(Request $request, $unq_id)
+    {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         DB::beginTransaction();
@@ -8976,12 +8954,12 @@ class AssessmentController extends Controller
 
             if ($lpDetails->count() > 0) {
                 foreach ($lpDetails as $row) {
-                    
+
                     DB::table('lesson_plan_details')
                         ->where('lesson_plan_id', $row->lesson_plan_id)
                         ->delete();
 
-                   
+
                     DB::table('lesson_plan')
                         ->where('lesson_plan_id', $row->lesson_plan_id)
                         ->delete();
@@ -8999,7 +8977,7 @@ class AssessmentController extends Controller
             $data['week_date'] = $request->input('weeklyDatePicker');
             $data['status'] = 'I';
             $data['les_pln_temp_id'] = $request->input('les_pln_temp_id');
-            $data['reg_id'] = $user->reg_id; 
+            $data['reg_id'] = $user->reg_id;
             $data['academic_yr'] = $academic_yr;
             $data['approve'] = $request->input('approve');
 
@@ -9021,9 +8999,9 @@ class AssessmentController extends Controller
 
                 // Non-daily headings
                 $lesson_plan_headings = DB::table('lesson_plan_heading')
-                                            ->where('change_daily', '!=', 'Y')
-                                            ->orderBy('sequence', 'asc')
-                                            ->get();
+                    ->where('change_daily', '!=', 'Y')
+                    ->orderBy('sequence', 'asc')
+                    ->get();
 
                 $d = 1;
                 foreach ($lesson_plan_headings as $heading) {
@@ -9042,9 +9020,9 @@ class AssessmentController extends Controller
 
                 for ($r = 1; $r <= $lph_daily_change; $r++) {
                     $lesson_plan_headings_daily_change = DB::table('lesson_plan_heading')
-                                                            ->where('change_daily', 'Y')
-                                                            ->orderBy('sequence', 'asc')
-                                                            ->get();
+                        ->where('change_daily', 'Y')
+                        ->orderBy('sequence', 'asc')
+                        ->get();
 
                     foreach ($lesson_plan_headings_daily_change as $heading) {
                         $data2 = [];
@@ -9063,9 +9041,8 @@ class AssessmentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Lesson Plan Updated Successfully',
-                'status'  =>200
+                'status'  => 200
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -9073,48 +9050,47 @@ class AssessmentController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
-        
-        
     }
-    
-    public function getLessonPlanByUnqId(Request $request,$unq_id){
+
+    public function getLessonPlanByUnqId(Request $request, $unq_id)
+    {
         $lessonPlan = DB::table('lesson_plan')
-                        ->where('unq_id', $unq_id)
-                        ->first();
-                    
+            ->where('unq_id', $unq_id)
+            ->first();
+
         $lessonPlanDetails = DB::table('lesson_plan_details')
             ->where('lesson_plan_id', $lessonPlan->lesson_plan_id)
             ->get();
-        
+
         $response = [
             'lesson_plan' => $lessonPlan,
             'details' => $lessonPlanDetails,
         ];
-        
+
         return response()->json([
-                'success' => true,
-                'data'  => $response,
-                'message' => 'Lesson Plan edit data.',
-                'status'  =>200
-            ]);
-        
+            'success' => true,
+            'data'  => $response,
+            'message' => 'Lesson Plan edit data.',
+            'status'  => 200
+        ]);
     }
-    
-    public function getSubjectName(Request $request,$sm_id){
+
+    public function getSubjectName(Request $request, $sm_id)
+    {
         $subject = DB::table('subject_master')
-        ->where('sm_id', $sm_id)
-        ->first(); // directly gets single column value
+            ->where('sm_id', $sm_id)
+            ->first(); // directly gets single column value
 
         return response()->json([
             'success' => true,
             'data' => $subject,
             'message' => 'Subject name.',
-            'status' =>200
+            'status' => 200
         ]);
-        
     }
-    
-    public function getSubSubjectNameByChapterId(Request $request,$chapter_id){
+
+    public function getSubSubjectNameByChapterId(Request $request, $chapter_id)
+    {
         $subSubject = DB::table('chapters')
             ->where('chapter_id', $chapter_id)
             ->get(); // returns a single column value
@@ -9123,8 +9099,8 @@ class AssessmentController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $subSubject,
-                'message'=>'Sub Subject name.',
-                'status'=>200
+                'message' => 'Sub Subject name.',
+                'status' => 200
             ]);
         }
 
@@ -9133,41 +9109,40 @@ class AssessmentController extends Controller
             'message' => 'No sub_subject found for the given chapter_id.'
         ], 404);
     }
-    
-    
-    public function showListingOfProficiencyStudentsClass9(Request $request){
+
+
+    public function showListingOfProficiencyStudentsClass9(Request $request)
+    {
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $from = $request->input('from');
         $to = $request->input('to');
-        $studentslist = show_listing_of_proficiency_students_class9($class_id,$section_id,$from,$to);
+        $studentslist = show_listing_of_proficiency_students_class9($class_id, $section_id, $from, $to);
         return response()->json([
-                'success' => true,
-                'data' => $studentslist,
-                'message'=>'Students listing for proficiency certificates.',
-                'status'=>200
-            ]);
-        
-        
+            'success' => true,
+            'data' => $studentslist,
+            'message' => 'Students listing for proficiency certificates.',
+            'status' => 200
+        ]);
     }
-    
-    public function showListingOfProficiencyStudentsClass11(Request $request){
+
+    public function showListingOfProficiencyStudentsClass11(Request $request)
+    {
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $from = $request->input('from');
         $to = $request->input('to');
-        $studentslist = show_listing_of_proficiency_students_class11($class_id,$section_id,$from,$to);
+        $studentslist = show_listing_of_proficiency_students_class11($class_id, $section_id, $from, $to);
         return response()->json([
-                'success' => true,
-                'data' => $studentslist,
-                'message'=>'Students listing for proficiency certificates.',
-                'status'=>200
-            ]);
-        
-        
+            'success' => true,
+            'data' => $studentslist,
+            'message' => 'Students listing for proficiency certificates.',
+            'status' => 200
+        ]);
     }
-    
-    public function showListingOfProficiencyStudents(Request $request){
+
+    public function showListingOfProficiencyStudents(Request $request)
+    {
         $user = $this->authenticateUser();
         $acd_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');
@@ -9176,490 +9151,444 @@ class AssessmentController extends Controller
         $to = $request->input('to');
         $term_id = $request->input('term_id');
         $max_highest_marks = $request->input('max_highest_marks');
-        $studentslist = show_listing_of_proficiency_students($class_id,$section_id,$term_id,$from,$to,$acd_yr,$max_highest_marks);
+        $studentslist = show_listing_of_proficiency_students($class_id, $section_id, $term_id, $from, $to, $acd_yr, $max_highest_marks);
         return response()->json([
-                'success' => true,
-                'data' => $studentslist,
-                'message'=>'Students listing for proficiency certificates.',
-                'status'=>200
-            ]);
-        
-        
+            'success' => true,
+            'data' => $studentslist,
+            'message' => 'Students listing for proficiency certificates.',
+            'status' => 200
+        ]);
     }
-    
-    public function getMaxHighestMarksPerTerm(Request $request){
+
+    public function getMaxHighestMarksPerTerm(Request $request)
+    {
         $user = $this->authenticateUser();
         $acd_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
         $term_id = $request->input('term_id');
-        $max_highest_marks = get_max_highest_marks_per_term($class_id,$section_id,$term_id);
+        $max_highest_marks = get_max_highest_marks_per_term($class_id, $section_id, $term_id);
         return response()->json([
-                'success' => true,
-                'data' => $max_highest_marks,
-                'message'=>'Maximum highest marks per term.',
-                'status'=>200
-            ]);
-        
-        
+            'success' => true,
+            'data' => $max_highest_marks,
+            'message' => 'Maximum highest marks per term.',
+            'status' => 200
+        ]);
     }
-    
-    public function dailyNotes(Request $request){
-        if($request->login_type == 'T'){
-            $str_array	=	$request->input('str_array');
-            $str_classes =  str_replace(array('[',']','"') , ''  , $str_array );
-            $str_classes_array=explode(",",$str_classes);
-            if($request->input('subject_id') == '')
-            {
+
+    public function dailyNotes(Request $request)
+    {
+        if ($request->login_type == 'T') {
+            $str_array    =    $request->input('str_array');
+            $str_classes =  str_replace(array('[', ']', '"'), '', $str_array);
+            $str_classes_array = explode(",", $str_classes);
+            if ($request->input('subject_id') == '') {
                 $data['subject_id'] = 0;
+            } else {
+                $data['subject_id']            =    $request->input('subject_id');
             }
-            else
-            {
-                 $data['subject_id']			=	$request->input('subject_id');
-            }
-            $data['teacher_id']			=	$request->input('teacher_id');
-            $data['description']		=	$request->input('description');
-            $data['publish']		=	'N';
-            $data['date'] = date_format(date_create($request->input('dailynote_date')) , 'Y-m-d');
+            $data['teacher_id']            =    $request->input('teacher_id');
+            $data['description']        =    $request->input('description');
+            $data['publish']        =    'N';
+            $data['date'] = date_format(date_create($request->input('dailynote_date')), 'Y-m-d');
             $data['academic_yr'] = $request->input('academic_yr');
-            if($request->input('datafile')!='')
-            {
-                $datafile = $request->input('datafile');   
-            } else{
+            if ($request->input('datafile') != '') {
+                $datafile = $request->input('datafile');
+            } else {
                 $datafile = '';
             }
-            
-            $random_no = $request->input('random_no'); 
+
+            $random_no = $request->input('random_no');
             $filename = $request->input('filename');
             $operation = $request->input('operation');
-            if($operation == 'create'){
-                    if($filename == '' || $filename == '[]') 
-                    {
-                       //crudhelper
-                       $status = daily_notes_create($data,$str_classes_array,'','',$random_no); 
-                    }
-                    else
-                    {
-                        //crudhelper
-                        $status = daily_notes_create($data,$str_classes_array,"",$filename,$random_no); 
-                    }
-                    if (isset($status)) {
-                        $response_array["dailynote"] = 'Records found';
-                        $response_array["status"] = true;
-                        return response()->json($response_array, 200);
-                    } else {
-                        $response_array["Dailynotes"] = 'NO record Found';
-                        $response_array["status"] = false;
-                        return response()->json($response_array, 200);
-                    }
-            }
-            if($operation == 'edit')		
-                {
-                     $data['notes_id']		=	$request->input('notes_id');
-                     $data['section_id'] = $request->input('section_id');
-                     $data['class_id'] = $request->input('class_id');
-                     if($request->input('datafile')!='')
-                     {
-                       $datafile = $request->input('datafile'); // 21-07-20  
-                     } else{
-                       $datafile = '';
-                     }
-                     $filename = $request->input('filename');
-                    $deletefiledata =  $request->input('deleteimagelist');
-                    // start here 21-07-20 29-07-20
-                   if($filename == '')
-                    {
-                        //crudhelper
-                      $statusedit = daily_notes_edit($data,$deletefiledata,'',''); 
-                    }
-                    else
-                    {
-                         //crudhelper
-                        $statusedit = daily_notes_edit($data,$deletefiledata,$datafile,$filename);
-                    }
-                    if ($statusedit) {
-                        $response_array["dailynote"] = 'Records found';
-                        $response_array["status"] = true;
-                        return response()->json($response_array, 200);
-                    } else {
-                        $response_array["Dailynotes"] = 'NO record Found';
-                        $response_array["status"] = false;
-                        return response()->json($response_array, 200);
-                    }
+            if ($operation == 'create') {
+                if ($filename == '' || $filename == '[]') {
+                    //crudhelper
+                    $status = daily_notes_create($data, $str_classes_array, '', '', $random_no);
+                } else {
+                    //crudhelper
+                    $status = daily_notes_create($data, $str_classes_array, "", $filename, $random_no);
                 }
-            if($operation == 'delete')		
-                {
-                    $notes_id		=	$request->input('notes_id');
-                    //crud helper
-                    $statusdelete = daily_notes_delete($notes_id);
-                    if($statusdelete){
-                     $response_array["dailynote"] = 'Record Delete Successfully';
-                    $response_array["status"] = TRUE;
-                    return response()->json($response_array, 200); 
-                    }
-                    else{
-                     $response_array["Dailynotes"] = 'NO record Found';
-                     $response_array["status"] = FALSE;
-                    return response()->json($response_array, 200); 
-                    }
+                if (isset($status)) {
+                    $response_array["dailynote"] = 'Records found';
+                    $response_array["status"] = true;
+                    return response()->json($response_array, 200);
+                } else {
+                    $response_array["Dailynotes"] = 'NO record Found';
+                    $response_array["status"] = false;
+                    return response()->json($response_array, 200);
                 }
-            if($operation =='publish'){
-                $notes_id	    =	$request->input('notes_id');
-                $class_id		=   $request->input('class_id');
-                $section_id		=	$request->input('section_id');
-                $statuspublish = daily_notes_publish($notes_id,$class_id,$section_id);
-				if($statuspublish){
-					$response_array["dailynotespublish"] = 'Teachers note published' ;
-                    $response_array["status"] = TRUE;
-                    return response()->json($response_array, 200); 
-				}else{
-					$response_array["dailynotespublish"] = 'Teachers note couldnot be published';
-                     $response_array["status"] = FALSE;
-                    return response()->json($response_array, 200); 
-				}
             }
-            
-            
+            if ($operation == 'edit') {
+                $data['notes_id']        =    $request->input('notes_id');
+                $data['section_id'] = $request->input('section_id');
+                $data['class_id'] = $request->input('class_id');
+                if ($request->input('datafile') != '') {
+                    $datafile = $request->input('datafile'); // 21-07-20  
+                } else {
+                    $datafile = '';
+                }
+                $filename = $request->input('filename');
+                $deletefiledata =  $request->input('deleteimagelist');
+                // start here 21-07-20 29-07-20
+                if ($filename == '') {
+                    //crudhelper
+                    $statusedit = daily_notes_edit($data, $deletefiledata, '', '');
+                } else {
+                    //crudhelper
+                    $statusedit = daily_notes_edit($data, $deletefiledata, $datafile, $filename);
+                }
+                if ($statusedit) {
+                    $response_array["dailynote"] = 'Records found';
+                    $response_array["status"] = true;
+                    return response()->json($response_array, 200);
+                } else {
+                    $response_array["Dailynotes"] = 'NO record Found';
+                    $response_array["status"] = false;
+                    return response()->json($response_array, 200);
+                }
+            }
+            if ($operation == 'delete') {
+                $notes_id        =    $request->input('notes_id');
+                //crud helper
+                $statusdelete = daily_notes_delete($notes_id);
+                if ($statusdelete) {
+                    $response_array["dailynote"] = 'Record Delete Successfully';
+                    $response_array["status"] = TRUE;
+                    return response()->json($response_array, 200);
+                } else {
+                    $response_array["Dailynotes"] = 'NO record Found';
+                    $response_array["status"] = FALSE;
+                    return response()->json($response_array, 200);
+                }
+            }
+            if ($operation == 'publish') {
+                $notes_id        =    $request->input('notes_id');
+                $class_id        =   $request->input('class_id');
+                $section_id        =    $request->input('section_id');
+                $statuspublish = daily_notes_publish($notes_id, $class_id, $section_id);
+                if ($statuspublish) {
+                    $response_array["dailynotespublish"] = 'Teachers note published';
+                    $response_array["status"] = TRUE;
+                    return response()->json($response_array, 200);
+                } else {
+                    $response_array["dailynotespublish"] = 'Teachers note couldnot be published';
+                    $response_array["status"] = FALSE;
+                    return response()->json($response_array, 200);
+                }
+            }
         }
     }
-    
-    public function getdailyNotes(Request $request){
-        $teacher_id = 	$request->input('reg_id');
-		$acd_yr = 	$request->input('acd_yr');
-		//crud helper
-		$daily_notes	=	get_daily_notes_teacherwise($teacher_id,$acd_yr); 
-		if($daily_notes)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["daily_notes"] = $daily_notes;			
-			
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "No data found";
-			return response()->json($response_array, 200);
+
+    public function getdailyNotes(Request $request)
+    {
+        $teacher_id =     $request->input('reg_id');
+        $acd_yr =     $request->input('acd_yr');
+        //crud helper
+        $daily_notes    =    get_daily_notes_teacherwise($teacher_id, $acd_yr);
+        if ($daily_notes) {
+            $response_array["status"] = TRUE;
+            $response_array["daily_notes"] = $daily_notes;
+
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "No data found";
+            return response()->json($response_array, 200);
         }
     }
-    
-    public function getImagesDailyNotes(Request $request){
+
+    public function getImagesDailyNotes(Request $request)
+    {
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $note_id = $request->input('note_id');
         $date = $request->input('dailynote_date');
         //crud helper
-        $notes	=	get_notes_images_onnoteid($note_id); 
-        if($notes)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["images"] = $notes;
-            $response_array["url"] = $codeigniter_app_url.'uploads/daily_notes/'.$date.'/'.$note_id;
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "No Records Found";
-			return response()->json($response_array, 200);
-        }  
-    }
-    
-    public function getStudentsNotesViewed(Request $request){
-        //crud helper 
-        $students	=	get_students_viewed_note($request->input('notes_id'),$request->input('class_id'),$request->input('section_id'),$request->input('acd_yr')); 
-        if($students)
-        {
+        $notes    =    get_notes_images_onnoteid($note_id);
+        if ($notes) {
             $response_array["status"] = TRUE;
-            $response_array["student_list"] = $students;
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
+            $response_array["images"] = $notes;
+            $response_array["url"] = $codeigniter_app_url . 'uploads/daily_notes/' . $date . '/' . $note_id;
+            return response()->json($response_array, 200);
+        } else {
             $response_array["status"] = FALSE;
             $response_array["error_msg"] = "No Records Found";
             return response()->json($response_array, 200);
         }
     }
-    
-    public function uploadFiles(Request $request){
-        $upload_date      =   date_format(date_create($request->input('upload_date')),'Y-m-d');
+
+    public function getStudentsNotesViewed(Request $request)
+    {
+        //crud helper 
+        $students    =    get_students_viewed_note($request->input('notes_id'), $request->input('class_id'), $request->input('section_id'), $request->input('acd_yr'));
+        if ($students) {
+            $response_array["status"] = TRUE;
+            $response_array["student_list"] = $students;
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "No Records Found";
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function uploadFiles(Request $request)
+    {
+        $upload_date      =   date_format(date_create($request->input('upload_date')), 'Y-m-d');
         $datafile = $request->input('datafile');
         $filename = $request->input('filename');
         $doc_type_folder = $request->input('doc_type_folder');
         $random_no = $request->input('random_no');
-        $uploadfiles = upload_files($filename,$datafile, $upload_date, $doc_type_folder, $random_no);
+        $uploadfiles = upload_files($filename, $datafile, $upload_date, $doc_type_folder, $random_no);
         return response()->json($uploadfiles, 200);
-        
     }
-    
-    public function deleteUploadedFiles(Request $request){
-        $upload_date      =   date_format(date_create($request->input('upload_date')),'Y-m-d');
+
+    public function deleteUploadedFiles(Request $request)
+    {
+        $upload_date      =   date_format(date_create($request->input('upload_date')), 'Y-m-d');
         $filename = $request->input('filename');
         $doc_type_folder = $request->input('doc_type_folder');
         $random_no = $request->input('random_no');
         $deletefiles = delete_uploaded_files($filename, $upload_date, $doc_type_folder, $random_no);
         return response()->json($deletefiles, 200);
-        
     }
-    
-    public function getSubjectAllotedToTeacherByMultipleClass(Request $request){
-        $str_array	=	$request->input('str_array');
-        $str_classes =  str_replace(array('[',']','"') , ''  , $str_array );
-         
-        $teacher_id	=	$request->input('reg_id');
-        $academic_yr	=	$request->input('academic_yr');
-        //crud helper
-        $subject_name	=	get_subject_alloted_to_teacher_by_multipleclass($str_classes,$teacher_id,$academic_yr);
-        
-        if($subject_name)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["subject_name"] = $subject_name;			
 
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "No data found";
-			return response()->json($response_array, 200);
-        }  
+    public function getSubjectAllotedToTeacherByMultipleClass(Request $request)
+    {
+        $str_array    =    $request->input('str_array');
+        $str_classes =  str_replace(array('[', ']', '"'), '', $str_array);
+
+        $teacher_id    =    $request->input('reg_id');
+        $academic_yr    =    $request->input('academic_yr');
+        //crud helper
+        $subject_name    =    get_subject_alloted_to_teacher_by_multipleclass($str_classes, $teacher_id, $academic_yr);
+
+        if ($subject_name) {
+            $response_array["status"] = TRUE;
+            $response_array["subject_name"] = $subject_name;
+
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "No data found";
+            return response()->json($response_array, 200);
+        }
     }
-    
-    public function HomeworkCreateEditPublishDelete(Request $request)  
-	{ 
-        if($request->input('login_type') == 'A'|| $request->input('login_type') == 'T'){
+
+    public function HomeworkCreateEditPublishDelete(Request $request)
+    {
+        if ($request->input('login_type') == 'A' || $request->input('login_type') == 'T') {
             // dd("Hello");
-            $data['end_date']       =   date_format(date_create($request->input('end_date')),'Y-m-d');
-            $data['description'] =	$request->input('description');
+            $data['end_date']       =   date_format(date_create($request->input('end_date')), 'Y-m-d');
+            $data['description'] =    $request->input('description');
             $data['teacher_id'] =   $request->input('teacher_id');
             $data['class_id'] =   $request->input('class_id');
             $data['section_id'] =  $request->input('section_id');
-            $data['start_date']       =date_format(date_create($request->input('start_date')),'Y-m-d');
+            $data['start_date']       = date_format(date_create($request->input('start_date')), 'Y-m-d');
             $data['sm_id'] =   $request->input('sm_id');
             $data['academic_yr'] = $request->input('academic_yr');
             $data['publish'] = 'N';
-            if($request->input('datafile')!='')
-           {
+            if ($request->input('datafile') != '') {
                 $datafile = $request->input('datafile'); // 21-07-20  
-           } else{
+            } else {
                 $datafile = '';
-           }
-            
-            $filename = $request->input('filename');
-			if($request->input('operation') == 'create')		
-			{  
-			    
-			    $random_no = $request->input('random_no'); 
-				if($filename == '')
-                    {
-                       //crud helper
-                       $status = homework_create($data,'','',$random_no); 
-                    }
-                    else
-                    {
-                        //crud helper
-                        $status = homework_create($data,$datafile,$filename,$random_no);
-                    }
-                    
-				if($status == TRUE){
-					$response_array["status"] = TRUE;
-					$response_array["success_msg"] = "New homework created!!!";
-                    return response()->json($response_array, 200); 
+            }
 
-				}else{
-					$response_array["status"] = FALSE;
-					$response_array["error_msg"] = "Homework could not be created!!!";
-                    return response()->json($response_array, 200); 
-				}
-			}
-            
-            if($request->input('operation') == 'edit')		
-			{
-                $homework_id			=	$request->input('homework_id');
-				if($request->input('datafile')!='')
-               {
-                 $datafile = $request->input('datafile'); // 21-07-20  
-               } else{
-                 $datafile = '';
-               }
+            $filename = $request->input('filename');
+            if ($request->input('operation') == 'create') {
+
+                $random_no = $request->input('random_no');
+                if ($filename == '') {
+                    //crud helper
+                    $status = homework_create($data, '', '', $random_no);
+                } else {
+                    //crud helper
+                    $status = homework_create($data, $datafile, $filename, $random_no);
+                }
+
+                if ($status == TRUE) {
+                    $response_array["status"] = TRUE;
+                    $response_array["success_msg"] = "New homework created!!!";
+                    return response()->json($response_array, 200);
+                } else {
+                    $response_array["status"] = FALSE;
+                    $response_array["error_msg"] = "Homework could not be created!!!";
+                    return response()->json($response_array, 200);
+                }
+            }
+
+            if ($request->input('operation') == 'edit') {
+                $homework_id            =    $request->input('homework_id');
+                if ($request->input('datafile') != '') {
+                    $datafile = $request->input('datafile'); // 21-07-20  
+                } else {
+                    $datafile = '';
+                }
                 $filename = $request->input('filename');
-				$deletefiledata =  $request->input('deleteimagelist');
-				// 29-07-20
-				   if($filename == '')
-					{
-					  //crud helper
-					  $status = homework_edit($homework_id,$data,$deletefiledata,'',''); 
-					}
-					else
-					{
-					    //crud helper
-						$status = homework_edit($homework_id,$data,$deletefiledata,$datafile,$filename);
-					}
-					// ends here
-				if($status == TRUE){
-					$response_array["status"] = TRUE;
-					$response_array["success_msg"] = "Homework updated!!!";
+                $deletefiledata =  $request->input('deleteimagelist');
+                // 29-07-20
+                if ($filename == '') {
+                    //crud helper
+                    $status = homework_edit($homework_id, $data, $deletefiledata, '', '');
+                } else {
+                    //crud helper
+                    $status = homework_edit($homework_id, $data, $deletefiledata, $datafile, $filename);
+                }
+                // ends here
+                if ($status == TRUE) {
+                    $response_array["status"] = TRUE;
+                    $response_array["success_msg"] = "Homework updated!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}else{
-					$response_array["status"] = FALSE;
-					$response_array["error_msg"] = "Homework could not be updated!!!";
+                } else {
+                    $response_array["status"] = FALSE;
+                    $response_array["error_msg"] = "Homework could not be updated!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}
-			}
-            
-            if($request->input('operation') =='publish'){
+                }
+            }
+
+            if ($request->input('operation') == 'publish') {
                 // dd("Hello");
-                $homework_id			=	$request->input('homework_id');
-                $class_id			=	$request->input('class_id');
-                $section_id			=	$request->input('section_id');
+                $homework_id            =    $request->input('homework_id');
+                $class_id            =    $request->input('class_id');
+                $section_id            =    $request->input('section_id');
                 //crud helper
-                $status = homework_publish($homework_id,$class_id,$section_id);
-               
-				if($status == TRUE){
-					$response_array["status"] = TRUE;
-					$response_array["success_msg"] = "Homework published!!!";
+                $status = homework_publish($homework_id, $class_id, $section_id);
+
+                if ($status == TRUE) {
+                    $response_array["status"] = TRUE;
+                    $response_array["success_msg"] = "Homework published!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}else{
-					$response_array["status"] = FALSE;
-					$response_array["error_msg"] = "Homework could not be published!!!";
+                } else {
+                    $response_array["status"] = FALSE;
+                    $response_array["error_msg"] = "Homework could not be published!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}
-            
+                }
             }
-            if($request->input('operation') =='delete'){
-                $homework_id			=	$request->input('homework_id');
+            if ($request->input('operation') == 'delete') {
+                $homework_id            =    $request->input('homework_id');
                 $status = homework_delete($homework_id);
-				if($status == TRUE){
-					$response_array["status"] = TRUE;
-					$response_array["success_msg"] = "Homework deleted!!!";
+                if ($status == TRUE) {
+                    $response_array["status"] = TRUE;
+                    $response_array["success_msg"] = "Homework deleted!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}else{
-					$response_array["status"] = FALSE;
-					$response_array["error_msg"] = "Homework could not be delete!!!";
+                } else {
+                    $response_array["status"] = FALSE;
+                    $response_array["error_msg"] = "Homework could not be delete!!!";
                     return response()->json($response_array, 200); // 200 being the HTTP response code
-				}
+                }
             }
-		}
-	}
-	
-	public function getImagesHomework(Request $request){
-	    $globalVariables = App::make('global_variables');
+        }
+    }
+
+    public function getImagesHomework(Request $request)
+    {
+        $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-	    $homework_id = $request->input('homework_id');
+        $homework_id = $request->input('homework_id');
         $date = $request->input('homework_date');
-        $homework	=	get_homework_images_onnoteid($homework_id); 
-        if($homework)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["images"] = $homework;
-            $response_array["url"] = $codeigniter_app_url.'uploads/homework/'.$date.'/'.$homework_id;
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "No Records Found";
-			return response()->json($response_array, 200);
-        }  
-	}
-	
-	public function getHomework(Request $request){
-	    $teacher_id = $request->input('reg_id');
-		$acd_yr = $request->input('acd_yr');
-
-		$homework_data	=	get_homework_teacherwise($teacher_id,$acd_yr); 
-		if($homework_data)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["homework_details"] = $homework_data;			
-            return response()->json($response_array, 200); // 200 being the HTTP response code
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "No data found";
-			return response()->json($response_array, 200);
-        }
-	}
-	
-	public function getStudentWithHomeworkStatus(Request $request){
-	    $data['homework_id']			=	$request->input('homework_id');
-        $homework_comment_info	= homework_join_hw_comments($data['homework_id']);
-            if($data == TRUE)
-            {
-                $response_array["student_details"] = $homework_comment_info;
-                return response()->json($response_array, 200);
-            }
-            else{
-                $response_array["student_details"] = FALSE;
-                $response_array["error_msg"] = "Homework Status Not Updated!!!";
-                return response()->json($response_array, 200); 
-            }
-	}
-	
-	public function getCountOfHomeworkComments(Request $request){
-	    $homework_id = $request->input('homework_id');
-	    //crud helper
-		$hw_comment_count	= get_count_of_homework_comments($homework_id); 
-		if($hw_comment_count)
-        {
-			$response_array["status"] = TRUE;
-			$response_array["comment_count"] = $hw_comment_count;			
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
-			$response_array["status"] = FALSE;
-			$response_array["comment_count"] = 0;	
-			return response()->json($response_array, 200);
-        } 
-	}
-	
-	public function getStudentsHomeworkViewed(Request $request){
-	    //crud helper
-	    $students	=	get_students_viewed_homework($request->input('homework_id'),$request->input('class_id'),$request->input('section_id'),$request->input('acd_yr')); 
-        if($students)
-        {
+        $homework    =    get_homework_images_onnoteid($homework_id);
+        if ($homework) {
             $response_array["status"] = TRUE;
-            $response_array["student_list"] = $students;
-            return response()->json($response_array, 200); 
-        } 
-        else
-        {
+            $response_array["images"] = $homework;
+            $response_array["url"] = $codeigniter_app_url . 'uploads/homework/' . $date . '/' . $homework_id;
+            return response()->json($response_array, 200);
+        } else {
             $response_array["status"] = FALSE;
             $response_array["error_msg"] = "No Records Found";
             return response()->json($response_array, 200);
         }
-	}
-	
-	public function getProficiencyCertificatePublishValue(Request $request){
-	    
-	    $student_id = $request->input('student_id');
-	    $term_id = $request->input('term_id');
-	    $publish_value = get_proficiency_certificate_publish_value($student_id, $term_id);
-	    return response()->json([
-                'success' => true,
-                'data' => $publish_value,
-                'message'=>'Publish value.',
-                'status'=>200
-            ]);
-	    
-	}
-	
-	public function publishProficiencyCertificate(Request $request){
-	    
-	    $user = $this->authenticateUser();
+    }
+
+    public function getHomework(Request $request)
+    {
+        $teacher_id = $request->input('reg_id');
+        $acd_yr = $request->input('acd_yr');
+
+        $homework_data    =    get_homework_teacherwise($teacher_id, $acd_yr);
+        if ($homework_data) {
+            $response_array["status"] = TRUE;
+            $response_array["homework_details"] = $homework_data;
+            return response()->json($response_array, 200); // 200 being the HTTP response code
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "No data found";
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function getStudentWithHomeworkStatus(Request $request)
+    {
+        $data['homework_id']            =    $request->input('homework_id');
+        $homework_comment_info    = homework_join_hw_comments($data['homework_id']);
+        if ($data == TRUE) {
+            $response_array["student_details"] = $homework_comment_info;
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["student_details"] = FALSE;
+            $response_array["error_msg"] = "Homework Status Not Updated!!!";
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function getCountOfHomeworkComments(Request $request)
+    {
+        $homework_id = $request->input('homework_id');
+        //crud helper
+        $hw_comment_count    = get_count_of_homework_comments($homework_id);
+        if ($hw_comment_count) {
+            $response_array["status"] = TRUE;
+            $response_array["comment_count"] = $hw_comment_count;
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["comment_count"] = 0;
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function getStudentsHomeworkViewed(Request $request)
+    {
+        //crud helper
+        $students    =    get_students_viewed_homework($request->input('homework_id'), $request->input('class_id'), $request->input('section_id'), $request->input('acd_yr'));
+        if ($students) {
+            $response_array["status"] = TRUE;
+            $response_array["student_list"] = $students;
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "No Records Found";
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function getProficiencyCertificatePublishValue(Request $request)
+    {
+
+        $student_id = $request->input('student_id');
+        $term_id = $request->input('term_id');
+        $publish_value = get_proficiency_certificate_publish_value($student_id, $term_id);
+        return response()->json([
+            'success' => true,
+            'data' => $publish_value,
+            'message' => 'Publish value.',
+            'status' => 200
+        ]);
+    }
+
+    public function publishProficiencyCertificate(Request $request)
+    {
+
+        $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-	    $action = $request->input('action'); // 'publish' or 'unpublish'
+        $action = $request->input('action'); // 'publish' or 'unpublish'
         $student_id = $request->input('student_id');
         $term_id = $request->input('term_id');
         $type_param = $request->input('type'); // 'g', 's', or 'b'
 
-        
+
         $created_by = $user->reg_id;
         $login_type = $user->role_id;
 
@@ -9700,22 +9629,23 @@ class AssessmentController extends Controller
 
         return response()->json([
             'status' => 200,
-            'message' => $action === 'publish' 
-                ? 'Proficiency certificate published successfully.' 
+            'message' => $action === 'publish'
+                ? 'Proficiency certificate published successfully.'
                 : 'Proficiency certificate unpublished successfully.',
-            'success' =>true
+            'success' => true
         ]);
-	}
-	
-	public function downloadProficiencyCertificate(Request $request,$student_id, $term_id, $type){
-	    try {
+    }
+
+    public function downloadProficiencyCertificate(Request $request, $student_id, $term_id, $type)
+    {
+        try {
             $user = $this->authenticateUser();
             $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
             // Get exam name
             $exam = DB::table('exam')->where('exam_id', $term_id)->value('name');
             $exam_name = $exam ?? 'Exam';
-            
+
             if (stripos($exam_name, 'Term 1') !== false)
                 $exam_name = substr($exam_name, stripos($exam_name, 'Term 1'), 6);
             if (stripos($exam_name, 'Term 2') !== false)
@@ -9727,7 +9657,7 @@ class AssessmentController extends Controller
                 return response()->json(['error' => 'Student not found'], 404);
             }
 
-            $student_name = trim($student->first_name . ' '.$student->mid_name.' ' . $student->last_name);
+            $student_name = trim($student->first_name . ' ' . $student->mid_name . ' ' . $student->last_name);
             $term_name = DB::table('term')->where('term_id', $term_id)->value('name');
             // Get class and section
             $class = DB::table('class')->where('class_id', $student->class_id)->value('name');
@@ -9747,7 +9677,7 @@ class AssessmentController extends Controller
                 'section' => $section,
                 'acd_yr' => $academic_yr,
                 'term_label' => $term_label,
-                'term_name' =>$term_name
+                'term_name' => $term_name
             ])->setPaper('A4', 'landscape');
 
             $file_name = "Proficiency_Certificate_{$term_id}_{$student_name}.pdf";
@@ -9759,36 +9689,36 @@ class AssessmentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ], 500);
         }
-	}
-	
-	public function updateHomework(Request $request){
-	    $jsonencode = $request->data;
-	    $data =json_decode($jsonencode);
+    }
+
+    public function updateHomework(Request $request)
+    {
+        $jsonencode = $request->data;
+        $data = json_decode($jsonencode);
         $updated = 0;
-        for($i = 0; $i < (count($data->arraylist)); $i++){
+        for ($i = 0; $i < (count($data->arraylist)); $i++) {
             $data1['comment'] = $data->arraylist[$i]->teachercomment;
             $data1['homework_status'] = $data->arraylist[$i]->homework_status;
             $data1['student_id'] = $data->arraylist[$i]->student_id;
             $homework_id = $data->arraylist[$i]->homework_id;
-            
-             $status = homework_updatestatus($homework_id,$data1);
-             if ($status) {
+
+            $status = homework_updatestatus($homework_id, $data1);
+            if ($status) {
                 $updated++;
             }
-				
         }
-        if($updated >0 ){
-			$response_array["status"] = TRUE;
-			$response_array["success_msg"] = "Homework comment updated!!!";
-            return response()->json($response_array, 200); 
-		}else{
-			$response_array["status"] = FALSE;
-			$response_array["error_msg"] = "Homework comment could not be created!!!";
-            return response()->json($response_array, 200); 
-		}
-	}
-	
-	public function getStationeryReq(Request $request)
+        if ($updated > 0) {
+            $response_array["status"] = TRUE;
+            $response_array["success_msg"] = "Homework comment updated!!!";
+            return response()->json($response_array, 200);
+        } else {
+            $response_array["status"] = FALSE;
+            $response_array["error_msg"] = "Homework comment could not be created!!!";
+            return response()->json($response_array, 200);
+        }
+    }
+
+    public function getStationeryReq(Request $request)
     {
         try {
             $staff_id = $request->input('staff_id'); // optional
@@ -9955,7 +9885,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     public function getExamsByYear($academic_yr)
     {
         try {
@@ -9974,7 +9904,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     public function pullFromPrevYear(Request $request)
     {
         try {
@@ -10062,7 +9992,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     // Pull Marks Allotment
     public function pullMarksAllotment(Request $request)
     {
@@ -10266,7 +10196,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     public function updateStaffDetails(Request $request, $id)
     {
         $user = $this->authenticateUser();
@@ -10338,7 +10268,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     public function getTeacherIdCardDetails(Request $request)
     {
         try {
@@ -10433,7 +10363,7 @@ class AssessmentController extends Controller
             ], 500);
         }
     }
-    
+
     public function UpdateTeacherProfileImage(Request $request)
     {
         $id = $request->teacher_id;
@@ -10448,7 +10378,60 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
-    
+
+    // public function getpendingteacheridcardreport(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+    //         if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
+
+    //             $globalVariables = App::make('global_variables');
+    //             $parent_app_url = $globalVariables['parent_app_url'];
+    //             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+    //             // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
+    //             $staffdata = DB::table('teacher as t')
+    //                 ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+    //                 ->select('t.*', 'c.confirm')
+    //                 ->where('t.isDelete', 'N')
+    //                 ->where('c.confirm', 'N')      // Only confirmed teachers
+    //                 ->orderBy('t.teacher_id', 'asc')
+    //                 ->get()
+    //                 ->map(function ($staff) use ($codeigniter_app_url) {
+
+    //                     $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+
+    //                     if ($staff->teacher_image_name) {
+    //                         $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+    //                     } else {
+    //                         $staff->teacher_image_url = null;
+    //                     }
+
+    //                     return $staff;
+    //                 });
+
+    //             return response()->json([
+    //                 'status' => 200,
+    //                 'message' => 'ID card details for the Staffs.',
+    //                 'data' => $staffdata,
+    //                 'success' => true
+    //             ]);
+    //         } else {
+    //             return response()->json([
+    //                 'status' => 401,
+    //                 'message' => 'This user does not have permission.',
+    //                 'data' => $user->role_id,
+    //                 'success' => false
+    //             ]);
+    //         }
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getpendingteacheridcardreport(Request $request)
     {
         try {
@@ -10462,11 +10445,23 @@ class AssessmentController extends Controller
                 $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
                 // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
+                // $staffdata = DB::table('teacher as t')
+                //     ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+                //     ->select('t.*', 'c.confirm')
+                //     ->where('t.isDelete', 'N')
+                //     ->where('c.confirm', 'N')      // Only confirmed teachers
+                //     ->orderBy('t.teacher_id', 'asc')
+                //     ->get()
                 $staffdata = DB::table('teacher as t')
-                    ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
-                    ->select('t.*', 'c.confirm')
+                    ->leftJoin(
+                        'confirmation_teacher_idcard as c',
+                        'c.teacher_id',
+                        '=',
+                        't.teacher_id'
+                    )
+                    ->select('t.*')
                     ->where('t.isDelete', 'N')
-                    ->where('c.confirm', 'N')      // Only confirmed teachers
+                    ->whereNull('c.teacher_id') // ✅ NOT present in confirmation table
                     ->orderBy('t.teacher_id', 'asc')
                     ->get()
                     ->map(function ($staff) use ($codeigniter_app_url) {
@@ -10501,67 +10496,60 @@ class AssessmentController extends Controller
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
-    
-    public function showReportCard(Request $request){
+
+    public function showReportCard(Request $request)
+    {
         $short_name = JWTAuth::getPayload()->get('short_name');
         $class_id = $request->input('class_id');
         $academic_yr = $request->input('academic_yr');
         $student_id = $request->input('student_id');
-        $class_name = DB::table('class')->where('class_id',$class_id)->value('name');
-        if($short_name == 'SACS'){
+        $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+        if ($short_name == 'SACS') {
             switch ($class_name) {
                 case 'Nursery':
-                    return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('student_id','class_id','academic_yr'))->stream();
+                    return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
-        
+
                 case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id','class_id','academic_yr'))->stream();
+                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
-        
+
                 case 'UKG':
                     $view = 'assessment.ukg_report_card';
                     break;
-        
+
                 case '1':
                 case '2':
                     $view = 'assessment.class1to2_report_card';
                     break;
-        
+
                 case '3':
                 case '4':
                 case '5':
                     $view = 'assessment.class3to5_report_card';
                     break;
-        
+
                 case '6':
                 case '7':
                 case '8':
                     $view = 'assessment.class6to8_report_card';
                     break;
-        
+
                 case '9':
                 case '10':
                     $view = 'assessment.class9to10_report_card';
                     break;
-        
+
                 default:
                     abort(404, 'Invalid class');
             }
-            
+        } elseif ($short_name == 'HSCS') {
+        } else {
         }
-        elseif($short_name == 'HSCS'){
-            
-        }
-        else{
-            
-        }
-    
+
         $pdf = PDF::loadView('pdf.template', compact('data'));
-        
+
         // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
-        
+
     }
-    
-   
-   
 }
