@@ -8557,12 +8557,21 @@ class AssessmentController extends Controller
                 ->update($data);
 
             // Insert new descriptions WITHOUT deleting old ones
+            // foreach ($request->input('descriptions', []) as $desc) {
+            //     DB::table('lesson_plan_template_details')->insert([
+            //         'les_pln_temp_id'          => $id,
+            //         'lesson_plan_headings_id'  => $desc['lesson_plan_headings_id'],
+            //         'description'              => $desc['description'],
+            //     ]);
+            // }
+
             foreach ($request->input('descriptions', []) as $desc) {
-                DB::table('lesson_plan_template_details')->insert([
-                    'les_pln_temp_id'          => $id,
-                    'lesson_plan_headings_id'  => $desc['lesson_plan_headings_id'],
-                    'description'              => $desc['description'],
-                ]);
+                DB::table('lesson_plan_template_details')
+                    ->where('les_pln_temp_id', $id)
+                    ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
+                    ->update([
+                        'description' => $desc['description'],
+                    ]);
             }
 
             DB::commit();
