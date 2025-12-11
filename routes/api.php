@@ -1279,6 +1279,7 @@
 
             // Get Teacher data for id card
             Route::get('/teachersdata/{id}', [AssessmentController::class, 'teacherDataIdCard']);
+            Route::get('/teacher/image/{teacher_id}', [AssessmentController::class, 'getTeacherImageById']);
         });
     });
 
