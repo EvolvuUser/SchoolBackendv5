@@ -9166,7 +9166,7 @@ public function getTeacherIdCard(Request $request)
     }
 }
 
- public function getTeacherzipimages(Request $request){
+public function getTeacherzipimages(Request $request){
     try{
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -9191,12 +9191,13 @@ public function getTeacherIdCard(Request $request)
                                     return $staff;
                                 });
                     $zip->open(public_path($zipName), ZipArchive::CREATE);
+                    $folderInZip = "All_teachers/";
                             foreach ($staffdata as $url) {
                                 if(!empty($url->teacher_image_url)){
                                 $fileContent = @file_get_contents($url->teacher_image_url);
                                 if ($fileContent) {
                                     $fileName = basename($url->teacher_image_url);
-                                    $zip->addFromString($fileName, $fileContent);
+                                    $zip->addFromString($folderInZip . $fileName, $fileContent);
                                     $imageAdded = true;
                                 } else {
                                     \Log::warning("File could not be downloaded: " . $url->teacher_image_url);
@@ -9204,7 +9205,7 @@ public function getTeacherIdCard(Request $request)
                               }
                             }
                             if (!$imageAdded) {
-                                $zip->addFromString('nofilesfound.txt', ''); // Optionally add a dummy file if you want to keep the ZIP non-empty
+                                $zip->addFromString($folderInZip.'nofilesfound.txt', ''); // Optionally add a dummy file if you want to keep the ZIP non-empty
                             }
                             
                             $zip->close();
@@ -9220,13 +9221,17 @@ public function getTeacherIdCard(Request $request)
                                         ]);
                                 }
                             
-                            }
-                            catch (Exception $e) {
-                            \Log::error($e); 
-                            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-                            }
+     }
+     catch (Exception $e) {
+        \Log::error($e); 
+        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    }
 
  }
+
+
+
+
    //Stationery Dev Name- Manish Kumar Sharma 26-02-2025
    public function saveStationery(Request $request){
     try{
