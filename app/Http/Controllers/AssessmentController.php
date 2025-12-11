@@ -8420,7 +8420,28 @@ class AssessmentController extends Controller
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-        $lessonplantemplatelist = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan_template,lesson_plan_template_details,class,chapters,subject_master where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.class_id=class.class_id and lesson_plan_template.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan_template.subject_id = subject_master.sm_id  and lesson_plan_template.reg_id='" . $user->reg_id . "' and lesson_plan_template.academic_yr='" . $academic_yr . "'  group by lesson_plan_template.les_pln_temp_id");
+        $lessonplantemplatelist = DB::select("
+        select lesson_plan_template.*,
+        lesson_plan_template_details.*,
+        class.class_id,
+        class.name as c_name,
+        chapters.chapter_id,
+        chapters.name,
+        subject_master.name as sub_name 
+        from lesson_plan_template,
+        lesson_plan_template_details,
+        class,
+        chapters,
+        subject_master 
+        where 
+        lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id 
+        and lesson_plan_template.class_id=class.class_id 
+        and lesson_plan_template.chapter_id = chapters.chapter_id 
+        and chapters.isDelete!='Y' 
+        and lesson_plan_template.subject_id = subject_master.sm_id  
+        and lesson_plan_template.reg_id='" . $user->reg_id . "' 
+        and lesson_plan_template.academic_yr='" . $academic_yr . "'  
+        group by lesson_plan_template.les_pln_temp_id");
 
         return response()->json([
             'status'  => 200,
@@ -8466,12 +8487,21 @@ class AssessmentController extends Controller
                 ->update($data);
 
             // Insert new descriptions WITHOUT deleting old ones
+            // foreach ($request->input('descriptions', []) as $desc) {
+            //     DB::table('lesson_plan_template_details')->insert([
+            //         'les_pln_temp_id'          => $id,
+            //         'lesson_plan_headings_id'  => $desc['lesson_plan_headings_id'],
+            //         'description'              => $desc['description'],
+            //     ]);
+            // }
+
             foreach ($request->input('descriptions', []) as $desc) {
-                DB::table('lesson_plan_template_details')->insert([
-                    'les_pln_temp_id'          => $id,
-                    'lesson_plan_headings_id'  => $desc['lesson_plan_headings_id'],
-                    'description'              => $desc['description'],
-                ]);
+                DB::table('lesson_plan_template_details')
+                    ->where('les_pln_temp_id', $id)
+                    ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
+                    ->update([
+                        'description' => $desc['description'],
+                    ]);
             }
 
             DB::commit();
