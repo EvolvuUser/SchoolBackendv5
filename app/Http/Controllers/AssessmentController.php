@@ -10369,7 +10369,7 @@ class AssessmentController extends Controller
         $filename = $request->filename;
         $doc_type_folder = 'teacher_image';
         $base64File = $request->base64;
-
+        DB::table('teacher')->where('teacher_id', $id)->update(['teacher_image_name' => $filename]);
         upload_teacher_profile_image_into_folder($id, $filename, $doc_type_folder, $base64File);
         return response()->json([
             'status' => 200,
@@ -10377,6 +10377,7 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
+
 
     // public function getpendingteacheridcardreport(Request $request)
     // {
@@ -10641,6 +10642,60 @@ class AssessmentController extends Controller
                 'message' => 'An error occurred while fetching the teacher details',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+
+    // get api for fetch the teacher image 
+
+    public function getTeacherImageById(Request $request, $teacher_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            if (!in_array($user->role_id, ['A', 'T', 'M'])) {
+                return response()->json([
+                    'status' => 401,
+                    'message' => 'No permission',
+                    'success' => false
+                ]);
+            }
+
+            $globalVariables = App::make('global_variables');
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            $teacher = DB::table('teacher')
+                ->select('teacher_id', 'teacher_image_name')
+                ->where('teacher_id', $teacher_id)
+                ->where('isDelete', 'N')
+                ->first();
+
+            if (!$teacher) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Teacher not found',
+                    'success' => false
+                ]);
+            }
+
+            // ✅ Build image URL
+            $teacher->teacher_image_url = $teacher->teacher_image_name
+                ? $codeigniter_app_url . 'uploads/teacher_image/' . $teacher->teacher_image_name
+                : null;
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Teacher image fetched successfully',
+                'data' => $teacher,
+                'success' => true
+            ]);
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Server error',
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }
