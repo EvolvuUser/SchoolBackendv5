@@ -8230,18 +8230,7 @@ class AssessmentController extends Controller
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
             AND lpt.class_id = ?
-            AND lpt.reg_id = ?
-        ", [$chapter_id, $subject_id, $class_id, $reg_id]);
-
-        // No template found
-        if (empty($lessonplantemplate)) {
-            return response()->json([
-                'success' => false,
-                'data'    => [],
-                'message' => 'No lesson plan template found.',
-                'status'  => 404
-            ], 404);
-        }
+        ", [$chapter_id, $subject_id, $class_id]);
 
         // Use object properties instead of ['']
         $first = $lessonplantemplate[0];
