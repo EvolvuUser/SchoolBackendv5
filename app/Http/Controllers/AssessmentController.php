@@ -8217,8 +8217,8 @@ class AssessmentController extends Controller
         $reg_id_old = $request->input('reg_id');
 
         // Authenticate user
-        $user    = $this->authenticateUser();
-        $reg_id  = JWTAuth::getPayload()->get('reg_id');
+        $user   = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
 
         $lessonplantemplate = DB::select("
             SELECT lpt.*, lptd.*, lph.name
@@ -8230,39 +8230,44 @@ class AssessmentController extends Controller
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
             AND lpt.class_id = ?
-            AND lpt.reg_id = ? 
+            AND lpt.reg_id = ?
         ", [$chapter_id, $subject_id, $class_id, $reg_id]);
 
-        // 🚨 FIX: Check if no template exists
-        if (count($lessonplantemplate) === 0) {
+        // No template found
+        if (empty($lessonplantemplate)) {
             return response()->json([
                 'success' => false,
                 'data'    => [],
                 'message' => 'No lesson plan template found.',
                 'status'  => 404
             ], 404);
-        } else {
-            $message = "";
-            $status = FALSE;
-            if($lessonplantemplate[0]['reg_id'] == $reg_id_old) {
-                $status = TRUE;
-            } else {
-                if($lessonplantemplate[0]['publish']=='Y'){
-                    $message = "Lesson Plan Template is already created and published!!!";      
-                }else{
-                    $message = "Lesson Plan Template is already created!!!";     
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'isCreatedByRequestedUser' => $status,
-                'data'    => $lessonplantemplate,
-                'message' => $message,
-                'status'  => 200
-            ]);
         }
+
+        // Use object properties instead of ['']
+        $first = $lessonplantemplate[0];
+
+        $status  = false;
+        $message = "";
+
+        if ($first->reg_id == $reg_id_old) {
+            $status = true;
+        } else {
+            if ($first->publish == 'Y') {
+                $message = "Lesson Plan Template is already created and published!!!";
+            } else {
+                $message = "Lesson Plan Template is already created!!!";
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'isCreatedByRequestedUser' => $status,
+            'data'    => $lessonplantemplate,
+            'message' => $message,
+            'status'  => 200
+        ]);
     }
+
 
     public function getLessonPlanHeadingNonDaily(Request $request)
     {
