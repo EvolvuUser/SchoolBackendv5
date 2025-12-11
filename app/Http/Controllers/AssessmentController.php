@@ -8257,7 +8257,7 @@ class AssessmentController extends Controller
             }
         }
 
-        if($status) {
+        if(!$status) {
             $lessonplantemplate = [];
         }
 
