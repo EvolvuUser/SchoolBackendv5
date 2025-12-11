@@ -8214,6 +8214,7 @@ class AssessmentController extends Controller
         $class_id   = $request->input('class_id');
         $subject_id = $request->input('subject_id');
         $chapter_id = $request->input('chapter_id');
+        $reg_id_old = $request->input('reg_id');
 
         // Authenticate user
         $user    = $this->authenticateUser();
@@ -8232,24 +8233,35 @@ class AssessmentController extends Controller
             AND lpt.reg_id = ? 
         ", [$chapter_id, $subject_id, $class_id, $reg_id]);
 
-
         // 🚨 FIX: Check if no template exists
         if (count($lessonplantemplate) === 0) {
-
             return response()->json([
                 'success' => false,
                 'data'    => [],
                 'message' => 'No lesson plan template found.',
                 'status'  => 404
             ], 404);
-        }
+        } else {
+            $message = "";
+            $status = FALSE;
+            if($lessonplantemplate[0]['reg_id'] == $reg_id_old) {
+                $status = TRUE;
+            } else {
+                if($lessonplantemplate[0]['publish']=='Y'){
+                    $message = "Lesson Plan Template is already created and published!!!";      
+                }else{
+                    $message = "Lesson Plan Template is already created!!!";     
+                }
+            }
 
-        return response()->json([
-            'success' => true,
-            'data'    => $lessonplantemplate,
-            'message' => 'Lesson plan template fetched successfully.',
-            'status'  => 200
-        ]);
+            return response()->json([
+                'success' => true,
+                'isCreatedByRequestedUser' => $status,
+                'data'    => $lessonplantemplate,
+                'message' => $message,
+                'status'  => 200
+            ]);
+        }
     }
 
     public function getLessonPlanHeadingNonDaily(Request $request)
