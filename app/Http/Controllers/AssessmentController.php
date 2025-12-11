@@ -8257,6 +8257,10 @@ class AssessmentController extends Controller
             }
         }
 
+        if($status) {
+            $lessonplantemplate = [];
+        }
+
         return response()->json([
             'success' => true,
             'isCreatedByRequestedUser' => $status,
