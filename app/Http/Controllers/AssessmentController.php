@@ -8214,14 +8214,13 @@ class AssessmentController extends Controller
         $class_id   = $request->input('class_id');
         $subject_id = $request->input('subject_id');
         $chapter_id = $request->input('chapter_id');
-        $reg_id_old = $request->input('reg_id');
 
         // Authenticate user
         $user   = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
 
         $lessonplantemplate = DB::select("
-            SELECT lpt.*, lptd.*, lph.name
+            SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
             FROM lesson_plan_template AS lpt
             JOIN lesson_plan_template_details AS lptd 
                 ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
@@ -8232,13 +8231,23 @@ class AssessmentController extends Controller
             AND lpt.class_id = ?
         ", [$chapter_id, $subject_id, $class_id]);
 
+        if(count($lessonplantemplate) == 0) {
+            return response()->json([
+                'success' => true,
+                'isCreatedByRequestedUser' => false,
+                'data'    => [],
+                'message' => "No lesson plan template created",
+                'status'  => 404
+            ]);
+        }
+
         // Use object properties instead of ['']
         $first = $lessonplantemplate[0];
 
         $status  = false;
         $message = "";
 
-        if ($first->reg_id == $reg_id_old) {
+        if ($first->teacher_id == $reg_id) {
             $status = true;
         } else {
             if ($first->publish == 'Y') {
@@ -8256,7 +8265,6 @@ class AssessmentController extends Controller
             'status'  => 200
         ]);
     }
-
 
     public function getLessonPlanHeadingNonDaily(Request $request)
     {
