@@ -1092,6 +1092,7 @@
             Route::post('update_chapters/{chapter_id}', [AssessmentController::class, 'updateChapters']);
             Route::get('/get_only_classes_allotted_to_teacher', [AssessmentController::class, 'getOnlyClassesAllotedToTeacher']);
             Route::get('/get_subjects_according_class', [AssessmentController::class, 'getSubjectsAccordingClass']);
+            Route::get('/get_subjects_according_class_multiple', [AssessmentController::class, 'getSubjectsAccordingClassMultiple']);
             Route::get('/get_generate_csv_file_for_chapters', [AssessmentController::class, 'generateCsvFileForChapters']);
             Route::post('/upload_chapters_through_excelsheet', [AssessmentController::class, 'uploadChaptersThroughExcelsheet']);
 

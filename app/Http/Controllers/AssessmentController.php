@@ -7811,6 +7811,59 @@ class AssessmentController extends Controller
         ]);
     }
 
+    public function getSubjectsAccordingClassMultiple(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $class_id = $request->input('class_id');
+        $section_ids = $request->input('section_ids'); // ['A','B','C']
+
+        if (!is_array($section_ids) || empty($section_ids)) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'section_ids must be a non-empty array',
+                'success' => false
+            ]);
+        }
+
+        // 1️⃣ Base subquery for first section
+        $subQuery = DB::table('subject as a')
+            ->select('a.sm_id')
+            ->where('a.class_id', $class_id)
+            ->where('a.section_id', $section_ids[0])
+            ->where('a.teacher_id', $user->reg_id)
+            ->where('a.academic_yr', $academic_yr);
+
+        // 2️⃣ Add intersection for the remaining sections
+        for ($i = 1; $i < count($section_ids); $i++) {
+            $subQuery->whereIn('a.sm_id', function ($q) use ($class_id, $section_ids, $i, $academic_yr, $user) {
+                $q->select('b.sm_id')
+                ->from('subject as b')
+                ->where('b.class_id', $class_id)
+                ->where('b.section_id', $section_ids[$i])
+                ->where('b.teacher_id', $user->reg_id)
+                ->where('b.academic_yr', $academic_yr);
+            });
+        }
+
+        // 3️⃣ Get the final subject IDs
+        $finalSmIds = $subQuery->pluck('sm_id');
+
+        // 4️⃣ Return subject names
+        $subjects = DB::table('subject_master')
+            ->whereIn('sm_id', $finalSmIds)
+            ->select('sm_id', 'name')
+            ->get();
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Subjects according to class',
+            'data'    => $subjects,
+            'success' => true
+        ]);
+    }
+
     public function updateChapters(Request $request, $chapter_id)
     {
         $user = $this->authenticateUser();
