@@ -8994,7 +8994,7 @@ ORDER BY teacher_id ASC;
                     })
                     ->where('teacher.isDelete', 'N')
                     ->orderBy('teacher.teacher_id', 'asc')
-                    ->select('teacher.*', 'confirmation_teacher_idcard.confirm')
+                    ->select('teacher.*',  'confirmation_teacher_idcard.confirm')
                     ->get()
                     ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
 
@@ -9010,7 +9010,7 @@ ORDER BY teacher_id ASC;
                     });
 
                 $zip->open(public_path($zipName), ZipArchive::CREATE);
-                $folderInZip = "All_teachers/";
+                $folderInZip = "Staff_IdCard_ProfileImages/";
                 foreach ($staffdata as $url) {
                     if (!empty($url->teacher_image_url)) {
                         $fileContent = @file_get_contents($url->teacher_image_url);
@@ -9028,7 +9028,7 @@ ORDER BY teacher_id ASC;
                 }
 
                 $zip->close();
-                return response()->download($zipName, 'All_teachers.zip')
+                return response()->download($zipName, 'Staff_IdCard_ProfileImages.zip')
                     ->deleteFileAfterSend(true);
             } else {
                 return response()->json([
