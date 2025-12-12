@@ -9028,7 +9028,10 @@ ORDER BY teacher_id ASC;
                 }
 
                 $zip->close();
-                return response()->download($zipName, 'Staff_IdCard_ProfileImages.zip')
+
+                // return response()->download($zipName, 'Staff_IdCard_ProfileImages')
+                //     ->deleteFileAfterSend(true);
+                return response()->download(public_path($zipName), 'Staff_IdCard_ProfileImages')
                     ->deleteFileAfterSend(true);
             } else {
                 return response()->json([
