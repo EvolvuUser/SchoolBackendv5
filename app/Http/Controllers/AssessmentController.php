@@ -8187,9 +8187,6 @@ class AssessmentController extends Controller
             'message' => 'Chatper according to class and subject.',
             'status'  => 200
         ]);
-
-
-
     }
 
     // public function getLessonPlanTemplate(Request $request){
@@ -8231,7 +8228,7 @@ class AssessmentController extends Controller
             AND lpt.class_id = ?
         ", [$chapter_id, $subject_id, $class_id]);
 
-        if(count($lessonplantemplate) == 0) {
+        if (count($lessonplantemplate) == 0) {
             return response()->json([
                 'success' => true,
                 'isCreatedByRequestedUser' => false,
@@ -8257,7 +8254,7 @@ class AssessmentController extends Controller
             }
         }
 
-        if(!$status) {
+        if (!$status) {
             $lessonplantemplate = [];
         }
 
@@ -10710,7 +10707,7 @@ class AssessmentController extends Controller
         try {
             $user = $this->authenticateUser();
 
-            if (!in_array($user->role_id, ['A', 'T', 'M'])) {
+            if (!in_array($user->role_id, ['A', 'T', 'M', 'P', 'T'])) {
                 return response()->json([
                     'status' => 401,
                     'message' => 'No permission',
