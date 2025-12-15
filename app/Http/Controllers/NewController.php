@@ -7158,6 +7158,7 @@ class NewController extends Controller
             |--------------------------------------------------------------------------
             */
             foreach ($studentsData as $studentData) {
+
                 $studentId = $studentData['student_id'];
                 $rollNo    = $studentData['roll_no'];
 
@@ -7165,18 +7166,31 @@ class NewController extends Controller
                     continue;
                 }
 
+                // 1️⃣ Get current student's class & section
+                $currentStudent = Student::select('class_id', 'section_id')
+                    ->where('student_id', $studentId)
+                    ->first();
+
+                if (!$currentStudent) {
+                    continue; // or return error if you prefer
+                }
+
+                // 2️⃣ Check duplicate roll number within same class & section
                 $exists = Student::where('roll_no', $rollNo)
+                    ->where('class_id', $currentStudent->class_id)
+                    ->where('section_id', $currentStudent->section_id)
                     ->where('student_id', '!=', $studentId)
                     ->exists();
 
                 if ($exists) {
                     return response()->json([
-                        'status' => 422,
+                        'status'  => 422,
                         'success' => false,
-                        'message' => "Roll number {$rollNo} is already assigned to another student"
+                        'message' => "Roll number {$rollNo} already exists in this class and section"
                     ], 422);
                 }
             }
+
 
             /*
             |--------------------------------------------------------------------------
