@@ -5575,33 +5575,33 @@ class NewController extends Controller
          
      }
      // Api for Approve lesson plan Dev Name - Manish Kumar Sharma 22-07-2025
-     public function getApproveLessonPlandata(Request $request){
-         $user = $this->authenticateUser();
-         $customClaims = JWTAuth::getPayload()->get('academic_year');
-         $staffId = $request->query('staff_id');
-            $week = $request->query('week');
-            $month = $request->query('month');
-            $query = DB::table('lesson_plan')
-                        ->select(
-                            'lesson_plan.*',
-                            'class.name as classname',
-                            'section.name as secname',
-                            'subject_master.name as subname',
-                            'chapters.chapter_no',
-                            'chapters.name as chaptername',
-                            'chapters.sub_subject',
-                            'teacher.name as teachername'
-                        )
-                        ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
-                        ->join('teacher', 'teacher.teacher_id', '=', 'lesson_plan.reg_id')
-                        ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
-                        ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
-                        ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                        ->where('chapters.isDelete', '!=', 'Y')
-                        ->where('lesson_plan.approve', '!=','Y')
-                        ->where('lesson_plan.academic_yr', $customClaims)
-                        ->orderByDesc('lesson_plan.lesson_plan_id')
-                        ->groupBy('lesson_plan.unq_id');
+    public function getApproveLessonPlandata(Request $request){
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $staffId = $request->query('staff_id');
+        $week = $request->query('week');
+        $month = $request->query('month');
+        $query = DB::table('lesson_plan')
+                    ->select(
+                        'lesson_plan.*',
+                        'class.name as classname',
+                        'section.name as secname',
+                        'subject_master.name as subname',
+                        'chapters.chapter_no',
+                        'chapters.name as chaptername',
+                        'chapters.sub_subject',
+                        'teacher.name as teachername'
+                    )
+                    ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                    ->join('teacher', 'teacher.teacher_id', '=', 'lesson_plan.reg_id')
+                    ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                    ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                    ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                    ->where('chapters.isDelete', '!=', 'Y')
+                    ->where('lesson_plan.approve', '!=','Y')
+                    ->where('lesson_plan.academic_yr', $customClaims)
+                    ->orderByDesc('lesson_plan.lesson_plan_id')
+                    ->groupBy('lesson_plan.unq_id');
 
         if (!empty($staffId)) {
             $query->where('lesson_plan.reg_id', $staffId);
@@ -7121,44 +7121,92 @@ class NewController extends Controller
     
        }
 
-   public function updateStudentAllotRollnoHouse(Request $request){
-    try{
-        $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $studentsData = $request->input('students');
-            
+   public function updateStudentAllotRollnoHouse(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
 
+            $studentsData = $request->input('students', []);
+
+            if (empty($studentsData)) {
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'message' => 'No student data provided'
+                ], 422);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 1. Check duplicate roll numbers in request itself
+            |--------------------------------------------------------------------------
+            */
+            $rollNos = array_filter(array_column($studentsData, 'roll_no'));
+
+            if (count($rollNos) !== count(array_unique($rollNos))) {
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'message' => 'Duplicate roll numbers found in request'
+                ], 422);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 2. Check duplicate roll numbers in database
+            |--------------------------------------------------------------------------
+            */
             foreach ($studentsData as $studentData) {
                 $studentId = $studentData['student_id'];
-                $house = $studentData['house'];
-                $rollNo = $studentData['roll_no'];
-    
-                // Find existing student by student_id
-                $student = Student::where('student_id', $studentId)->first();
-    
-                // If student exists, update the data
-                if ($student) {
-                    $student->update([
-                        'house' => $house,
-                        'roll_no' => $rollNo,
-                    ]);
-                } 
+                $rollNo    = $studentData['roll_no'];
+
+                if (!$rollNo) {
+                    continue;
+                }
+
+                $exists = Student::where('roll_no', $rollNo)
+                    ->where('student_id', '!=', $studentId)
+                    ->exists();
+
+                if ($exists) {
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => "Roll number {$rollNo} is already assigned to another student"
+                    ], 422);
+                }
             }
-    
-            // Return success response
+
+            /*
+            |--------------------------------------------------------------------------
+            | 3. Update students (safe to update now)
+            |--------------------------------------------------------------------------
+            */
+            foreach ($studentsData as $studentData) {
+                Student::where('student_id', $studentData['student_id'])
+                    ->update([
+                        'house'   => $studentData['house'],
+                        'roll_no' => $studentData['roll_no'],
+                    ]);
+            }
+
             return response()->json([
                 'status' => 200,
-                'message' => 'Student data saved successfully!',
-                'success' => true
+                'success' => true,
+                'message' => 'Student data saved successfully!'
             ], 200);
 
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
-        catch (Exception $e) {
-        \Log::error($e); 
-        return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
+    }
 
-   }
      
      public function sendPendingMessagesWhatsapp(Request $request){
          $pendingmessages = DB::table('redington_webhook_details')
