@@ -7889,7 +7889,7 @@ class AssessmentController extends Controller
         $exists = DB::table('chapters')->where([
             ['class_id', '=', $data['class_id']],
             ['subject_id', '=', $data['subject_id']],
-            ['chapter_no', '=', $data['chapter_no']],
+            ['chapter_no', '!=', $data['chapter_no']],
             ['IsDelete', '=', 'N'],
         ])
             ->when(!empty($data['sub_subject']), function ($q) use ($data) {
