@@ -6795,10 +6795,25 @@ class AssessmentController extends Controller
                                 // dd($marks_obtained,$highest_marks);
                                 // $this->session->set_flashdata('error_message', 'Incorrect marks. Marks entered is greater than the highest marks for ' . $this->crud_model->get_student_name($student_id) . ' for ' . $this->assessment_model->get_mark_heading_name($marks_headings_id));
                                 // redirect(base_url() . 'index.php/assessment/student_marks/' . $exam_id . '/' . $class_id . '/' . $section_id . '/' . $subject_id, 'refresh');
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => "Incorrect marks. Marks entered is greater than the highest marks for " . $this->crud_model->get_student_name($student_id) . " for " . $this->assessment_model->get_mark_heading_name($marks_headings_id) . "."
-                                ], 400);
+                                // return response()->json([
+                                //     'success' => false,
+                                //     'message' => "Incorrect marks. Marks entered is greater than the highest marks for " . $this->crud_model->get_student_name($student_id) . " for " . $this->assessment_model->get_mark_heading_name($marks_headings_id) . "."
+                                // ], 400);
+
+                                $studentName = DB::table('student')
+                                        ->where('student_id', $student_id)
+                                        ->value(DB::raw("CONCAT(first_name,' ',mid_name,' ',last_name)"));
+
+                                    // $markHeadingName = $this->assessment_model->get_mark_heading_name($marks_headings_id);
+
+                                    $markHeadingName = DB::table('marks_headings')
+                                        ->where('marks_headings_id', $marks_headings_id)
+                                        ->value('name');
+
+                                    return response()->json([
+                                        'success' => false,
+                                        'message' => "Incorrect marks. Marks entered is greater than the highest marks for $studentName for $markHeadingName."
+                                    ], 400);
                             }
 
 
