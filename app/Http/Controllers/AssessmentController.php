@@ -9330,6 +9330,7 @@ class AssessmentController extends Controller
                 }
             }
             if ($operation == 'edit') {
+                return response()->json($request->all());
                 $data['notes_id']        =    $request->input('notes_id');
                 $data['section_id'] = $request->input('section_id');
                 $data['class_id'] = $request->input('class_id');
@@ -9338,6 +9339,7 @@ class AssessmentController extends Controller
                 } else {
                     $datafile = '';
                 }
+                // if there is a new file
                 $filename = $request->input('filename');
                 $deletefiledata =  $request->input('deleteimagelist');
                 // start here 21-07-20 29-07-20
@@ -9346,6 +9348,7 @@ class AssessmentController extends Controller
                     $statusedit = daily_notes_edit($data, $deletefiledata, '', '');
                 } else {
                     //crudhelper
+                    // deletefiledata => array of files to be deleted ["Image_file_1.jpg"]
                     $statusedit = daily_notes_edit($data, $deletefiledata, $datafile, $filename);
                 }
                 if ($statusedit) {

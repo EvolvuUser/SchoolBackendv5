@@ -249,6 +249,7 @@ use App\Models\Student;
             return true;
     
         } else {
+            // this will run if the user is uploading a new file. 
             if ($deleted_images != '') {
                 $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
                 $deleted_images_string = explode(",", $deleted_images1);
