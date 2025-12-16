@@ -9330,7 +9330,7 @@ class AssessmentController extends Controller
                 }
             }
             if ($operation == 'edit') {
-                return response()->json($request->all());
+                // return response()->json($request->all());
                 $data['notes_id']        =    $request->input('notes_id');
                 $data['section_id'] = $request->input('section_id');
                 $data['class_id'] = $request->input('class_id');
