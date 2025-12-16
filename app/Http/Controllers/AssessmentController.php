@@ -9294,11 +9294,13 @@ class AssessmentController extends Controller
             } else {
                 $data['subject_id']            =    $request->input('subject_id');
             }
+
             $data['teacher_id']            =    $request->input('teacher_id');
             $data['description']        =    $request->input('description');
             $data['publish']        =    'N';
             $data['date'] = date_format(date_create($request->input('dailynote_date')), 'Y-m-d');
             $data['academic_yr'] = $request->input('academic_yr');
+
             if ($request->input('datafile') != '') {
                 $datafile = $request->input('datafile');
             } else {
@@ -9308,6 +9310,7 @@ class AssessmentController extends Controller
             $random_no = $request->input('random_no');
             $filename = $request->input('filename');
             $operation = $request->input('operation');
+            
             if ($operation == 'create') {
                 if ($filename == '' || $filename == '[]') {
                     //crudhelper
