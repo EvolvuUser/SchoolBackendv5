@@ -180,21 +180,44 @@ use App\Models\Student;
         $k = $data['notes_id'];
     
         if ($filenamelist != '') {
-            if ($deleted_images != '') {
-                $deleted_images1 = str_replace([' ', '"', '[', ']'], "", $deleted_images);
-                $deleted_images_string = explode(",", $deleted_images1);
+            // if ($deleted_images != '') {
+            //     $deleted_images1 = str_replace([' ', '"', '[', ']'], "", $deleted_images);
+            //     $deleted_images_string = explode(",", $deleted_images1);
     
-                for ($i = 0; $i < count($deleted_images_string); $i++) {
+            //     for ($i = 0; $i < count($deleted_images_string); $i++) {
                     
-                    $path = $filePath."uploads/daily_notes/" . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
-                    if (file_exists($path)) {
-                        unlink($path);
-                    }
+            //         $path = $filePath."uploads/daily_notes/" . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
+            //         if (file_exists($path)) {
+            //             unlink($path);
+            //         }
     
-                    DB::table('notes_detail')
-                        ->where('notes_id', $data['notes_id'])
-                        ->where('image_name', $deleted_images_string[$i])
-                        ->delete();
+            //         DB::table('notes_detail')
+            //             ->where('notes_id', $data['notes_id'])
+            //             ->where('image_name', $deleted_images_string[$i])
+            //             ->delete();
+            //     }
+            // }
+
+            if (!empty($deleted_images)) {
+                // Decode JSON instead of string replace
+                $deleted_images_array = json_decode($deleted_images, true);
+                // If invalid or only [null], stop
+                if (!(empty($deleted_images_array) || $deleted_images_array === [null])) {
+                    foreach ($deleted_images_array as $image) {
+                        if (empty($image)) {
+                            continue;
+                        }
+                        $path = $filePath . "uploads/daily_notes/" .
+                            date('Y-m-d', strtotime($data['date'])) . '/' .
+                            $data['notes_id'] . '/' . $image;
+                        if (file_exists($path) && is_file($path)) {
+                            unlink($path);
+                        }
+                        DB::table('notes_detail')
+                            ->where('notes_id', $data['notes_id'])
+                            ->where('image_name', $image)
+                            ->delete();
+                    }
                 }
             }
     
