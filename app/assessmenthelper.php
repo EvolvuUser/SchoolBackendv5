@@ -188,4 +188,14 @@ function get_published_exams_class9n10($class_id,$section_id,$acd_yr)
 		//echo $this->db->last_query();
         return $query;
     }
+
+    function get_highestmarks_of_subject_exam_class($exam_id,$class_id,$sm_id,$acd_yr)        
+	{	
+		//$query	=$this->db->query("SELECT max(highest_marks) as max_marks from allot_mark_headings where exam_id=".$exam_id." and class_id=". $class_id." and sm_id=".$sm_id." and academic_yr='".$acd_yr."'");
+		$query	=DB::select("SELECT sum(highest_marks) as max_marks from allot_mark_headings where exam_id=".$exam_id." and class_id=". $class_id." and sm_id=".$sm_id." and academic_yr='".$acd_yr."'");
+        $res= $query;
+		
+		foreach($res as $row)
+			return $row->max_marks;
+	}
     
