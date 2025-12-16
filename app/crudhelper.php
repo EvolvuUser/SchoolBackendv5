@@ -1086,3 +1086,10 @@ use App\Models\Student;
         }
         return $total_working_days;
     }
+
+    function get_parent_name($parent_id)
+    {
+        return DB::table('parent')
+            ->where('parent_id', $parent_id)
+            ->value('father_name');
+    }

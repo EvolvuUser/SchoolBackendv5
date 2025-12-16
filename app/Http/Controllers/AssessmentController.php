@@ -10626,29 +10626,29 @@ class AssessmentController extends Controller
                     break;
 
                 case 'UKG':
-                    $view = 'assessment.ukg_report_card';
+                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case '1':
                 case '2':
-                    $view = 'assessment.class1to2_report_card';
+                    return PDF::loadView('reportcard.SACS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case '3':
                 case '4':
                 case '5':
-                    $view = 'assessment.class3to5_report_card';
+                    return PDF::loadView('reportcard.SACS.class3to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case '6':
                 case '7':
                 case '8':
-                    $view = 'assessment.class6to8_report_card';
+                    return PDF::loadView('reportcard.SACS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case '9':
                 case '10':
-                    $view = 'assessment.class9to10_report_card';
+                    return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 default:
