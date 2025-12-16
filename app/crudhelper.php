@@ -1147,3 +1147,11 @@ use App\Models\Student;
             ->where('parent_id', $parent_id)
             ->value('father_name');
     }
+
+    function get_parent_info($parent_id)
+    {
+        return DB::table('parent')
+            ->where('parent_id', $parent_id)
+            ->get()
+            ->toArray(); 
+    }

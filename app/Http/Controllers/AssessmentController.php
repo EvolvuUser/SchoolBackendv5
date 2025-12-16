@@ -10686,6 +10686,44 @@ class AssessmentController extends Controller
                     abort(404, 'Invalid class');
             }
         } elseif ($short_name == 'HSCS') {
+            switch ($class_name) {
+                case 'Nursery':
+                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case 'LKG':
+                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case 'UKG':
+                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case '1':
+                case '2':
+                    return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case '3':
+                case '4':
+                case '5':
+                    return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case '6':
+                case '7':
+                case '8':
+                    return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                case '9':
+                case '10':
+                    return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+
+                default:
+                    abort(404, 'Invalid class');
+            }
         } else {
         }
 
