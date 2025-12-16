@@ -9287,7 +9287,7 @@ class AssessmentController extends Controller
         if ($request->login_type == 'T') {
             $str_array    =    $request->input('str_array');
             $str_classes =  str_replace(array('[', ']', '"'), '', $str_array);
-            $str_classes_array = explode("^", $str_classes);
+            $str_classes_array = explode(",", $str_classes);
 
             if ($request->input('subject_id') == '') {
                 $data['subject_id'] = 0;
@@ -9310,7 +9310,7 @@ class AssessmentController extends Controller
             $random_no = $request->input('random_no');
             $filename = $request->input('filename');
             $operation = $request->input('operation');
-            
+
             if ($operation == 'create') {
                 if ($filename == '' || $filename == '[]') {
                     //crudhelper
