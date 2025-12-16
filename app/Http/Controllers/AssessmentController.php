@@ -9289,7 +9289,7 @@ class AssessmentController extends Controller
             $str_classes =  str_replace(array('[', ']', '"'), '', $str_array);
             $str_classes_array = explode(",", $str_classes);
 
-            dd($request->all());
+            return response()->json($request->all());
             if ($request->input('subject_id') == '') {
                 $data['subject_id'] = 0;
             } else {
