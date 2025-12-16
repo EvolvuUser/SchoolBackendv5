@@ -307,10 +307,11 @@ use App\Models\Student;
         $daily_notes = get_notes_details($note_id);
         
         if ($daily_notes) {
-            $daily_notes_date = $daily_notes[0]->date;
+            // coz get_notes_details is returning array of objects
+            $daily_notes_date = $daily_notes[0]['date'];
     
             foreach ($daily_notes as $row) {
-                $path = $filePath.'uploads/daily_notes/' . date('Y-m-d', strtotime($row->date)) . '/' . $note_id . '/' . $row->image_name;
+                $path = $filePath.'uploads/daily_notes/' . date('Y-m-d', strtotime($row['date'])) . '/' . $note_id . '/' . $row['image_name'];
                 if (file_exists($path)) {
                     @unlink($path);
                 }
