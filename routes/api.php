@@ -48,7 +48,7 @@
             Route::post('/clearData', [LoginController::class, 'clearData'])->name('clearData');
             Route::put('/update_password', [LoginController::class, 'updatePassword']);
             Route::get('/editprofile', [AuthController::class, 'editUser']);
-            Route::put('/update_profile', [AuthController::class, 'updateUser']);
+            Route::put('/update_profile', [AuthController::class, 'updateUser']); 
 
             //Master and its sub module routes  Module Routes 
             //Section model Routes 
