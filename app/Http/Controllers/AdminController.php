@@ -140,42 +140,9 @@ class AdminController extends Controller
 
     public function staff()
     {
-
-        $teachingStaff = count(DB::select("
-                             SELECT DISTINCT t.teacher_id
-                        FROM teacher t
-                        JOIN user_master u 
-                            ON t.teacher_id = u.reg_id
-                        LEFT JOIN teacher_category tc 
-                            ON t.tc_id = tc.tc_id
-                        WHERE t.isDelete = 'N'
-                          AND (tc.teaching = 'Y');
-                         "));
-
+        $teachingStaff = count(DB::select("SELECT DISTINCT t.teacher_id FROM teacher t JOIN user_master u  ON t.teacher_id = u.reg_id LEFT JOIN teacher_category tc  ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N' AND (tc.teaching = 'Y');"));
         $attendanceteachingstaff = count(DB::select("SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t, user_master u,teacher_category tc WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED)  and t.isDelete='N' and tc.teaching='Y' AND t.tc_id = tc.tc_id and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE()"));
-
-        //  $non_teachingStaff = count(DB::select("
-        //                     SELECT distinct(t.teacher_id) FROM teacher t, user_master u WHERE t.teacher_id=u.reg_id and t.isDelete='N' and role_id in ('A','F', 'M', 'N', 'X', 'Y') UNION SELECT distinct(c.teacher_id) FROM teacher c where designation='Caretaker'
-        //                  ")); 
-        $non_teachingStaff = count(DB::select("
-                            SELECT DISTINCT t.teacher_id
-FROM teacher t
-JOIN user_master u ON t.teacher_id = u.reg_id
-LEFT JOIN teacher_category tc ON t.tc_id = tc.tc_id
-WHERE t.isDelete = 'N'
-  AND tc.teaching = 'N'
-
-UNION
-
-SELECT DISTINCT c.teacher_id
-FROM teacher c
-LEFT JOIN teacher_category tc ON c.tc_id = tc.tc_id
-WHERE c.designation = 'Caretaker'
-AND c.isDelete = 'N'
-  AND tc.teaching = 'N'
-
-ORDER BY teacher_id ASC;
-                         "));
+        $non_teachingStaff = count(DB::select("SELECT DISTINCT t.teacher_id FROM teacher t JOIN user_master u ON t.teacher_id = u.reg_id LEFT JOIN teacher_category tc ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N' AND tc.teaching = 'N' UNION SELECT DISTINCT c.teacher_id FROM teacher c LEFT JOIN teacher_category tc ON c.tc_id = tc.tc_id WHERE c.designation = 'Caretaker' AND c.isDelete = 'N' AND tc.teaching = 'N' ORDER BY teacher_id ASC;"));
         $attendancenonteachingstaff = count(DB::select("SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t, user_master u,teacher_category tc WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED) and t.teacher_id=u.reg_id AND t.tc_id = tc.tc_id and t.isDelete='N' and tc.teaching='N' and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE() UNION SELECT distinct(ta.employee_id) FROM teacher_attendance ta, teacher t WHERE ta.employee_id=CAST(t.employee_id AS UNSIGNED) and t.isDelete='N' and t.designation='Caretaker' and DATE_FORMAT(punch_time,'%y-%m-%d') = CURDATE()"));
 
         return response()->json([
@@ -185,7 +152,6 @@ ORDER BY teacher_id ASC;
             'attendanceteachingstaff' => $attendanceteachingstaff
         ]);
     }
-
 
     public function staffBirthdaycount(Request $request)
     {
@@ -305,7 +271,6 @@ ORDER BY teacher_id ASC;
             ->orderByDesc('events.start_time')
             ->get()
             ->map(function ($event) {
-                // Strip only if it is fully wrapped in <p>...</p>
                 $event->event_desc =  $event->event_desc;
                 return $event;
             });
@@ -316,7 +281,6 @@ ORDER BY teacher_id ASC;
 
     public function getParentNotices(Request $request): JsonResponse
     {
-        // $academicYr = $request->header('X-Academic-Year');
         $payload = getTokenPayload($request);
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
@@ -326,15 +290,14 @@ ORDER BY teacher_id ASC;
             return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
         }
 
-        // Retrieve parent notices with their related class names
         $parentNotices = Notice::select([
             'subject',
             'notice_desc',
             'notice_date',
             'notice_type',
             \DB::raw('GROUP_CONCAT(class.name) as class_name')
-        ])
-            ->join('class', 'notice.class_id', '=', 'class.class_id') // Adjusted table name to singular 'class'
+            ])
+            ->join('class', 'notice.class_id', '=', 'class.class_id') 
             ->where('notice.publish', 'Y')
             ->where('notice.academic_yr', $academicYr)
             ->groupBy('notice.unq_id')
@@ -352,14 +315,13 @@ ORDER BY teacher_id ASC;
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
         $academicYr = $payload->get('academic_year');
-        // Fetch notices with teacher names
         $notices = StaffNotice::select([
             'staff_notice.subject',
             'staff_notice.notice_desc',
             'staff_notice.notice_date',
             'staff_notice.notice_type',
             DB::raw('GROUP_CONCAT(t.name) as staff_name')
-        ])
+            ])
             ->join('teacher as t', 't.teacher_id', '=', 'staff_notice.teacher_id')
             ->where('staff_notice.publish', 'Y')
             ->where('staff_notice.academic_yr', $academicYr)
@@ -370,35 +332,14 @@ ORDER BY teacher_id ASC;
         return response()->json(['notices' => $notices, 'success' => true]);
     }
 
-    // public function getClassDivisionTotalStudents()
-    // {
-    //     $results = DB::table('class as c')
-    //         ->leftJoin('section as s', 'c.class_id', '=', 's.class_id')
-    //         ->leftJoin(DB::raw('(SELECT section_id, COUNT(student_id) AS students_count FROM student GROUP BY section_id) as st'), 's.section_id', '=', 'st.section_id')
-    //         ->select(
-    //             DB::raw("CONCAT(c.name, ' ', COALESCE(s.name, 'No division assigned')) AS class_division"),
-    //             DB::raw("SUM(st.students_count) AS total_students"),
-    //             'c.name as class_name',
-    //             's.name as section_name'
-    //         )
-    //         ->groupBy('c.name', 's.name')
-    //         ->orderBy('c.name')
-    //         ->orderBy('s.name')
-    //         ->get();
-
-    //     return response()->json($results);
-    // }
-
     public function getClassDivisionTotalStudents(Request $request)
     {
-        // Get the academic year from the token payload
         $payload = getTokenPayload($request);
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
         $academicYr = $payload->get('academic_year');
 
-        // Validate academic year
         if (!$academicYr) {
             return response()->json(['error' => 'Academic year is missing'], 400);
         }
@@ -522,28 +463,28 @@ ORDER BY teacher_id ASC;
     SELECT 'KG' AS account, 
            IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
            SUM(d.amount) AS amount 
-    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-    WHERE a.student_id = b.student_id 
-      AND b.class_id = c.class_id 
-      AND a.fees_payment_id = d.fees_payment_id 
-      AND a.isCancel = 'N' 
-      AND a.academic_yr = '$academicYr' 
-      AND c.name IN ('LKG','UKG') 
-    GROUP BY d.installment 
+            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+            WHERE a.student_id = b.student_id 
+            AND b.class_id = c.class_id 
+            AND a.fees_payment_id = d.fees_payment_id 
+            AND a.isCancel = 'N' 
+            AND a.academic_yr = '$academicYr' 
+            AND c.name IN ('LKG','UKG') 
+            GROUP BY d.installment 
 
-    UNION
+            UNION
 
-    SELECT 'School' AS account, 
-           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-           SUM(d.amount) AS amount 
-    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-    WHERE a.student_id = b.student_id 
-      AND b.class_id = c.class_id 
-      AND a.fees_payment_id = d.fees_payment_id 
-      AND a.isCancel = 'N' 
-      AND a.academic_yr = '$academicYr' 
-      AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
-    GROUP BY d.installment");
+            SELECT 'School' AS account, 
+                IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                SUM(d.amount) AS amount 
+            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+            WHERE a.student_id = b.student_id 
+            AND b.class_id = c.class_id 
+            AND a.fees_payment_id = d.fees_payment_id 
+            AND a.isCancel = 'N' 
+            AND a.academic_yr = '$academicYr' 
+            AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
+            GROUP BY d.installment");
         $totalAmount = number_format(collect($collectedfees)->sum('amount'), 2, '.', '');
         $feesdata = [
             'Collected Fees' => $totalAmount,
@@ -551,57 +492,13 @@ ORDER BY teacher_id ASC;
         ];
 
         return response()->json($feesdata);
-        // $pendingFee = $results[0]->pending_fee ?? 0;
-
-        // return response()->json(['pendingFee' => $pendingFee]);
     }
 
-
-    // public function getHouseViseStudent(Request $request) {
-    //     $className = $request->input('class_name');
-    //     // $academicYear = $request->header('X-Academic-Year');
-    //     $sessionData = session('sessionData');
-    //     if (!$sessionData) {
-    //         return response()->json(['message' => 'Session data not found', 'success' => false], 404);
-    //     }
-
-    //     $academicYr = $sessionData['academic_yr'] ?? null;
-    //     if (!$academicYr) {
-    //         return response()->json(['message' => 'Academic year not found in session data', 'success' => false], 404);
-    //     }
-
-
-    //     $results = DB::select("
-    //         SELECT CONCAT(class.name, ' ', section.name) AS class_section,
-    //                house.house_name AS house_name,
-    //                house.color_code AS color_code,
-    //                COUNT(student.student_id) AS student_counts
-    //         FROM student
-    //         JOIN class ON student.class_id = class.class_id
-    //         JOIN section ON student.section_id = section.section_id
-    //         JOIN house ON student.house = house.house_id
-    //         WHERE student.IsDelete = 'N'
-    //           AND class.name = ?
-    //           AND student.academic_yr = ?
-    //         GROUP BY class_section, house_name, house.color_code
-    //         ORDER BY class_section, house_name
-    //     ", [$className, $academicYr]);
-
-    //     return response()->json($results);
-    // }
 
     public function getHouseViseStudent(Request $request)
     {
         $className = $request->input('class_name');
-        // $sessionData = session('sessionData');
-        // if (!$sessionData) {
-        //     return response()->json(['message' => 'Session data not found', 'success' => false], 404);
-        // }
-
-        // $academicYr = $sessionData['academic_yr'] ?? null;
-        // if (!$academicYr) {
-        //     return response()->json(['message' => 'Academic year not found in session data', 'success' => false], 404);
-        // }
+        
         $payload = getTokenPayload($request);
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
@@ -618,7 +515,7 @@ ORDER BY teacher_id ASC;
         JOIN house ON student.house = house.house_id
         WHERE student.IsDelete = 'N'
           AND student.academic_yr = ?
-    ";
+        ";
 
         $params = [$academicYr];
 
@@ -630,7 +527,7 @@ ORDER BY teacher_id ASC;
         $query .= "
         GROUP BY class_section, house_name, house.color_code
         ORDER BY class_section, house_name
-    ";
+        ";
 
         $results = DB::select($query, $params);
 
@@ -671,17 +568,6 @@ ORDER BY teacher_id ASC;
         ]);
     }
 
-
-    // public function updateAcademicYearForAuthUser(Request $request)
-    // {
-    //     $user = Auth::user();     
-    //     if ($user) {
-    //         session(['academic_yr' => $request->newAcademicYear]);
-    //         Log::info('New academic year set:', ['user_id' => $user->id, 'academic_yr' => $request->newAcademicYear]);
-    //     }
-    // }
-
-
     public function getBankAccountName()
     {
         $bankAccountName = BankAccountName::all();
@@ -698,9 +584,9 @@ ORDER BY teacher_id ASC;
             if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
 
                 $finalQuery = DB::select("
-            select z.installment, z.Account, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id,s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
-        0 as paid_amount, CASE WHEN cl.name = 'Nursery' THEN 'Nursery' WHEN cl.name IN ('LKG','UKG') THEN 'KG' ELSE 'School' END as Account FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment join class cl on s.class_id=cl.class_id WHERE s.academic_yr='$customClaims' and s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims') group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession, sum(f.fees_paid) as paid_amount, CASE WHEN cs.name = 'Nursery' THEN 'Nursery' WHEN cs.name IN ('LKG','UKG') THEN 'KG' ELSE 'School'  END as Account  FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment join class cs on f.class_id=cs.class_id WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment, c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment, z.Account
-        ");
+                    select z.installment, z.Account, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id,s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
+                0 as paid_amount, CASE WHEN cl.name = 'Nursery' THEN 'Nursery' WHEN cl.name IN ('LKG','UKG') THEN 'KG' ELSE 'School' END as Account FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment join class cl on s.class_id=cl.class_id WHERE s.academic_yr='$customClaims' and s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims') group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession, sum(f.fees_paid) as paid_amount, CASE WHEN cs.name = 'Nursery' THEN 'Nursery' WHEN cs.name IN ('LKG','UKG') THEN 'KG' ELSE 'School'  END as Account  FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment join class cs on f.class_id=cs.class_id WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment, c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment, z.Account
+                ");
                 foreach ($finalQuery as &$row) {
                     $row->pending_fee = formatIndianCurrency(number_format((float)$row->pending_fee, 2, '.', ''));
                 }
@@ -798,42 +684,42 @@ ORDER BY teacher_id ASC;
         $collectedfees = DB::select("SELECT 'Nursery' AS account, 
            IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
            SUM(d.amount) AS amount 
-    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-    WHERE a.student_id = b.student_id 
-      AND b.class_id = c.class_id 
-      AND a.fees_payment_id = d.fees_payment_id 
-      AND a.isCancel = 'N' 
-      AND a.academic_yr = '$academicYr' 
-      AND c.name = 'Nursery' 
-    GROUP BY d.installment 
+            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+            WHERE a.student_id = b.student_id 
+            AND b.class_id = c.class_id 
+            AND a.fees_payment_id = d.fees_payment_id 
+            AND a.isCancel = 'N' 
+            AND a.academic_yr = '$academicYr' 
+            AND c.name = 'Nursery' 
+            GROUP BY d.installment 
 
-    UNION
+            UNION
 
-    SELECT 'KG' AS account, 
-           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-           SUM(d.amount) AS amount 
-    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-    WHERE a.student_id = b.student_id 
-      AND b.class_id = c.class_id 
-      AND a.fees_payment_id = d.fees_payment_id 
-      AND a.isCancel = 'N' 
-      AND a.academic_yr = '$academicYr' 
-      AND c.name IN ('LKG','UKG') 
-    GROUP BY d.installment 
+            SELECT 'KG' AS account, 
+                IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                SUM(d.amount) AS amount 
+            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+            WHERE a.student_id = b.student_id 
+            AND b.class_id = c.class_id 
+            AND a.fees_payment_id = d.fees_payment_id 
+            AND a.isCancel = 'N' 
+            AND a.academic_yr = '$academicYr' 
+            AND c.name IN ('LKG','UKG') 
+            GROUP BY d.installment 
 
-    UNION
+            UNION
 
-    SELECT 'School' AS account, 
-           IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-           SUM(d.amount) AS amount 
-    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-    WHERE a.student_id = b.student_id 
-      AND b.class_id = c.class_id 
-      AND a.fees_payment_id = d.fees_payment_id 
-      AND a.isCancel = 'N' 
-      AND a.academic_yr = '$academicYr' 
-      AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
-    GROUP BY d.installment");
+            SELECT 'School' AS account, 
+                IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                SUM(d.amount) AS amount 
+            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+            WHERE a.student_id = b.student_id 
+            AND b.class_id = c.class_id 
+            AND a.fees_payment_id = d.fees_payment_id 
+            AND a.isCancel = 'N' 
+            AND a.academic_yr = '$academicYr' 
+            AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
+            GROUP BY d.installment");
 
 
         return response()->json($collectedfees);
@@ -1001,9 +887,6 @@ ORDER BY teacher_id ASC;
         ]);
     }
 
-
-    // Methods for the classes model
-
     public function checkClassName(Request $request)
     {
         $request->validate([
@@ -1013,22 +896,6 @@ ORDER BY teacher_id ASC;
         $exists = Classes::where(DB::raw('LOWER(name)'), strtolower($name))->exists();
         return response()->json(['exists' => $exists]);
     }
-
-
-    // public function getClass(Request $request)
-    // {   
-    //     $payload = getTokenPayload($request);    
-    //     if (!$payload) {
-    //         return response()->json(['error' => 'Invalid or missing token'], 401);
-    //     }
-    //     $academicYr = $payload->get('academic_year');
-    //     $classes = Classes::with('getDepartment')
-    //         ->withCount('students')
-    //         ->where('academic_yr', $academicYr)
-    //         ->orderBy('name','asc')
-    //         ->get();
-    //     return response()->json($classes);
-    // }
 
     public function getClass(Request $request)
     {
@@ -1085,45 +952,6 @@ ORDER BY teacher_id ASC;
             'data' => $class,
         ]);
     }
-
-    // public function updateClass(Request $request, $id)
-    // {
-    //     $validator = \Validator::make($request->all(), [
-    //         'name' => ['required', 'string', 'max:30'],
-    //         'department_id' => ['required', 'integer'],
-    //     ], [
-    //         'name.required' => 'The name field is required.',
-    //         'name.string' => 'The name field must be a string.',
-    //         'name.max' => 'The name field must not exceed 255 characters.',
-    //         'department_id.required' => 'The department ID is required.',
-    //         'department_id.integer' => 'The department ID must be an integer.',
-    //     ]);
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'status' => 422,
-    //             'errors' => $validator->errors(),
-    //         ], 422);
-    //     }
-    //     $class = Classes::find($id);
-    //     if (!$class) {
-    //         return response()->json(['message' => 'Class not found', 'success' => false], 404);
-    //     }
-    //     $payload = getTokenPayload($request);
-    //     if (!$payload) {
-    //         return response()->json(['error' => 'Invalid or missing token'], 401);
-    //     }
-    //     $academicYr = $payload->get('academic_year');
-    //     $class->name = $request->name;
-    //     $class->department_id = $request->department_id;
-    //     $class->academic_yr = $academicYr;
-    //     $class->save();
-    //     return response()->json([
-    //         'status' => 200,
-    //         'message' => 'Class updated successfully',
-    //         'data' => $class,
-    //     ]);
-    // }
-
 
     public function updateClass(Request $request, $id)
     {
@@ -1471,6 +1299,7 @@ ORDER BY teacher_id ASC;
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
+
     //Edited by - Manish Kumar sharma 15-02-2025  Updated By-Manish Kumar Sharma 21-04-2025
     public function editStaff($id)
     {
@@ -1507,24 +1336,6 @@ ORDER BY teacher_id ASC;
             ], 500);
         }
     }
-
-
-    // public function editStaff($id)
-    // {
-    //     try {
-    //         $teacher = Teacher::findOrFail($id);
-
-    //         return response()->json([
-    //             'message' => 'Teacher retrieved successfully!',
-    //             'teacher' => $teacher,
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'An error occurred while retrieving the teacher',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     public function storeStaff(Request $request)
     {
@@ -1739,11 +1550,6 @@ ORDER BY teacher_id ASC;
         }
     }
 
-
-
-
-
-    // handle the existing image 
     public function updateStaff(Request $request, $id)
     {
         $user = $this->authenticateUser();
@@ -1798,56 +1604,6 @@ ORDER BY teacher_id ASC;
                 $validatedData['academic_qual'] = implode(',', $validatedData['academic_qual']);
             }
 
-
-            //     $staff = Teacher::findOrFail($id);
-
-            //         // Get the existing image URL for comparison
-            //         $existingImageUrl = Storage::url('teacher_images/' . $staff->teacher_image_name);
-            //         // Handle base64 image
-            // if ($request->has('teacher_image_name') && !empty($request->input('teacher_image_name'))) {
-            //     $newImageData = $request->input('teacher_image_name');
-
-            //     // Check if the new image data matches the existing image URL
-            //     if ($existingImageUrl !== $newImageData) {
-            //         if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
-            //             $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
-            //             $type = strtolower($type[1]); // jpg, png, gif
-
-            //             if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-            //                 throw new \Exception('Invalid image type');
-            //             }
-
-            //             $newImageData = base64_decode($newImageData);
-            //             if ($newImageData === false) {
-            //                 throw new \Exception('Base64 decode failed');
-            //             }
-
-            //             // Generate a filename for the new image
-            //             $filename = 'teacher_' . time() . '.' . $type;
-            //             $filePath = storage_path('app/public/teacher_images/' . $filename);
-
-            //             // Ensure directory exists
-            //             $directory = dirname($filePath);
-            //             if (!is_dir($directory)) {
-            //                 mkdir($directory, 0755, true);
-            //             }
-
-            //             // Save the new image to file
-            //             if (file_put_contents($filePath, $newImageData) === false) {
-            //                 throw new \Exception('Failed to save image file');
-            //             }
-
-            //             // Update the validated data with the new filename
-            //             $validatedData['teacher_image_name'] = $filename;
-            //         } else {
-            //             throw new \Exception('Invalid image data');
-            //         }
-            //     } else {
-            //         // If the image is the same, keep the existing filename
-            //         $validatedData['teacher_image_name'] = $staff->teacher_image_name;
-            //     }
-            // }
-
             $staff = Teacher::findOrFail($id);
 
             // Get the existing image URL for comparison
@@ -1892,10 +1648,6 @@ ORDER BY teacher_id ASC;
                             $base64File = base64_encode($fileContent);
                             upload_teacher_profile_image_into_folder($id, $filename, $doc_type_folder, $base64File);
 
-
-
-
-
                             // Update the validated data with the new filename
                             $validatedData['teacher_image_name'] = $filename;
                         } else {
@@ -1908,10 +1660,6 @@ ORDER BY teacher_id ASC;
                 }
             }
 
-
-
-
-            // Find the teacher record by ID
             $teacher = Teacher::findOrFail($id);
             $teacher->fill($validatedData);
             $teacher->updated_by = $user->reg_id;
@@ -1932,18 +1680,6 @@ ORDER BY teacher_id ASC;
                         'name' => $validatedData['name']
                     ]);
             }
-
-            // if ($user) {
-            //     $user->name = $validatedData['name'];
-            //     $user->email = strtolower(str_replace(' ', '.', trim($validatedData['name']))) . '@arnolds';
-
-            //     if (!$user->save()) {
-            //         DB::rollBack(); // Rollback the transaction
-            //         return response()->json([
-            //             'message' => 'Failed to update user',
-            //         ], 500);
-            //     }
-            // }
 
             DB::commit(); // Commit the transaction
 
@@ -1971,13 +1707,6 @@ ORDER BY teacher_id ASC;
             ], 500);
         }
     }
-
-
-
-
-
-
-
 
     public function deleteStaff($id)
     {
@@ -2272,7 +2001,6 @@ ORDER BY teacher_id ASC;
                 $student->SetToReceiveSMS = $contactDetails->phone_no;
             }
 
-
             $userMaster = UserMaster::where('role_id', 'P')
                 ->where('reg_id', $student->parent_id)->first();
             if ($userMaster === null) {
@@ -2282,8 +2010,6 @@ ORDER BY teacher_id ASC;
                 $student->SetEmailIDAsUsername = $userMaster->user_id;
             }
         });
-
-
 
         return response()->json([
             'students' => $students,
@@ -16894,6 +16620,13 @@ ORDER BY late_time ASC,teachercategoryname;");
                     } else {
                         $entry->class_section = '';
                     }
+                    $redington = DB::table('redington_webhook_details')
+                                           ->where('stu_teacher_id',$entry->teacher_id)
+                                           ->where('message_type','late_message_for_teacher')
+                                           ->whereDate('created_at', $date)
+                                           ->first();
+                    $entry->sms_sent = $redington->sms_sent ?? 'N';
+                    $entry->whatsappstatus = $redington->status ?? '';
                 }
 
                 $absentstaff = DB::select("SELECT t.teacher_id, t.name, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t  JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
@@ -17053,6 +16786,16 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         'teachers' => $items->values(),
                     ];
                 })->values();
+                foreach($nonteacherpresent as $nonteacherpresentt){
+                    $redington = DB::table('redington_webhook_details')
+                                           ->where('stu_teacher_id',$nonteacherpresentt->teacher_id)
+                                           ->where('message_type','late_message_for_teacher')
+                                           ->whereDate('created_at', $date)
+                                           ->first();
+                    $nonteacherpresentt->sms_sent = $redington->sms_sent ?? 'N';
+                    $nonteacherpresentt->whatsappstatus = $redington->status ?? '';
+                    
+                }
                 // dd($nonteacherabsent);
                 $nonteacher = [
                     'nonteacher_present' => $nonteacherpresent,
@@ -17188,8 +16931,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $parameters
                             );
                             if (isset($result['code']) && isset($result['message'])) {
-                                // Handle rate limit error
-                                Log::warning("Rate limit hit: Too many messages to same user", []);
+                                $message_type = 'late_message_for_teacher';
+
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id' => null,
+                                    'phone_no' => $staffphone,
+                                    'message' => $message,
+                                    'status'  =>'failed',
+                                    'sms_sent'=>'N',
+                                    'stu_teacher_id' => $teacherid,
+                                    'message_type' => $message_type,
+                                    'created_at' => now()
+                                ]);
                             } else {
                                 // Proceed if no error
                                 $wamid = $result['messages'][0]['id'];
@@ -17200,9 +16953,28 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     'wa_id' => $wamid,
                                     'phone_no' => $phone_no,
                                     'stu_teacher_id' => $teacherid,
+                                    'message' => $message,
                                     'message_type' => $message_type,
                                     'created_at' => now()
                                 ]);
+                            }
+                            sleep(5);
+                            $leftmessages = DB::table('redington_webhook_details')
+                                           ->where('status','failed')
+                                           ->where('sms_sent','N')
+                                           ->where('message_type','late_message_for_teacher')
+                                           ->whereDate('created_at', Carbon::today())
+                                           ->get();
+                            foreach ($leftmessages as $leftmessage) {
+                                $temp_id = '1107164450693700526';
+                                $message = 'Dear Staff, '.$message.". Login @ ".$websiteurl." for details.-EvolvU";
+                                    $sms_status = app('App\Http\Services\SmsService')->sendSms($leftmessage->phone_no, $message, $temp_id);
+                                    $messagestatus = $sms_status['data']['status'] ?? null;
+                
+                                    if ($messagestatus == "success") {
+                                        DB::table('redington_webhook_details')->where('webhook_id', $leftmessage->webhook_id)->update(['sms_sent' => 'Y']);
+                                    }
+                
                             }
                         }
                         if ($smsIntegration == 'Y') {

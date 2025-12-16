@@ -135,5 +135,57 @@ function get_school_reopen_date($class_id,$section_id)
 			return $row->reopen_date;
     }
     
+function get_scholastic_subject_alloted_to_class($class_id, $acd_yr)
+{
+    return DB::table('subjects_on_report_card')
+        ->join(
+            'subjects_on_report_card_master',
+            'subjects_on_report_card.sub_rc_master_id',
+            '=',
+            'subjects_on_report_card_master.sub_rc_master_id'
+        )
+        ->select('subjects_on_report_card_master.*')
+        ->where('subjects_on_report_card.class_id', $class_id)
+        ->where('subjects_on_report_card.subject_type', 'Scholastic')
+        ->where('subjects_on_report_card.academic_yr', $acd_yr)
+        ->orderBy('subjects_on_report_card.class_id', 'asc')
+        ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+        ->get()
+        ->toArray();
+}
 
+function get_coscholastic_subject_alloted_to_class($class_id, $acd_yr)
+{
+    return DB::table('subjects_on_report_card')
+        ->join(
+            'subjects_on_report_card_master',
+            'subjects_on_report_card.sub_rc_master_id',
+            '=',
+            'subjects_on_report_card_master.sub_rc_master_id'
+        )
+        ->select('*')
+        ->where('subjects_on_report_card.class_id', $class_id)
+        // ->where('subjects_on_report_card.section_id', $section_id)
+        ->where('subjects_on_report_card.subject_type', 'Co-Scholastic')
+        ->where('subjects_on_report_card.academic_yr', $acd_yr)
+        ->orderBy('subjects_on_report_card.class_id', 'asc')
+        // ->orderBy('subjects_on_report_card.section_id', 'asc')
+        ->orderBy('subjects_on_report_card_master.sequence', 'asc')
+        ->get()
+        ->toArray();
+}
+
+function get_published_exams_class9n10($class_id,$section_id,$acd_yr)
+    {
+       $query=DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `report_card_publish` join exam on report_card_publish.term_id = exam.exam_id WHERE class_id = ".$class_id." AND section_id = ".$section_id." AND report_card_publish.publish = 'Y' order by exam.start_date") ;
+	   //print_r($this->db->last_query());
+       return $query;
+    }
+
+	function get_scholastic_subject_for_which_marks_are_alloted_to_student($student_id)
+    {
+		$query=DB::select("SELECT distinct(a.subject_id) as sub_rc_master_id, b.name from student_marks a, subjects_on_report_card_master b, subjects_on_report_card c where a.subject_id=b.sub_rc_master_id and b.sub_rc_master_id=c.sub_rc_master_id and c.subject_type<>'Co-Scholastic' and c.class_id=a.class_id and a.student_id=".$student_id." order by b.sequence"); 
+		//echo $this->db->last_query();
+        return $query;
+    }
     
