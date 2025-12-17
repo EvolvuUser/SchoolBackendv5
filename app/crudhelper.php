@@ -1114,16 +1114,16 @@ use App\Models\Student;
 		$prev_yr_student_id="";
 		$first_name="";
 		$reg_no="";
-        $query=DB::select("select parent_id,first_name, reg_no from student where student_id=".$present_student_id);
+        $query=DB::select("select parent_id,first_name, reg_no,class_id,section_id from student where student_id=".$present_student_id);
 		$result= $query; 
 		foreach($result as $row){
 			$parent_id= $row->parent_id;
 			$first_name= $row->first_name;
 			$reg_no= $row->reg_no;
 		}
-		$s_query=DB::select("select student_id,parent_id,academic_yr from student where academic_yr='".$search_for_acd_yr."' and parent_id=".$parent_id." and (first_name='".$first_name."' or reg_no='".$reg_no."')");
+		$s_query=DB::select("select student_id,parent_id,academic_yr,class_id,section_id from student where academic_yr='".$search_for_acd_yr."' and parent_id=".$parent_id." and (first_name='".$first_name."' or reg_no='".$reg_no."')");
 		$s_result= $s_query; 
 		foreach($s_result as $s_row)
-			$prev_yr_student_id=$s_row->student_id;
-		return $prev_yr_student_id;
+			$prev_yr_student_data = $s_row; 
+		return $prev_yr_student_data;
     }
