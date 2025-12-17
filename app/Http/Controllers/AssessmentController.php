@@ -37,7 +37,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\App;
 use PDF;
-
+use App\Jobs\GenerateReportCardJob;
 
 class AssessmentController extends Controller
 {
@@ -10857,88 +10857,110 @@ class AssessmentController extends Controller
         $section_id = $request->input('section_id');
         $stud_count = $request->input('stud_count');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
-        if ($short_name == 'SACS') {
-            switch ($class_name) {
-                case 'Nursery':
-                    return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('section_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+         $report = DB::table('report_card_generate_classwise')->updateOrInsert(
+                        [
+                            'class_id'    => $class_id,
+                            'section_id'  => $section_id,
+                            'academic_yr' => $academic_yr,
+                        ],
+                        [
+                            'status'     => 'pending',
+                        ]
+                    );
 
-                case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                // Dispatch job
+                GenerateReportCardJob::dispatch(['class_name'  => $class_name,
+        'class_id'    => $class_id,
+        'section_id'  => $section_id,
+        'academic_yr' => $academic_yr]);
 
-                case 'UKG':
-                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Report card generation started',
+                    'success' =>true
+                ]);
+        // if ($short_name == 'SACS') {
+        //     switch ($class_name) {
+        //         case 'Nursery':
+        //             return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('section_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '1':
-                case '2':
-                    return PDF::loadView('reportcard.SACS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case 'LKG':
+        //             return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '3':
-                case '4':
-                case '5':
-                    return PDF::loadView('reportcard.SACS.class3to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case 'UKG':
+        //             return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '6':
-                case '7':
-                case '8':
-                    return PDF::loadView('reportcard.SACS.class6to8_report_card_pdf_all', compact('section_id', 'class_id','stud_count', 'academic_yr'))->stream();
-                    break;
+        //         case '1':
+        //         case '2':
+        //             return PDF::loadView('reportcard.SACS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '9':
-                case '10':
-                    return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf_all', compact('section_id', 'class_id','stud_count', 'academic_yr'))->stream();
-                    break;
+        //         case '3':
+        //         case '4':
+        //         case '5':
+        //             return PDF::loadView('reportcard.SACS.class3to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                default:
-                    abort(404, 'Invalid class');
-            }
-        } elseif ($short_name == 'HSCS') {
-            switch ($class_name) {
-                case 'Nursery':
-                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case '6':
+        //         case '7':
+        //         case '8':
+        //             return PDF::loadView('reportcard.SACS.class6to8_report_card_pdf_all', compact('section_id', 'class_id','stud_count', 'academic_yr'))->stream();
+        //             break;
 
-                case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case '9':
+        //         case '10':
+        //             return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf_all', compact('section_id', 'class_id','stud_count', 'academic_yr'))->stream();
+        //             break;
 
-                case 'UKG':
-                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         default:
+        //             abort(404, 'Invalid class');
+        //     }
+        // } elseif ($short_name == 'HSCS') {
+        //     switch ($class_name) {
+        //         case 'Nursery':
+        //             return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '1':
-                case '2':
-                    return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case 'LKG':
+        //             return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '3':
-                case '4':
-                case '5':
-                    return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case 'UKG':
+        //             return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '6':
-                case '7':
-                case '8':
-                    return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case '1':
+        //         case '2':
+        //             return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                case '9':
-                case '10':
-                    return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+        //         case '3':
+        //         case '4':
+        //         case '5':
+        //             return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-                default:
-                    abort(404, 'Invalid class');
-            }
-        } else {
-        }
+        //         case '6':
+        //         case '7':
+        //         case '8':
+        //             return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
 
-        $pdf = PDF::loadView('pdf.template', compact('data'));
+        //         case '9':
+        //         case '10':
+        //             return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+        //             break;
+
+        //         default:
+        //             abort(404, 'Invalid class');
+        //     }
+        // } else {
+        // }
+
+        // $pdf = PDF::loadView('pdf.template', compact('data'));
 
     }
 
@@ -11057,6 +11079,22 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => true,
             'data' => $response
+        ]);
+    }
+
+    public function getStudentsReportCard(Request $request){
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $academic_yr = $request->input('academic_yr');
+        $studentreportcard = DB::table('report_card_generate_classwise')
+                                 ->where('class_id',$class_id)
+                                 ->where('section_id',$section_id)
+                                 ->where('academic_yr',$academic_yr)
+                                 ->first();
+        return response()->json([
+            'status' => 200,
+            'data' => $studentreportcard,
+            'success'=>true
         ]);
     }
 }
