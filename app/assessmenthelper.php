@@ -230,3 +230,23 @@ function get_published_exams_class9n10($class_id,$section_id,$acd_yr)
             return 'N';
         }
     }
+
+    function get_current_exams($student_id, $acd_yr)
+{
+    $query = DB::table('student_marks')
+        ->select(
+            'student_marks.exam_id',
+            'exam.name',
+            'exam.open_day',
+            'exam.term_id'
+        )
+        ->join('exam', 'student_marks.exam_id', '=', 'exam.exam_id')
+        ->where('student_marks.publish', 'Y')
+        ->where('student_marks.academic_yr', $acd_yr)
+        ->where('student_marks.student_id', $student_id)
+        ->distinct()
+        ->orderBy('exam.start_date', 'asc')
+        ->get();
+
+    return $query->toArray();
+}

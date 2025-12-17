@@ -10972,4 +10972,91 @@ class AssessmentController extends Controller
           'success'=>true
         ]);
     }
+
+    public function getStudentReportCardLinks(Request $request){
+        $student_id = $request->student_id;
+        $acd_yr     = $request->academic_yr;
+
+        // Fetch student info
+        $student = DB::table('student')
+            ->where('student_id', $student_id)
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Student not found'
+            ]);
+        }
+
+        $class_id   = $student->class_id;
+        $section_id = $student->section_id;
+
+        // Get class name
+        $class_name = get_class_name($class_id);
+
+        // Exams
+        $exams_list = get_current_exams($student_id, $acd_yr);
+
+        $response = [
+            'report_card' => [
+                'enabled' => false,
+                'url' => null
+            ],
+            'cbse_report_card' => [
+                'enabled' => false,
+                'url' => null
+            ]
+        ];
+
+        /* -------------------------
+        NORMAL REPORT CARD
+        --------------------------*/
+        $publish = check_rc_publish_of_a_class($class_id, $section_id, '');
+
+        if (count($exams_list) > 0 && $publish === 'Y') {
+
+            if ($class_name == '11' || $class_name == '12') {
+                $url = url('api/show_report_card') .
+                    "?class_id=$class_id&student_id=$student_id&acd_yr=$acd_yr";
+            } else {
+                $url = url('api/show_report_card') .
+                    "?class_id=$class_id&student_id=$student_id&acd_yr=$acd_yr";
+            }
+
+            $response['report_card'] = [
+                'enabled' => true,
+                'url' => $url
+            ];
+        }
+
+        /* -------------------------
+        CBSE REPORT CARD
+        --------------------------*/
+        if ($class_name == '9' || $class_name == '11') {
+
+            $cbse_publish = check_cbse_rc_publish_of_a_class($class_id, $section_id);
+
+            if (count($exams_list) > 0 && $cbse_publish === 'Y') {
+
+                if ($class_name == '11') {
+                    $url = url('api/show_reportcard_class11_cbseformat') .
+                        "?class_id=$class_id&student_id=$student_id";
+                } else {
+                    $url = url('api/show_reportcard_class9_cbseformat') .
+                        "?class_id=$class_id&student_id=$student_id";
+                }
+
+                $response['cbse_report_card'] = [
+                    'enabled' => true,
+                    'url' => $url
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $response
+        ]);
+    }
 }
