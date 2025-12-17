@@ -1279,6 +1279,7 @@
             Route::get('pdf_download_all', [AssessmentController::class, 'pdfDownloadAllReportCard']);
             Route::get('check_publish_status_of_report_card',[AssessmentController::class,'checkPublishStatusOfReportCard']);
             Route::get('get_student_id_of_a_student_in_particular_yr',[AssessmentController::class,'getStudentIdOfStudentParticularYear']);
+            Route::get('get_student_reports_card_link',[AssessmentController::class,'getStudentReportCardLinks']);
 
 
 
