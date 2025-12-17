@@ -10991,4 +10991,16 @@ class AssessmentController extends Controller
         ]);
 
     }
+
+    public function getStudentIdOfStudentParticularYear(Request $request){
+        $academic_yr = $request->input('academic_yr');
+        $current_student_id = $request->input('student_id');
+        $student_id_in_particular_yr= get_student_id_of_a_student_in_particular_yr($current_student_id,$academic_yr);//Lija 21-07-22
+        return response()->json([
+          'status'=>200,
+          'message'=>'Student id of student particular year',
+          'data'=>$student_id_in_particular_yr,
+          'success'=>true
+        ]);
+    }
 }
