@@ -9904,7 +9904,7 @@ class AssessmentController extends Controller
             $data = [
                 'stationery_id' => $request->stationery_id,
                 'quantity'      => $request->quantity,
-                'description'   => $request->description || "",
+                'description'   => $request->description ?? "",
                 'staff_id'      => $request->staff_id,
                 'status'        => $request->status,
                 'date'          => Carbon::now()->format('Y-m-d'),
