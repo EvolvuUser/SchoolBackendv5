@@ -1155,3 +1155,10 @@ use App\Models\Student;
             ->get()
             ->toArray(); 
     }
+
+    function get_students($class_id,$section_id,$acd_yr)  
+	{
+		$query=DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='".$acd_yr."'  and a.class_id='".$class_id."' and a.section_id='".$section_id."' and c.role_id='P' order by a.roll_no,a.reg_no ");
+		//print_r($this->db->last_query());
+		return $query;
+	}

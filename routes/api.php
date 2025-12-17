@@ -1276,7 +1276,9 @@
             Route::get('get_pendingteacheridcardreport', [AssessmentController::class, 'getpendingteacheridcardreport']);
 
             Route::get('show_report_card', [AssessmentController::class, 'showReportCard']);
-
+            Route::get('pdf_download_all', [AssessmentController::class, 'pdfDownloadAllReportCard']);
+            Route::get('check_publish_status_of_report_card',[AssessmentController::class,'checkPublishStatusOfReportCard']);
+            
 
             // Get Teacher data for id card
             Route::get('/teachersdata/{id}', [AssessmentController::class, 'teacherDataIdCard']);
