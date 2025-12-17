@@ -1176,8 +1176,9 @@ use App\Models\Student;
 			$reg_no= $row->reg_no;
 		}
 		$s_query=DB::select("select student_id,parent_id,academic_yr,class_id,section_id from student where academic_yr='".$search_for_acd_yr."' and parent_id=".$parent_id." and (first_name='".$first_name."' or reg_no='".$reg_no."')");
+        
 		$s_result= $s_query; 
 		foreach($s_result as $s_row)
 			$prev_yr_student_data = $s_row; 
-		return $prev_yr_student_data;
+		return $prev_yr_student_data ?? null;
     }
