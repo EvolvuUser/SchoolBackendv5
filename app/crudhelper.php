@@ -597,12 +597,12 @@ use App\Models\Student;
         }
         if ($filenamelist != '') {
             
-            // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
-            // $filename_str = explode(",", $filenamelist1);
+            $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+            $filename_str = explode(",", $filenamelist1);
 
-            $filename_str = is_array($filenamelist)
-                ? $filenamelist
-                : [$filenamelist];
+            // $filename_str = is_array($filenamelist)
+            //     ? $filenamelist
+            //     : [$filenamelist];
     
             $k = DB::table('homework')->insertGetId($data);
             $data1['homework_id'] = $k;
