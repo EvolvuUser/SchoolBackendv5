@@ -626,12 +626,6 @@ use App\Models\Student;
             for ($j = 0; $j < count($filename_str); $j++) {
                 $imgNameEnd = $filename_str[$j];
                 $uploaded_file = $destination . '/' . $imgNameEnd;
-    
-                if (file_exists($uploaded_file)) {
-                    $data1['file_size'] = filesize($uploaded_file);
-                } else {
-                    $data1['file_size'] = 0; // or NULL
-                }
 
                 $data1['image_name'] = $imgNameEnd;
     
