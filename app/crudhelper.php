@@ -628,6 +628,7 @@ use App\Models\Student;
                 $uploaded_file = $destination . '/' . $imgNameEnd;
 
                 $data1['image_name'] = $imgNameEnd;
+                $data1['file_size'] = file_exists($uploaded_file) ? filesize($uploaded_file) : 0;
     
                 DB::table('homework_detail')->insert($data1);
             }
