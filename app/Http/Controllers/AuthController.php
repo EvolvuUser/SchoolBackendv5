@@ -385,7 +385,7 @@ public function connectByShortName(Request $request){
                 'special_sub' => 'nullable|string|max:255',
                 'trained' => 'nullable|string|max:255',
                 'experience' => 'nullable|string|max:255',
-                'aadhar_card_no' => 'nullable|string|max:20|unique:teacher,aadhar_card_no,' . auth()->user()->reg_id . ',teacher_id',
+                'aadhar_card_no' => 'nullable|string|max:20',
                 'class_id' => 'nullable|integer',
                 'section_id' => 'nullable|integer',
                 'isDelete' => 'nullable|string|in:Y,N',
