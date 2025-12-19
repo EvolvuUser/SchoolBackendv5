@@ -182,7 +182,7 @@ use App\Models\Student;
         }
         $k = $data['notes_id'];
     
-        if ($filenamelist != '') {
+        if ($filenamelist != '[]') {
             if ($deleted_images != '[]') {
                 $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
                 $deleted_images_string = explode(",", $deleted_images1);
