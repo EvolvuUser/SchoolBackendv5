@@ -597,12 +597,12 @@ use App\Models\Student;
         }
         if ($filenamelist != '') {
             
-            $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
-            $filename_str = explode(",", $filenamelist1);
+            // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+            // $filename_str = explode(",", $filenamelist1);
 
-            // $filename_str = is_array($filenamelist)
-            //     ? $filenamelist
-            //     : [$filenamelist];
+            // this is because file uploaded on the server from app contains no spaces
+            $filenamelist1 = str_replace(['"', '[', ']'], "", $filenamelist);
+            $filename_str = explode(",", $filenamelist1);
     
             $k = DB::table('homework')->insertGetId($data);
             $data1['homework_id'] = $k;
