@@ -377,7 +377,7 @@ public function connectByShortName(Request $request){
                 'blood_group' => 'nullable|string|max:10',
                 'address' => 'required|string|max:255',
                 'phone' => 'required|string|max:15',
-                'email' => 'required|string|email|max:255|unique:teacher,email,' . auth()->user()->reg_id . ',teacher_id',
+                'email' => 'required|string|email|max:255',
                 'designation' => 'nullable|string|max:255',
                 'academic_qual' => 'nullable|array',
                 'academic_qual.*' => 'nullable|string|max:255',
