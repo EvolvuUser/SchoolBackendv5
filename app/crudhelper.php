@@ -210,7 +210,7 @@ use App\Models\Student;
     
             $data1['notes_id'] = $data['notes_id'];
     
-            if ($filelist == '') {
+            if ($filelist == '[]') {
                 
                 $destination = $filePath."uploads/daily_notes/" . $data['date'] . '/' . $data['notes_id'];
     
@@ -253,7 +253,7 @@ use App\Models\Student;
     
         } else {
 
-            if ($filelist != '') {
+            if ($filelist != '[]') {
                 DB::table('notes_master')
                     ->where('notes_id', $data['notes_id'])
                     ->update($data);
