@@ -66,7 +66,10 @@ use App\Models\Student;
     
             if ($filenamelist != '') {
                 // This part code is to save files coming from app
-                $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+                // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+                // $filename_str = explode(",", $filenamelist1);
+
+                $filenamelist1 = str_replace(['"', '[', ']'], "", $filenamelist);
                 $filename_str = explode(",", $filenamelist1);
     
                 $k = DB::table('notes_master')->insertGetId($data);
@@ -221,7 +224,7 @@ use App\Models\Student;
                 }
             }
     
-            $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+            $filenamelist1 = str_replace(['"', '[', ']'], "", $filenamelist);
             $filename_str = explode(",", $filenamelist1);
     
             DB::table('notes_master')
