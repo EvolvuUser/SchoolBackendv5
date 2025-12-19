@@ -597,12 +597,12 @@ use App\Models\Student;
         }
         if ($filenamelist != '') {
             
-            // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
-            // $filename_str = explode(",", $filenamelist1);
+            $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+            $filename_str = explode(",", $filenamelist1);
 
-            $filename_str = is_array($filenamelist)
-                ? $filenamelist
-                : [$filenamelist];
+            // $filename_str = is_array($filenamelist)
+            //     ? $filenamelist
+            //     : [$filenamelist];
     
             $k = DB::table('homework')->insertGetId($data);
             $data1['homework_id'] = $k;
@@ -626,8 +626,7 @@ use App\Models\Student;
             for ($j = 0; $j < count($filename_str); $j++) {
                 $imgNameEnd = $filename_str[$j];
                 $uploaded_file = $destination . '/' . $imgNameEnd;
-    
-                $data1['file_size'] = filesize($uploaded_file);
+
                 $data1['image_name'] = $imgNameEnd;
     
                 DB::table('homework_detail')->insert($data1);
