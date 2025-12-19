@@ -748,8 +748,9 @@ use App\Models\Student;
                         ->delete();
                 }
             }
-    
-            $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
+            
+            // updated coz its modifing file name
+            $filenamelist1 = str_replace(['"', '[', ']'], "", $filenamelist);
             $filename_str = explode(",", $filenamelist1);
     
             DB::table('homework')
