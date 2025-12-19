@@ -276,6 +276,24 @@ use App\Models\Student;
     
         } else {
 
+            // OLD CODE
+            if ($deleted_images != '') {
+                $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
+                $deleted_images_string = explode(",", $deleted_images1);
+    
+                for ($i = 0; $i < count($deleted_images_string); $i++) {
+                    $path = $filePath."uploads/daily_notes/" . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
+                    if (file_exists($path)) {
+                        unlink($path);
+                    }
+    
+                    DB::table('notes_detail')
+                        ->where('notes_id', $data['notes_id'])
+                        ->where('image_name', $deleted_images_string[$i])
+                        ->delete();
+                }
+            }
+
             if ($filelist != '') {
                 DB::table('notes_master')
                     ->where('notes_id', $data['notes_id'])
@@ -301,23 +319,7 @@ use App\Models\Student;
                 return true;
             }
 
-            // OLD CODE
-            if ($deleted_images != '') {
-                $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
-                $deleted_images_string = explode(",", $deleted_images1);
-    
-                for ($i = 0; $i < count($deleted_images_string); $i++) {
-                    $path = $filePath."uploads/daily_notes/" . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
-                    if (file_exists($path)) {
-                        unlink($path);
-                    }
-    
-                    DB::table('notes_detail')
-                        ->where('notes_id', $data['notes_id'])
-                        ->where('image_name', $deleted_images_string[$i])
-                        ->delete();
-                }
-            }
+            
         }
     }
     
