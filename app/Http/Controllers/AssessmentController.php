@@ -9371,9 +9371,9 @@ class AssessmentController extends Controller
                 $filename = $request->input('filename');
                 $deletefiledata =  $request->input('deleteimagelist');
                 // start here 21-07-20 29-07-20
-                if ($filename == '[]' || $filename == '') {
+                if ($filename == '') {
                     //crudhelper
-                    $statusedit = daily_notes_edit($data, $deletefiledata, '[]', '[]');
+                    $statusedit = daily_notes_edit($data, $deletefiledata, '', '');
                 } else {
                     //crudhelper
                     // deletefiledata => array of files to be deleted ["Image_file_1.jpg"]

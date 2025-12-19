@@ -182,8 +182,8 @@ use App\Models\Student;
         }
         $k = $data['notes_id'];
     
-        if ($filenamelist != '[]') {
-            if ($deleted_images != '[]') {
+        if ($filenamelist != '') {
+            if ($deleted_images != '') {
                 $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
                 $deleted_images_string = explode(",", $deleted_images1);
     
@@ -200,6 +200,29 @@ use App\Models\Student;
                         ->delete();
                 }
             }
+
+            // if (!empty($deleted_images)) {
+            //     // Decode JSON instead of string replace
+            //     $deleted_images_array = json_decode($deleted_images, true);
+            //     // If invalid or only [null], stop
+            //     if (!(empty($deleted_images_array) || $deleted_images_array === [null])) {
+            //         foreach ($deleted_images_array as $image) {
+            //             if (empty($image)) {
+            //                 continue;
+            //             }
+            //             $path = $filePath . "uploads/daily_notes/" .
+            //                 date('Y-m-d', strtotime($data['date'])) . '/' .
+            //                 $data['notes_id'] . '/' . $image;
+            //             if (file_exists($path) && is_file($path)) {
+            //                 unlink($path);
+            //             }
+            //             DB::table('notes_detail')
+            //                 ->where('notes_id', $data['notes_id'])
+            //                 ->where('image_name', $image)
+            //                 ->delete();
+            //         }
+            //     }
+            // }
     
             $filenamelist1 = str_replace(['"', '[', ']'], "", $filenamelist);
             $filename_str = explode(",", $filenamelist1);
@@ -210,7 +233,7 @@ use App\Models\Student;
     
             $data1['notes_id'] = $data['notes_id'];
     
-            if ($filelist == '[]') {
+            if ($filelist == '') {
                 
                 $destination = $filePath."uploads/daily_notes/" . $data['date'] . '/' . $data['notes_id'];
     
@@ -253,7 +276,7 @@ use App\Models\Student;
     
         } else {
 
-            if ($filelist != '[]') {
+            if ($filelist != '') {
                 DB::table('notes_master')
                     ->where('notes_id', $data['notes_id'])
                     ->update($data);
@@ -279,7 +302,7 @@ use App\Models\Student;
             }
 
             // OLD CODE
-            if ($deleted_images != '[]') {
+            if ($deleted_images != '') {
                 $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
                 $deleted_images_string = explode(",", $deleted_images1);
     
