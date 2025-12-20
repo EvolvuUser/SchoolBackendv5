@@ -714,7 +714,7 @@ use App\Models\Student;
                 foreach ($deleted_images_string as $deleted_image) {
                     $path = $filePath."uploads/homework/" . date('Y-m-d', strtotime($data['start_date'])) . '/' . $k . '/' . $deleted_image;
     
-                    if (file_exists($path) && is_file($path)) {
+                    if (file_exists($path)) {
                         unlink($path);
                     }
     
@@ -749,7 +749,7 @@ use App\Models\Student;
         } 
         else { 
             if ($deleted_images != '') {
-                $deleted_images1 = str_replace([' ', '"', '[', ']'], "", $deleted_images);
+                $deleted_images1 = str_replace(['"', '[', ']'], "", $deleted_images);
                 $deleted_images_string = explode(",", $deleted_images1);
     
                 foreach ($deleted_images_string as $deleted_image) {
