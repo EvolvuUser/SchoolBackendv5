@@ -1131,7 +1131,7 @@ function upload_files_for_laravel($filename,$datafile, $uploadDate, $docTypeFold
     
     function get_exams_by_class_subject($class_id,$subject_rc_id,$acd_yr)
     {
-       $query=DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE sm_id = ".$subject_rc_id." AND class_id = ".$class_id." AND allot_mark_headings.academic_yr = '".$acd_yr."' order by exam.start_date") ;
+       $query=DB::select("SELECT DISTINCT exam.exam_id,exam.name FROM `allot_mark_headings` join exam on allot_mark_headings.exam_id = exam.exam_id WHERE sm_id = ".$subject_rc_id." AND class_id = ".$class_id." AND exam.academic_yr = '".$acd_yr."' AND allot_mark_headings.academic_yr = '".$acd_yr."'   order by exam.start_date") ;
        return $query;
     }
     
