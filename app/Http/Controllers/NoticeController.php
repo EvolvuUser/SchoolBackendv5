@@ -3832,6 +3832,7 @@ class NoticeController extends Controller
             $query = DB::table('notice')
                         ->select(
                             'notice.notice_id',
+                            'notice.unq_id',
                             'notice.subject',
                             'notice.notice_desc',
                             'notice.notice_date',
