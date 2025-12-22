@@ -6566,7 +6566,9 @@ class NewController extends Controller
                                 'class.class_id',
                                 DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher')
                             )
-                            ->orderBy('subject.class_id')
+                            // ->orderBy('subject.class_id')
+                            ->orderBy('class.name')
+                            ->orderBy('section.name')
                             ->get();
                             return response()->json([
                                 'status' =>200,
