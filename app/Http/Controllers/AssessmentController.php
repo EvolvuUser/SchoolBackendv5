@@ -8125,7 +8125,7 @@ class AssessmentController extends Controller
         $data = [
             'name' => $request->input('name'),
             'sequence' => $request->input('sequence'),
-            'change_daily' => $request->input('change_daily'),
+            'change_daily' => $request->input('change_daily') ?? "",
         ];
 
 
