@@ -7551,24 +7551,24 @@ class AssessmentController extends Controller
 
         $data['publish'] = 'N';
 
-        // check if chapter_number_already_exists
-        $exists = DB::table('chapters')->where([
-            ['class_id', '=', $data['class_id']],
-            ['subject_id', '=', $data['subject_id']],
-            ['chapter_no', '=', $data['chapter_no']],
-            ['IsDelete', '=', 'N'],
-        ])
+        if ($data['chapter_no'] != 0) {
+            $exists = DB::table('chapters')->where([
+                ['class_id', '=', $data['class_id']],
+                ['subject_id', '=', $data['subject_id']],
+                ['chapter_no', '=', $data['chapter_no']],
+                ['IsDelete', '=', 'N'],
+            ])
             ->when(!empty($data['sub_subject']), function ($q) use ($data) {
                 return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
             })
             ->exists();
-
-        if ($exists) {
-            return response()->json([
-                'status' => 409,
-                'message' => 'Duplicate lesson number is not allowed',
-                'success' => false,
-            ], 409);
+            if ($exists) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Duplicate lesson number is not allowed',
+                    'success' => false,
+                ], 409);
+            }
         }
 
         DB::table('chapters')->insert($data);
@@ -7896,6 +7896,7 @@ class AssessmentController extends Controller
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
         $validated = $request->validate([
             'class_id'     => 'required|integer',
             'subject_id'   => 'required|integer',
@@ -7914,33 +7915,36 @@ class AssessmentController extends Controller
             'description'  => $validated['description'] ?? null,
         ];
 
-        $exists = DB::table('chapters')->where([
-            ['class_id', '=', $data['class_id']],
-            ['subject_id', '=', $data['subject_id']],
-            ['chapter_no', '!=', $data['chapter_no']],
-            ['IsDelete', '=', 'N'],
-        ])
-            ->when(!empty($data['sub_subject']), function ($q) use ($data) {
-                return $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
-            })
-            ->exists();
+        // Check duplicate only if chapter_no is NOT 0
+        if ($data['chapter_no'] != 0) {
 
-        if ($exists) {
-            return response()->json([
-                'status' => 409,
-                'message' => 'Duplicate lesson number is not allowed',
-                'success' => false,
-            ], 409);
+            $exists = DB::table('chapters')
+                ->where('class_id', $data['class_id'])
+                ->where('subject_id', $data['subject_id'])
+                ->where('chapter_no', $data['chapter_no'])
+                ->where('IsDelete', 'N')
+                ->where('chapter_id', '!=', $chapter_id) // exclude current chapter
+                ->when(!empty($data['sub_subject']), function ($q) use ($data) {
+                    $q->whereRaw('UPPER(sub_subject) = ?', [strtoupper($data['sub_subject'])]);
+                })
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Duplicate lesson number is not allowed',
+                    'success' => false,
+                ], 409);
+            }
         }
 
-        $updated = DB::table('chapters')
+        DB::table('chapters')
             ->where('chapter_id', $chapter_id)
             ->update($data);
 
-
         return response()->json([
             'status'  => 200,
-            'message' => 'Chapter updated !',
+            'message' => 'Chapter updated!',
             'success' => true
         ]);
     }
