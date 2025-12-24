@@ -143,4 +143,37 @@ class TeacherDashboardController extends Controller
             ]
         ]);
     }
+
+    public function timetableForToday($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $todayDayOfWeek = date('l'); // Get current day of the week (e.g., 'Monday')
+
+        // Fetch timetable entries for the teacher for today
+        $timetableEntries = DB::select("
+                SELECT 
+                    d.name AS class, 
+                    e.name AS section, 
+                    c.name AS subject, 
+                    a.period_no,
+                    a.t_id
+                FROM timetable a
+                JOIN subject_master c ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
+                JOIN class d ON a.class_id = d.class_id
+                JOIN section e ON a.section_id = e.section_id
+                WHERE SUBSTRING_INDEX(a.$todayDayOfWeek, '^', -1) = ?
+                    AND a.academic_yr = ?
+                ORDER BY a.period_no
+            ", [$teacher_id, $acd_yr]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'timetable' => $timetableEntries,
+            ]
+        ]);
+    }
 }
