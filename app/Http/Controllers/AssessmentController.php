@@ -8578,12 +8578,28 @@ class AssessmentController extends Controller
             // }
 
             foreach ($request->input('descriptions', []) as $desc) {
-                DB::table('lesson_plan_template_details')
+
+                $exists = DB::table('lesson_plan_template_details')
                     ->where('les_pln_temp_id', $id)
                     ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
-                    ->update([
-                        'description' => $desc['description'],
+                    ->exists();
+
+                if ($exists) {
+                    // Update existing row
+                    DB::table('lesson_plan_template_details')
+                        ->where('les_pln_temp_id', $id)
+                        ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
+                        ->update([
+                            'description' => $desc['description'],
+                        ]);
+                } else {
+                    // Insert new row
+                    DB::table('lesson_plan_template_details')->insert([
+                        'les_pln_temp_id'         => $id,
+                        'lesson_plan_headings_id' => $desc['lesson_plan_headings_id'],
+                        'description'             => $desc['description'],
                     ]);
+                }
             }
 
             DB::commit();
@@ -8648,12 +8664,27 @@ class AssessmentController extends Controller
             // }
 
             foreach ($request->input('descriptions', []) as $desc) {
-                DB::table('lesson_plan_template_details')
+                $exists = DB::table('lesson_plan_template_details')
                     ->where('les_pln_temp_id', $id)
                     ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
-                    ->update([
-                        'description' => $desc['description'],
+                    ->exists();
+
+                if ($exists) {
+                    // Update existing row
+                    DB::table('lesson_plan_template_details')
+                        ->where('les_pln_temp_id', $id)
+                        ->where('lesson_plan_headings_id', $desc['lesson_plan_headings_id'])
+                        ->update([
+                            'description' => $desc['description'],
+                        ]);
+                } else {
+                    // Insert new row
+                    DB::table('lesson_plan_template_details')->insert([
+                        'les_pln_temp_id'         => $id,
+                        'lesson_plan_headings_id' => $desc['lesson_plan_headings_id'],
+                        'description'             => $desc['description'],
                     ]);
+                }
             }
 
             DB::commit();

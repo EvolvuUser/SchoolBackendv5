@@ -16366,28 +16366,52 @@ class AdminController extends Controller
 
     public function sendwhatsappmessages(Request $request)
     {
-        $phone = '6367379170';
-
+        $phone = $request->phone;
+        
         $templateName = 'emergency_message';
         $parameters = [$request->message];
-
+   
         $result = $this->whatsAppService->sendTextMessage(
             $phone,
             $templateName,
             $parameters
         );
-        dd($result);
-        $wamid = $result['messages'][0]['id'];
-        $phone_no = $result['contacts'][0]['input'];
-        // dd($phone_no);
-        DB::table('redington_webhook_details')->insert([
-            'wa_id' => $wamid,
-            'phone_no' => $phone_no
-        ]);
+        if (isset($result['code']) && isset($result['message'])) {
+            DB::table('redington_webhook_details')->insert([
+                'wa_id' => null,
+                'phone_no' => $phone,
+                'stu_teacher_id' => null,
+                'message_type' => 'admission_otp',
+                'status'=>'failed',
+                'created_at' => now()
+            ]);
+            return response()->json([
+                'status'=>200,
+                'message'=>'message not processed successfully.',
+                'success'=>true
+            ]);
+        } 
+        else 
+        {
+            $wamid = $result['messages'][0]['id'];
+            $phone_no = $result['contacts'][0]['input'];
 
-        Log::info($result);
-
-        return response()->json($result);
+            
+            DB::table('redington_webhook_details')->insert([
+                'wa_id' => $wamid,
+                'phone_no' => $phone_no,
+                'stu_teacher_id' => null,
+                'message_type' => 'admission_otp',
+                'created_at' => now()
+            ]);
+            return response()->json([
+                'status'=>200,
+                'message'=>'message processed successfully.',
+                'data'   =>$result,
+                'success'=>true
+            ]);
+        }
+        
     }
 
     public function webhookredington(Request $request)
