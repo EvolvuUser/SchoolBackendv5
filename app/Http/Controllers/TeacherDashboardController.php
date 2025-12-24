@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\DB;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class TeacherDashboardController extends Controller
 {
@@ -19,62 +22,124 @@ class TeacherDashboardController extends Controller
     public function dashboardSummary($teacher_id)
     {
         $user = $this->authenticateUser();
-        // Get attendance data
-        /*
-            Data: 
-                1) total number of students present today in all classes the teacher is assigned to
-                
-                2) total number of students the teacher is assigned to
-                => get all students the class teacher teaches
-        */
+        
+        /**
+         * STUDENT CARDS
+         */
         // get classes data 
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        $classdata = DB::table('subject')
-                            ->join('class', 'class.class_id', '=', 'subject.class_id')
-                            ->join('section', 'section.section_id', '=', 'subject.section_id')
-                            ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
-                            ->leftJoin('class_teachers', function ($join) use($teacher_id) {
-                                $join->on('class_teachers.class_id', '=', 'subject.class_id')
-                                     ->on('class_teachers.section_id', '=', 'subject.section_id')
-                                     ->where('class_teachers.teacher_id', '=', $teacher_id);
-                            })
-                            ->where('subject.academic_yr', $customClaims)
-                            ->where('subject.teacher_id', $teacher_id)
-                            ->where(function ($query) use ($teacher_id) {
-                                $query->where('subject.teacher_id', $teacher_id)
-                                      ->orWhere('class_teachers.teacher_id', $teacher_id);
-                            })
-                            ->distinct()
-                            ->select(
-                                'subject.class_id',
-                                'section.section_id',
-                                'class.name as classname',
-                                'section.name as sectionname',
-                                'teacher.name as teachername',
-                                'teacher.teacher_id',
-                                'class.class_id',
-                                DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher')
-                            )
-                            // ->orderBy('subject.class_id')
-                            ->orderBy('class.name')
-                            ->orderBy('section.name')
-                            ->get();
-        // get total studnets in this classes
-        $total_students = 0;
-        foreach($classdata as $classinfo){
-            $student_count = DB::table('student')
-                                ->join('enroll', 'enroll.student_id', '=', 'student.student_id')
-                                ->where('enroll.class_id', $classinfo->class_id)
-                                ->where('enroll.section_id', $classinfo->section_id)
-                                ->where('enroll.academic_yr', $customClaims)
-                                ->count();
-            $total_students += $student_count;
-        }
+        // 1. Get unique class-section combinations for the teacher
+        $classData = DB::table('subject')
+            ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                    ->on('class_teachers.section_id', '=', 'subject.section_id')
+                    ->where('class_teachers.teacher_id', $teacher_id);
+            })
+            ->where('subject.academic_yr', $customClaims)
+            ->where(function ($query) use ($teacher_id) {
+                $query->where('subject.teacher_id', $teacher_id)
+                    ->orWhere('class_teachers.teacher_id', $teacher_id);
+            })
+            ->distinct()
+            ->select('subject.class_id', 'subject.section_id')
+            ->get();
+
+        // 2. Build arrays for WHERE IN
+        $classIds   = $classData->pluck('class_id')->unique();
+        $sectionIds = $classData->pluck('section_id')->unique();
+
+        // 3. Count students in ONE query
+        $totalStudents = DB::table('student')
+            ->where('academic_yr', $customClaims)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->count();
+
+        // Count total number of students present today in those classes
+        $todayDate = date('Y-m-d');
+        $totalStudentsPresentToday = DB::table('attendance')
+            ->where('only_date', $todayDate)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->count();
+
+        /**
+         * Defaulter list card
+         */
+        
+        $pendingAmount = 0.0; // Placeholder for pending amount logic
+        $totalNumberOfDefaulters = 0; // Placeholder for defaulter count logic
+
+        // have to find out the pending amount and total number of defaulters of the classes the teacher teach logic here
+        // skipping this for now
+
+        /**
+         * Birthday Card
+         */
+
+        $countOfBirthdaysToday = DB::table('student')
+            ->where('academic_yr', $customClaims)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->whereRaw("DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')")
+            ->count();
+
+        /**
+         * Homework Card
+         */
+        $countOfHomeworksDueToday = 0; // Placeholder for homework due today logic
+        $countOfHomeworksDueToday = DB::table('homework')
+            ->where('academic_yr', $customClaims)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->where('end_date', $todayDate)
+            ->count();
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'total_students' => $total_students,
+                'studentCard' => [
+                    'totalStudents' => $totalStudents,
+                    'totalStudentsPresentToday' => $totalStudentsPresentToday
+                ],
+                'birthDayCard' => [
+                    'countOfBirthdaysToday' => $countOfBirthdaysToday
+                ],
+                'homeworkCard' => [
+                    'countOfHomeworksDueToday' => $countOfHomeworksDueToday
+                ],
+            ]
+        ]);
+    }
+
+    public function ticketsList($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $role = $user->role_id;
+        // get ticket assigned to the teacher for today
+        $tickets = DB::table('ticket')
+            ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name')
+            ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+            ->join('student', 'student.student_id', '=', 'ticket.student_id')
+            ->join('class_teachers', function ($join) {
+                $join->on('class_teachers.class_id', '=', 'student.class_id')
+                        ->on('class_teachers.section_id', '=', 'student.section_id');
+            })
+            ->where('service_type.role_id', $role)
+            ->where('class_teachers.teacher_id', $reg_id)
+            ->where('ticket.raised_on' , '=', date('Y-m-d'))
+            ->orderBy('raised_on', 'DESC')
+            ->get()
+            ->map(function ($ticket) {
+                $ticket->description = strip_tags($ticket->description); // Remove HTML tags
+                return $ticket;
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'tickets' => $tickets,
             ]
         ]);
     }
