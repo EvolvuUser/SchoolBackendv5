@@ -98,6 +98,8 @@
             // Route::get('/pending_collected_fee_data_list', [AdminController::class, 'pendingCollectedFeeDatalist']);
             Route::get('/collected_fee_list', [AdminController::class, 'collectedFeeList']);
 
+            // Teacher dashboard API's 
+            Route::get('/teachers/{teacher_id}/dashboard/summary' , [TeacherDashboardController::class , 'dashboardSummary']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
