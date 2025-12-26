@@ -16,6 +16,7 @@
     use App\Http\Controllers\ReportController;
     use App\Http\Services\SmartMailer;
     use App\Http\Controllers\LibraryController;
+    use App\Http\Controllers\TeacherDashboardController;
 
     Route::post('/connectdatabase', [AuthController::class, 'connectByShortName']);
     // Public routes
@@ -98,6 +99,10 @@
             // Route::get('/pending_collected_fee_data_list', [AdminController::class, 'pendingCollectedFeeDatalist']);
             Route::get('/collected_fee_list', [AdminController::class, 'collectedFeeList']);
 
+            // Teacher dashboard API's 
+            Route::get('/teachers/{teacher_id}/dashboard/summary' , [TeacherDashboardController::class , 'dashboardSummary']);
+            Route::get('/teachers/{teacher_id}/dashboard/tickets' , [TeacherDashboardController::class , 'ticketsList']);
+            Route::get('/teachers/{teacher_id}/dashboard/timetable' , [TeacherDashboardController::class , 'timetableForToday']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
