@@ -19,6 +19,58 @@ class TeacherDashboardController extends Controller
         }
     }
 
+    public function eventsList($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+        // Fetch events for the teacher
+        $currentDate = Carbon::now();
+        $month = $currentDate->month;
+        $year  = $currentDate->year;
+
+        $events = Event::select([
+            'events.unq_id',
+            'events.title',
+            'events.event_desc',
+            'events.start_date',
+            'events.end_date',
+            'events.start_time',
+            'events.end_time',
+            DB::raw('GROUP_CONCAT(class.name) as class_name')
+        ])
+            ->join('class', 'events.class_id', '=', 'class.class_id')
+            ->where('events.isDelete', 'N')
+            ->where('events.publish', 'Y')
+            ->where('events.academic_yr', $academicYr)
+            ->whereMonth('events.start_date', $month)
+            ->whereYear('events.start_date', $year)
+            ->groupBy(
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.start_date',
+                'events.end_date',
+                'events.start_time',
+                'events.end_time'
+            )
+            ->orderBy('events.start_date')
+            ->orderByDesc('events.start_time')
+            ->get()
+            ->map(function ($event) {
+                $event->event_desc =  $event->event_desc;
+                return $event;
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'events' => $events
+            ]
+        ]);
+    }
+
     public function studentAcademicPerformanceGraphData($teacher_id)
     {
         $user = $this->authenticateUser();
