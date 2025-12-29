@@ -19,6 +19,91 @@ class TeacherDashboardController extends Controller
         }
     }
 
+    public function timetableDetails($teacher_id, $timetable_id)
+    {
+        $user = $this->authenticateUser();
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+        $todayDayOfWeek = date('l'); // Get current day of the week (e.g., 'Monday')
+        $teacher_id = JWTAuth::getPayload()->get('reg_id');
+
+        $timetable = DB::select("
+                SELECT 
+                    d.name AS class, 
+                    e.name AS section, 
+                    c.name AS subject, 
+                    a.period_no, 
+                    a.class_id,
+                    c.sm_id
+                FROM timetable a
+                JOIN subject_master c ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
+                JOIN class d ON a.class_id = d.class_id
+                JOIN section e ON a.section_id = e.section_id
+                WHERE SUBSTRING_INDEX(a.$todayDayOfWeek, '^', -1) = ?
+                    AND a.academic_yr = ?
+                    AND a.t_id = ?
+                ORDER BY a.period_no
+            ", [$teacher_id, $acd_yr, $timetable_id]);
+        
+
+        $classId = $timetable[0]->class_id;
+        $subjectId = $timetable[0]->sm_id;
+
+        $lessonPlanTemplate = DB::table('lesson_plan_template')
+            ->where('class_id', $classId)
+            ->where('subject_id', $subjectId)
+            ->where('publish', 'Y')
+            ->first();
+            
+        if (!$lessonPlanTemplate) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Lesson Plan Template is not created!!!',
+                'success' => false
+            ]);
+        }
+
+        $lessonPlanData = DB::select("
+            SELECT 
+                chapters.name as chapter_name,
+                lesson_plan_heading.name AS heading_name,
+                lesson_plan_template_details.description AS description
+            FROM lesson_plan_template
+            LEFT JOIN lesson_plan_template_details
+                ON lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id
+            LEFT JOIN class 
+                ON lesson_plan_template.class_id = class.class_id
+            LEFT JOIN lesson_plan_heading 
+                ON lesson_plan_template_details.lesson_plan_headings_id = lesson_plan_heading.lesson_plan_headings_id
+            LEFT JOIN subject_master 
+                ON lesson_plan_template.subject_id = subject_master.sm_id
+            LEFT JOIN chapters  
+                ON lesson_plan_template.chapter_id = chapters.chapter_id
+            WHERE lesson_plan_template.subject_id = ?
+            AND lesson_plan_template.class_id = ?
+            AND lesson_plan_template.publish = 'Y'
+            AND lesson_plan_template.reg_id = ?
+        ", [$subjectId, $classId , $teacher_id]);
+
+        $lessonPlanData = collect($lessonPlanData)
+        ->groupBy('chapter_name')->toArray();
+
+        /*
+        BETTER UI
+        $lessonPlanData = collect($lessonPlanData)
+            ->groupBy('chapter_name')
+            ->map(function ($items) {
+                return $items->groupBy('heading_name');
+            })->toArray();
+        */
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'lessonPlanData' => $lessonPlanData
+            ]
+        ]);
+    }
+
     public function dashboardSummary($teacher_id)
     {
         $user = $this->authenticateUser();

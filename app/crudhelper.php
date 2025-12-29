@@ -54,8 +54,13 @@ use App\Models\Student;
         return $query;
     }
     
-     function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist = '', $random_no)
+     function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist = '', $random_no = null)
      {
+        if($random_no == null) {
+            throw new InvalidArgumentException(
+                'Missing required parameters: data, str_classes, or random_no'
+            );
+        }
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -561,8 +566,13 @@ use App\Models\Student;
         
     }
     
-    function homework_create($data, $filelist, $filenamelist = '', $random_no)
+    function homework_create($data, $filelist, $filenamelist = '', $random_no = null)
     {
+        if($random_no == null) {
+            throw new InvalidArgumentException(
+                'Missing required parameters: data or random_no'
+            );
+        }
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
