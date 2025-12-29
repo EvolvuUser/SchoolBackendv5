@@ -949,95 +949,89 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
         
     }
     
-    public function saveMarkAttendance(Request $request){
-        $user = $this->authenticateUser();
-        $academic_yr = JWTAuth::getPayload()->get('academic_year');
-        $data = [];
-        $t_id = $user->reg_id; 
-        $unq = rand(200, 500);
+public function saveMarkAttendance(Request $request)
+{
+    $user = $this->authenticateUser();
+    $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-        $countOfStudents = $request->input('countOfStudents');
-        $class_id = $request->input('class_id');
-        $section_id = $request->input('section_id');
-        $dateatt = Carbon::createFromFormat('d-m-Y', $request->input('dateatt'))->format('Y-m-d');
+    $t_id = $user->reg_id;
+    $class_id = $request->class_id;
+    $section_id = $request->section_id;
+    $dateatt = Carbon::createFromFormat('d-m-Y', $request->dateatt)->format('Y-m-d');
 
-        
+    // Checked students only
+    $checkedStudents = $request->input('checkbox', []);
 
-            $countCheckBox = $request->input('checkbox', []);
+    DB::beginTransaction();
 
-            foreach ($countCheckBox as $student_id) {
-                // Check if attendance already exists
-                $existing = DB::table('attendance')
+    try {
+
+        /**
+         * 1️⃣ DELETE ALL existing attendance for this class/section/date
+         * This avoids ghost / stale entries
+         */
+        DB::table('attendance')
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('only_date', $dateatt)
+            ->where('academic_yr', $academic_yr)
+            ->delete();
+
+        /**
+         * 2️⃣ INSERT ONLY checked students
+         */
+        foreach ($checkedStudents as $student_id) {
+
+            $attendance_status = $request->input("present_$student_id") == '1' ? 1 : 0;
+
+            DB::table('attendance')->insert([
+                'class_id'          => $class_id,
+                'section_id'        => $section_id,
+                'only_date'         => $dateatt,
+                'academic_yr'       => $academic_yr,
+                'teacher_id'        => $t_id,
+                'student_id'        => $student_id,
+                'attendance_status' => $attendance_status,
+                'unq_id'            => rand(200, 500),
+                'date'              => now(),
+            ]);
+
+            /**
+             * 3️⃣ SMS only for absentees (if 1 = absent)
+             */
+            if ($attendance_status == 1) {
+
+                $smsExists = DB::table('attendance_sms_log')
                     ->where('student_id', $student_id)
-                    ->where('only_date', $dateatt)
-                    ->where('academic_yr', $academic_yr)
-                    ->get();
+                    ->where('absent_date', $dateatt)
+                    ->exists();
 
-                if ($existing->count() > 0) {
-                    // Delete existing attendance record
-                    DB::table('attendance')
-                        ->where('student_id', $student_id)
-                        ->where('only_date', $dateatt)
-                        ->where('academic_yr', $academic_yr)
-                        ->delete();
-                }
-
-                // Prepare attendance data
-                $attendance_status = $request->input("present_$student_id") == '1' ? '1' : '0';
-
-                $attendanceData = [
-                    'class_id' => $class_id,
-                    'section_id' => $section_id,
-                    'only_date' => $dateatt,
-                    'academic_yr' => $academic_yr,
-                    'teacher_id' => $t_id,
-                    'student_id' => $student_id,
-                    'attendance_status' => $attendance_status,
-                    'unq_id' => $unq,
-                    'date' => now(),
-                ];
-
-                // Insert attendance record
-                DB::table('attendance')->insert($attendanceData);
-
-                // Handle SMS for absent students
-                if ($attendance_status == '1') {
-                    $smsExists = DB::table('attendance_sms_log')
-                        ->where('student_id', $student_id)
-                        ->where('absent_date', $dateatt)
-                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(sms_status, '$.status')) = 'success'")
-                        ->exists();
-
-                    if (!$smsExists) {
-                        // $temp_id = '1107164450685654320';
-                        // $studentName = DB::table('student')->where('student_id', $student_id)->value('first_name');
-                        // $message = "Dear Parent, $studentName has been marked absent on " . Carbon::parse($dateatt)->format('d-m-Y') . ". Login to school application for details. -EvolvU";
-
-                        // $contactData = DB::table('student_contact')->where('student_id', $student_id)->get();
-
-                        // foreach ($contactData as $contact) {
-                        //     // Uncomment this line to send SMS
-                        //     // $sms_status = $this->send_sms($contact->phone_no, $message, $temp_id);
-                        //     $sms_status = ""; 
-
-                        //     DB::table('attendance_sms_log')->insert([
-                        //         'sms_status' => $sms_status,
-                        //         'student_id' => $student_id,
-                        //         'absent_date' => $dateatt,
-                        //         'phone_no' => $contact->phone_no,
-                        //         'sms_date' => now()->format('Y-m-d'),
-                        //     ]);
-                        // }
-                    }
+                if (!$smsExists) {
+                    // SMS logic here
                 }
             }
+        }
 
-            return response()->json([
-                'status'  =>200,
-                'message' => 'Attendance saved successfully!',
-                'success' =>true
-                ]);
+        DB::commit();
+
+        return response()->json([
+            'status'  => 200,
+            'success' => true,
+            'message' => 'Attendance saved successfully'
+        ]);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'status'  => 500,
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
     }
+}
+
     
     public function deleteMarkAttendance(Request $request){
         $user = $this->authenticateUser();
