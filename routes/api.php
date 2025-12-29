@@ -104,6 +104,7 @@
             Route::get('/teachers/{teacher_id}/dashboard/tickets' , [TeacherDashboardController::class , 'ticketsList']);
             Route::get('/teachers/{teacher_id}/dashboard/timetable' , [TeacherDashboardController::class , 'timetableForToday']);
             Route::get('/teachers/{teacher_id}/dashboard/timetable/{timetable_id}' , [TeacherDashboardController::class , 'timetableDetails']);
+            Route::get('/teachers/{teacher_id}/dashboard/graph' , [TeacherDashboardController::class , 'studentAcademicPerformanceGraphData']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);

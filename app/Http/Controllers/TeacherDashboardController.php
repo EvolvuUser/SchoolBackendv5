@@ -19,6 +19,145 @@ class TeacherDashboardController extends Controller
         }
     }
 
+    public function studentAcademicPerformanceGraphData($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        // 1. Classes & sections taught by teacher
+        $classes = collect(DB::select("
+            SELECT 
+                class.class_id,
+                class.name AS class_name,
+                section.name AS section_name,
+                section.section_id
+            FROM subject
+            LEFT JOIN class ON subject.class_id = class.class_id
+            LEFT JOIN section ON subject.section_id = section.section_id
+            WHERE subject.teacher_id = ?
+            AND subject.academic_yr = ?
+            GROUP BY class.class_id, section.section_id
+        ", [$user->reg_id, $academic_yr]));
+
+        $class_and_section_ids = [];
+        foreach ($classes as $item) {
+            $class_and_section_ids[] = [
+                'class_id'     => $item->class_id,
+                'class_name'   => $item->class_name,
+                'section_id'   => $item->section_id,
+                'section_name' => $item->section_name,
+            ];
+        }
+
+        // 2. Subjects + average marks
+        $classSectionSubjects = [];
+
+        foreach ($class_and_section_ids as $cs) {
+
+            $subjects = DB::select("
+                SELECT 
+                    sm.name,
+                    sm.sm_id AS subject_id
+                FROM subject a
+                LEFT JOIN subject_master sm ON a.sm_id = sm.sm_id
+                WHERE a.class_id   = ?
+                AND a.section_id = ?
+                AND a.teacher_id = ?
+                AND a.academic_yr = ?
+            ", [$cs['class_id'], $cs['section_id'], $reg_id, $academic_yr]);
+
+            foreach ($subjects as $row) {
+
+                // -------- GET STUDENT MARKS (same for all classes) --------
+                $student_marks = DB::table(DB::raw("(
+                    SELECT b.student_id, a.present, a.total_marks
+                    FROM student_marks a
+                    JOIN student b ON a.student_id = b.student_id
+                    WHERE b.class_id = ?
+                    AND b.section_id = ?
+                    AND a.subject_id = ?
+                    AND a.academic_yr = ?
+                    AND b.IsDelete = 'N'
+                ) x"))
+                ->setBindings([
+                    $cs['class_id'],
+                    $cs['section_id'],
+                    $row->subject_id,
+                    $academic_yr
+                ])
+                ->get();
+
+                // -------- AVERAGE CALCULATION (JSON SAFE) --------
+                $totalMarks = 0;
+                $totalStudents = 0;
+
+                foreach ($student_marks as $m) {
+                    if (!$m->total_marks || !$m->present) {
+                        continue;
+                    }
+
+                    // total_marks is either JSON or numeric
+                    $marksArr = is_string($m->total_marks)
+                        ? json_decode($m->total_marks, true)
+                        : [$m->total_marks];
+
+                    // present is JSON
+                    $presentArr = is_string($m->present)
+                        ? json_decode($m->present, true)
+                        : ['Y']; // default to 'Y' if numeric total_marks
+
+                    if (!is_array($marksArr) || !is_array($presentArr)) {
+                        continue;
+                    }
+
+                    foreach ($marksArr as $key => $markVal) {
+
+                        $markVal = trim((string)$markVal);
+
+                        // Use the **same key** to get present, fallback to 'Y'
+                        $present = $presentArr[$key] ?? 'Y';
+
+                        if (
+                            $present === 'Y' &&
+                            $markVal !== '' &&
+                            is_numeric($markVal)
+                        ) {
+                            $totalMarks += (float)$markVal;
+                            $totalStudents++;
+                        }
+                    }
+                }
+
+
+                $averageMarks = $totalStudents > 0
+                    ? round($totalMarks / $totalStudents, 2)
+                    : 0;
+
+                // echo "TOTAL MARKS: {$totalMarks}, TOTAL STUDENTS: {$totalStudents}\n";
+
+                // -------- FINAL PUSH --------
+                $classSectionSubjects[] = [
+                    'class_name'    => $cs['class_name'],
+                    'class_id'      => $cs['class_id'],
+                    'section_id'    => $cs['section_id'],
+                    'section_name'  => $cs['section_name'],
+                    'subject_name'  => $row->name,
+                    'subject_id'    => $row->subject_id,
+                    'academic_yr'   => $academic_yr,
+                    'average_marks' => $averageMarks,
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'performanceData' => $classSectionSubjects
+            ]
+        ]);
+    }
+
     public function timetableDetails($teacher_id, $timetable_id)
     {
         $user = $this->authenticateUser();
