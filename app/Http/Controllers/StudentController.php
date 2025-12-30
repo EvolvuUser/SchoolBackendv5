@@ -814,13 +814,9 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
         $user = $this->authenticateUser();
         $settingsData = JWTAuth::getPayload()->get('settings');
         $department_id = $request->input('department_id');
-        $role = $user->role_id;
         $threshold = $request->input('threshold');
-        $startDate = $settingsData['academic_yr_from'] ?? '';
-        $endDate = $request->input('end_date');
-        if($role == 'T') {
-            $startDate = $endDate;
-        }
+        $startDate = $settingsData['academic_yr_from'];
+        $endDate = $request->input('end_date'); 
         $classIds = DB::table('class')
             ->where('department_id', $department_id)
             ->pluck('class_id');
