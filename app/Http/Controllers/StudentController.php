@@ -812,9 +812,12 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
 
    public function studentsBelowAttendance(Request $request) {
         $user = $this->authenticateUser();
+
+        $settingsData = JWTAuth::getPayload()->get('settings_new');
+
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
-        $startDate = $request->input('start_date'); 
+        $startDate = $settingsData['academic_yr_from'];
         $endDate = $request->input('end_date'); 
         $threshold = $request->input('threshold');
         

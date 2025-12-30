@@ -207,15 +207,15 @@ public function connectByShortName(Request $request){
             $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
             $schoolName = Setting::where('active', 'Y')->first()->institute_name;
             $settings =  DB::table('school_settings')->where('is_active', 'Y')->first();
+            $settings_new =  Setting::where('active', 'Y')->first();
             $customClaims = [
                 'role_id' => $user->role_id,
                 'reg_id' => $user->reg_id,
                 'academic_year' => $academic_yr,
                 'school_name'=>$schoolName,
                 'settings'=>$settings,
-                'short_name'=>$settings->short_name
-                
-
+                'short_name'=>$settings->short_name,
+                'settings_new' => $settings_new,
             ];
             $token = JWTAuth::claims($customClaims)->fromUser($user);
 
