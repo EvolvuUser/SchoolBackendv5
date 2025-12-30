@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Carbon\Carbon;
+use App\Models\Event;
 
 class TeacherDashboardController extends Controller
 {
@@ -22,54 +24,72 @@ class TeacherDashboardController extends Controller
     public function eventsList($teacher_id)
     {
         $user = $this->authenticateUser();
-        $reg_id = JWTAuth::getPayload()->get('reg_id');
         $academicYr = JWTAuth::getPayload()->get('academic_year');
 
-        // Fetch events for the teacher
         $currentDate = Carbon::now();
         $month = $currentDate->month;
         $year  = $currentDate->year;
 
-        $events = Event::select([
-            'events.unq_id',
-            'events.title',
-            'events.event_desc',
-            'events.start_date',
-            'events.end_date',
-            'events.start_time',
-            'events.end_time',
-            DB::raw('GROUP_CONCAT(class.name) as class_name')
-        ])
-            ->join('class', 'events.class_id', '=', 'class.class_id')
-            ->where('events.isDelete', 'N')
-            ->where('events.publish', 'Y')
-            ->where('events.academic_yr', $academicYr)
-            ->whereMonth('events.start_date', $month)
-            ->whereYear('events.start_date', $year)
-            ->groupBy(
+        // 🔹 Common conditions closure
+        $commonConditions = function ($query) use ($academicYr, $month, $year) {
+            $query->where('events.isDelete', 'N')
+                ->where('events.publish', 'Y')
+                ->where('events.academic_yr', $academicYr)
+                // ->whereMonth('events.start_date', $month)
+                ->whereYear('events.start_date', $year);
+        };
+
+        // get all the classes that the teacher is teaching
+        $classesTaught = DB::table('subject')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_yr', $academicYr)
+            ->distinct()
+            ->pluck('class_id')
+            ->toArray();
+
+        /* =====================================================
+        1️⃣ Events visible for TEACHER LOGIN (login_type = T)
+        ===================================================== */
+        $eventsForTeacherLogin = Event::select(
                 'events.unq_id',
                 'events.title',
                 'events.event_desc',
-                'events.start_date',
-                'events.end_date',
-                'events.start_time',
-                'events.end_time'
+                'events.class_id',
+                'events.login_type'
             )
+            ->where('events.login_type', 'T')
+            ->where($commonConditions)
             ->orderBy('events.start_date')
             ->orderByDesc('events.start_time')
-            ->get()
-            ->map(function ($event) {
-                $event->event_desc =  $event->event_desc;
-                return $event;
-            });
+            ->get();
+
+        /* =====================================================
+        2️⃣ Events visible for CLASSES (class_id 134,135)
+        ===================================================== */
+        $eventsForClasses = Event::select(
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.class_id',
+                'events.login_type',
+                'class.name as class_name'
+            )
+            ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+            ->where($commonConditions)
+            ->whereIn('events.class_id', $classesTaught)
+            ->orderBy('events.start_date')
+            ->orderByDesc('events.start_time')
+            ->get();
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'events' => $events
+                'events_for_teacher_login' => $eventsForTeacherLogin,
+                'events_for_classes'       => $eventsForClasses,
             ]
         ]);
     }
+
 
     public function studentAcademicPerformanceGraphData($teacher_id)
     {
