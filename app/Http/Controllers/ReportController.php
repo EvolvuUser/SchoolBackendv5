@@ -5154,12 +5154,15 @@ class ReportController extends Controller
                 $request->validate([
                     'class_id'    => 'required|integer',
                     'section_id'  => 'required|integer',
-                    'installment' => 'required|string',
+                    'installment' => 'nullable|string',
                 ]);
             
                 $class_id    = $request->input('class_id');
                 $section_id  = $request->input('section_id');
-                $installment = $request->input('installment');
+
+                $installment = $request->input('installment'); // can be null
+                $installmentLike = $installment ? $installment.'%' : '%';
+
                 $acd_yr      = $academicYear;
             
                 $query = DB::select("
@@ -5227,7 +5230,7 @@ class ReportController extends Controller
                         ) z
                     ) w 
                     ORDER BY w.roll_no, w.installment
-                ", [$acd_yr, $class_id, $section_id, $installment.'%', $acd_yr, $class_id, $installment.'%', $acd_yr, $class_id, $section_id, $installment.'%']);
+                ", [$acd_yr, $class_id, $section_id, $installmentLike, $acd_yr, $class_id, $installmentLike, $acd_yr, $class_id, $section_id, $installmentLike]);
             
                 
                 $result = collect($query)->map(function ($row) use ($acd_yr) {
