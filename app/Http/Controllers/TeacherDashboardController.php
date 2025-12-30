@@ -55,7 +55,11 @@ class TeacherDashboardController extends Controller
                 'events.title',
                 'events.event_desc',
                 'events.class_id',
-                'events.login_type'
+                'events.login_type',
+                'events.start_date',
+                'events.start_time',    
+                'events.end_date',
+                'events.end_time',
             )
             ->where('events.login_type', 'T')
             ->where($commonConditions)
@@ -72,7 +76,11 @@ class TeacherDashboardController extends Controller
                 'events.event_desc',
                 'events.class_id',
                 'events.login_type',
-                'class.name as class_name'
+                'class.name as class_name',
+                'events.start_date',
+                'events.start_time',
+                'events.end_date',
+                'events.end_time',
             )
             ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
             ->where($commonConditions)
