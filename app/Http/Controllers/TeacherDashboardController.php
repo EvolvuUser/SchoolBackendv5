@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Carbon\Carbon;
+use App\Models\Event;
 
 class TeacherDashboardController extends Controller
 {
@@ -17,6 +19,300 @@ class TeacherDashboardController extends Controller
         } catch (JWTException $e) {
             return null;
         }
+    }
+
+    public function eventsList($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+        $currentDate = Carbon::now();
+        $month = $currentDate->month;
+        $year  = $currentDate->year;
+
+        // 🔹 Common conditions closure
+        $commonConditions = function ($query) use ($academicYr, $month, $year) {
+            $query->where('events.isDelete', 'N')
+                ->where('events.publish', 'Y')
+                ->where('events.academic_yr', $academicYr)
+                // ->whereMonth('events.start_date', $month)
+                ->whereYear('events.start_date', $year);
+        };
+
+        // get all the classes that the teacher is teaching
+        $classesTaught = DB::table('subject')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_yr', $academicYr)
+            ->distinct()
+            ->pluck('class_id')
+            ->toArray();
+
+        /* =====================================================
+        1️⃣ Events visible for TEACHER LOGIN (login_type = T)
+        ===================================================== */
+        $eventsForTeacherLogin = Event::select(
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.class_id',
+                'events.login_type'
+            )
+            ->where('events.login_type', 'T')
+            ->where($commonConditions)
+            ->orderBy('events.start_date')
+            ->orderByDesc('events.start_time')
+            ->get();
+
+        /* =====================================================
+        2️⃣ Events visible for CLASSES (class_id 134,135)
+        ===================================================== */
+        $eventsForClasses = Event::select(
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.class_id',
+                'events.login_type',
+                'class.name as class_name'
+            )
+            ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+            ->where($commonConditions)
+            ->whereIn('events.class_id', $classesTaught)
+            ->orderBy('events.start_date')
+            ->orderByDesc('events.start_time')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'events_for_teacher_login' => $eventsForTeacherLogin,
+                'events_for_classes'       => $eventsForClasses,
+            ]
+        ]);
+    }
+
+
+    public function studentAcademicPerformanceGraphData($teacher_id)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        // 1. Classes & sections taught by teacher
+        $classes = collect(DB::select("
+            SELECT 
+                class.class_id,
+                class.name AS class_name,
+                section.name AS section_name,
+                section.section_id
+            FROM subject
+            LEFT JOIN class ON subject.class_id = class.class_id
+            LEFT JOIN section ON subject.section_id = section.section_id
+            WHERE subject.teacher_id = ?
+            AND subject.academic_yr = ?
+            GROUP BY class.class_id, section.section_id
+        ", [$user->reg_id, $academic_yr]));
+
+        $class_and_section_ids = [];
+        foreach ($classes as $item) {
+            $class_and_section_ids[] = [
+                'class_id'     => $item->class_id,
+                'class_name'   => $item->class_name,
+                'section_id'   => $item->section_id,
+                'section_name' => $item->section_name,
+            ];
+        }
+
+        // 2. Subjects + average marks
+        $classSectionSubjects = [];
+
+        foreach ($class_and_section_ids as $cs) {
+
+            $subjects = DB::select("
+                SELECT 
+                    sm.name,
+                    sm.sm_id AS subject_id
+                FROM subject a
+                LEFT JOIN subject_master sm ON a.sm_id = sm.sm_id
+                WHERE a.class_id   = ?
+                AND a.section_id = ?
+                AND a.teacher_id = ?
+                AND a.academic_yr = ?
+            ", [$cs['class_id'], $cs['section_id'], $reg_id, $academic_yr]);
+
+            foreach ($subjects as $row) {
+
+                // -------- GET STUDENT MARKS (same for all classes) --------
+                $student_marks = DB::table(DB::raw("(
+                    SELECT b.student_id, a.present, a.total_marks
+                    FROM student_marks a
+                    JOIN student b ON a.student_id = b.student_id
+                    WHERE b.class_id = ?
+                    AND b.section_id = ?
+                    AND a.subject_id = ?
+                    AND a.academic_yr = ?
+                    AND b.IsDelete = 'N'
+                ) x"))
+                ->setBindings([
+                    $cs['class_id'],
+                    $cs['section_id'],
+                    $row->subject_id,
+                    $academic_yr
+                ])
+                ->get();
+
+                // -------- AVERAGE CALCULATION (JSON SAFE) --------
+                $totalMarks = 0;
+                $totalStudents = 0;
+
+                foreach ($student_marks as $m) {
+                    if (!$m->total_marks || !$m->present) {
+                        continue;
+                    }
+
+                    // total_marks is either JSON or numeric
+                    $marksArr = is_string($m->total_marks)
+                        ? json_decode($m->total_marks, true)
+                        : [$m->total_marks];
+
+                    // present is JSON
+                    $presentArr = is_string($m->present)
+                        ? json_decode($m->present, true)
+                        : ['Y']; // default to 'Y' if numeric total_marks
+
+                    if (!is_array($marksArr) || !is_array($presentArr)) {
+                        continue;
+                    }
+
+                    foreach ($marksArr as $key => $markVal) {
+
+                        $markVal = trim((string)$markVal);
+
+                        // Use the **same key** to get present, fallback to 'Y'
+                        $present = $presentArr[$key] ?? 'Y';
+
+                        if (
+                            $present === 'Y' &&
+                            $markVal !== '' &&
+                            is_numeric($markVal)
+                        ) {
+                            $totalMarks += (float)$markVal;
+                            $totalStudents++;
+                        }
+                    }
+                }
+
+
+                $averageMarks = $totalStudents > 0
+                    ? round($totalMarks / $totalStudents, 2)
+                    : 0;
+
+                // echo "TOTAL MARKS: {$totalMarks}, TOTAL STUDENTS: {$totalStudents}\n";
+
+                // -------- FINAL PUSH --------
+                $classSectionSubjects[] = [
+                    'class_name'    => $cs['class_name'],
+                    'class_id'      => $cs['class_id'],
+                    'section_id'    => $cs['section_id'],
+                    'section_name'  => $cs['section_name'],
+                    'subject_name'  => $row->name,
+                    'subject_id'    => $row->subject_id,
+                    'academic_yr'   => $academic_yr,
+                    'average_marks' => $averageMarks,
+                ];
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'performanceData' => $classSectionSubjects
+            ]
+        ]);
+    }
+
+    public function timetableDetails($teacher_id, $timetable_id)
+    {
+        $user = $this->authenticateUser();
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+        $todayDayOfWeek = date('l'); // Get current day of the week (e.g., 'Monday')
+        $teacher_id = JWTAuth::getPayload()->get('reg_id');
+
+        $timetable = DB::select("
+                SELECT 
+                    d.name AS class, 
+                    e.name AS section, 
+                    c.name AS subject, 
+                    a.period_no, 
+                    a.class_id,
+                    c.sm_id
+                FROM timetable a
+                JOIN subject_master c ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
+                JOIN class d ON a.class_id = d.class_id
+                JOIN section e ON a.section_id = e.section_id
+                WHERE SUBSTRING_INDEX(a.$todayDayOfWeek, '^', -1) = ?
+                    AND a.academic_yr = ?
+                    AND a.t_id = ?
+                ORDER BY a.period_no
+            ", [$teacher_id, $acd_yr, $timetable_id]);
+        
+
+        $classId = $timetable[0]->class_id;
+        $subjectId = $timetable[0]->sm_id;
+
+        $lessonPlanTemplate = DB::table('lesson_plan_template')
+            ->where('class_id', $classId)
+            ->where('subject_id', $subjectId)
+            ->where('publish', 'Y')
+            ->first();
+            
+        if (!$lessonPlanTemplate) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Lesson Plan Template is not created!!!',
+                'success' => false
+            ]);
+        }
+
+        $lessonPlanData = DB::select("
+            SELECT 
+                chapters.name as chapter_name,
+                lesson_plan_heading.name AS heading_name,
+                lesson_plan_template_details.description AS description
+            FROM lesson_plan_template
+            LEFT JOIN lesson_plan_template_details
+                ON lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id
+            LEFT JOIN class 
+                ON lesson_plan_template.class_id = class.class_id
+            LEFT JOIN lesson_plan_heading 
+                ON lesson_plan_template_details.lesson_plan_headings_id = lesson_plan_heading.lesson_plan_headings_id
+            LEFT JOIN subject_master 
+                ON lesson_plan_template.subject_id = subject_master.sm_id
+            LEFT JOIN chapters  
+                ON lesson_plan_template.chapter_id = chapters.chapter_id
+            WHERE lesson_plan_template.subject_id = ?
+            AND lesson_plan_template.class_id = ?
+            AND lesson_plan_template.publish = 'Y'
+            AND lesson_plan_template.reg_id = ?
+        ", [$subjectId, $classId , $teacher_id]);
+
+        $lessonPlanData = collect($lessonPlanData)
+        ->groupBy('chapter_name')->toArray();
+
+        /*
+        BETTER UI
+        $lessonPlanData = collect($lessonPlanData)
+            ->groupBy('chapter_name')
+            ->map(function ($items) {
+                return $items->groupBy('heading_name');
+            })->toArray();
+        */
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'lessonPlanData' => $lessonPlanData
+            ]
+        ]);
     }
 
     public function dashboardSummary($teacher_id)

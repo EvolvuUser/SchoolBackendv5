@@ -9049,16 +9049,19 @@ class AssessmentController extends Controller
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
         $classId = $request->query('class_id');
         $subjectId = $request->query('sm_id');
         $chapterId = $request->query('chapter_id');
         $classIdArray = $request->query('class_id_array', '');
+
         $lessonPlanTemplate = DB::table('lesson_plan_template')
             ->where('class_id', $classId)
             ->where('subject_id', $subjectId)
             ->where('chapter_id', $chapterId)
             ->where('publish', 'Y')
             ->first();
+            
         if (!$lessonPlanTemplate) {
             return response()->json([
                 'status' => 400,
