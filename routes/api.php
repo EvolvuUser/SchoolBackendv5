@@ -946,6 +946,9 @@
 
             //Students Attendance on dashboard Dev Name - Manish Kumar Sharma 01-09-2025
             Route::get('get_studentslistattendance', [StudentController::class, 'getStudentListAttendance']);
+
+            Route::get('students/attendance/below-percentage', [StudentController::class, 'studentsBelowAttendance']);
+
             Route::post('send_messageforattendance', [StudentController::class, 'sendMessageForAttendance']);
             //HPC Subjects Dev Name - Manish Kumar Sharma 04-09-2025
             Route::post('/check_hpc_subject_name', [AssessmentController::class, 'checkHPCSubjectName']);

@@ -809,6 +809,60 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
        
        
    }
+
+   public function studentsBelowAttendance(Request $request) {
+        $user = $this->authenticateUser();
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $startDate = $request->input('start_date'); 
+        $endDate = $request->input('end_date'); 
+        $threshold = $request->input('threshold');
+        
+        $lowAttendanceStudents = DB::table('attendance')
+            ->join('student', 'student.student_id', '=', 'attendance.student_id')
+            ->join('class', 'class.class_id', '=', 'attendance.class_id')
+            ->join('section', 'section.section_id', '=', 'attendance.section_id')
+            ->whereBetween('attendance.only_date', [$startDate, $endDate])
+            ->where('student.isDelete', 'N')
+            ->where('attendance.class_id', $class_id)
+            ->where('attendance.section_id', $section_id)
+            ->select(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name as classname',
+                'section.name as sectionname',
+                'class.class_id',
+                'section.section_id',
+                DB::raw('SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) as present_days'),
+                DB::raw('COUNT(attendance.attendance_id) as total_days'),
+               DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage')
+            )
+            ->groupBy(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name',
+                'section.name',
+                'class.class_id',
+                'section.section_id'
+            )
+            ->having('attendance_percentage', '<', $threshold)
+            ->orderBy('class.class_id', 'asc')   
+            ->orderBy('section.section_id', 'asc') 
+            ->orderBy('student.first_name', 'asc') 
+            ->get();
+        
+            return response()->json([
+                   'status'=>200,
+                   'message'=>'Student attendance.',
+                   'data' => $lowAttendanceStudents,
+                   'success'=>true
+                   ]);
+       
+   }
    
    public function getStudentListAttendance(Request $request){
         $user = $this->authenticateUser();
