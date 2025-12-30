@@ -1,0 +1,282 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\DB;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Carbon\Carbon;
+use App\Models\Event;
+use App\Models\DailyTodo;
+use Illuminate\Support\Facades\Validator;
+use Exception;
+
+class DailyTodoController extends Controller
+{
+    private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get all todos for logged-in user (dashboard list)
+     */
+    public function index(Request $request) {
+        try {
+            $this->authenticateUser();
+
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            // Get timezone from client (fallback if not sent)
+            $timezone = $request->timezone ?? 'Asia/Kolkata';
+
+            // Validate timezone
+            if (!in_array($timezone, timezone_identifiers_list())) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid timezone'
+                ], 400);
+            }
+
+            // Today's start & end in USER timezone
+            $startOfDay = Carbon::now($timezone)->startOfDay()->timezone('UTC');
+            $endOfDay   = Carbon::now($timezone)->endOfDay()->timezone('UTC');
+
+            $todos = DailyTodo::where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $todos
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch todos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new todo
+     */
+    public function store(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $validator = Validator::make($request->all(), [
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'validation_error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $todo = DailyTodo::create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'login_type' => $login_type,
+                'reg_id' => $reg_id,
+                'is_completed' => false
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Todo created successfully',
+                'data' => $todo
+            ], 201);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create todo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Show a specific todo
+     */
+    public function show($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $todo = DailyTodo::where('id', $id)
+                ->where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                ->first();
+
+            if (!$todo) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Todo not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $todo
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch todo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a todo
+     */
+    public function update(Request $request, $id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $validator = Validator::make($request->all(), [
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'is_completed' => 'nullable|boolean'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'validation_error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $todo = DailyTodo::where('id', $id)
+                ->where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                ->first();
+
+            if (!$todo) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Todo not found'
+                ], 404);
+            }
+
+            $todo->update($request->only(['title', 'description', 'is_completed']));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Todo updated successfully',
+                'data' => $todo
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update todo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a todo
+     */
+    public function destroy($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $todo = DailyTodo::where('id', $id)
+                ->where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                ->first();
+
+            if (!$todo) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Todo not found'
+                ], 404);
+            }
+
+            $todo->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Todo deleted successfully'
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete todo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle completion status
+     */
+    public function toggleCompletion($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $todo = DailyTodo::where('id', $id)
+                ->where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                ->first();
+
+            if (!$todo) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Todo not found'
+                ], 404);
+            }
+
+            $todo->is_completed = !$todo->is_completed;
+            $todo->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Todo status updated',
+                'data' => $todo
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to toggle todo status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+}

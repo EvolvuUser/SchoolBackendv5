@@ -17,6 +17,7 @@
     use App\Http\Services\SmartMailer;
     use App\Http\Controllers\LibraryController;
     use App\Http\Controllers\TeacherDashboardController;
+    use App\Http\Controllers\DailyTodoController;
 
     Route::post('/connectdatabase', [AuthController::class, 'connectByShortName']);
     // Public routes
@@ -106,6 +107,14 @@
             Route::get('/teachers/{teacher_id}/dashboard/timetable/{timetable_id}' , [TeacherDashboardController::class , 'timetableDetails']);
             Route::get('/teachers/{teacher_id}/dashboard/graph' , [TeacherDashboardController::class , 'studentAcademicPerformanceGraphData']);
             Route::get('/teachers/{teacher_id}/dashboard/events' , [TeacherDashboardController::class , 'eventsList']);
+
+            // Todo list module API's 
+            Route::get('/daily_todos', [DailyTodoController::class, 'index']);
+            Route::post('/daily_todos', [DailyTodoController::class, 'store']);
+            Route::get('/daily_todos/{id}', [DailyTodoController::class, 'show']);
+            Route::put('/daily_todos/{id}', [DailyTodoController::class, 'update']);
+            Route::delete('/daily_todos/{id}', [DailyTodoController::class, 'destroy']);
+            Route::put('/daily_todos/{id}/toggle', [DailyTodoController::class, 'toggleCompletion']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
