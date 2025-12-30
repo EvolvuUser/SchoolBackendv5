@@ -817,10 +817,10 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
         $role = $user->role_id;
         $threshold = $request->input('threshold');
         $startDate = $settingsData['academic_yr_from'] ?? '';
+        $endDate = $request->input('end_date');
         if($role == 'T') {
-            $startDate = $endDate;;
+            $startDate = $endDate;
         }
-        $endDate = $request->input('end_date'); 
         $classIds = DB::table('class')
             ->where('department_id', $department_id)
             ->pluck('class_id');
