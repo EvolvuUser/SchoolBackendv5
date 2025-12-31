@@ -118,12 +118,11 @@ class TeacherDashboardController extends Controller
                 return $event;
             });
 
+            // dd($eventsForClasses , $eventsForTeacherLogin);
+
             // Merge both arrays
-            $allEvents = $eventsForTeacherLogin->merge($eventsForClasses)
-                ->sortBy([
-                    ['start_date', 'asc'],
-                    ['start_time', 'desc'],
-                ])
+            $allEvents = $eventsForTeacherLogin
+                ->concat($eventsForClasses)
                 ->values();
 
             return response()->json([
