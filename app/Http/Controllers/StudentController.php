@@ -27,6 +27,106 @@ use App\Jobs\SendMessageStudentDailyAttendanceShortage;
 
 class StudentController extends Controller
 {
+    public function getTodayAbsentStudentsForTeacher(Request $request) {
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $teacher_id = $user->reg_id;
+        $class_id = $request->input('class_id');
+        $section_id = $request->input('section_id');
+        $only_date = Carbon::today()->toDateString();
+        // $only_date = '2025-12-04';
+
+        $classesTaught = DB::table('subject')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $customClaims)
+                ->distinct()
+                ->pluck('class_id')
+                ->toArray();
+
+        $sectionsTaught = DB::table('subject')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $customClaims)
+                ->distinct()
+                ->pluck('section_id')
+                ->toArray();
+
+        $absentstudents = DB::table('attendance')
+            ->join('student', 'student.student_id', '=', 'attendance.student_id')
+            ->join('class', 'class.class_id', '=', 'attendance.class_id')
+            ->join('section', 'section.section_id', '=', 'attendance.section_id')
+            ->leftJoin('redington_webhook_details', function ($join) use ($only_date) {
+                $join->on('redington_webhook_details.stu_teacher_id', '=', 'student.student_id')
+                    ->where('redington_webhook_details.message_type', '=', 'student_daily_attendance_shortage')
+                    ->whereDate('redington_webhook_details.created_at', '=', $only_date);
+            })
+            ->where('attendance.attendance_status', '1') // absent
+            ->where('attendance.only_date', $only_date)
+            ->where('student.isDelete', 'N')
+            ->where('attendance.teacher_id', $teacher_id)
+
+            // ✅ Class filter
+            ->when($class_id, function ($query) use ($class_id) {
+                $query->where('attendance.class_id', $class_id);
+            }, function ($query) use ($classesTaught) {
+                $query->whereIn('attendance.class_id', $classesTaught);
+            })
+
+            // ✅ Section filter
+            ->when($section_id, function ($query) use ($section_id) {
+                $query->where('attendance.section_id', $section_id);
+            }, function ($query) use ($sectionsTaught) {
+                $query->whereIn('attendance.section_id', $sectionsTaught);
+            })
+
+            ->select(
+                'attendance.teacher_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name as classname',
+                'section.name as sectionname',
+                'class.class_id',
+                'section.section_id',
+                'student.student_id',
+                DB::raw('COUNT(redington_webhook_details.webhook_id) as messages_sent_count'),
+                DB::raw('MAX(redington_webhook_details.created_at) as last_message_sent_at'),
+                DB::raw('MAX(redington_webhook_details.webhook_id) as webhook_id'),
+                DB::raw("
+                    CASE 
+                        WHEN COUNT(redington_webhook_details.webhook_id) = 0 THEN 'not_try'
+                        WHEN SUM(CASE WHEN redington_webhook_details.sms_sent = 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y'
+                        ELSE 'N'
+                    END as sms_sent_status
+                ")
+            )
+            ->groupBy(
+                'student.student_id',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'class.name',
+                'section.name',
+                'class.class_id',
+                'section.section_id'
+            )
+            ->orderBy('section.section_id')
+            ->get();
+
+        $countstudents = count($absentstudents);
+        $absentstudentdata = [
+            'absent_student' => $absentstudents,
+            'count_absent_student' => $countstudents
+        ];
+
+        return response()->json([
+            'status' => 200,
+            'data' => $absentstudentdata,
+            'message' => 'Absent students list.',
+            'success' => true
+
+        ]);
+    }
+
     public function todayPendingHomework(Request $request)
     {
         $user = $this->authenticateUser();
