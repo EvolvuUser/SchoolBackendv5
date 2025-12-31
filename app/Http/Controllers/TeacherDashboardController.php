@@ -57,6 +57,7 @@ class TeacherDashboardController extends Controller
                 $query->where('events.isDelete', 'N')
                     ->where('events.publish', 'Y')
                     ->where('events.academic_yr', $academicYr)
+                    ->whereMonth('events.start_date', $month)
                     ->whereYear('events.start_date', $year);
             };
 

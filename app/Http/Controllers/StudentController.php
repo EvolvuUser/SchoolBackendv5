@@ -27,6 +27,10 @@ use App\Jobs\SendMessageStudentDailyAttendanceShortage;
 
 class StudentController extends Controller
 {
+
+    public function todayPendingHomework(Request $request) {
+        
+    }
  
     public function getNewStudentListbysectionforregister(Request $request , $section_id){         
         $studentList = Student::with('getClass', 'getDivision')
