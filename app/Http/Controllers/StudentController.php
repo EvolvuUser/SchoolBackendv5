@@ -27,9 +27,66 @@ use App\Jobs\SendMessageStudentDailyAttendanceShortage;
 
 class StudentController extends Controller
 {
+    public function todayPendingHomework(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $teacher_id = $user->reg_id;
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
 
-    public function todayPendingHomework(Request $request) {
+        $class_id   = $request->input('class_id');
+        $section_id = $request->input('section_id');
+
+        if(!$class_id) {
+            return response()->json([
+                'status'  => 400,
+                'message' => 'class_id is required',
+                'data'    => [],
+                'success' => false
+            ] , 400);
+        }
         
+        if(!$section_id) {
+            return response()->json([
+                'status'  => 400,
+                'message' => 'section_id is required',
+                'data'    => [],
+                'success' => false
+            ] , 400);
+        }
+
+        $today = Carbon::now()->toDateString();
+
+        $pendingHomeworks = DB::table('homework')
+            ->select(
+                'homework.homework_id',
+                'homework.description',
+                'homework.end_date',
+                'homework_comments.homework_status',
+                DB::raw("CONCAT(student.first_name, ' ', student.last_name) as student_name"),
+                'subject_master.name as subject_name',
+                'class.name as class_name',
+                'section.name as section_name'
+            )
+            ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
+            ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
+            ->leftJoin('student', 'homework_comments.student_id', '=', 'student.student_id')
+            ->leftJoin('class', 'homework.class_id', '=', 'class.class_id')
+            ->leftJoin('section', 'homework.section_id', '=', 'section.section_id')
+            ->where('homework.publish', 'Y')
+            ->where('homework.end_date', $today)
+            ->where('homework.class_id', $class_id)
+            ->where('homework.section_id', $section_id)
+            ->where('homework.teacher_id', $teacher_id)
+            ->where('homework.academic_yr', $academicYr)
+            ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
+            ->get();
+
+        return response()->json([
+            'status'  => 200,
+            'message' => "Today's pending homeworks fetched successfully",
+            'data'    => $pendingHomeworks,
+            'success' => true
+        ]);
     }
  
     public function getNewStudentListbysectionforregister(Request $request , $section_id){         
