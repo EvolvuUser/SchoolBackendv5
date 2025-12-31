@@ -476,7 +476,7 @@ class TeacherDashboardController extends Controller
             })
             ->where('service_type.role_id', $role)
             ->where('class_teachers.teacher_id', $reg_id)
-            ->where('ticket.raised_on' , '=', date('Y-m-d'))
+            // ->where('ticket.raised_on' , '=', date('Y-m-d'))
             ->orderBy('raised_on', 'DESC')
             ->get()
             ->map(function ($ticket) {
