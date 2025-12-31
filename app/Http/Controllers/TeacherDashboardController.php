@@ -21,7 +21,7 @@ class TeacherDashboardController extends Controller
         }
     }
 
-    public function eventsList($teacher_id)
+    public function eventsList(Request $request, $teacher_id)
     {
         try {
             // Authenticate user
@@ -49,8 +49,8 @@ class TeacherDashboardController extends Controller
             }
 
             $currentDate = Carbon::now();
-            $month = $currentDate->month;
-            $year  = $currentDate->year;
+            $month = $request->input('month', $currentDate->month);
+            $year  = $request->input('year', $currentDate->year);
 
             // Common conditions
             $commonConditions = function ($query) use ($academicYr, $month, $year) {

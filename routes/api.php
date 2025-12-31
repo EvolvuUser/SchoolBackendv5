@@ -109,6 +109,7 @@
             Route::get('/teachers/{teacher_id}/dashboard/events' , [TeacherDashboardController::class , 'eventsList']);
 
             Route::get('/students/birthdays', [StudentController::class, 'birthdayList']);
+            Route::get('/homeworks/pending/today', [StudentController::class, 'todayPendingHomework']);
 
             // Todo list module API's 
             Route::get('/daily_todos', [DailyTodoController::class, 'index']);
