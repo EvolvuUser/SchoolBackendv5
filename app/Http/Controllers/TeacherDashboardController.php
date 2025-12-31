@@ -106,14 +106,31 @@ class TeacherDashboardController extends Controller
                 ->orderByDesc('events.start_time')
                 ->get();
 
+            // Add category to teacher login events
+            $eventsForTeacherLogin = $eventsForTeacherLogin->map(function ($event) {
+                $event->category = 'teacher_login';
+                return $event;
+            });
+
+            // Add category to class events
+            $eventsForClasses = $eventsForClasses->map(function ($event) {
+                $event->category = 'class';
+                return $event;
+            });
+
+            // Merge both arrays
+            $allEvents = $eventsForTeacherLogin->merge($eventsForClasses)
+                ->sortBy([
+                    ['start_date', 'asc'],
+                    ['start_time', 'desc'],
+                ])
+                ->values();
+
             return response()->json([
                 'status'  => 200,
                 'success' => true,
                 'message' => 'Events fetched successfully.',
-                'data'    => [
-                    'events_for_teacher_login' => $eventsForTeacherLogin,
-                    'events_for_classes'       => $eventsForClasses,
-                ]
+                'data'    => $allEvents
             ], 200);
 
         } catch (\Exception $e) {
