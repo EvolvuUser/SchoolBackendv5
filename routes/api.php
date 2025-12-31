@@ -108,6 +108,8 @@
             Route::get('/teachers/{teacher_id}/dashboard/graph' , [TeacherDashboardController::class , 'studentAcademicPerformanceGraphData']);
             Route::get('/teachers/{teacher_id}/dashboard/events' , [TeacherDashboardController::class , 'eventsList']);
 
+            Route::get('/students/birthdays', [StudentController::class, 'birthdayList']);
+
             // Todo list module API's 
             Route::get('/daily_todos', [DailyTodoController::class, 'index']);
             Route::post('/daily_todos', [DailyTodoController::class, 'store']);

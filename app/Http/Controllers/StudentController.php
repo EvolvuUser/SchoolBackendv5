@@ -810,62 +810,182 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
        
    }
 
-   public function studentsBelowAttendance(Request $request) {
-        $user = $this->authenticateUser();
+   public function birthdayList(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
 
-        $settingsData = JWTAuth::getPayload()->get('settings_new');
+            // Validate request
+            $validated = $request->validate([
+                'class_id'   => 'required|integer',
+                'section_id' => 'required|integer',
+            ]);
 
-        $class_id = $request->input('class_id');
-        $section_id = $request->input('section_id');
-        $startDate = $settingsData['academic_yr_from'];
-        $endDate = $request->input('end_date'); 
-        $threshold = $request->input('threshold');
-        
-        $lowAttendanceStudents = DB::table('attendance')
-            ->join('student', 'student.student_id', '=', 'attendance.student_id')
-            ->join('class', 'class.class_id', '=', 'attendance.class_id')
-            ->join('section', 'section.section_id', '=', 'attendance.section_id')
-            ->whereBetween('attendance.only_date', [$startDate, $endDate])
-            ->where('student.isDelete', 'N')
-            ->where('attendance.class_id', $class_id)
-            ->where('attendance.section_id', $section_id)
-            ->select(
-                'student.student_id',
-                'student.first_name',
-                'student.mid_name',
-                'student.last_name',
-                'class.name as classname',
-                'section.name as sectionname',
-                'class.class_id',
-                'section.section_id',
-                DB::raw('SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) as present_days'),
-                DB::raw('COUNT(attendance.attendance_id) as total_days'),
-               DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage')
-            )
-            ->groupBy(
-                'student.student_id',
-                'student.first_name',
-                'student.mid_name',
-                'student.last_name',
-                'class.name',
-                'section.name',
-                'class.class_id',
-                'section.section_id'
-            )
-            ->having('attendance_percentage', '<', $threshold)
-            ->orderBy('class.class_id', 'asc')   
-            ->orderBy('section.section_id', 'asc') 
-            ->orderBy('student.first_name', 'asc') 
-            ->get();
-        
+            $class_id   = $validated['class_id'];
+            $section_id = $validated['section_id'];
+
+            $today     = Carbon::now()->format('m-d');
+            $yesterday = Carbon::now()->subDay()->format('m-d');
+            $tomorrow  = Carbon::now()->addDay()->format('m-d');
+
+            $birthdayData = [
+                'yesterday' => [],
+                'today'     => [],
+                'tomorrow'  => []
+            ];
+
+            $students = DB::table('student')
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.dob',
+                    'class.name as class_name',
+                    'section.name as section_name'
+                )
+                ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
+                ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+                ->where('student.IsDelete', 'N')
+                ->where('student.class_id', $class_id)
+                ->where('student.section_id', $section_id)
+                ->get();
+
+            foreach ($students as $student) {
+                if (empty($student->dob)) {
+                    continue;
+                }
+
+                $dob = Carbon::parse($student->dob)->format('m-d');
+
+                if ($dob === $yesterday) {
+                    $birthdayData['yesterday'][] = $student;
+                } elseif ($dob === $today) {
+                    $birthdayData['today'][] = $student;
+                } elseif ($dob === $tomorrow) {
+                    $birthdayData['tomorrow'][] = $student;
+                }
+            }
+
             return response()->json([
-                   'status'=>200,
-                   'message'=>'Student attendance.',
-                   'data' => $lowAttendanceStudents,
-                   'success'=>true
-                   ]);
-       
-   }
+                'status'  => 200,
+                'success' => true,
+                'message' => 'Birthday list of students fetched successfully.',
+                'data'    => $birthdayData
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 422,
+                'success' => false,
+                'message' => 'Validation error.',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Something went wrong while fetching birthday list.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function studentsBelowAttendance(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Validate request
+            $validated = $request->validate([
+                'class_id'   => 'required|integer',
+                'section_id' => 'required|integer',
+                'end_date'   => 'required|date',
+                'threshold'  => 'required|numeric|min:0|max:100',
+            ]);
+
+            $settingsData = JWTAuth::getPayload()->get('settings_new');
+
+            $startDate = $settingsData['academic_yr_from'] ?? null;
+
+            if (!$startDate) {
+                return response()->json([
+                    'status'  => 400,
+                    'success' => false,
+                    'message' => 'Academic year start date not found in settings. Please logout and login again.',
+                    'data'    => []
+                ], 400);
+            }
+
+            $class_id   = $validated['class_id'];
+            $section_id = $validated['section_id'];
+            $endDate    = $validated['end_date'];
+            $threshold  = $validated['threshold'];
+
+            $lowAttendanceStudents = DB::table('attendance')
+                ->join('student', 'student.student_id', '=', 'attendance.student_id')
+                ->join('class', 'class.class_id', '=', 'attendance.class_id')
+                ->join('section', 'section.section_id', '=', 'attendance.section_id')
+                ->whereBetween('attendance.only_date', [$startDate, $endDate])
+                ->where('student.isDelete', 'N')
+                ->where('attendance.class_id', $class_id)
+                ->where('attendance.section_id', $section_id)
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class.class_id',
+                    'section.section_id',
+                    DB::raw('SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) as present_days'),
+                    DB::raw('COUNT(attendance.attendance_id) as total_days'),
+                    DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage')
+                )
+                ->groupBy(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'class.name',
+                    'section.name',
+                    'class.class_id',
+                    'section.section_id'
+                )
+                ->having('attendance_percentage', '<', $threshold)
+                ->orderBy('class.class_id', 'asc')
+                ->orderBy('section.section_id', 'asc')
+                ->orderBy('student.first_name', 'asc')
+                ->get();
+
+            return response()->json([
+                'status'  => 200,
+                'success' => true,
+                'message' => 'Student attendance fetched successfully.',
+                'data'    => $lowAttendanceStudents
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 422,
+                'success' => false,
+                'message' => 'Validation error.',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Something went wrong while fetching student attendance.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
    
    public function getStudentListAttendance(Request $request){
         $user = $this->authenticateUser();

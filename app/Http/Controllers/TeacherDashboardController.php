@@ -23,81 +23,108 @@ class TeacherDashboardController extends Controller
 
     public function eventsList($teacher_id)
     {
-        $user = $this->authenticateUser();
-        $academicYr = JWTAuth::getPayload()->get('academic_year');
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
 
-        $currentDate = Carbon::now();
-        $month = $currentDate->month;
-        $year  = $currentDate->year;
+            // Validate teacher_id
+            if (!is_numeric($teacher_id)) {
+                return response()->json([
+                    'status'  => 422,
+                    'success' => false,
+                    'message' => 'Invalid teacher id.',
+                    'data'    => []
+                ], 422);
+            }
 
-        // 🔹 Common conditions closure
-        $commonConditions = function ($query) use ($academicYr, $month, $year) {
-            $query->where('events.isDelete', 'N')
-                ->where('events.publish', 'Y')
-                ->where('events.academic_yr', $academicYr)
-                // ->whereMonth('events.start_date', $month)
-                ->whereYear('events.start_date', $year);
-        };
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
 
-        // get all the classes that the teacher is teaching
-        $classesTaught = DB::table('subject')
-            ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $academicYr)
-            ->distinct()
-            ->pluck('class_id')
-            ->toArray();
+            if (!$academicYr) {
+                return response()->json([
+                    'status'  => 400,
+                    'success' => false,
+                    'message' => 'Academic year not found. Please logout and login again.',
+                    'data'    => []
+                ], 400);
+            }
 
-        /* =====================================================
-        1️⃣ Events visible for TEACHER LOGIN (login_type = T)
-        ===================================================== */
-        $eventsForTeacherLogin = Event::select(
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.class_id',
-                'events.login_type',
-                'events.start_date',
-                'events.start_time',    
-                'events.end_date',
-                'events.end_time',
-            )
-            ->where('events.login_type', 'T')
-            ->where($commonConditions)
-            ->orderBy('events.start_date')
-            ->orderByDesc('events.start_time')
-            ->get();
+            $currentDate = Carbon::now();
+            $month = $currentDate->month;
+            $year  = $currentDate->year;
 
-        /* =====================================================
-        2️⃣ Events visible for CLASSES (class_id 134,135)
-        ===================================================== */
-        $eventsForClasses = Event::select(
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.class_id',
-                'events.login_type',
-                'class.name as class_name',
-                'events.start_date',
-                'events.start_time',
-                'events.end_date',
-                'events.end_time',
-            )
-            ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
-            ->where($commonConditions)
-            ->whereIn('events.class_id', $classesTaught)
-            ->orderBy('events.start_date')
-            ->orderByDesc('events.start_time')
-            ->get();
+            // Common conditions
+            $commonConditions = function ($query) use ($academicYr, $month, $year) {
+                $query->where('events.isDelete', 'N')
+                    ->where('events.publish', 'Y')
+                    ->where('events.academic_yr', $academicYr)
+                    ->whereYear('events.start_date', $year);
+            };
 
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'events_for_teacher_login' => $eventsForTeacherLogin,
-                'events_for_classes'       => $eventsForClasses,
-            ]
-        ]);
+            // Get classes taught by teacher
+            $classesTaught = DB::table('subject')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $academicYr)
+                ->distinct()
+                ->pluck('class_id')
+                ->toArray();
+
+            // Events for teacher login
+            $eventsForTeacherLogin = Event::select(
+                    'events.unq_id',
+                    'events.title',
+                    'events.event_desc',
+                    'events.class_id',
+                    'events.login_type',
+                    'events.start_date',
+                    'events.start_time',
+                    'events.end_date',
+                    'events.end_time'
+                )
+                ->where('events.login_type', 'T')
+                ->where($commonConditions)
+                ->orderBy('events.start_date')
+                ->orderByDesc('events.start_time')
+                ->get();
+
+            // Events for classes taught
+            $eventsForClasses = Event::select(
+                    'events.unq_id',
+                    'events.title',
+                    'events.event_desc',
+                    'events.class_id',
+                    'events.login_type',
+                    'class.name as class_name',
+                    'events.start_date',
+                    'events.start_time',
+                    'events.end_date',
+                    'events.end_time'
+                )
+                ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+                ->where($commonConditions)
+                ->whereIn('events.class_id', $classesTaught)
+                ->orderBy('events.start_date')
+                ->orderByDesc('events.start_time')
+                ->get();
+
+            return response()->json([
+                'status'  => 200,
+                'success' => true,
+                'message' => 'Events fetched successfully.',
+                'data'    => [
+                    'events_for_teacher_login' => $eventsForTeacherLogin,
+                    'events_for_classes'       => $eventsForClasses,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Something went wrong while fetching events.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
-
 
     public function studentAcademicPerformanceGraphData($teacher_id)
     {
