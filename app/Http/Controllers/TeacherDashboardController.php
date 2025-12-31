@@ -465,15 +465,17 @@ class TeacherDashboardController extends Controller
         $user = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
         $role = $user->role_id;
-        // get ticket assigned to the teacher for today
+        // get ticket assigned to the teacher for today  ticket , ticket_comments.appointment_date_time
         $tickets = DB::table('ticket')
-            ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name')
+            ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name' , 'ticket_comments.appointment_date_time')
             ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
             ->join('student', 'student.student_id', '=', 'ticket.student_id')
             ->join('class_teachers', function ($join) {
                 $join->on('class_teachers.class_id', '=', 'student.class_id')
                         ->on('class_teachers.section_id', '=', 'student.section_id');
             })
+            ->leftJoin('ticket_comments', 'ticket.ticket_id', '=', 'ticket_comments.ticket_id')
+            ->where('ticket_comments.appointment_date_time', 'LIKE', date('d-M-Y') . '%')
             ->where('service_type.role_id', $role)
             ->where('class_teachers.teacher_id', $reg_id)
             // ->where('ticket.raised_on' , '=', date('Y-m-d'))
