@@ -108,6 +108,9 @@
             Route::get('/teachers/{teacher_id}/dashboard/graph' , [TeacherDashboardController::class , 'studentAcademicPerformanceGraphData']);
             Route::get('/teachers/{teacher_id}/dashboard/events' , [TeacherDashboardController::class , 'eventsList']);
 
+            // Reminders API
+            Route::get('/teachers/dashboard/reminders', [TeacherDashboardController::class, 'getReminders']);
+
             Route::get('/students/birthdays', [StudentController::class, 'birthdayList']);
             Route::get('/homeworks/pending/today', [StudentController::class, 'todayPendingHomework']);
             Route::get('/teachers/students/absent/today', [StudentController::class, 'getTodayAbsentStudentsForTeacher']);

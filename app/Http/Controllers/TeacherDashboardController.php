@@ -21,6 +21,89 @@ class TeacherDashboardController extends Controller
         }
     }
 
+    public function getReminders(Request $request)
+    {
+        // Implementation for getReminders
+        // 1. -- lesson plan	: all classes , subjects , chapters , if incomplete then show that 
+        // get the classes the teacher teach
+        $user = $this->authenticateUser();
+        $teacher_id = $user->reg_id;
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $classes = DB::table('subject')
+            ->select('class_id' , 'section_id' , 'sm_id')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_yr', $academic_yr)->get()->toArray();
+
+        $incompleteLessonPlansForNextWeek = [];
+
+        $nextWeekStart = Carbon::now()->addWeek()->startOfWeek()->format('Y-m-d');
+        $nextWeekEnd   = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
+
+        foreach ($classes as $data) {
+
+            $lessonPlans = DB::table('lesson_plan')
+                ->select(
+                    'lesson_plan.*',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'subject_master.name as subject_name',
+                    'chapters.chapter_no',
+                    'chapters.name as chapter_name',
+                    'chapters.sub_subject'
+                )
+                ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                ->where('chapters.isDelete', '!=', 'Y')
+                ->where('lesson_plan.reg_id', $teacher_id)
+                ->where('lesson_plan.class_id', $data->class_id)
+                ->where('lesson_plan.section_id', $data->section_id)
+                ->where('lesson_plan.subject_id', $data->sm_id)
+                ->where('lesson_plan.academic_yr', $academic_yr)
+                ->where('lesson_plan.status', 'I')
+                ->whereRaw("
+                    STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', 1), '%d-%m-%Y') <= ?
+                    AND
+                    STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', -1), '%d-%m-%Y') >= ?
+                ", [$nextWeekEnd, $nextWeekStart])
+                ->get();
+
+            if ($lessonPlans->isEmpty()) {
+                continue;
+            }
+
+            $key = $data->class_id . '-' . $data->section_id;
+
+            if (!isset($incompleteLessonPlansForNextWeek[$key])) {
+                $incompleteLessonPlansForNextWeek[$key] = [
+                    'class_id'    => $data->class_id,
+                    'class_name'  => $lessonPlans[0]->class_name,
+                    'section_id'  => $data->section_id,
+                    'section_name'=> $lessonPlans[0]->section_name,
+                    'subjects'    => []
+                ];
+            }
+
+            $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
+                'subject_id'   => $data->sm_id,
+                'subject_name' => $lessonPlans[0]->subject_name,
+                'lesson_plans' => $lessonPlans
+            ];
+        }
+
+        // Re-index array
+        $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlansForNextWeek);
+
+
+        // 2. -- notice : if there is any notice for current teacher then show. 
+
+        return response()->json([
+            "incomplete_lesson_plan_for_next_week" => $incompleteLessonPlansForNextWeek
+        ]);
+    }
+
     public function eventsList(Request $request, $teacher_id)
     {
         try {
@@ -510,7 +593,9 @@ class TeacherDashboardController extends Controller
                     e.name AS section, 
                     c.name AS subject, 
                     a.period_no,
-                    a.t_id
+                    a.t_id,
+                    a.time_in,
+                    a.time_out
                 FROM timetable a
                 JOIN subject_master c ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
                 JOIN class d ON a.class_id = d.class_id
