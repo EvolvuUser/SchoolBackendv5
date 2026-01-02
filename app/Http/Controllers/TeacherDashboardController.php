@@ -476,7 +476,6 @@ class TeacherDashboardController extends Controller
             })
             ->leftJoin('ticket_comments', 'ticket.ticket_id', '=', 'ticket_comments.ticket_id')
             ->where('ticket_comments.appointment_date_time', 'LIKE', date('d-M-Y') . '%')
-            ->where('ticket_comments.login_type', $role)
             ->where('ticket_comments.status' , 'Approved')
             ->where('service_type.role_id', $role)
             ->where('class_teachers.teacher_id', $reg_id)
