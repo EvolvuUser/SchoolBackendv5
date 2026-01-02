@@ -976,15 +976,18 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
         try {
             // Authenticate user
             $user = $this->authenticateUser();
+            $teacher_id = $user->reg_id;
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-            // Validate request
-            $validated = $request->validate([
-                'class_id'   => 'required|integer',
-                'section_id' => 'required|integer',
-            ]);
+            $classes = DB::table('subject')
+            ->select('class_id', 'section_id')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_yr', $academic_yr)
+            ->get();
 
-            $class_id   = $validated['class_id'];
-            $section_id = $validated['section_id'];
+            // Extract UNIQUE class_ids and section_ids
+            $class_ids = $classes->pluck('class_id')->unique()->values()->toArray();
+            $section_ids = $classes->pluck('section_id')->unique()->values()->toArray();
 
             $today     = Carbon::now()->format('m-d');
             $yesterday = Carbon::now()->subDay()->format('m-d');
@@ -1009,17 +1012,15 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
                 ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
                 ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
                 ->where('student.IsDelete', 'N')
-                ->where('student.class_id', $class_id)
-                ->where('student.section_id', $section_id)
+                ->whereIn('student.class_id', $class_ids)
+                ->whereIn('student.section_id', $section_ids)
                 ->get();
 
             foreach ($students as $student) {
                 if (empty($student->dob)) {
                     continue;
                 }
-
                 $dob = Carbon::parse($student->dob)->format('m-d');
-
                 if ($dob === $yesterday) {
                     $birthdayData['yesterday'][] = $student;
                 } elseif ($dob === $today) {
