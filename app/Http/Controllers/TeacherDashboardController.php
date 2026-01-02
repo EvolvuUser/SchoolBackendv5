@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Carbon\Carbon;
 use App\Models\Event;
+use App\Models\DailyTodo;
 use App\Models\StaffNotice;
 
 class TeacherDashboardController extends Controller
@@ -130,12 +131,21 @@ class TeacherDashboardController extends Controller
                 ->orderBy('staff_notice.notice_date')
                 ->get();
 
+            /* -----------------TODOS--------------------- */
+            $todayDate = date('Y-m-d');
+            $todos = DailyTodo::where('reg_id', $user->reg_id)
+                ->where('login_type', $user->role_id)
+                ->where('due_date' , $todayDate)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
             /* ---------------- RESPONSE ---------------- */
             return response()->json([
                 'status'  => true,
                 'data'    => [
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
                     'notice_for_teacher'                   => $notices,
+                    'todoForToday' => $todos
                 ]
             ], 200);
 
@@ -152,7 +162,7 @@ class TeacherDashboardController extends Controller
             /* ---------------- SAFE RESPONSE ---------------- */
             return response()->json([
                 'status'  => false,
-                'message' => 'Something went wrong. Please try again later.'
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
