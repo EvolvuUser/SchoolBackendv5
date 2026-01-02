@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Carbon\Carbon;
 use App\Models\Event;
+use App\Models\StaffNotice;
 
 class TeacherDashboardController extends Controller
 {
@@ -23,85 +24,137 @@ class TeacherDashboardController extends Controller
 
     public function getReminders(Request $request)
     {
-        // Implementation for getReminders
-        // 1. -- lesson plan	: all classes , subjects , chapters , if incomplete then show that 
-        // get the classes the teacher teach
-        $user = $this->authenticateUser();
-        $teacher_id = $user->reg_id;
-        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        try {
 
-        $classes = DB::table('subject')
-            ->select('class_id' , 'section_id' , 'sm_id')
-            ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $academic_yr)->get()->toArray();
-
-        $incompleteLessonPlansForNextWeek = [];
-
-        $nextWeekStart = Carbon::now()->addWeek()->startOfWeek()->format('Y-m-d');
-        $nextWeekEnd   = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
-
-        foreach ($classes as $data) {
-
-            $lessonPlans = DB::table('lesson_plan')
-                ->select(
-                    'lesson_plan.*',
-                    'class.name as class_name',
-                    'section.name as section_name',
-                    'subject_master.name as subject_name',
-                    'chapters.chapter_no',
-                    'chapters.name as chapter_name',
-                    'chapters.sub_subject'
-                )
-                ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
-                ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
-                ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
-                ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                ->where('chapters.isDelete', '!=', 'Y')
-                ->where('lesson_plan.reg_id', $teacher_id)
-                ->where('lesson_plan.class_id', $data->class_id)
-                ->where('lesson_plan.section_id', $data->section_id)
-                ->where('lesson_plan.subject_id', $data->sm_id)
-                ->where('lesson_plan.academic_yr', $academic_yr)
-                ->where('lesson_plan.status', 'I')
-                ->whereRaw("
-                    STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', 1), '%d-%m-%Y') <= ?
-                    AND
-                    STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', -1), '%d-%m-%Y') >= ?
-                ", [$nextWeekEnd, $nextWeekStart])
-                ->get();
-
-            if ($lessonPlans->isEmpty()) {
-                continue;
+            /* ---------------- AUTH ---------------- */
+            $user = $this->authenticateUser();
+            if (!$user) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Unauthorized user'
+                ], 401);
             }
 
-            $key = $data->class_id . '-' . $data->section_id;
+            $teacher_id = $user->reg_id;
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-            if (!isset($incompleteLessonPlansForNextWeek[$key])) {
-                $incompleteLessonPlansForNextWeek[$key] = [
-                    'class_id'    => $data->class_id,
-                    'class_name'  => $lessonPlans[0]->class_name,
-                    'section_id'  => $data->section_id,
-                    'section_name'=> $lessonPlans[0]->section_name,
-                    'subjects'    => []
+            /* ---------------- CLASSES ---------------- */
+            $classes = DB::table('subject')
+                ->select('class_id', 'section_id', 'sm_id')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $academic_yr)
+                ->get();
+
+            $incompleteLessonPlansForNextWeek = [];
+
+            $nextWeekStart = Carbon::now()->addWeek()->startOfWeek()->format('Y-m-d');
+            $nextWeekEnd   = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
+
+            /* ---------------- LESSON PLANS ---------------- */
+            foreach ($classes as $data) {
+
+                $lessonPlans = DB::table('lesson_plan')
+                    ->select(
+                        'lesson_plan.*',
+                        'class.name as class_name',
+                        'section.name as section_name',
+                        'subject_master.name as subject_name',
+                        'chapters.chapter_no',
+                        'chapters.name as chapter_name',
+                        'chapters.sub_subject'
+                    )
+                    ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                    ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
+                    ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
+                    ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                    ->where('chapters.isDelete', '!=', 'Y')
+                    ->where('lesson_plan.reg_id', $teacher_id)
+                    ->where('lesson_plan.class_id', $data->class_id)
+                    ->where('lesson_plan.section_id', $data->section_id)
+                    ->where('lesson_plan.subject_id', $data->sm_id)
+                    ->where('lesson_plan.academic_yr', $academic_yr)
+                    ->where('lesson_plan.status', 'I')
+                    ->whereRaw("
+                        STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', 1), '%d-%m-%Y') <= ?
+                        AND
+                        STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', -1), '%d-%m-%Y') >= ?
+                    ", [$nextWeekEnd, $nextWeekStart])
+                    ->get();
+
+                if ($lessonPlans->isEmpty()) {
+                    continue;
+                }
+
+                $key = $data->class_id . '-' . $data->section_id;
+
+                if (!isset($incompleteLessonPlansForNextWeek[$key])) {
+                    $incompleteLessonPlansForNextWeek[$key] = [
+                        'class_id'     => $data->class_id,
+                        'class_name'   => $lessonPlans[0]->class_name,
+                        'section_id'   => $data->section_id,
+                        'section_name' => $lessonPlans[0]->section_name,
+                        'subjects'     => []
+                    ];
+                }
+
+                $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
+                    'subject_id'   => $data->sm_id,
+                    'subject_name' => $lessonPlans[0]->subject_name,
+                    'lesson_plans' => $lessonPlans
                 ];
             }
 
-            $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
-                'subject_id'   => $data->sm_id,
-                'subject_name' => $lessonPlans[0]->subject_name,
-                'lesson_plans' => $lessonPlans
-            ];
+            $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlansForNextWeek);
+
+            /* ---------------- NOTICES ---------------- */
+            $todaysDate = Carbon::today()->format('Y-m-d');
+
+            $notices = StaffNotice::select([
+                    'staff_notice.subject',
+                    'staff_notice.notice_desc',
+                    'staff_notice.notice_date',
+                    'staff_notice.notice_type',
+                    DB::raw('GROUP_CONCAT(t.name) as staff_name')
+                ])
+                ->join('teacher as t', 't.teacher_id', '=', 'staff_notice.teacher_id')
+                ->where('staff_notice.publish', 'Y')
+                ->where('staff_notice.teacher_id', $teacher_id)
+                ->where('staff_notice.academic_yr', $academic_yr)
+                ->whereDate('staff_notice.notice_date', $todaysDate)
+                ->groupBy(
+                    'staff_notice.subject',
+                    'staff_notice.notice_desc',
+                    'staff_notice.notice_date',
+                    'staff_notice.notice_type'
+                )
+                ->orderBy('staff_notice.notice_date')
+                ->get();
+
+            /* ---------------- RESPONSE ---------------- */
+            return response()->json([
+                'status'  => true,
+                'data'    => [
+                    'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
+                    'notice_for_teacher'                   => $notices,
+                ]
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            /* ---------------- LOG ERROR ---------------- */
+            // Log::error('getReminders API failed', [
+            //     'teacher_id' => $teacher_id ?? null,
+            //     'error'      => $e->getMessage(),
+            //     'line'       => $e->getLine(),
+            //     'file'       => $e->getFile(),
+            // ]);
+
+            /* ---------------- SAFE RESPONSE ---------------- */
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong. Please try again later.'
+            ], 500);
         }
-
-        // Re-index array
-        $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlansForNextWeek);
-
-
-        // 2. -- notice : if there is any notice for current teacher then show. 
-
-        return response()->json([
-            "incomplete_lesson_plan_for_next_week" => $incompleteLessonPlansForNextWeek
-        ]);
     }
 
     public function eventsList(Request $request, $teacher_id)
