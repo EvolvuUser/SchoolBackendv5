@@ -51,7 +51,7 @@ class DailyTodoController extends Controller
 
             $todos = DailyTodo::where('reg_id', $reg_id)
                 ->where('login_type', $login_type)
-                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                // ->whereBetween('created_at', [$startOfDay, $endOfDay])
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -81,7 +81,8 @@ class DailyTodoController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'title' => 'required|string|max:255',
-                'description' => 'nullable|string'
+                'description' => 'nullable|string',
+                'due_date' => 'nullable|date'
             ]);
 
             if ($validator->fails()) {
@@ -94,6 +95,7 @@ class DailyTodoController extends Controller
             $todo = DailyTodo::create([
                 'title' => $request->title,
                 'description' => $request->description,
+                'due_date' => $request->due_date,
                 'login_type' => $login_type,
                 'reg_id' => $reg_id,
                 'is_completed' => false
