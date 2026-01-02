@@ -110,6 +110,7 @@
 
             // Reminders API
             Route::get('/teachers/dashboard/reminders', [TeacherDashboardController::class, 'getReminders']);
+            Route::get('/teachers/class-teacher/defaulter-students', [TeacherDashboardController::class, 'getDefaulters']);
 
             Route::get('/students/birthdays', [StudentController::class, 'birthdayList']);
             Route::get('/homeworks/pending/today', [StudentController::class, 'todayPendingHomework']);

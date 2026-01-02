@@ -5417,14 +5417,63 @@ class NewController extends Controller
      
      public function getSendSMSForFeesPendingData(Request $request,$class_id,$installment){
          try{
-             $user = $this->authenticateUser();
-             $customClaims = JWTAuth::getPayload()->get('academic_year');
-             if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
-                
-                
-                  $results = DB::select("SELECT student_installment,s.student_id, s.installment, fees_category_name, first_name, last_name, roll_no, section_id, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount,(installment_fees - COALESCE(SUM(d.amount), 0) ) AS pending_fee FROM view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE s.academic_yr = '".$customClaims."' and s.class_id=".$class_id." and s.installment like '".$installment."%' AND due_date < CURDATE() AND s.student_installment NOT IN (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '".$customClaims."' and a.class_id=".$class_id." and installment like '".$installment."%') GROUP BY s.student_id, s.installment UNION SELECT concat(f.student_id,'^',b.installment) as student_installment,f.student_id AS student_id, b.installment AS installment,b.category_name as fees_category_name, first_name, last_name, roll_no, section_id, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession, SUM(f.fees_paid) AS paid_amount,(installment_fees - COALESCE(SUM(c.amount), 0) - SUM(f.fees_paid)) AS pending_fee FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment JOIN student e ON f.student_id=e.student_id WHERE f.academic_yr = '".$customClaims."'  and f.class_id=".$class_id." and f.installment like '".$installment."%' GROUP BY f.installment, c.installment HAVING (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)");
-                  foreach($results as $result){
-                      $contactData = DB::table('student as a')
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+                $results = DB::select("
+                  SELECT 
+                    student_installment,
+                    s.student_id, 
+                    s.installment, 
+                    fees_category_name, 
+                    first_name, 
+                    last_name, 
+                    roll_no, 
+                    section_id, 
+                    installment_fees, 
+                    COALESCE(SUM(d.amount), 0) AS concession, 
+                    0 AS paid_amount,
+                    (installment_fees - COALESCE(SUM(d.amount), 0) ) AS pending_fee 
+                  FROM 
+                    view_student_fees_category s 
+                    LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment 
+                    WHERE s.academic_yr = '".$customClaims."' 
+                    and s.class_id=".$class_id." 
+                    and s.installment like '".$installment."%' 
+                    AND due_date < CURDATE() 
+                    AND s.student_installment NOT IN 
+                    
+                    (SELECT student_installment 
+                    FROM view_student_fees_payment a 
+                    WHERE a.academic_yr = '".$customClaims."' 
+                    and a.class_id=".$class_id." 
+                    and installment like '".$installment."%') 
+                    GROUP BY s.student_id, 
+                    s.installment UNION SELECT concat(f.student_id,'^',b.installment) as student_installment,
+                    f.student_id AS student_id, 
+                    b.installment AS installment,
+                    b.category_name as fees_category_name, 
+                    first_name, 
+                    last_name, 
+                    roll_no, 
+                    section_id, 
+                    b.installment_fees, 
+                    COALESCE(SUM(c.amount), 0) AS concession, 
+                    SUM(f.fees_paid) AS paid_amount,
+                    (installment_fees - COALESCE(SUM(c.amount), 0) - SUM(f.fees_paid)) AS pending_fee
+                    FROM view_student_fees_payment f 
+                    LEFT JOIN fee_concession_details c ON f.student_id = c.student_id 
+                    AND f.installment = c.installment 
+                    JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id 
+                    AND b.installment = f.installment JOIN student e ON f.student_id=e.student_id
+                    WHERE f.academic_yr = '".$customClaims."'  
+                    and f.class_id=".$class_id." 
+                    and f.installment like '".$installment."%' 
+                    GROUP BY f.installment, 
+                    c.installment HAVING (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)
+                    ");
+                    foreach($results as $result){
+                        $contactData = DB::table('student as a')
                             ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
                             ->where('a.student_id', $result->student_id)
                             ->select('b.phone_no', 'b.email_id')
@@ -5433,16 +5482,16 @@ class NewController extends Controller
                         $result->phone_no = $contactData->phone_no ?? '';
                         $concession = DB::select(
                                 "SELECT SUM(amount) as installment_concession 
-                                 FROM fee_concession_details 
-                                 WHERE student_id = ? 
-                                 AND installment LIKE ? 
-                                 AND academic_yr = ? 
-                                 GROUP BY installment",
+                                    FROM fee_concession_details 
+                                    WHERE student_id = ? 
+                                    AND installment LIKE ? 
+                                    AND academic_yr = ? 
+                                    GROUP BY installment",
                                 [$result->student_id, $installment . '%', $customClaims]
                             );
                                         // dd( isset($concession[0]) ? $concession[0]->installment_concession : 0, $result->student_id);
-                       $result->actualinstallmentamt = $result->installment_fees - (isset($concession[0]) ? $concession[0]->installment_concession : 0);
-                       $smssent=DB::table('sms_log_for_outstanding_fees')
+                        $result->actualinstallmentamt = $result->installment_fees - (isset($concession[0]) ? $concession[0]->installment_concession : 0);
+                        $smssent=DB::table('sms_log_for_outstanding_fees')
                                     ->where('student_id', $result->student_id)
                                     ->where('installment','like', $installment)
                                     ->where('academic_yr', $customClaims)
@@ -5465,7 +5514,7 @@ class NewController extends Controller
                                         ->select(DB::raw("CONCAT(class.name, ' ', section.name) as classname"))
                                         ->first();
                         $result->classname = $classname->classname;
-                         $lastsmsdate = DB::table('sms_log_for_outstanding_fees')
+                            $lastsmsdate = DB::table('sms_log_for_outstanding_fees')
                                 ->where('student_id', $result->student_id)
                                 ->where('installment','like', $installment)
                                 ->where('academic_yr', $customClaims)
@@ -5483,16 +5532,15 @@ class NewController extends Controller
                             
                             
                         
-    
-                      
-                  }
-                  return response()->json([
-                    'status' => 200,
-                    'data' => $results,
-                    'message'=>'Fee outstanding fees data!',
-                    'success'=>true
+
+                        
+                    }
+                    return response()->json([
+                        'status' => 200,
+                        'data' => $results,
+                        'message'=>'Fee outstanding fees data!',
+                        'success'=>true
                     ]);
-                 
              }
              else
                  {

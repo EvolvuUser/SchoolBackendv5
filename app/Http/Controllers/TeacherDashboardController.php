@@ -503,6 +503,107 @@ class TeacherDashboardController extends Controller
         ]);
     }
 
+    public function getDefaulters(Request $request) {
+        $user = $this->authenticateUser();
+        $teacher_id = $user->reg_id;
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $classes = DB::table('class_teachers')
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id',
+                DB::raw('1 as is_class_teacher')
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $customClaims)
+            ->first();
+
+        $class_id = $classes->class_id;
+        $class_name = DB::table('class')->select('name')
+        ->where('class_id' , $class_id)->first()->name;
+
+        $section_id = $classes->section_id;
+        $section_name = DB::table('section')->select('name')
+        ->where('section_id' , $section_id)->first()->name;
+
+        $installmentId = $request->input('installment_id');
+
+        $defaulters = DB::table('view_student_fees_category as s')
+            ->leftJoin('view_student_fees_payment as p', function ($join) {
+                $join->on('s.student_id', '=', 'p.student_id')
+                    ->on('s.installment', '=', 'p.installment');
+            })
+            ->leftJoin('fee_concession_details as c', function ($join) {
+                $join->on('s.student_id', '=', 'c.student_id')
+                    ->on('s.installment', '=', 'c.installment');
+            })
+            ->join('student as st', 'st.student_id', '=', 's.student_id')
+            ->where('s.academic_yr', $customClaims)
+            ->where('s.class_id', $class_id)
+            ->where('st.section_id', $section_id)
+            ->when($installmentId, function ($q) use ($installmentId) {
+                // user-selected installment
+                $q->where('s.installment', 'like', $installmentId . '%');
+            }, function ($q) {
+                // default behavior
+                $q->where(function ($qq) {
+                    $qq->where('s.installment', 'like', '1%')
+                    ->orWhere('s.installment', 'like', '2%')
+                    ->orWhere('s.installment', 'like', '3%');
+                });
+            })
+            ->groupBy(
+                's.student_id',
+                's.installment',
+                's.installment_fees',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no'
+            )
+            ->select(
+                's.student_id',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no',
+                's.installment',
+                's.installment_fees',
+                DB::raw('COALESCE(SUM(c.amount),0) as concession'),
+                DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
+            )
+            ->get();
+
+        $defaulterStudents = [];
+
+        foreach ($defaulters as $student) {
+            $pending = $student->installment_fees 
+                    - $student->concession 
+                    - $student->paid_amount;
+            if ($pending > 0) {
+
+                $defaulterStudents[] = [
+                    'student_id'   => $student->student_id,
+                    'name'         => $student->first_name . ' ' . $student->last_name,
+                    'roll_no'      => $student->roll_no,
+                    'installment' => $student->installment,
+                    'pending_fee' => $pending
+                ];
+            }
+        }
+
+        return response()->json(
+            [
+                'status' => true,
+                'class_name' => $class_name,
+                'section_name' => $section_name,
+                'count' => count($defaulterStudents),
+                'students' => $defaulterStudents
+            ]
+        );
+    }
+
     public function dashboardSummary($teacher_id)
     {
         $user = $this->authenticateUser();
@@ -551,11 +652,83 @@ class TeacherDashboardController extends Controller
          * Defaulter list card
          */
         
-        $pendingAmount = 0.0; // Placeholder for pending amount logic
-        $totalNumberOfDefaulters = 0; // Placeholder for defaulter count logic
+        $classes = DB::table('class_teachers')
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id',
+                DB::raw('1 as is_class_teacher')
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $customClaims)
+            ->first();
 
-        // have to find out the pending amount and total number of defaulters of the classes the teacher teach logic here
-        // skipping this for now
+        $class_id = $classes->class_id;
+        $section_id = $classes->section_id;
+        $installment = 1; // 1 2 3
+        $defaulters = DB::table('view_student_fees_category as s')
+            ->leftJoin('view_student_fees_payment as p', function ($join) {
+                $join->on('s.student_id', '=', 'p.student_id')
+                    ->on('s.installment', '=', 'p.installment');
+            })
+            ->leftJoin('fee_concession_details as c', function ($join) {
+                $join->on('s.student_id', '=', 'c.student_id')
+                    ->on('s.installment', '=', 'c.installment');
+            })
+            ->join('student as st', 'st.student_id', '=', 's.student_id')
+            ->where('s.academic_yr', $customClaims)
+            ->where('s.class_id', $class_id)
+            ->where('st.section_id', $section_id)
+            ->where(function ($q) {
+                $q->where('s.installment', 'like', '1%')
+                ->orWhere('s.installment', 'like', '2%')
+                ->orWhere('s.installment', 'like', '3%');
+            })
+            ->groupBy(
+                's.student_id',
+                's.installment',
+                's.installment_fees',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no'
+            )
+            ->select(
+                's.student_id',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no',
+                's.installment',
+                's.installment_fees',
+                DB::raw('COALESCE(SUM(c.amount),0) as concession'),
+                DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
+            )
+            ->get();
+
+        $pendingAmount = 0.0;
+        $totalNumberOfDefaulters = 0;
+        $defaulterStudents = [];
+
+        foreach ($defaulters as $student) {
+            $pending = $student->installment_fees 
+                    - $student->concession 
+                    - $student->paid_amount;
+            if ($pending > 0) {
+                $totalNumberOfDefaulters++;
+                $pendingAmount += $pending;
+
+                // $defaulterStudents[] = [
+                //     'student_id'   => $student->student_id,
+                //     'name'         => $student->first_name . ' ' . $student->last_name,
+                //     'roll_no'      => $student->roll_no,
+                //     'installment' => $student->installment,
+                //     'pending_fee' => $pending
+                // ];
+            }
+        }
+
 
         /**
          * Birthday Card
@@ -592,6 +765,12 @@ class TeacherDashboardController extends Controller
                 'homeworkCard' => [
                     'countOfHomeworksDueToday' => $countOfHomeworksDueToday
                 ],
+                'defaulterCount' => [
+                    'totalPendingAmount' => $pendingAmount,
+                    'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
+                    // 'defaulterStudents' => $defaulterStudents,
+                    // 'count' => count($defaulterStudents)
+                ]
             ]
         ]);
     }
