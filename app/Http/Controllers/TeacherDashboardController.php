@@ -136,6 +136,7 @@ class TeacherDashboardController extends Controller
             $todos = DailyTodo::where('reg_id', $user->reg_id)
                 ->where('login_type', $user->role_id)
                 ->where('due_date' , $todayDate)
+                ->where('is_completed' , false)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
