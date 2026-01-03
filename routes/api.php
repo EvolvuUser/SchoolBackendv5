@@ -128,6 +128,8 @@
             Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
             Route::get('/admin/applications/successful-payments', [AdminController::class, 'indexSuccessfulPayments']);
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
+            Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
+            Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
