@@ -18038,6 +18038,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->delete();
                 }
             }
+            DB::table('online_admission_form')
+                ->where('form_id', $form->form_id)
+                ->update([
+                    'admission_form_status' => $status
+                ]);
         } else {
             DB::table('online_admission_form')
                 ->where('form_id', $form->form_id)
