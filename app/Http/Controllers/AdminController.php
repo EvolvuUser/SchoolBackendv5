@@ -17391,4 +17391,133 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
+
+    public function listAdmissionClasses(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Fetch classes open for new admission
+            $classes = DB::table('new_admission_class as nac')
+                ->join('class as c', 'nac.class_id', '=', 'c.class_id')
+                ->where('nac.academic_yr', $academicYear)
+                ->select('nac.class_id', 'c.name as class_name')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Admission classes fetched successfully',
+                'data' => $classes
+            ], 200);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch admission classes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function indexSuccessfulPayments(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Get optional filters
+            $classId = $request->query('class_id');
+            $formId  = $request->query('form_id');
+
+            // Build query
+            $query = DB::table('online_admission_form as a')
+                ->join('online_admfee as b', 'b.form_id', '=', 'a.form_id')
+                ->where('b.status', 'S')
+                ->where('a.academic_yr', $academicYear)
+                ->select(
+                    'a.*',
+                    'b.form_id as payment_form_id',
+                    'b.status as payment_status',
+                    'b.payment_date'
+                )
+                ->orderBy('a.adm_form_pk', 'asc');
+
+            // Optional filters
+            if (!empty($classId)) {
+                $query->where('a.class_id', $classId);
+            }
+
+            if (!empty($formId)) {
+                $query->where('a.form_id', 'like', '%' . $formId . '%');
+            }
+
+            $admissions = $query->get();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Successful admission payments fetched successfully',
+                'data'    => $admissions
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch successful admission payments',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function showApplication(Request $request, $form_id)
+    {
+        try {
+
+            if(!$form_id) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'form_id is required'
+                ], 400);
+            }
+            
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Fetch admission form
+            $application = DB::table('online_admission_form')
+                ->where('form_id', $form_id)
+                ->first();
+
+            if (!$application) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Application details fetched successfully',
+                'data'    => $application
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch application details',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 }

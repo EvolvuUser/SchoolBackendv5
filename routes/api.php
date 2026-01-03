@@ -124,6 +124,11 @@
             Route::delete('/daily_todos/{id}', [DailyTodoController::class, 'destroy']);
             Route::put('/daily_todos/{id}/toggle', [DailyTodoController::class, 'toggleCompletion']);
 
+            // Admin admission module
+            Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
+            Route::get('/admin/applications/successful-payments', [AdminController::class, 'indexSuccessfulPayments']);
+            Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
+
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
             Route::post('/store_staff', [AdminController::class, 'storeStaff']);
