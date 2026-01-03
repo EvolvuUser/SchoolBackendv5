@@ -14,6 +14,7 @@ class DailyTodo extends Model
         'description',
         'login_type',
         'reg_id',
-        'is_completed'
+        'is_completed',
+        'due_date'
     ];
 }
