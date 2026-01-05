@@ -689,6 +689,7 @@ class TeacherDashboardController extends Controller
             ->select(
                 's.student_id',
                 'st.first_name',
+                'st.mid_name',
                 'st.last_name',
                 'st.roll_no',
                 's.installment',

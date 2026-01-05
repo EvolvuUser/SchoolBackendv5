@@ -162,7 +162,10 @@ class StudentController extends Controller
                 'homework.description',
                 'homework.end_date',
                 'homework_comments.homework_status',
-                DB::raw("CONCAT(student.first_name, ' ', student.last_name) as student_name"),
+                'student.first_name' , 
+                'student.mid_name' , 
+                'student.last_name',
+                'student.roll_no',
                 'subject_master.name as subject_name',
                 'class.name as class_name',
                 'section.name as section_name'
