@@ -186,6 +186,8 @@ class StudentController extends Controller
             'message' => "Today's pending homeworks fetched successfully",
             'today' => $today,
             'data'    => $pendingHomeworks,
+            'ay' => $academicYr,
+            'tid' => $teacher_id,
             'success' => true
         ]);
     }
