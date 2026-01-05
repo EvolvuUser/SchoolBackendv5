@@ -164,9 +164,9 @@ class TeacherDashboardController extends Controller
             return response()->json([
                 'status'  => true,
                 'data'    => [
+                    'notice_for_teacher' => $notices,
+                    'todoForToday' => $todos,
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
-                    'notice_for_teacher'                   => $notices,
-                    'todoForToday' => $todos
                 ]
             ], 200);
 
