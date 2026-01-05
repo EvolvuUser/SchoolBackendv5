@@ -18056,4 +18056,113 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         ], 200);
     }
 
+    public function indexDocumentSubmission(Request $request) {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Build query
+            $query = DB::table('online_admission_form as a')
+                ->join('online_admfee as b', 'b.form_id', '=', 'a.form_id')
+                ->leftJoin('class as cc' , 'cc.class_id' , '=' , 'a.class_id')
+                ->where('a.status', 'S')
+                ->where('a.admission_form_status', 'Applied')
+                ->where('a.academic_yr', $academicYear)
+                ->where('b.status', 'S')
+                ->select(
+                    'a.*',
+                    'b.form_id as payment_form_id',
+                    'b.status as payment_status',
+                    'b.payment_date',
+                    'cc.name'
+                )
+                ->orderBy('a.adm_form_pk', 'asc');
+
+            $admissions = $query->get();
+
+            return response()->json([
+                'status'  => true,
+                'data'    => $admissions
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch successful admission payments',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateDocumentSubmission(Request $request)
+    {
+        try {
+            // selector = array of form_ids (checkbox values)
+            $formIds = $request->input('form_ids');
+
+            // Validate selection
+            if (empty($formIds) || !is_array($formIds)) {
+                return response()->json(
+                    [
+                        'status' => false,
+                        'message' => 'Please select form for document submission.!!!'
+                    ]
+                , 400);
+            }
+
+            // Remove empty / null values (same as CI continue logic)
+            $formIds = array_filter($formIds, function ($value) {
+                return !empty($value);
+            });
+
+            if (count($formIds) === 0) {
+                return response()->json(
+                    [
+                        'status' => false,
+                        'message' => 'Please select valid form for document submission.!!!'
+                    ]
+                , 400);
+            }
+
+            DB::beginTransaction();
+
+            // Bulk update instead of loop (better performance)
+            DB::table('online_admission_form')
+                ->whereIn('form_id', $formIds)
+                ->update([
+                    'admission_form_status' => 'Document Submitted'
+                ]);
+
+            DB::commit();
+            
+            return response()->json(
+                [
+                    'status' => true,
+                    'message' => 'Form is successfully updated.!!!'
+                ]
+            , 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            // Log error for debugging
+            // Log::error('Document submission update failed', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString()
+            // ]);
+
+            return response()->json(
+                [
+                    'status' => false,
+                    'message' => 'Something went wrong. Please try again.'
+                ]
+            , 500);
+        }
+    }
+
 }
