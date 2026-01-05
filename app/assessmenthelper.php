@@ -123,7 +123,7 @@ function get_promote_to_of_a_student($student_id,$term_id)
 		//print_r($this->db->last_query()); 		
 		$res= $query; 
 		foreach($res as $row)
-			return $row['promot'];
+			return $row->promot;
     }
     
 function get_school_reopen_date($class_id,$section_id)
@@ -249,4 +249,144 @@ function get_published_exams_class9n10($class_id,$section_id,$acd_yr)
         ->get();
 
     return $query->toArray();
+}
+
+function get_reportcard_publish_value($class_id, $section_id, $term_id = '')
+{
+    $query = DB::table('report_card_publish')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id);
+
+    if ($term_id != '') {
+        $query->where('term_id', $term_id);
+    }
+
+    $res = $query->get();
+
+    foreach ($res as $row) {
+        return $row->publish;
+    }
+}
+
+function get_domain_master_by_class_id($class_id){
+    $query	= DB::select("SELECT * from domain_master where class_id=".$class_id) ;
+    return $query;
+}
+
+function get_parameter_by_dm_id($dm_id)
+{
+    $query	=	DB::select("SELECT * from domain_parameter_details where dm_id=".$dm_id) ;
+    return $query; 
+}
+
+function get_published_domain_parameter_value_by_id($student_id,$dd_id,$term_id,$acd_yr){
+    $query = DB::select("Select parameter_value from student_domain_details where student_id=".$student_id." and term_id=".$term_id." and parameter_id=".$dd_id." and academic_yr='".$acd_yr."' and publish='Y'");
+    $res= $query; 
+    //print_r($this->db->last_query());
+    foreach($res as $row)
+        return $row->parameter_value;
+}
+
+function get_activity_alloted_to_class($class_id, $acd_yr)
+{
+    $query = DB::table('subjects_on_report_card')
+        ->select('*')
+        ->join(
+            'subjects_on_report_card_master',
+            'subjects_on_report_card.sub_rc_master_id',
+            '=',
+            'subjects_on_report_card_master.sub_rc_master_id'
+        )
+        ->where('subjects_on_report_card.class_id', $class_id)
+        // ->where('subjects_on_report_card.section_id', $section_id); // Lija for report card
+        ->where('subjects_on_report_card.subject_type', 'Activity')
+        ->where('subjects_on_report_card.academic_yr', $acd_yr)
+        ->orderBy('subjects_on_report_card.class_id', 'asc')
+        // ->orderBy('subjects_on_report_card.section_id', 'asc'); // Lija report card
+        ->orderBy('subjects_on_report_card_master.sequence', 'asc');
+
+    return $query->get()->toArray();
+}
+
+function get_exam_for_which_marks_available($class_id, $section_id, $student_id, $subject_type)
+{
+    $query = DB::table('student_marks')
+        ->select(DB::raw('DISTINCT(student_marks.exam_id) as exam_id'), 'exam.name')
+        ->join('exam', 'student_marks.exam_id', '=', 'exam.exam_id')
+        ->join(
+            'subjects_on_report_card',
+            'student_marks.subject_id',
+            '=',
+            'subjects_on_report_card.sub_rc_master_id'
+        )
+        ->join('report_card_publish', function ($join) {
+            $join->on('student_marks.class_id', '=', 'report_card_publish.class_id')
+                 ->on('student_marks.section_id', '=', 'report_card_publish.section_id')
+                 ->on('student_marks.exam_id', '=', 'report_card_publish.term_id');
+        })
+        ->where('student_marks.class_id', $class_id)
+        ->where('student_marks.section_id', $section_id)
+        ->where('student_marks.student_id', $student_id)
+        ->where('subjects_on_report_card.subject_type', $subject_type)
+        ->where('subjects_on_report_card.class_id', $class_id)
+        ->where('student_marks.publish', 'Y')
+        ->where('report_card_publish.publish', 'Y')
+        ->orderBy('student_marks.exam_id', 'asc'); // Lija 28-02-25
+
+    return $query->get()->toArray();
+}
+
+function parent_feedback_parameter($class_id)
+{
+        $query	=	DB::select("SELECT * from parent_feedback_master where class_id=".$class_id) ;
+        return $query;
+}
+
+function get_published_parent_feedback_parameter_value_by_id($student_id,$pfm_id,$term_id,$acd_yr)
+{
+        $query = DB::select("Select parameter_value from parent_feedback where student_id=".$student_id." and term_id=".$term_id." and pfm_id=".$pfm_id." and publish='Y' and academic_yr='".$acd_yr."'");
+        $res= $query; 
+        //print_r($this->db->last_query());
+		foreach($res as $row)
+			return $row->parameter_value;
+}
+
+function peer_assessment_parameter($class_id)
+{
+    $query	=	DB::select("SELECT * from peer_assessment_master where class_id=".$class_id) ;
+    return $query;
+}
+
+function get_published_peer_assessment_parameter_value_by_id($student_id,$pam_id,$term_id,$acd_yr)
+{
+    $query = DB::select("Select parameter_value from peer_assessment where student_id=".$student_id." and term_id=".$term_id." and pam_id=".$pam_id." and academic_yr='".$acd_yr."' and publish='Y'");
+    $res= $query; 
+    foreach($res as $row)
+        return $row->parameter_value;
+}
+
+function get_self_assessment_master($class_id)
+{
+    $query	=	DB::select("SELECT * from self_assessment_master where class_id=".$class_id) ;
+    return $query;
+}
+
+function get_published_self_assessment_parameter_value_by_id($student_id,$sam_id,$term_id,$acd_yr)
+{
+    $query = DB::select("Select parameter_value from self_assessment where student_id=".$student_id." and term_id=".$term_id." and sam_id=".$sam_id." and academic_yr='".$acd_yr."' and publish='Y'");
+    $res= $query; 
+    foreach($res as $row)
+        return $row->parameter_value;
+}
+
+function get_term_of_exam($exam_id)
+{
+    $res = DB::table('exam')
+        ->where('exam_id', $exam_id)
+        ->get()
+        ->toArray();
+
+    foreach ($res as $row) {
+        return $row->term_id;
+    }
 }

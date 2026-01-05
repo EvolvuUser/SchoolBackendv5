@@ -10683,6 +10683,9 @@ class AssessmentController extends Controller
         $class_id = $request->input('class_id');
         $academic_yr = $request->input('academic_yr');
         $student_id = $request->input('student_id');
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
         if ($short_name == 'SACS') {
             switch ($class_name) {
@@ -10739,7 +10742,7 @@ class AssessmentController extends Controller
 
                 case '1':
                 case '2':
-                    return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr','codeigniter_app_url'))->stream();
                     break;
 
                 case '3':
