@@ -18318,4 +18318,121 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
+
+    public function indexVerificationList(Request $request) 
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Inputs
+            $religion = $request->query('religion');
+            $sibling  = $request->query('sibling');
+            $form_id  = $request->query('form_id');
+
+            // Build query
+            $query = DB::table('online_admission_form')
+                ->where('status', 'S')
+                ->where('admission_form_status', 'Scheduled')
+                ->where('academic_yr', $academicYear);
+
+            if (!empty($religion)) {
+                $query->where('religion', $religion);
+            }
+
+            if (!empty($sibling)) {
+                $query->where('sibling', $sibling);
+            }
+
+            if (!empty($form_id)) {
+                $query->where('form_id', $form_id);
+            }
+
+            $admissions = $query
+                ->orderBy('adm_form_pk', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $admissions
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch verification list',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateVerificationList(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+            // Selector array (form IDs)
+            $form_ids = $request->input('form_ids');
+
+            if (empty($form_ids) || !is_array($form_ids)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Please select form for verification.'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // foreach ($form_ids as $form_id) {
+
+            //     // Skip empty values (same as CI logic)
+            //     if (empty($form_id)) {
+            //         continue;
+            //     }
+
+            //     // Update admission form status
+            //     DB::table('online_admission_form')
+            //         ->where('form_id', $form_id)
+            //         ->update([
+            //             'admission_form_status' => 'Verified'
+            //         ]);
+
+            //     // Email block (keep as it is)
+            //     // $father_emailid=$this->OnlineAdmission_model->get_father_emailid_from_formid($form_id);
+                
+            //     // $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
+            //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
+            // }
+
+            DB::beginTransaction();
+
+            DB::table('online_admission_form')
+                ->whereIn('form_id', $form_ids)
+                ->update([
+                    'admission_form_status' => 'Verified'
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Form(s) successfully verified.'
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to verify form(s)',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 }

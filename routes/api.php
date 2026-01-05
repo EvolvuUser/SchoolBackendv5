@@ -127,11 +127,16 @@
 
             // Admin admission module
             Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
-            Route::get('/admin/applications/successful-payments', [AdminController::class, 'indexSuccessfulPayments']);
+            Route::get('/admin/applications/payments/successful', [AdminController::class, 'indexSuccessfulPayments']);
+
             Route::get('/admin/applications/document-submission/' , [AdminController::class , 'indexDocumentSubmission']);
             Route::post('/admin/applications/document-submission/' , [AdminController::class , 'updateDocumentSubmission']);
+
             Route::get('/admin/applications/interview-scheduling/' , [AdminController::class , 'indexInterviewScheduling']);
             Route::post('/admin/applications/interview-scheduling/' , [AdminController::class , 'storeInterviewScheduling']);
+            
+            Route::get('/admin/applications/verification-list/' , [AdminController::class , 'indexVerificationList']);
+            Route::post('/admin/applications/verification-list/' , [AdminController::class , 'updateVerificationList']);
 
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
