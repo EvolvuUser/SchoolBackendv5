@@ -118,6 +118,7 @@
 
             // Todo list module API's 
             Route::get('/daily_todos', [DailyTodoController::class, 'index']);
+            Route::get('/daily_todos/all' , [DailyTodoController::class, 'showAll']);
             Route::post('/daily_todos', [DailyTodoController::class, 'store']);
             Route::get('/daily_todos/{id}', [DailyTodoController::class, 'show']);
             Route::put('/daily_todos/{id}', [DailyTodoController::class, 'update']);
