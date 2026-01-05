@@ -91,6 +91,37 @@ class DailyTodoController extends Controller
         }
     }
 
+    public function showAll(Request $request) {
+        try {
+            $this->authenticateUser();
+
+            $reg_id = JWTAuth::getPayload()->get('reg_id');
+            $login_type = JWTAuth::getPayload()->get('role_id');
+
+            $todos = DailyTodo::where('reg_id', $reg_id)
+                ->where('login_type', $login_type)
+                // 🔥 Pending tasks first
+                ->orderByRaw('is_completed ASC')
+                // Optional: nearer due dates first
+                ->orderBy('due_date', 'asc')
+                // Latest created last
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $todos
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch todos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Create a new todo
      */
