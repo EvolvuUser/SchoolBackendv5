@@ -1169,3 +1169,17 @@ use App\Models\Student;
 			$prev_yr_student_data = $s_row; 
 		return $prev_yr_student_data ?? null;
     }
+
+    function get_total_workingdays_from_dailyattendance_classwise($class_id,$section_id,$date_from,$date_to,$acd_yr)
+    {
+		$query=DB::select("select max(workingdays_count) as total_working_days from (select count(*) as workingdays_count from attendance where class_id=".$class_id." and section_id=".$section_id." and only_date>= '".$date_from."' and only_date<= '".$date_to."' and academic_yr='".$acd_yr."' GROUP BY student_id) as working_days");
+      
+        $result= $query;
+		//print_r($this->db->last_query());
+		foreach($result as $r)
+        {
+            $workingdays_count = $r->total_working_days;
+        }
+    
+        return $workingdays_count;
+    }
