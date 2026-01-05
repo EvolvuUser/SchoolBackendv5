@@ -18165,4 +18165,157 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    public function indexInterviewScheduling(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Inputs
+            $religion = $request->query('religion');
+            $sibling  = $request->query('sibling');
+            $form_id  = $request->query('form_id');
+
+            // Build query
+            $query = DB::table('online_admission_form')
+                ->where('status', 'S')
+                ->where('admission_form_status', 'Document Submitted')
+                ->where('academic_yr', $academicYear);
+
+            if (!empty($religion)) {
+                $query->where('religion', $religion);
+            }
+
+            if (!empty($sibling)) {
+                $query->where('sibling', $sibling);
+            }
+
+            if (!empty($form_id)) {
+                $query->where('form_id', $form_id);
+            }
+
+            $admissions = $query
+                ->orderBy('adm_form_pk', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $admissions
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch interview scheduling list',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function storeInterviewScheduling(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+            $interview_date = $request->input('interview_date');
+            $form_ids       = $request->input('form_ids');
+
+            if (!empty($interview_date)) {
+                $interview_time_from = $request->input('interview_time_from');
+                $interview_time_to   = $request->input('interview_time_to');
+                $time_from_12hr = Carbon::createFromFormat('H:i', $interview_time_from)->format('h:i A');
+                $time_to_12hr   = Carbon::createFromFormat('H:i', $interview_time_to)->format('h:i A');
+            }
+
+            if (!empty($form_ids)) {
+                for ($i = 0; $i < count($form_ids); $i++) {
+
+                    if (empty($form_ids[$i])) {
+                        continue;
+                    }
+
+                    if (!empty($interview_date)) {
+
+                        // Check if already scheduled
+                        $query = DB::table('online_adm_interview_schedule')
+                            ->where('form_id', $form_ids[$i])
+                            ->exists();
+
+                        $class_id = DB::table('online_admission_form')
+                            ->where('form_id', $form_ids[$i])
+                            ->value('class_id');
+
+                        $class_name = DB::table('class')
+                            ->where('class_id', $class_id)
+                            ->value('name');
+
+                        $data = [
+                            'interview_date'      => Carbon::parse($interview_date)->format('Y-m-d'),
+                            'interview_time_from' => $interview_time_from,
+                            'interview_time_to'   => $interview_time_to,
+                            'academic_yr'         => $academicYr
+                        ];
+
+                        if (!$query) {
+                            // Insert
+                            $data['form_id'] = $form_ids[$i];
+                            DB::table('online_adm_interview_schedule')->insert($data);
+                        } else {
+                            // Update
+                            DB::table('online_adm_interview_schedule')
+                                ->where('form_id', $form_ids[$i])
+                                ->update($data);
+                        }
+
+                        // Update admission form status
+                        DB::table('online_admission_form')
+                            ->where('form_id', $form_ids[$i])
+                            ->update([
+                                'admission_form_status' => 'Scheduled'
+                            ]);
+
+                        // Dont remove this part keep it as it is
+                        // $father_emailid=$this->OnlineAdmission_model->get_father_emailid_from_formid($list[$i]);
+                        // $mother_emailid=$this->OnlineAdmission_model->get_mother_emailid_from_formid($list[$i]);
+                        
+                        // $from = 'supportsacs@aceventura.in';
+                        // $cc='school@arnoldcentralschool.org';
+                        
+                        // if($class_name=="Nursery"){
+                        
+                        //     $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
+                        //     $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$father_emailid,$from,$cc);
+                        //     $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$mother_emailid,$from,$cc);
+                        // }elseif($class_name=="11"){
+                        //     $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
+                        //     $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$father_emailid,$from,$cc);
+                        //     $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$mother_emailid,$from,$cc);
+                        // }
+
+                    } else {
+                        DB::table('online_admission_form')
+                            ->where('form_id', $form_ids[$i])
+                            ->update([
+                                'admission_form_status' => 'Scheduled'
+                            ]);
+                    }
+                }
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Interview scheduling updated successfully'
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
