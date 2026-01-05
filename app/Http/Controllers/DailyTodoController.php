@@ -49,10 +49,32 @@ class DailyTodoController extends Controller
             $startOfDay = Carbon::now($timezone)->startOfDay()->timezone('UTC');
             $endOfDay   = Carbon::now($timezone)->endOfDay()->timezone('UTC');
 
+            $today = Carbon::today();
+
             $todos = DailyTodo::where('reg_id', $reg_id)
                 ->where('login_type', $login_type)
-                // ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->where(function ($query) use ($today) {
+
+                    // Pending tasks → always visible
+                    $query->where('is_completed', 0)
+
+                        // Completed tasks → only if due_date is today or future
+                        ->orWhere(function ($q) use ($today) {
+                            $q->where('is_completed', 1)
+                            ->whereDate('due_date', '>=', $today);
+                        });
+
+                })
+
+                // 🔥 Pending tasks first
+                ->orderByRaw('is_completed ASC')
+
+                // Optional: nearer due dates first
+                ->orderBy('due_date', 'asc')
+
+                // Latest created last
                 ->orderBy('created_at', 'desc')
+
                 ->get();
 
             return response()->json([

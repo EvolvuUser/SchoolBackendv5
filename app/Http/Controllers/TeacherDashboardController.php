@@ -132,11 +132,12 @@ class TeacherDashboardController extends Controller
                 ->get();
 
             /* -----------------TODOS--------------------- */
-            $todayDate = date('Y-m-d');
+            $today = Carbon::today();
+
             $todos = DailyTodo::where('reg_id', $user->reg_id)
                 ->where('login_type', $user->role_id)
-                ->where('due_date' , $todayDate)
-                ->where('is_completed' , false)
+                ->whereDate('due_date', $today)
+                ->where('is_completed', 0)   // 🔥 ONLY pending
                 ->orderBy('created_at', 'desc')
                 ->get();
 
