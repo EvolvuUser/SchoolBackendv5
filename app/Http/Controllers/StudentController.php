@@ -184,6 +184,7 @@ class StudentController extends Controller
         return response()->json([
             'status'  => 200,
             'message' => "Today's pending homeworks fetched successfully",
+            'today' => $today,
             'data'    => $pendingHomeworks,
             'success' => true
         ]);
