@@ -18435,4 +18435,367 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
+
+    public function indexApprovalList(Request $request) 
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Optional filters
+            $class_id = $request->query('class_id');
+            $form_id  = $request->query('form_id');
+
+            // Build query
+            $query = DB::table('online_admission_form')
+                ->where('status', 'S')
+                ->where('admission_form_status', 'Verified')
+                ->where('academic_yr', $academicYear);
+
+            if (!empty($class_id)) {
+                $query->where('class_id', $class_id);
+            }
+
+            if (!empty($form_id)) {
+                $query->where('form_id', $form_id);
+            }
+
+            $admissions = $query
+                ->orderBy('adm_form_pk', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $admissions
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch approval list',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateApprovalList(Request $request) 
+    {
+        try {
+            $form_ids = $request->input('form_ids');
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            for($i=0,$j=1;$i<count($form_ids);$i++,$j++) 
+            {
+                //if student is not selected by checkbox
+                if($form_ids[$i] == "" || $form_ids[$i] == NULL)
+                {
+                    continue;
+                }
+                else 
+                { 
+                    $form_id = $form_ids[$i];
+                    DB::table('online_admission_form')
+                        ->where('form_id', $form_id)
+                        ->update([
+                            'admission_form_status' => 'Approved'
+                        ]);
+
+                    $application_data = DB::table('online_admission_form')->where('form_id' , $form_id)->first();
+                    $sibling_student_id = $application_data->sibling_student_id;
+
+                    $father_name        = $application_data->father_name;
+                    $f_occupation       = $application_data->father_occupation;
+                    $f_mobile           = $application_data->f_mobile;
+                    $f_email            = $application_data->f_email;
+
+                    $mother_name        = $application_data->mother_name;
+                    $m_occupation       = $application_data->mother_occupation;
+                    $m_mobile           = $application_data->m_mobile;
+                    $m_emailid          = $application_data->m_emailid;
+
+                    $father_adhar_no    = $application_data->f_aadhar_no;
+                    $mother_adhar_no    = $application_data->m_aadhar_no;
+
+                    $f_qualification    = $application_data->f_qualification;
+                    $m_qualification    = $application_data->m_qualification;
+
+                    $academic_yr        = $application_data->academic_yr;
+
+                    $first_name         = $application_data->first_name;
+                    $mid_name           = $application_data->mid_name;
+                    $last_name          = $application_data->last_name;
+
+                    $dob                = $application_data->dob;
+                    $gender             = $application_data->gender;
+                    $application_date   = $application_data->application_date;
+
+                    $religion           = $application_data->religion;
+                    $caste              = $application_data->caste;
+                    $category           = $application_data->category;
+                    $nationality        = $application_data->nationality;
+
+                    $sms_sending_phone_no = $application_data->sms_sending_phone_no;
+
+                    $class_id           = $application_data->class_id;
+                    $mother_tongue      = $application_data->mother_tongue;
+                    $sub_caste          = $application_data->subcaste;
+
+                    $perm_address       = $application_data->perm_address;
+                    $city               = $application_data->city;
+                    $state              = $application_data->state;
+                    $pincode            = $application_data->pincode;
+
+                    $stud_aadhar        = $application_data->stud_aadhar;
+                    $blood_group        = $application_data->blood_group;
+                    $birth_place        = $application_data->birth_place;
+
+                    // If Sibling doesnt exists add data to Student, parent, contact details n usermaster tables
+                    // Changing the logic here. In SACS the sibling class is selected and name is entered. So we will not check if the child exists.
+                    // Rather we will check if the mobile no. or email id exists. If exists map that as the sibling
+                    $parent_id = "";
+                    //Checking if the father mobile no. already exists in the parent table
+                    if (!is_null($f_mobile)) {
+                        $parent_id = DB::table('parent')
+                            ->where('f_mobile', $f_mobile)
+                            ->value('parent_id');
+                    }
+                    if (empty($parent_id) && $f_email !== null) {
+                        $parent_id = DB::table('user_master')
+                            ->where('user_id', $f_email)
+                            ->value('reg_id');
+                    }
+                    if (empty($parent_id) && $m_emailid !== null) {
+                        $parent_id = DB::table('user_master')
+                            ->where('user_id', $m_emailid)
+                            ->value('reg_id');
+                    }
+                    if($parent_id == '') {
+                        $parent_id = DB::table('parent')->insertGetId([
+                            'father_name'        => $father_name,
+                            'father_occupation' => $f_occupation,
+                            'f_mobile'           => $f_mobile,
+                            'f_email'            => $f_email,
+                            'parent_adhar_no'    => $father_adhar_no,
+                            'f_qualification'    => $f_qualification,
+                            'mother_name'        => $mother_name,
+                            'mother_occupation' => $m_occupation,
+                            'm_mobile'           => $m_mobile,
+                            'm_emailid'          => $m_emailid,
+                            'm_adhar_no'         => $mother_adhar_no,
+                            'm_qualification'    => $m_qualification,
+                            'IsDelete'           => 'N',
+                        ]);
+
+                        if ($parent_id) {
+
+                            if (is_null($f_email) || $f_email === 'null' || trim($f_email) === '' || trim($f_email) === "''") {
+                                if (is_null($m_emailid) || $m_emailid === 'null' || trim($m_emailid) === '' || trim($m_emailid) === "''") {
+                                    if ($last_name !== 'null' && $father_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $father_name) . $last_name;
+                                    } elseif ($last_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $last_name);
+                                    } elseif ($father_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $father_name);
+                                    }
+                                } else {
+                                    $user_id = $m_emailid;
+                                }
+                            } else {
+                                $user_id = $f_email;
+                            }
+
+                            $user_id = str_replace("''", '', $user_id);
+
+                            $name = ($father_name !== 'null') ? $father_name : $mother_name;
+
+                            $password = bcrypt('arnolds');
+
+                            DB::table('user_master')->insert([
+                                'user_id' => $user_id,
+                                'name'    => $name,
+                                'password'=> $password,
+                                'reg_id'  => $parent_id,
+                                'role_id' => 'P',
+                            ]);
+
+                            $user_id = str_replace("'", '', $user_id); 
+
+                            if ($usql == 1) {
+                                $school_id = '1';
+                                $user_data = json_encode([
+                                    'user_id'   => $user_id,
+                                    'school_id' => $school_id,
+                                ]);
+                                $evolvuUrl = config('externalapis.EVOLVU_URL');
+
+                                $response = Http::withHeaders([
+                                    'Content-Type' => 'application/json',
+                                ])->post($evolvuUrl . 'user_create_post', json_decode($user_data, true));
+
+                                $token_data = $response->body();
+                                $err = $response->failed() ? $response->status() : null;
+
+                                $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
+
+                                DB::table('contact_details')->insert([
+                                    'id'        => $parent_id,
+                                    'phone_no'  => $phone_no,
+                                    'email_id'  => $f_email,
+                                    'm_emailid' => $m_emailid,
+                                ]);
+
+                                $student_id_new = DB::table('student')->insertGetId([
+                                    'academic_yr'     => $academic_yr,
+                                    'parent_id'      => $parent_id,
+                                    'first_name'     => $first_name,
+                                    'mid_name'       => $mid_name,
+                                    'last_name'      => $last_name,
+                                    'dob'            => $dob,
+                                    'gender'         => $gender,
+                                    'class_id'       => $class_id,
+                                    'section_id'     => $section_id,
+                                    'religion'       => $religion,
+                                    'caste'          => $caste,
+                                    'IsDelete'       => 'N',
+                                    'isNew'          => 'Y',
+                                    'isModify'       => 'N',
+                                    'category'       => $category,
+                                    'mother_tongue'  => $mother_tongue,
+                                    'subcaste'       => $sub_caste,
+                                    'permant_add'    => $perm_address,
+                                    'city'           => $city,
+                                    'state'          => $state,
+                                    'pincode'        => $pincode,
+                                    'stu_aadhaar_no' => $stud_aadhar,
+                                    'blood_group'    => $blood_group,
+                                    'admission_date' => date('Y-m-d'),
+                                    'admission_class'=> $class_name,
+                                    'birth_place'    => $birth_place,
+                                    'nationality'    => $nationality,
+                                    'student_name'   => $first_name,
+                                ]);
+
+                                if ($student_id_new) {
+                                    $password = bcrypt('arnolds');
+                                    $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+                                    DB::table('user_master')->insert([
+                                        'user_id' => $user_id1,
+                                        'name'    => $first_name,
+                                        'password'=> $password,
+                                        'reg_id'  => $student_id_new,
+                                        'role_id' => 'S',
+                                    ]);
+                                }
+
+                                DB::table('online_admission_form')
+                                    ->where('form_id', $form_id)
+                                    ->update([
+                                        'student_id' => $student_id_new,
+                                    ]);
+
+                                $from = 'supportsacs@aceventura.in';
+                                $cc   = 'school@arnoldcentralschool.org';
+
+                                if ($m_emailid != '') {
+                                    $mmail = str_replace("'", "", $m_emailid);
+                                }
+
+                                if ($f_email != '') {
+                                    $fmail = str_replace("'", "", $f_email);
+                                }
+
+                                if ($class_name == "Nursery") {
+                                    $textmsg = "<div class='col-md-12'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune. <br/>As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> ...</div>";
+                                    //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$mmail,$from,$cc);
+                                    //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$fmail,$from,$cc);
+                                } elseif ($class_name == "11") {
+                                    $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- ...</b></div>";
+                                    //$this->send_email($textmsg,"Information for Class 11 admission",$mmail,$from,$cc);
+                                    //$this->send_email($textmsg,"Information for Class 11 admission",$fmail,$from,$cc);
+                                }
+                            } 
+                        }
+                    } elseif($parent_id != "") {
+                        $student_id_new = DB::table('student')->insertGetId([
+                            'academic_yr'      => $academic_yr,
+                            'parent_id'       => $parent_id,
+                            'first_name'      => $first_name,
+                            'mid_name'        => $mid_name,
+                            'last_name'       => $last_name,
+                            'dob'             => $dob,
+                            'gender'          => $gender,
+                            'class_id'        => $class_id,
+                            'section_id'      => $section_id,
+                            'religion'        => $religion,
+                            'caste'           => $caste,
+                            'IsDelete'        => 'N',
+                            'isNew'           => 'Y',
+                            'isModify'        => 'N',
+                            'category'        => $category,
+                            'mother_tongue'   => $mother_tongue,
+                            'subcaste'        => $sub_caste,
+                            'permant_add'     => $perm_address,
+                            'city'            => $city,
+                            'state'           => $state,
+                            'pincode'         => $pincode,
+                            'stu_aadhaar_no'  => $stud_aadhar,
+                            'blood_group'     => $blood_group,
+                            'admission_date'  => date('Y-m-d'),
+                            'admission_class' => $class_name,
+                            'birth_place'     => $birth_place,
+                            'nationality'     => $nationality,
+                            'student_name'    => $first_name,
+                        ]);
+
+                        if ($student_id_new) {
+
+                            $password = bcrypt('arnolds');
+                            $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+                            DB::table('user_master')->insert([
+                                'user_id' => $user_id1,
+                                'name'    => $first_name,
+                                'password'=> $password,
+                                'reg_id'  => $student_id_new,
+                                'role_id' => 'S',
+                            ]);
+                        }
+
+                        $from = 'supportsacs@aceventura.in';
+                        $cc   = 'school@arnoldcentralschool.org';
+
+                        if ($m_emailid != '') {
+                            $mmail = str_replace("'", "", $m_emailid);
+                        }
+
+                        if ($f_email != '') {
+                            $fmail = str_replace("'", "", $f_email);
+                        }
+
+                        if ($class_name == "Nursery") {
+                            $textmsg = "<div class='col-md-12'><font color='#000000'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune.<br/> As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> The original Birth certificate must have the full name of the child with correct spellings, parent's name and date of birth (this will go to the school record).<br>b) <b>Demand draft of Rs. 30,000/- (admission Fee and I Instalment fee):</b> The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>Divine Word Nursery</b>.<br>c) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 60,500/-</b> (admission fee and all the three instalment)<br><br><b>Also please note that</b><br>d) The books, stationery and uniform will be supplied by the vendor at a later date which will be intimated to you. <br> e) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective vendors only at a later date.<br>f) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br>g) Classes will began in the month of June for the students of Nursery.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune</font></div>";
+                        } elseif ($class_name == "11") {
+                            $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- (for Arnold's School Students only) I Instalment fee.</b> <br>b) <b>Demand draft of Rs. 31,500/- (for Non-Arnold's School Students) Admission Fee Rs. 10000 + I Instalment fee Rs. 21,500.</b> <br>c) The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>St. Arnold's Central School</b><br>d) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 58,500/- (For Arnold's students) Rs. 68,500/- (Non-Arnold's students)</b><br> e) <b>Also please note that</b><br>&nbsp;&nbsp;&nbsp;i) The books, stationery and uniform will be supplied by the vender at a later date which will be intimated to you.<br>&nbsp;&nbsp;&nbsp;ii) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective venders only at a later date.<br>&nbsp;&nbsp;&nbsp;iii) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune</div>";
+                        }
+
+                    }
+                    DB::table('online_admission_form')
+                        ->where('form_id', $form_id)
+                        ->update([
+                            'student_id' => $student_id_new,
+                        ]);
+                }
+            }
+            return response()->json([
+                'status' => true,
+                'message' => 'Forms are successfully approved.!!!',
+            ], 200);
+        } catch(Exception $e) {
+            dd($e);
+        }
+    }
 }
