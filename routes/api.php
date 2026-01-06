@@ -147,7 +147,13 @@
 
             // HSCS extra CURD for admin module
             Route::get('/admin/admission-management' , [AdminController::class , 'getAdmissionManagement']);
+            Route::post('/admin/adminssion-management/create' , [AdminController::class , 'createAdmissionForm']);
+            Route::get('/admin/admission-management/{id}' , [AdminController::class , 'viewAdmissionForm']);
+            Route::delete('/admin/admission-management/{id}' , [AdminController::class , 'deleteAdmissionForm']);
+            Route::patch('/admin/admission-management/{id}' , [AdminController::class , 'updateAdmissionForm']);
+
             Route::get('/admin/admission/classes/not-created' , [AdminController::class , 'getAdmissionClassesNotCreated']);
+
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);

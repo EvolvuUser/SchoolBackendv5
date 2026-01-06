@@ -19011,4 +19011,296 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 405);
         }
     }
+
+    public function createAdmissionForm(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // ✅ Basic validation
+            $request->validate([
+                'class_id'   => 'required|integer',
+                'start_date' => 'nullable|date',
+                'end_date'   => 'nullable|date',
+                'form_fee'   => 'required|numeric',
+            ]);
+
+            // ✅ Prepare data
+            $data = [
+                'class_id'             => $request->input('class_id'),
+                'start_date'           => $request->input('start_date')
+                                            ? Carbon::parse($request->input('start_date'))->format('Y-m-d')
+                                            : null,
+                'end_date'             => $request->input('end_date')
+                                            ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
+                                            : null,
+                'application_form_fee' => $request->input('form_fee'),
+                'publish'              => $request->input('publish') ?? 'N',
+                'academic_yr'          => $academic_year, // adjust if using JWT
+            ];
+
+            // ❌ Academic year missing
+            if (!$data['academic_yr']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Academic year not found'
+                ], 400);
+            }
+
+            // 🔍 Check if class already exists
+            $exists = DB::table('new_admission_class')
+                ->where('class_id', $data['class_id'])
+                ->where('academic_yr', $data['academic_yr'])
+                ->first();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This class already exists'
+                ], 409); // Conflict
+            }
+
+            // ✅ Insert record
+            DB::table('new_admission_class')->insert($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Admission class added successfully',
+                'data'    => $data
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            // Log::error('Admission Form Error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Admission Form Error: '.$e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function viewAdmissionForm(Request $request, $id)
+    {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 📅 Academic year from JWT
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            if (!$academic_year) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Academic year not found'
+                ], 400);
+            }
+
+            // 🔍 Fetch admission form
+            $admissionForm = DB::table('new_admission_class')
+                ->select('new_admission_class.*' , 'class.name as class_name')
+                ->leftJoin('class' , 'class.class_id' , 'new_admission_class.class_id')
+                ->where('nac_id', $id)
+                ->where('new_admission_class.academic_yr', $academic_year)
+                ->first();
+
+            if (!$admissionForm) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Admission form not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Admission form fetched successfully',
+                'data'    => $admissionForm
+            ], 200);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired token'
+            ], 401);
+
+        } catch (\Exception $e) {
+            // \Log::error('View Admission Form Error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'View Admission Form Error: '.$e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteAdmissionForm(Request $request, $id)
+    {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 📅 Academic year from JWT
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            if (!$academic_year) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Academic year not found'
+                ], 400);
+            }
+
+            // 🔍 Get admission class
+            $admissionClass = DB::table('new_admission_class')
+                ->where('nac_id', $id)
+                ->where('academic_yr', $academic_year)
+                ->first();
+
+            if (!$admissionClass) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Admission class not found'
+                ], 404);
+            }
+
+            // 🔗 Check if class is already used
+            $inUse = DB::table('online_admission_form')
+                ->where('class_id', $admissionClass->class_id)
+                ->exists();
+
+            if ($inUse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Application form has been filled for this class, cannot delete'
+                ], 409); // Conflict
+            }
+
+            // 🗑 Delete safely
+            DB::table('new_admission_class')
+                ->where('nac_id', $id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Admission class deleted successfully'
+            ], 200);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired token'
+            ], 401);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete Admission Form Error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while deleting admission class'
+            ], 500);
+        }
+    }
+
+    public function updateAdmissionForm(Request $request, $id)
+    {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 📅 Academic year from JWT
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            if (!$academic_year) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Academic year not found'
+                ], 400);
+            }
+
+            // ✅ Validation
+            $request->validate([
+                'class_id'   => 'required|integer',
+                'start_date' => 'nullable|date',
+                'end_date'   => 'nullable|date',
+                'form_fee'   => 'required|numeric',
+            ]);
+
+            // 🧾 Prepare update data
+            $data = [
+                'class_id'             => $request->input('class_id'),
+                'start_date'           => $request->input('start_date')
+                                            ? Carbon::parse($request->input('start_date'))->format('Y-m-d')
+                                            : null,
+                'end_date'             => $request->input('end_date')
+                                            ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
+                                            : null,
+                'application_form_fee' => $request->input('form_fee'),
+                'publish'              => $request->input('publish') ?? 'N',
+            ];
+
+            // 🔍 Check record exists
+            $admissionClass = DB::table('new_admission_class')
+                ->where('nac_id', $id)
+                ->where('academic_yr', $academic_year)
+                ->first();
+
+            if (!$admissionClass) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Admission class not found'
+                ], 404);
+            }
+
+            // 🚫 Duplicate class check (except current record)
+            $exists = DB::table('new_admission_class')
+                ->where('class_id', $data['class_id'])
+                ->where('academic_yr', $academic_year)
+                ->where('nac_id', '!=', $id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This class already exists'
+                ], 409);
+            }
+
+            // ✏️ Update record
+            DB::table('new_admission_class')
+                ->where('nac_id', $id)
+                ->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Admission class updated successfully'
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired token'
+            ], 401);
+
+        } catch (\Exception $e) {
+            \Log::error('Update Admission Form Error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while updating admission class'
+            ], 500);
+        }
+    }
 }
