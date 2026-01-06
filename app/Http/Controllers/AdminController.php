@@ -18409,8 +18409,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
             // }
 
-            DB::beginTransaction();
-
             DB::table('online_admission_form')
                 ->whereIn('form_id', $form_ids)
                 ->update([
