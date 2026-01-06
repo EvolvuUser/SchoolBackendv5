@@ -145,6 +145,10 @@
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
             Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
 
+            // HSCS extra CURD for admin module
+            Route::get('/admin/admission-management' , [AdminController::class , 'getAdmissionManagement']);
+            Route::get('/admin/admission/classes/not-created' , [AdminController::class , 'getAdmissionClassesNotCreated']);
+
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
             Route::post('/store_staff', [AdminController::class, 'storeStaff']);

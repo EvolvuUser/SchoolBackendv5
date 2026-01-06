@@ -479,24 +479,22 @@ class TeacherDashboardController extends Controller
         foreach ($subjects as $row) {
 
             // -------- GET STUDENT MARKS (same for all classes) --------
-            $student_marks = DB::table(DB::raw("(
-                SELECT b.student_id, a.present, a.total_marks , a.highest_total_marks
-                FROM student_marks a
-                JOIN student b ON a.student_id = b.student_id
-                WHERE b.class_id = ?
-                AND b.section_id = ?
-                AND a.subject_id = ?
-                AND a.academic_yr = ?
-                AND a.publish = 'Y'
-                AND b.IsDelete = " . '"N"' . "
-            ) x"))
-            ->setBindings([
-                $class_id,
-                $section_id,
-                $row->subject_id,
-                $academic_yr
-            ])
-            ->get();
+            $student_marks = DB::table('student_marks as a')
+                ->join('student as b', 'a.student_id', '=', 'b.student_id')
+                ->select(
+                    'b.student_id',
+                    'a.present',
+                    'a.total_marks',
+                    'a.highest_total_marks'
+                )
+                ->where('b.class_id', $class_id)
+                ->where('b.section_id', $section_id)
+                ->where('a.subject_id', $row->subject_id)
+                ->where('a.academic_yr', $academic_yr)
+                ->where('a.publish', 'Y')
+                ->where('b.IsDelete', 'N')
+                ->get();
+
 
             // -------- CALCULATION --------
             $totalMarksSum = 0;
@@ -537,7 +535,8 @@ class TeacherDashboardController extends Controller
             'status' => 'success',
             'data' => [
                 'performanceData' => $classSectionSubjects
-            ]
+            ],
+            'ayr' => $academic_yr
         ]);
     }
 
