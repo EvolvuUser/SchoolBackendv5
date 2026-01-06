@@ -683,12 +683,14 @@ class TeacherDashboardController extends Controller
                 's.installment',
                 's.installment_fees',
                 'st.first_name',
+                'st.mid_name',
                 'st.last_name',
                 'st.roll_no'
             )
             ->select(
                 's.student_id',
                 'st.first_name',
+                'st.mid_name',
                 'st.last_name',
                 'st.roll_no',
                 's.installment',
@@ -708,7 +710,9 @@ class TeacherDashboardController extends Controller
 
                 $defaulterStudents[] = [
                     'student_id'   => $student->student_id,
-                    'name'         => $student->first_name . ' ' . $student->last_name,
+                    'first_name'         => $student->first_name,
+                    'mid_name' => $student->mid_name,
+                    'last_name' => $student->last_name,
                     'roll_no'      => $student->roll_no,
                     'installment' => $student->installment,
                     'pending_fee' => $pending
