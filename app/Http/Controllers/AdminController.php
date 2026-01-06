@@ -179,53 +179,132 @@ class AdminController extends Controller
         ]);
     }
 
+    // OLD - 2026-01-06
+    // public function staffBirthdayList(Request $request)
+    // {
+    //     $payload = getTokenPayload($request);
+    //     if (!$payload) {
+    //         return response()->json(['error' => 'Invalid or missing token'], 401);
+    //     }
+    //     $academicYr = $payload->get('academic_year');
+    //     if (!$academicYr) {
+    //         return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
+    //     }
+
+    //     $currentDate = Carbon::now();
+
+    //     $staffBirthday = Teacher::where('IsDelete', 'N')
+    //         ->whereMonth('birthday', $currentDate->month)
+    //         ->whereDay('birthday', $currentDate->day)
+    //         ->get();
+
+    //     $studentBirthday = Student::where('IsDelete', 'N')
+    //         ->join('class', 'class.class_id', '=', 'student.class_id')
+    //         ->join('section', 'section.section_id', '=', 'student.section_id')
+    //         ->leftjoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
+    //         ->whereMonth('dob', $currentDate->month)
+    //         ->whereDay('dob', $currentDate->day)
+    //         ->where('student.academic_yr', $academicYr)
+    //         ->select('student.*', 'class.name as classname', 'section.name as sectionname', 'contact_details.*')
+    //         ->get();
+
+    //     $teachercount = Teacher::where('IsDelete', 'N')
+    //         ->whereMonth('birthday', $currentDate->month)
+    //         ->whereDay('birthday', $currentDate->day)
+    //         ->count();
+    //     $studentcount = Student::where('IsDelete', 'N')
+    //         ->whereMonth('dob', $currentDate->month)
+    //         ->whereDay('dob', $currentDate->day)
+    //         ->where('academic_yr', $academicYr)
+    //         ->count();
+
+    //     return response()->json([
+    //         'staffBirthday' => $staffBirthday,
+    //         'studentBirthday' => $studentBirthday,
+    //         'studentcount' => $studentcount,
+    //         'teachercount' => $teachercount
+
+    //     ]);
+    // }
+
+    // // NEW - 2026-01-06 - bdays seperated by yesterday , today , tomorrow
     public function staffBirthdayList(Request $request)
     {
         $payload = getTokenPayload($request);
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
+
         $academicYr = $payload->get('academic_year');
         if (!$academicYr) {
-            return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
+            return response()->json([
+                'message' => 'Academic year not found in request headers',
+                'success' => false
+            ], 404);
         }
 
-        $currentDate = Carbon::now();
+        // Dates
+        $dates = [
+            'yesterday' => Carbon::now()->subDay(),
+            'today'     => Carbon::now(),
+            'tomorrow'  => Carbon::now()->addDay(),
+        ];
 
-        $staffBirthday = Teacher::where('IsDelete', 'N')
-            ->whereMonth('birthday', $currentDate->month)
-            ->whereDay('birthday', $currentDate->day)
-            ->get();
+        /** -------------------------
+         *  Base Queries
+         *  ------------------------- */
+        $staffBaseQuery = Teacher::where('IsDelete', 'N');
 
-        $studentBirthday = Student::where('IsDelete', 'N')
+        $studentBaseQuery = Student::where('student.IsDelete', 'N')
             ->join('class', 'class.class_id', '=', 'student.class_id')
             ->join('section', 'section.section_id', '=', 'student.section_id')
-            ->leftjoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
-            ->whereMonth('dob', $currentDate->month)
-            ->whereDay('dob', $currentDate->day)
+            ->leftJoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
             ->where('student.academic_yr', $academicYr)
-            ->select('student.*', 'class.name as classname', 'section.name as sectionname', 'contact_details.*')
-            ->get();
+            ->select(
+                'student.*',
+                'class.name as classname',
+                'section.name as sectionname',
+                'contact_details.*'
+            );
 
-        $teachercount = Teacher::where('IsDelete', 'N')
-            ->whereMonth('birthday', $currentDate->month)
-            ->whereDay('birthday', $currentDate->day)
-            ->count();
-        $studentcount = Student::where('IsDelete', 'N')
-            ->whereMonth('dob', $currentDate->month)
-            ->whereDay('dob', $currentDate->day)
-            ->where('academic_yr', $academicYr)
-            ->count();
+        /** -------------------------
+         *  Response Structure
+         *  ------------------------- */
+        $response = [
+            'students' => [],
+            'staff'    => []
+        ];
+
+        foreach ($dates as $key => $date) {
+
+            // STAFF
+            $staffList = (clone $staffBaseQuery)
+                ->whereMonth('birthday', $date->month)
+                ->whereDay('birthday', $date->day)
+                ->get();
+
+            // STUDENTS
+            $studentList = (clone $studentBaseQuery)
+                ->whereMonth('dob', $date->month)
+                ->whereDay('dob', $date->day)
+                ->get();
+
+            $response['staff'][$key] = [
+                'count' => $staffList->count(),
+                'list'  => $staffList
+            ];
+
+            $response['students'][$key] = [
+                'count' => $studentList->count(),
+                'list'  => $studentList
+            ];
+        }
 
         return response()->json([
-            'staffBirthday' => $staffBirthday,
-            'studentBirthday' => $studentBirthday,
-            'studentcount' => $studentcount,
-            'teachercount' => $teachercount
-
+            'success' => true,
+            'data'    => $response
         ]);
     }
-
 
     public function getEvents(Request $request): JsonResponse
     {
