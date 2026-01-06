@@ -125,6 +125,26 @@
             Route::delete('/daily_todos/{id}', [DailyTodoController::class, 'destroy']);
             Route::put('/daily_todos/{id}/toggle', [DailyTodoController::class, 'toggleCompletion']);
 
+            // Admin admission module
+            Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
+            Route::get('/admin/applications/payments/successful', [AdminController::class, 'indexSuccessfulPayments']);
+
+            Route::get('/admin/applications/document-submission/' , [AdminController::class , 'indexDocumentSubmission']);
+            Route::post('/admin/applications/document-submission/' , [AdminController::class , 'updateDocumentSubmission']);
+
+            Route::get('/admin/applications/interview-scheduling/' , [AdminController::class , 'indexInterviewScheduling']);
+            Route::post('/admin/applications/interview-scheduling/' , [AdminController::class , 'storeInterviewScheduling']);
+            
+            Route::get('/admin/applications/verification-list/' , [AdminController::class , 'indexVerificationList']);
+            Route::post('/admin/applications/verification-list/' , [AdminController::class , 'updateVerificationList']);
+
+            Route::get('/admin/applications/approval-list/' , [AdminController::class , 'indexApprovalList']);
+            Route::post('/admin/applications/approval-list/' , [AdminController::class , 'updateApprovalList']);
+
+            Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
+            Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
+            Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
+
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
             Route::post('/store_staff', [AdminController::class, 'storeStaff']);
