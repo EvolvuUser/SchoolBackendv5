@@ -457,6 +457,7 @@ class TeacherDashboardController extends Controller
     {
         $user = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $teacher_id = $reg_id;
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $class_id = $request->query('class_id');
         $section_id = $request->query('section_id');
@@ -464,17 +465,37 @@ class TeacherDashboardController extends Controller
         // 2. Subjects + average marks
         $classSectionSubjects = [];
 
-        $subjects = DB::select("
-            SELECT 
-                sm.name,
-                sm.sm_id AS subject_id
-            FROM subject a
-            LEFT JOIN subject_master sm ON a.sm_id = sm.sm_id
-            WHERE a.class_id   = ?
-            AND a.section_id = ?
-            AND a.teacher_id = ?
-            AND a.academic_yr = ?
-        ", [$class_id, $section_id, $reg_id, $academic_yr]);
+        $subjects = DB::table('subject as a')
+            ->distinct()
+            ->select(
+                'c.sub_rc_master_id as subject_id',
+                'c.name as name'
+            )
+            ->join('sub_subreportcard_mapping as b', 'a.sm_id', '=', 'b.sm_id')
+            ->join('subjects_on_report_card_master as c', 'b.sub_rc_master_id', '=', 'c.sub_rc_master_id')
+            ->join('subjects_on_report_card as d', 'd.sub_rc_master_id', '=', 'c.sub_rc_master_id')
+            ->where('a.class_id', $class_id)
+            ->where('a.section_id', $section_id)
+            ->where('d.class_id', $class_id)
+            ->where('a.teacher_id', $teacher_id)
+            ->where('a.academic_yr', $academic_yr)
+            ->orderBy('a.section_id', 'asc')
+            ->orderBy('c.sequence', 'asc')
+            ->get()
+            ->toArray();
+
+        // have to update
+        // $subjects = DB::select("
+        //     SELECT 
+        //         sm.name,
+        //         sm.sm_id AS subject_id
+        //     FROM subject a
+        //     LEFT JOIN subject_master sm ON a.sm_id = sm.sm_id
+        //     WHERE a.class_id   = ?
+        //     AND a.section_id = ?
+        //     AND a.teacher_id = ?
+        //     AND a.academic_yr = ?
+        // ", [$class_id, $section_id, $reg_id, $academic_yr]);
 
         foreach ($subjects as $row) {
 
@@ -482,35 +503,22 @@ class TeacherDashboardController extends Controller
             $student_marks = DB::table('student_marks as a')
                 ->join('student as b', 'a.student_id', '=', 'b.student_id')
                 ->select(
-                    'b.student_id',
-                    'a.present',
-                    'a.total_marks',
-                    'a.highest_total_marks'
+                    DB::raw('COUNT(b.student_id) as student_count'),
+                    DB::raw('SUM(a.total_marks) as total_marks_sum'),
+                    DB::raw('SUM(a.highest_total_marks) as total_highest')
                 )
                 ->where('b.class_id', $class_id)
                 ->where('b.section_id', $section_id)
                 ->where('a.subject_id', $row->subject_id)
                 ->where('a.academic_yr', $academic_yr)
                 ->where('a.publish', 'Y')
-                ->where('b.IsDelete', 'N')
-                ->get();
+                ->first();
 
 
             // -------- CALCULATION --------
-            $totalMarksSum = 0;
-            $studentCount  = 0;
-            $totalMarksTotal = 0;
-
-            foreach ($student_marks as $mark) {
-                // skip null or empty marks
-                if ($mark->total_marks !== null && $mark->total_marks !== '') {
-                    $totalMarksSum += (float) $mark->total_marks;
-                    $studentCount++;
-                }
-                if($mark->highest_total_marks != null && $mark->highest_total_marks != '') {
-                    $totalMarksTotal += (float) $mark->highest_total_marks;
-                }
-            }
+            $totalMarksSum     = (float) ($student_marks->total_marks_sum ?? 0);
+            $totalMarksTotal   = (float) ($student_marks->total_highest ?? 0);
+            $studentCount      = (int)   ($student_marks->student_count ?? 0);
 
             // avoid division by zero
             $averagePercentage = ($totalMarksTotal > 0)

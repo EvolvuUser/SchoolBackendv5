@@ -17518,6 +17518,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Build query
             $query = DB::table('online_admission_form as a')
+                ->join('class' , 'class.class_id' , '=' , 'a.class_id')
                 ->join('online_admfee as b', 'b.form_id', '=', 'a.form_id')
                 ->where('b.status', 'S')
                 ->where('a.academic_yr', $academicYear)
@@ -17525,7 +17526,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'a.*',
                     'b.form_id as payment_form_id',
                     'b.status as payment_status',
-                    'b.payment_date'
+                    'b.payment_date',
+                    'class.name as class_name'
                 )
                 ->orderBy('a.adm_form_pk', 'asc');
 
