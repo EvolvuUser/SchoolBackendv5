@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use App\Models\Event;
 use App\Models\DailyTodo;
 use App\Models\StaffNotice;
+use App\Models\Teacher;
 
 class TeacherDashboardController extends Controller
 {
@@ -873,6 +874,12 @@ class TeacherDashboardController extends Controller
             ->whereIn('class_id', $classIds)
             ->whereIn('section_id', $sectionIds)
             ->whereRaw("DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')")
+            ->count();
+
+        $date = Carbon::now();
+        $countOfBirthdaysToday += Teacher::where('IsDelete', 'N')
+            ->whereMonth('birthday',  $date->month)
+            ->whereDay('birthday',  $date->day)
             ->count();
 
         /**
