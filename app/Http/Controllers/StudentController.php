@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use League\Csv\Writer;
 use App\Models\Parents;
+use App\Models\Teacher;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Division;
@@ -1005,6 +1006,28 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
                 'tomorrow'  => []
             ];
 
+            $staffBirthDayData = [
+                'yesterday' => [],
+                'today'     => [],
+                'tomorrow'  => []
+            ];
+            $dates = [
+                'yesterday' => Carbon::now()->subDay(),
+                'today'     => Carbon::now(),
+                'tomorrow'  => Carbon::now()->addDay(),
+            ];
+            $staffBaseQuery = Teacher::where('IsDelete', 'N');
+            foreach ($dates as $key => $date) {
+
+                // STAFF
+                $staffList = (clone $staffBaseQuery)
+                    ->whereMonth('birthday', $date->month)
+                    ->whereDay('birthday', $date->day)
+                    ->get();
+
+                $staffBirthDayData[$key] = $staffList;
+            }
+
             $students = DB::table('student')
                 ->select(
                     'student.student_id',
@@ -1040,7 +1063,10 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
                 'status'  => 200,
                 'success' => true,
                 'message' => 'Birthday list of students fetched successfully.',
-                'data'    => $birthdayData
+                'data'    => [
+                    'studentBirthDays' => $birthdayData,
+                    'staffBirthDays' => $staffBirthDayData
+                ]
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
