@@ -513,8 +513,8 @@ class TeacherDashboardController extends Controller
             }
 
             // avoid division by zero
-            $averageMarks = $studentCount > 0
-                ? round($totalMarksSum / $studentCount, 2)
+            $averagePercentage = ($totalMarksTotal > 0)
+                ? round(($totalMarksSum / $totalMarksTotal) * 100, 2)
                 : 0;
 
             // -------- FINAL PUSH --------
@@ -524,8 +524,8 @@ class TeacherDashboardController extends Controller
                 'subject_name'  => $row->name,
                 'subject_id'    => $row->subject_id,
                 'academic_yr'   => $academic_yr,
-                'studentCount' => $studentCount,
-                'average_marks' => $averageMarks,
+                'studentCount'  => $studentCount,
+                'average_percentage' => $averagePercentage,  // updated field
                 'totalMarksStudentGot' => $totalMarksSum,
                 'outOfTotalMarks' =>  $totalMarksTotal,
             ];
