@@ -1035,11 +1035,15 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
                     'student.mid_name',
                     'student.last_name',
                     'student.dob',
+                    'studen.guardian_mobile',
+                    'student.',
                     'class.name as class_name',
-                    'section.name as section_name'
+                    'section.name as section_name',
+                    'contact_details.*'
                 )
                 ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
                 ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+                ->leftJoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
                 ->where('student.IsDelete', 'N')
                 ->whereIn('student.class_id', $class_ids)
                 ->whereIn('student.section_id', $section_ids)
