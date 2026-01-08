@@ -868,16 +868,17 @@ class TeacherDashboardController extends Controller
         /**
          * Birthday Card
          */
-
-        $countOfBirthdaysToday = DB::table('student')
+        $date = Carbon::now();
+        $studentCount = DB::table('student')
             ->where('academic_yr', $customClaims)
             ->whereIn('class_id', $classIds)
             ->whereIn('section_id', $sectionIds)
-            ->whereRaw("DATE_FORMAT(dob, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')")
+            ->whereMonth('dob', $date->month)
+            ->whereDay('dob', $date->day)
             ->count();
 
-        $date = Carbon::now();
-        $countOfBirthdaysToday += Teacher::where('IsDelete', 'N')
+        
+        $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
             ->whereMonth('birthday',  $date->month)
             ->whereDay('birthday',  $date->day)
             ->count();
@@ -885,12 +886,16 @@ class TeacherDashboardController extends Controller
         /**
          * Homework Card
          */
+        $today = Carbon::now()->toDateString();
         $countOfHomeworksDueToday = 0; // Placeholder for homework due today logic
         $countOfHomeworksDueToday = DB::table('homework')
-            ->where('academic_yr', $customClaims)
-            ->whereIn('class_id', $classIds)
-            ->whereIn('section_id', $sectionIds)
-            ->where('end_date', $todayDate)
+            ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
+            ->where('homework.academic_yr', $customClaims)
+            ->where('homework.publish', 'Y')
+            ->whereIn('homework.class_id', $classIds)
+            ->whereIn('homework.section_id', $sectionIds)
+            ->where('homework.end_date', $today)
+            ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
             ->count();
 
         return response()->json([
