@@ -17621,7 +17621,23 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
 
             // Hardcoded doc types (same as CodeIgniter logic)
-            $docTypes = ["BC" , 'PS' , 'FP', 'AC', 'BP' , 'CC' , 'PC' , 'RC'];
+            $docTypes = [
+                '9R',
+                'AC',
+                'BC',
+                'BP',
+                'CC',
+                'FA',
+                'FP',
+                'MA',
+                'MB',
+                'MC',
+                'MP',
+                'PS',
+                'RC',
+                'TC'
+            ];
+
 
             $allowedImageExt = ['gif', 'png', 'jpg', 'jpeg'];
 
