@@ -17686,29 +17686,29 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ] , 404);
         }
         if($status == 'Approved') {
-            $sibling_student_id     = $form?->sibling_student_id;
-            $father_name            = $form?->father_name;
-            $f_occupation           = $form?->father_occupation;
-            $f_mobile               = $form?->f_mobile;
-            $f_email                = $form?->f_email;
-            $mother_name            = $form?->mother_name;
-            $m_occupation           = $form?->mother_occupation;
-            $m_mobile               = $form?->m_mobile;
-            $m_emailid              = $form?->m_emailid;
-            $parent_adhar_no        = $form?->parent_adhar_no;
-            $academic_yr            = $form?->academic_yr;
-            $first_name             = $form?->first_name;
-            $mid_name               = $form?->mid_name;
-            $last_name              = $form?->last_name;
-            $dob                    = $form?->dob;
-            $gender                 = $form?->gender;
-            $application_date       = $form?->application_date;
-            $religion               = $form?->religion;
-            $caste                  = $form?->caste;
-            $category               = $form?->category;
-            $nationality            = $form?->nationality;
-            $sms_sending_phone_no   = $form?->sms_sending_phone_no;
-            $class_id               = $form?->class_id;
+            $sibling_student_id     = $form->sibling_student_id ?? '';
+            $father_name            = $form->father_name ?? '';
+            $f_occupation           = $form->father_occupation ?? '';
+            $f_mobile               = $form->f_mobile ?? '';
+            $f_email                = $form->f_email ?? '';
+            $mother_name            = $form->mother_name ?? '';
+            $m_occupation           = $form->mother_occupation ?? '';
+            $m_mobile               = $form->m_mobile ?? '';
+            $m_emailid              = $form->m_emailid ?? '';
+            $parent_adhar_no        = $form->parent_adhar_no ?? '';
+            $academic_yr            = $form->academic_yr ?? '';
+            $first_name             = $form->first_name ?? '';
+            $mid_name               = $form->mid_name ?? '';
+            $last_name              = $form->last_name ?? '';
+            $dob                    = $form->dob ?? '';
+            $gender                 = $form->gender ?? '';
+            $application_date       = $form->application_date ?? '';
+            $religion               = $form->religion ?? '';
+            $caste                  = $form->caste ?? '';
+            $category               = $form->category ?? '';
+            $nationality            = $form->nationality ?? '';
+            $sms_sending_phone_no   = $form->sms_sending_phone_no ?? '';
+            $class_id               = $form->class_id ?? '';
 
             if($sibling_student_id != 0) {
 
