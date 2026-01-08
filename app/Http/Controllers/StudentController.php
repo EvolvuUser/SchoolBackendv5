@@ -1035,8 +1035,6 @@ public function getParentInfoOfStudent(Request $request, $siblingStudentId): Jso
                     'student.mid_name',
                     'student.last_name',
                     'student.dob',
-                    'studen.guardian_mobile',
-                    'student.',
                     'class.name as class_name',
                     'section.name as section_name',
                     'contact_details.*'
