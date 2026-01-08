@@ -17583,6 +17583,43 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 404);
             }
 
+            if ($application->sibling === 'Y') {
+                // Example: "119^468"
+                $classSection = $application->sibling_class_id;
+                $class_id   = null;
+                $section_id = null;
+                if (!empty($classSection) && strpos($classSection, '^') !== false) {
+                    [$class_id, $section_id] = explode('^', $classSection);
+                }
+                // Sibling name logic
+                $sibling_id = $application->sibling_student_id;
+                if (!empty($sibling_id) && ctype_digit((string) $sibling_id)) {
+                    $sibling_student = DB::table('student')
+                        ->where('student_id', $sibling_id)
+                        ->first();
+                    if ($sibling_student) {
+                        $application->sibling_name =
+                            trim(
+                                $sibling_student->first_name . ' ' .
+                                $sibling_student->mid_name . ' ' .
+                                $sibling_student->last_name
+                            );
+                    }
+                } else {
+                    $application->sibling_name = $sibling_id;
+                }
+
+                // Fetch class & section safely
+                $application->sibling_class = $class_id
+                    ? DB::table('class')->where('class_id', $class_id)->first()->name
+                    : null;
+
+                $application->sibling_section = $section_id
+                    ? DB::table('section')->where('section_id', $section_id)->first()->name
+                    : null;
+            }
+
+
             // Hardcoded doc types (same as CodeIgniter logic)
             $docTypes = ["BC" , 'PS' , 'FP', 'AC', 'BP' , 'CC' , 'PC'];
 
