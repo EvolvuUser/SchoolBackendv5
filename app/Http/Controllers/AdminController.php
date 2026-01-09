@@ -18340,6 +18340,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Get academic year from JWT
             $academicYear = JWTAuth::getPayload()->get('academic_year');
+            $short_name = JWTAuth::getPayload()->get('short_name');
 
             // Inputs
             $religion = $request->query('religion');
@@ -18351,7 +18352,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->select('online_admission_form.*' , 'class.name as class_name')
                 ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
                 ->where('online_admission_form.status', 'S')
-                ->where('online_admission_form.admission_form_status', 'Document Submitted')
+                ->where('online_admission_form.admission_form_status', $short_name == 'SACS' ? 'Document Submitted' : 'Applied' )
                 ->where('online_admission_form.academic_yr', $academicYear);
 
             if (!empty($religion)) {
