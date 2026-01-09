@@ -18390,6 +18390,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
 
             $interview_date = $request->input('interview_date');
             $form_ids       = $request->input('form_ids');
@@ -18456,8 +18457,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         // $cc='school@arnoldcentralschool.org';
                         
                         if($class_name=="Nursery") {
-                        
-                            $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
+                            
+                            if($shortname == 'HSCS') {
+                                $textmsg ="Dear Parent,<br/><br/> As a part of the admission procedure, your ward's interview has been scheduled on ".$interview_date." from " . $time_from_12hr . " to " . $time_to_12hr . ".<br/><br/>Regards,<br/>
+								Holy Spirit Convent School";
+                            } else {
+                                $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
+                            }
+                            
                             // $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$father_emailid,$from,$cc);
                             // $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$mother_emailid,$from,$cc);
 
@@ -18469,16 +18476,20 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
 
                         } elseif($class_name=="11") {
-                            $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
+                            if($shortname == 'HSCS') { 
+                                $textmsg = "No-body created";
+                            } else {
+                                $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
+                            }
                             // $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$father_emailid,$from,$cc);
                             // $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$mother_emailid,$from,$cc);
 
                             $emailData = [
-                                'subject' => 'Inviting For Verification for Nursery Admission',
+                                'subject' => 'Inviting For Verification for Class 11 Admission',
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                            smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
                         }
 
                     } else {
@@ -18562,6 +18573,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // Authenticate user
             $user = $this->authenticateUser();
             $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $short_name = JWTAuth::getPayload()->get('short_name');
 
             // Selector array (form IDs)
             $form_ids = $request->input('form_ids');
@@ -18595,10 +18607,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             //     // $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
             //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
             // }
+            if($shortname == 'HSCS') {
+                $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>Holy Spirit Convent School";
+            } else {
+                $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
+            }
 
-            $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
             $emailData = [
-                'subject' => 'SACS-Admission Details',
+                'subject' => $shortname.'-Admission Details',
                 'textmsg' => $textmsg,
             ];
 
@@ -18684,6 +18700,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $form_ids = $request->input('form_ids');
             $class_id = $request->input('class_id');
             $section_id = $request->input('section_id');
+            $short_name = JWTAuth::getPayload()->get('short_name');
+
             for($i=0,$j=1;$i<count($form_ids);$i++,$j++) 
             {
                 //if student is not selected by checkbox
@@ -18906,15 +18924,21 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 }
 
                                 if ($class_name == "Nursery") {
-                                    $textmsg = "<div class='col-md-12'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune. <br/>As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> ...</div>";
+                                    if($short_name == 'SACS') {
+                                        $textmsg = "<div class='col-md-12'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune. <br/>As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> ...</div>";
+                                        $subject = "Admission Confirmation for";
+                                    } else {
+                                        $textmsg ="<div class='col-md-12'>Dear Parent,<br /> <br />We are pleased to inform you that your child, ".$first_name." ".$last_name.", has been selected for admission to Holy Spirit Convent School,Lonikand for Grade ".$class_name."<br> To secure a seat for ".$first_name." ".$last_name.", please complete the admission process by paying the required fees.  You can proceed with the payment using the link below:<br>"."<a href='".base_url()."index.php/Admission' target='_blank'>Admission portal login</a><br>"."After the payment is successfully processed, we request you to visit the school office with the payment slip and the necessary documents to finalize the admission process.<br>For any assistance or queries, feel free to contact us at +91 9763692681 / +91 9673463441 or admissionsholyspiritcbse@gmail.com<br>We look forward to welcoming your child to Holy Spirit Convent School,Lonikand.<br/><br />Thank you. <br>Holy Spirit Convent School</div>";
+                                        $subject = "Admission Confirmation for";
+                                    }
                                     //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$mmail,$from,$cc);
                                     $emailData = [
                                         'subject' => 'Information for Divine Word Nursery admission',
                                         'textmsg' => $textmsg,
                                     ];
-                                    smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                                    // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
                                     //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$fmail,$from,$cc);
-                                    smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                                    // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
                                 } elseif ($class_name == "11") {
                                     $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- ...</b></div>";
                                     $emailData = [
@@ -18922,9 +18946,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                         'textmsg' => $textmsg,
                                     ];
                                     //$this->send_email($textmsg,"Information for Class 11 admission",$mmail,$from,$cc);
-                                    smart_mail($mmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
+                                    // smart_mail($mmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
                                     //$this->send_email($textmsg,"Information for Class 11 admission",$fmail,$from,$cc);
-                                    smart_mail($fmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
+                                    // smart_mail($fmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
                                 }
                             } 
                         }
