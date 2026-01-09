@@ -17573,7 +17573,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Fetch application
             $application = DB::table('online_admission_form')
-                ->where('form_id', $form_id)
+                ->select(
+                    'online_admission_form.*',
+                    'class.name as class_name',
+                    )
+                ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
+                ->where('online_admission_form.form_id', $form_id)
                 ->first();
 
             if (!$application) {
