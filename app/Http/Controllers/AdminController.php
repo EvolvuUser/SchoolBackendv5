@@ -18244,7 +18244,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'b.form_id as payment_form_id',
                     'b.status as payment_status',
                     'b.payment_date',
-                    'cc.name'
+                    'cc.name as class_name'
                 )
                 ->orderBy('a.adm_form_pk', 'asc');
 
@@ -18348,9 +18348,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Build query
             $query = DB::table('online_admission_form')
-                ->where('status', 'S')
-                ->where('admission_form_status', 'Document Submitted')
-                ->where('academic_yr', $academicYear);
+                ->select('online_admission_form.*' , 'class.name as class_name')
+                ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
+                ->where('online_admission_form.status', 'S')
+                ->where('online_admission_form.admission_form_status', 'Document Submitted')
+                ->where('online_admission_form.academic_yr', $academicYear);
 
             if (!empty($religion)) {
                 $query->where('religion', $religion);
@@ -18517,9 +18519,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Build query
             $query = DB::table('online_admission_form')
-                ->where('status', 'S')
-                ->where('admission_form_status', 'Scheduled')
-                ->where('academic_yr', $academicYear);
+                ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
+                ->select('online_admission_form.*' , 'class.name as class_name')
+                ->where('online_admission_form.status', 'S')
+                ->where('online_admission_form.admission_form_status', 'Scheduled')
+                ->where('online_admission_form.academic_yr', $academicYear);
 
             if (!empty($religion)) {
                 $query->where('religion', $religion);
@@ -18641,9 +18645,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // Build query
             $query = DB::table('online_admission_form')
-                ->where('status', 'S')
-                ->where('admission_form_status', 'Verified')
-                ->where('academic_yr', $academicYear);
+                ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
+                ->select('online_admission_form.*' , 'class.name as class_name')
+                ->where('online_admission_form.status', 'S')
+                ->where('online_admission_form.admission_form_status', 'Verified')
+                ->where('online_admission_form.academic_yr', $academicYear);
 
             if (!empty($class_id)) {
                 $query->where('class_id', $class_id);
