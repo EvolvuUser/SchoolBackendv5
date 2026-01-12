@@ -18669,15 +18669,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->where('online_admission_form.academic_yr', $academicYear);
 
             if (!empty($class_id)) {
-                $query->where('class_id', $class_id);
+                $query->where('online_admission_form.class_id', $class_id);
             }
 
             if (!empty($form_id)) {
-                $query->where('form_id', $form_id);
+                $query->where('online_admission_form.form_id', $form_id);
             }
 
             $admissions = $query
-                ->orderBy('adm_form_pk', 'asc')
+                ->orderBy('online_admission_form.adm_form_pk', 'asc')
                 ->get();
 
             return response()->json([
@@ -19401,6 +19401,25 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    public function getSectionsByClass(Request $req  , $class_id) {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+            $sections = DB::table('section')->where('academic_yr' , $payload->get('acadamic_yr'))->where('class_id' , $class_id)->get();
+            return response()->json([
+                'status' => true , 
+                'data' => $sections,
+                'ayr' => $payload->get('acadamic_yr')
+            ]);
+        } catch(Exception $err) {
+            return response()->json([
+                'status' => false, 
+                'message' => "Something went wront please try again",
+                'errorMessage' => $err->getMessage(),
+            ]);
+        }
+    }
+
     // Admission email module 
     public function AdmissionEmailIndex()
     {
@@ -19417,6 +19436,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => true , 
                 'data' => $templates,
             ]);
+
         } catch(Exception $err) {
             return response()->json();
         }

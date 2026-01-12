@@ -127,7 +127,7 @@
 
             // Admin admission module
             Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
-            
+            Route::get('/admin/classes/{class_id}/sections', [AdminController::class, 'getSectionsByClass']);
 
             Route::get('/admin/applications/payments/successful', [AdminController::class, 'indexSuccessfulPayments']);
 
