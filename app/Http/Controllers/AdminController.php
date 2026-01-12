@@ -18788,6 +18788,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     $blood_group        = $application_data->blood_group;
                     $birth_place        = $application_data->birth_place;
 
+                    $class_name = DB::table('class')->where('class_id' , $class_id)->value('name');
+
                     // If Sibling doesnt exists add data to Student, parent, contact details n usermaster tables
                     // Changing the logic here. In SACS the sibling class is selected and name is entered. So we will not check if the child exists.
                     // Rather we will check if the mobile no. or email id exists. If exists map that as the sibling
