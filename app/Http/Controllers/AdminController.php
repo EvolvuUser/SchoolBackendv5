@@ -19065,7 +19065,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return response()->json([
                 'status' => false, 
                 'errorMessage' => $e->getMessage(),
-            ] , 500)
+            ] , 500);
         }
     }
 
