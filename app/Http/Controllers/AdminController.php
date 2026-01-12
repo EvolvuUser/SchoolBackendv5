@@ -18659,6 +18659,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // Optional filters
             $class_id = $request->query('class_id');
             $form_id  = $request->query('form_id');
+            $student_name = trim($request->query('student_name')); // "Leo Harry Devanesan"
 
             // Build query
             $query = DB::table('online_admission_form')
@@ -18670,6 +18671,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             if (!empty($class_id)) {
                 $query->where('online_admission_form.class_id', $class_id);
+            }
+
+            if (!empty($student_name)) {
+                $nameParts = array_values(array_filter(explode(' ', $student_name)));
+                $query->where(function ($q) use ($nameParts) {
+                    foreach ($nameParts as $part) {
+                        $q->where(function ($sub) use ($part) {
+                            $sub->orWhere('online_admission_form.first_name', 'LIKE', "%{$part}%")
+                                ->orWhere('online_admission_form.mid_name', 'LIKE', "%{$part}%")
+                                ->orWhere('online_admission_form.last_name', 'LIKE', "%{$part}%");
+                        });
+                    }
+                });
             }
 
             if (!empty($form_id)) {
