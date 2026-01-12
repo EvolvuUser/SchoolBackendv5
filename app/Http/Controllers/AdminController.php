@@ -18666,7 +18666,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'status' => false,
                     'message' => 'class_id is required when searching by student name'
                 ], 422);
-}
+            }
 
             // Build query
             $query = DB::table('online_admission_form')
@@ -19061,7 +19061,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Forms are successfully approved.!!!',
             ], 200);
         } catch(Exception $e) {
-            dd($e);
+            // dd($e);
+            return response()->json([
+                'status' => false, 
+                'errorMessage' => $e->getMessage(),
+            ] , 500)
         }
     }
 
