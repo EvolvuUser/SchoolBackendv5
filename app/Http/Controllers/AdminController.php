@@ -19049,11 +19049,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         }
 
                     }
-                    DB::table('online_admission_form')
-                        ->where('form_id', $form_id)
-                        ->update([
-                            'student_id' => $student_id_new,
-                        ]);
+                    // DB::table('online_admission_form')
+                    //     ->where('form_id', $form_id)
+                    //     ->update([
+                    //         'student_id' => $student_id_new,
+                    //     ]);
                 }
             }
             return response()->json([
