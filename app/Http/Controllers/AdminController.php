@@ -19405,11 +19405,10 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-            $sections = DB::table('section')->where('academic_yr' , $payload->get('acadamic_yr'))->where('class_id' , $class_id)->get();
+            $sections = DB::table('section')->where('academic_yr' , $payload->get('academic_year'))->where('class_id' , $class_id)->get();
             return response()->json([
                 'status' => true , 
                 'data' => $sections,
-                'ayr' => $payload->get('acadamic_yr')
             ]);
         } catch(Exception $err) {
             return response()->json([
