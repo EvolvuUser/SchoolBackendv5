@@ -18661,6 +18661,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $form_id  = $request->query('form_id');
             $student_name = trim($request->query('student_name')); // "Leo Harry Devanesan"
 
+            if (!empty($student_name) && empty($class_id)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'class_id is required when searching by student name'
+                ], 422);
+}
+
             // Build query
             $query = DB::table('online_admission_form')
                 ->leftJoin('class' , 'class.class_id' , '=' , 'online_admission_form.class_id')
