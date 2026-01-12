@@ -18828,7 +18828,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                             $password = bcrypt('arnolds');
 
-                            DB::table('user_master')->insert([
+                            $usql = DB::table('user_master')->insertGetId([
                                 'user_id' => $user_id,
                                 'name'    => $name,
                                 'password'=> $password,
@@ -18838,7 +18838,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                             $user_id = str_replace("'", '', $user_id); 
 
-                            if ($usql == 1) {
+                            if ($usql) {
                                 $school_id = '1';
                                 $user_data = json_encode([
                                     'user_id'   => $user_id,
