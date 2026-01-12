@@ -156,6 +156,14 @@
 
             Route::get('/admin/admission/classes/not-created' , [AdminController::class , 'getAdmissionClassesNotCreated']);
 
+            // Admin admission email module 
+            Route::prefix('/admin/email-templates')->group(function () {
+                Route::get('/', [AdminController::class, 'AdmissionEmailIndex']);       // listing
+                Route::post('/', [AdminController::class, 'AdmissionEmailStore']);      // create
+                Route::get('{id}', [AdminController::class, 'AdmissionEmailShow']);     // edit fetch
+                Route::patch('{id}', [AdminController::class, 'AdmissionEmailUpdate']);   // edit update
+                Route::delete('{id}', [AdminController::class, 'AdmissionEmailDestroy']);// delete
+            });
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);

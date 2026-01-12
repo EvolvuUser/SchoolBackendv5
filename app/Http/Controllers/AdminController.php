@@ -18607,14 +18607,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             //     // $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
             //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
             // }
-            if($shortname == 'HSCS') {
+            if($short_name == 'HSCS') {
                 $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>Holy Spirit Convent School";
             } else {
                 $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
             }
 
             $emailData = [
-                'subject' => $shortname.'-Admission Details',
+                'subject' => $short_name.'-Admission Details',
                 'textmsg' => $textmsg,
             ];
 
@@ -19397,6 +19397,200 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while updating admission class'
+            ], 500);
+        }
+    }
+
+    // Admission email module 
+    public function AdmissionEmailIndex()
+    {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+            if($payload->get('role_id') != 'A') {
+                return response()->json(['status' => false , 'message' => 'You are not allowd to access this resource'] , 400);
+            }
+            $templates = DB::table('email_templates')
+                ->orderBy('id', 'desc')
+                ->get();
+            return response()->json([
+                'status' => true , 
+                'data' => $templates,
+            ]);
+        } catch(Exception $err) {
+            return response()->json();
+        }
+    }
+
+    public function AdmissionEmailStore(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+
+            if ($payload->get('role_id') !== 'A') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to access this resource'
+                ], 403);
+            }
+
+            $request->validate([
+                'key'      => 'required|string|max:100',
+                'body'     => 'required|string',
+                'class_id' => 'nullable|integer',
+            ]);
+
+            DB::table('email_templates')->insert([
+                'key'        => $request->key,
+                'body'       => $request->body,
+                'class_id'   => $request->class_id,
+                'created_at'=> now(),
+                'updated_at'=> now(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Email template created successfully'
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong while creating template',
+                'errorMessage' => $err->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function AdmissionEmailShow($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+
+            if ($payload->get('role_id') !== 'A') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to access this resource'
+                ], 403);
+            }
+
+            $template = DB::table('email_templates')->where('id', $id)->first();
+
+            if (!$template) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email template not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $template
+            ], 200);
+
+        } catch (\Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch email template'
+            ], 500);
+        }
+    }
+
+    public function AdmissionEmailUpdate(Request $request, $id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+
+            if ($payload->get('role_id') !== 'A') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to access this resource'
+                ], 403);
+            }
+
+            $request->validate([
+                'body'     => 'required|string',
+                'class_id' => 'required|integer',
+            ]);
+
+            $exists = DB::table('email_templates')->where('id', $id)->exists();
+
+            if (!$exists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email template not found'
+                ], 404);
+            }
+
+            DB::table('email_templates')
+                ->where('id', $id)
+                ->update([
+                    'body'       => $request->body,
+                    'class_id'   => $request->class_id,
+                    'updated_at'=> now(),
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Email template updated successfully'
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update email template'
+            ], 500);
+        }
+    }
+
+    public function AdmissionEmailDestroy($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $payload = JWTAuth::getPayload();
+
+            if ($payload->get('role_id') !== 'A') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to access this resource'
+                ], 403);
+            }
+
+            $template = DB::table('email_templates')->where('id', $id)->first();
+
+            if (!$template) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email template not found'
+                ], 404);
+            }
+
+            DB::table('email_templates')->where('id', $id)->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Email template deleted successfully'
+            ], 200);
+
+        } catch (\Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete email template'
             ], 500);
         }
     }
