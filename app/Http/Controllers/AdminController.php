@@ -18456,40 +18456,67 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         // $from = 'supportsacs@aceventura.in';
                         // $cc='school@arnoldcentralschool.org';
                         
-                        if($class_name=="Nursery") {
+                        // if($class_name=="Nursery") {
                             
-                            if($shortname == 'HSCS') {
-                                $textmsg ="Dear Parent,<br/><br/> As a part of the admission procedure, your ward's interview has been scheduled on ".$interview_date." from " . $time_from_12hr . " to " . $time_to_12hr . ".<br/><br/>Regards,<br/>
-								Holy Spirit Convent School";
-                            } else {
-                                $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
-                            }
+                        //     if($shortname == 'HSCS') {
+                        //         $textmsg ="Dear Parent,<br/><br/> As a part of the admission procedure, your ward's interview has been scheduled on ".$interview_date." from " . $time_from_12hr . " to " . $time_to_12hr . ".<br/><br/>Regards,<br/>
+						// 		Holy Spirit Convent School";
+                        //     } else {
+                        //         $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
+                        //     }
                             
-                            // $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$father_emailid,$from,$cc);
-                            // $this->send_email($textmsg,"Inviting For Verification for Nursery Admission",$mother_emailid,$from,$cc);
+                        //     $emailData = [
+                        //         'subject' => 'Inviting For Verification for Nursery Admission',
+                        //         'textmsg' => $textmsg,
+                        //     ];
+                        //     // smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                        //     // smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
 
+                        // } elseif($class_name=="11") {
+                        //     if($shortname == 'HSCS') { 
+                        //         $textmsg = "No-body created";
+                        //     } else {
+                        //         $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
+                        //     }
+
+                        //     $emailData = [
+                        //         'subject' => 'Inviting For Verification for Class 11 Admission',
+                        //         'textmsg' => $textmsg,
+                        //     ];
+                        //     // smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                        //     // smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                        // }
+
+                        // directly get the value from the database and send to father and mother
+                        // $interview_date;
+                        // $time_from_12hr;
+                        // $time_to_12hr;
+                        if($class_name == 'Nursery') {
+                            $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING_NUR');
+                            $textmsg = str_replace(
+                                ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+                                [$interview_date, $time_from_12hr, $time_to_12hr],
+                                $textmsg
+                            );
                             $emailData = [
                                 'subject' => 'Inviting For Verification for Nursery Admission',
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                            smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-
-                        } elseif($class_name=="11") {
-                            if($shortname == 'HSCS') { 
-                                $textmsg = "No-body created";
-                            } else {
-                                $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
-                            }
-                            // $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$father_emailid,$from,$cc);
-                            // $this->send_email($textmsg,"Inviting For Verification for Class 11 Admission",$mother_emailid,$from,$cc);
-
+                            // smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                            // smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                        } else if($class_name == '11') {
+                            $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING_11');
+                            $textmsg = str_replace(
+                                ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+                                [$interview_date, $time_from_12hr, $time_to_12hr],
+                                $textmsg
+                            );
                             $emailData = [
                                 'subject' => 'Inviting For Verification for Class 11 Admission',
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                            smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                            // smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                            // smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
                         }
 
                     } else {
@@ -18607,11 +18634,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             //     // $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
             //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
             // }
-            if($short_name == 'HSCS') {
-                $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>Holy Spirit Convent School";
-            } else {
-                $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
-            }
+            // if($short_name == 'HSCS') {
+            //     $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>Holy Spirit Convent School";
+            // } else {
+            //     $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
+            // }
+            
+            $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL');
 
             $emailData = [
                 'subject' => $short_name.'-Admission Details',
@@ -18625,7 +18654,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         'admission_form_status' => 'Verified'
                     ]);   
                 $father_emailid = DB::table('online_admission_form')->where('form_id' , $form_id)->value('f_email');
-                smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
+                $mother_emailid = DB::table('online_admission_form')->where('form_id' , $form_id)->value('m_email');
+                // smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
+                // smart_mail($mother_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
             }
 
             DB::commit();
@@ -18722,7 +18753,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $class_id = $request->input('class_id');
             $section_id = $request->input('section_id');
             $short_name = JWTAuth::getPayload()->get('short_name');
-
+            $defaultPassword = DB::table('school_settings')->where('short_name' , $short_name)->value('default_pwd');
+            $passwordCode = "arnolds";
+            if($defaultPassword == null) {
+                $passwordCode = $short_name == 'HSCS' ? 'hscs' : 'arnolds';
+            }
             for($i=0,$j=1;$i<count($form_ids);$i++,$j++) 
             {
                 //if student is not selected by checkbox
@@ -18810,6 +18845,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             ->where('user_id', $m_emailid)
                             ->value('reg_id');
                     }
+                    if (empty($parent_id) && $m_mobile  !== null) {
+                        $parent_id = DB::table('user_master')
+                            ->where('user_id', $m_mobile)
+                            ->value('reg_id');
+                    }
                     if($parent_id == '') {
                         $parent_id = DB::table('parent')->insertGetId([
                             'father_name'        => $father_name,
@@ -18849,7 +18889,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                             $name = ($father_name !== 'null') ? $father_name : $mother_name;
 
-                            $password = bcrypt('arnolds');
+                            $password = bcrypt($passwordCode);
 
                             $usql = DB::table('user_master')->insertGetId([
                                 'user_id' => $user_id,
@@ -18917,7 +18957,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 ]);
 
                                 if ($student_id_new) {
-                                    $password = bcrypt('arnolds');
+                                    $password = $passwordCode;
                                     $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
 
                                     DB::table('user_master')->insert([
@@ -18946,33 +18986,47 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     $fmail = str_replace("'", "", $f_email);
                                 }
 
-                                if ($class_name == "Nursery") {
-                                    if($short_name == 'SACS') {
-                                        $textmsg = "<div class='col-md-12'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune. <br/>As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> ...</div>";
-                                        $subject = "Admission Confirmation for";
-                                    } else {
-                                        $textmsg ="<div class='col-md-12'>Dear Parent,<br /> <br />We are pleased to inform you that your child, ".$first_name." ".$last_name.", has been selected for admission to Holy Spirit Convent School,Lonikand for Grade ".$class_name."<br> To secure a seat for ".$first_name." ".$last_name.", please complete the admission process by paying the required fees.  You can proceed with the payment using the link below:<br>"."<a href='".base_url()."index.php/Admission' target='_blank'>Admission portal login</a><br>"."After the payment is successfully processed, we request you to visit the school office with the payment slip and the necessary documents to finalize the admission process.<br>For any assistance or queries, feel free to contact us at +91 9763692681 / +91 9673463441 or admissionsholyspiritcbse@gmail.com<br>We look forward to welcoming your child to Holy Spirit Convent School,Lonikand.<br/><br />Thank you. <br>Holy Spirit Convent School</div>";
-                                        $subject = "Admission Confirmation for";
-                                    }
-                                    //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$mmail,$from,$cc);
-                                    $emailData = [
-                                        'subject' => 'Information for Divine Word Nursery admission',
-                                        'textmsg' => $textmsg,
-                                    ];
-                                    // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
-                                    //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$fmail,$from,$cc);
-                                    // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
-                                } elseif ($class_name == "11") {
-                                    $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- ...</b></div>";
-                                    $emailData = [
-                                        'subject' => 'Information for Class 11 admission',
-                                        'textmsg' => $textmsg,
-                                    ];
-                                    //$this->send_email($textmsg,"Information for Class 11 admission",$mmail,$from,$cc);
-                                    // smart_mail($mmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
-                                    //$this->send_email($textmsg,"Information for Class 11 admission",$fmail,$from,$cc);
-                                    // smart_mail($fmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
+                                // if ($class_name == "Nursery") {
+                                //     if($short_name == 'SACS') {
+                                //         $textmsg = "<div class='col-md-12'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune. <br/>As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> ...</div>";
+                                //         $subject = "Admission Confirmation for";
+                                //     } else {
+                                //         $textmsg ="<div class='col-md-12'>Dear Parent,<br /> <br />We are pleased to inform you that your child, ".$first_name." ".$last_name.", has been selected for admission to Holy Spirit Convent School,Lonikand for Grade ".$class_name."<br> To secure a seat for ".$first_name." ".$last_name.", please complete the admission process by paying the required fees.  You can proceed with the payment using the link below:<br>"."<a href='".base_url()."index.php/Admission' target='_blank'>Admission portal login</a><br>"."After the payment is successfully processed, we request you to visit the school office with the payment slip and the necessary documents to finalize the admission process.<br>For any assistance or queries, feel free to contact us at +91 9763692681 / +91 9673463441 or admissionsholyspiritcbse@gmail.com<br>We look forward to welcoming your child to Holy Spirit Convent School,Lonikand.<br/><br />Thank you. <br>Holy Spirit Convent School</div>";
+                                //         $subject = "Admission Confirmation for";
+                                //     }
+                                //     //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$mmail,$from,$cc);
+                                //     $emailData = [
+                                //         'subject' => 'Information for Divine Word Nursery admission',
+                                //         'textmsg' => $textmsg,
+                                //     ];
+                                //     // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                                //     //$this->send_email($textmsg,"Information for Divine Word Nursery admission",$fmail,$from,$cc);
+                                //     // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                                // } elseif ($class_name == "11") {
+                                //     $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- ...</b></div>";
+                                //     $emailData = [
+                                //         'subject' => 'Information for Class 11 admission',
+                                //         'textmsg' => $textmsg,
+                                //     ];
+                                //     //$this->send_email($textmsg,"Information for Class 11 admission",$mmail,$from,$cc);
+                                //     // smart_mail($mmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
+                                //     //$this->send_email($textmsg,"Information for Class 11 admission",$fmail,$from,$cc);
+                                //     // smart_mail($fmail, 'Information for Class 11 admission', 'emails.parentUserEmail', $emailData);
+                                // }
+
+                                if($class_name == "Nursery") {
+                                    $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED_NUR');
+                                    $subject = "Information for Nursery admission";
+                                } else if ($class_name = "11") {
+                                    $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED_11');
+                                    $subject = "Information for Class 11 admission";
                                 }
+                                $emailData = [
+                                    'subject' => $short_name.' - '.$subject,
+                                    'textmsg' => $textmsg,
+                                ];
+                                // smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
+                                // smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
                             } 
                         }
                     } elseif($parent_id != "") {
@@ -19032,30 +19086,37 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $fmail = str_replace("'", "", $f_email);
                         }
 
-                        if ($class_name == "Nursery") {
-                            $textmsg = "<div class='col-md-12'><font color='#000000'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune.<br/> As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> The original Birth certificate must have the full name of the child with correct spellings, parent's name and date of birth (this will go to the school record).<br>b) <b>Demand draft of Rs. 30,000/- (admission Fee and I Instalment fee):</b> The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>Divine Word Nursery</b>.<br>c) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 60,500/-</b> (admission fee and all the three instalment)<br><br><b>Also please note that</b><br>d) The books, stationery and uniform will be supplied by the vendor at a later date which will be intimated to you. <br> e) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective vendors only at a later date.<br>f) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br>g) Classes will began in the month of June for the students of Nursery.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune</font></div>";
-                            $emailData = [
-                                'subject' => 'Information for Divine Word Nursery admission',
-                                'textmsg' => $textmsg,
-                            ];
-                            // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
-                            // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
-                        } elseif ($class_name == "11") {
-                            $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- (for Arnold's School Students only) I Instalment fee.</b> <br>b) <b>Demand draft of Rs. 31,500/- (for Non-Arnold's School Students) Admission Fee Rs. 10000 + I Instalment fee Rs. 21,500.</b> <br>c) The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>St. Arnold's Central School</b><br>d) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 58,500/- (For Arnold's students) Rs. 68,500/- (Non-Arnold's students)</b><br> e) <b>Also please note that</b><br>&nbsp;&nbsp;&nbsp;i) The books, stationery and uniform will be supplied by the vender at a later date which will be intimated to you.<br>&nbsp;&nbsp;&nbsp;ii) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective venders only at a later date.<br>&nbsp;&nbsp;&nbsp;iii) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune</div>";
-                            $emailData = [
-                                'subject' => 'Information for Class 11 admission',
-                                'textmsg' => $textmsg,
-                            ];
-                            // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
-                            // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                        // if ($class_name == "Nursery") {
+                        //     $textmsg = "<div class='col-md-12'><font color='#000000'>Respected Parent, <br />Greetings from Divine Word Nursery of St. Arnold's Central School, Pune.<br/> As you are aware that your application form for the admission of your child to Divine Word Nursery 2025-26 was selected and the form number was published on 20th February 2025 in our website.<br>Further, you are supposed to complete the admission process by 3rd of April failing which your selected seat will be allotted to the other applicants without any notice.<br> Hence, <b>either on 1st April 2025, 2nd April 2025 or 3rd April 2025 from 09:00 a.m. to 11.30 a.m.</b> only, you are requested to come to the school office physically to complete the process of admission to Nursery. (Any one parent, you need not bring your child).<br><br> <b>Please note you are supposed to bring the following documents at the time of admissions:</b><br/>a) <b>Original Birth Certificate of the child:</b> The original Birth certificate must have the full name of the child with correct spellings, parent's name and date of birth (this will go to the school record).<br>b) <b>Demand draft of Rs. 30,000/- (admission Fee and I Instalment fee):</b> The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>Divine Word Nursery</b>.<br>c) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 60,500/-</b> (admission fee and all the three instalment)<br><br><b>Also please note that</b><br>d) The books, stationery and uniform will be supplied by the vendor at a later date which will be intimated to you. <br> e) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective vendors only at a later date.<br>f) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br>g) Classes will began in the month of June for the students of Nursery.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune</font></div>";
+                        //     $emailData = [
+                        //         'subject' => 'Information for Divine Word Nursery admission',
+                        //         'textmsg' => $textmsg,
+                        //     ];
+                        //     // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                        //     // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                        // } elseif ($class_name == "11") {
+                        //     $textmsg = "<div class='col-md-12'>Respected Parent/Students, <br /><br/>Greetings from St. Arnold's Central School, Pune. <br/><br/>Thanks for selecting St. Arnold's Central School, Pune for your ward's grade XI & XII admission in CBSE Board.<br><br>Your form is selected for the admission to grade XI. Please note the admission will be confirmed based on the Grade X Board Results.<br><br>a) <b>Demand draft of Rs. 21,500/- (for Arnold's School Students only) I Instalment fee.</b> <br>b) <b>Demand draft of Rs. 31,500/- (for Non-Arnold's School Students) Admission Fee Rs. 10000 + I Instalment fee Rs. 21,500.</b> <br>c) The DD can be drawn by any banks, payable at Pune. The DD need to drawn in favour of <b>St. Arnold's Central School</b><br>d) If you are willing to pay the entire year's fee, then you could make the <b>DD of Rs. 58,500/- (For Arnold's students) Rs. 68,500/- (Non-Arnold's students)</b><br> e) <b>Also please note that</b><br>&nbsp;&nbsp;&nbsp;i) The books, stationery and uniform will be supplied by the vender at a later date which will be intimated to you.<br>&nbsp;&nbsp;&nbsp;ii) Please note the school fee does not include the books, stationery, uniform and transport amount. These amounts have to be cleared to the respective venders only at a later date.<br>&nbsp;&nbsp;&nbsp;iii) The information about transport and other details will be provided to you (if you need it) in the school office or by school transport operator.<br/><br/>For any further query, please contact school at school@arnoldcentralschool.org.<br><br>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune</div>";
+                        //     $emailData = [
+                        //         'subject' => 'Information for Class 11 admission',
+                        //         'textmsg' => $textmsg,
+                        //     ];
+                        //     // smart_mail($fmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                        //     // smart_mail($mmail, 'Information for Divine Word Nursery admission', 'emails.parentUserEmail', $emailData);
+                        // }
+                        if($class_name == "Nursery") {
+                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED_NUR');
+                            $subject = "Information for Nursery admission";
+                        } else if ($class_name = "11") {
+                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED_11');
+                            $subject = "Information for Class 11 admission";
                         }
-
+                        $emailData = [
+                            'subject' => $short_name.' - '.$subject,
+                            'textmsg' => $textmsg,
+                        ];
+                        // smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
+                        // smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
                     }
-                    // DB::table('online_admission_form')
-                    //     ->where('form_id', $form_id)
-                    //     ->update([
-                    //         'student_id' => $student_id_new,
-                    //     ]);
                 }
             }
             return response()->json([
@@ -19640,5 +19701,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Failed to delete email template'
             ], 500);
         }
+    }
+
+    /*
+    INTERVIEW_SCHEDULING
+    VERIFICATION_SUCCESSFULL
+    ADDMISSION_APPROVED
+    */
+    private function getEmailBodyByKey($key) {
+        return DB::table('email_templates')->where('key' , $key)->value('body');
     }
 }
