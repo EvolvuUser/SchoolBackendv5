@@ -19518,7 +19518,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 return response()->json(['status' => false , 'message' => 'You are not allowd to access this resource'] , 400);
             }
             $templates = DB::table('email_templates')
-                ->orderBy('id', 'desc')
+                ->select('class.name as class_name' , 'email_templates.*')
+                ->leftJoin('class' , 'class.class_id' , 'email_templates.class_id')
+                ->orderBy('email_templates.id', 'desc')
                 ->get();
             return response()->json([
                 'status' => true , 
@@ -19590,7 +19592,10 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 403);
             }
 
-            $template = DB::table('email_templates')->where('id', $id)->first();
+            $template = DB::table('email_templates')
+                ->select('class.name as class_name' , 'email_templates.*')
+                ->leftJoin('class' , 'class.class_id' , 'email_templates.class_id')
+                ->where('email_templates.id', $id)->first();
 
             if (!$template) {
                 return response()->json([
