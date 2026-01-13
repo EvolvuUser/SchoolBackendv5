@@ -19820,9 +19820,125 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function birthDaysSummary(Request $request) {
-        $date = $request->query('date');
-        // student
+    public function birthDaysSummaryCount(Request $request) {
+        $user = $this->authenticateUser();
+        $date = Carbon::now();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');     
+
+        $studentCount = DB::table('student')
+            ->where('academic_yr', $academicYear)
+            ->whereMonth('dob', $date->month)
+            ->whereDay('dob', $date->day)
+            ->count();
+
+        $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
+            ->whereMonth('birthday',  $date->month)
+            ->whereDay('birthday',  $date->day)
+            ->count();
+
+        return response()->json([
+            'status' => true,
+            'count' => $countOfBirthdaysToday,
+        ], 200);
+    }
+
+    public function birthDaysSummaryList() {
+        try {
+
+            // Authenticate user
+            $user = $this->authenticateUser();
+            $teacher_id = $user->reg_id;
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+            $today     = Carbon::now()->format('m-d');
+            $yesterday = Carbon::now()->subDay()->format('m-d');
+            $tomorrow  = Carbon::now()->addDay()->format('m-d');
+
+            $birthdayData = [
+                'yesterday' => [],
+                'today'     => [],
+                'tomorrow'  => []
+            ];
+
+            $staffBirthDayData = [
+                'yesterday' => [],
+                'today'     => [],
+                'tomorrow'  => []
+            ];
+            $dates = [
+                'yesterday' => Carbon::now()->subDay(),
+                'today'     => Carbon::now(),
+                'tomorrow'  => Carbon::now()->addDay(),
+            ];
+            $staffBaseQuery = Teacher::where('IsDelete', 'N');
+            foreach ($dates as $key => $date) {
+
+                // STAFF
+                $staffList = (clone $staffBaseQuery)
+                    ->whereMonth('birthday', $date->month)
+                    ->whereDay('birthday', $date->day)
+                    ->get();
+
+                $staffBirthDayData[$key] = $staffList;
+            }
+
+            $students = DB::table('student')
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.dob',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'contact_details.*'
+                )
+                ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
+                ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+                ->leftJoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
+                ->where('student.IsDelete', 'N')
+                ->get();
+
+            foreach ($students as $student) {
+                if (empty($student->dob)) {
+                    continue;
+                }
+                $dob = Carbon::parse($student->dob)->format('m-d');
+                if ($dob === $yesterday) {
+                    $birthdayData['yesterday'][] = $student;
+                } elseif ($dob === $today) {
+                    $birthdayData['today'][] = $student;
+                } elseif ($dob === $tomorrow) {
+                    $birthdayData['tomorrow'][] = $student;
+                }
+            }
+
+            return response()->json([
+                'status'  => 200,
+                'success' => true,
+                'message' => 'Birthday list of students fetched successfully.',
+                'data'    => [
+                    'studentBirthDays' => $birthdayData,
+                    'staffBirthDays' => $staffBirthDayData
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 422,
+                'success' => false,
+                'message' => 'Validation error.',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Something went wrong while fetching birthday list.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function lessonPlanNotCreatedCount(Request $request)
