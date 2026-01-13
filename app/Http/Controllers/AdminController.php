@@ -18502,8 +18502,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 'subject' => 'Inviting For Verification for Nursery Admission',
                                 'textmsg' => $textmsg,
                             ];
-                            // smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                            // smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
                         } else if($class_name == '11') {
                             $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING_11');
                             $textmsg = str_replace(
@@ -18515,8 +18515,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 'subject' => 'Inviting For Verification for Class 11 Admission',
                                 'textmsg' => $textmsg,
                             ];
-                            // smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                            // smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                            smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
                         }
 
                     } else {
@@ -18655,8 +18655,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     ]);   
                 $father_emailid = DB::table('online_admission_form')->where('form_id' , $form_id)->value('f_email');
                 $mother_emailid = DB::table('online_admission_form')->where('form_id' , $form_id)->value('m_email');
-                // smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                // smart_mail($mother_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
+                smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
+                smart_mail($mother_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
             }
 
             DB::commit();
