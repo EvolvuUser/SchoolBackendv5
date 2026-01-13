@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LibraryController extends Controller
@@ -21,16 +21,16 @@ class LibraryController extends Controller
         ]);
 
         // 2) joining_date ke liye current time
-        $now = Carbon::now()->toDateTimeString(); // 'YYYY-MM-DD HH:MM:SS'
+        $now = Carbon::now()->toDateTimeString();  // 'YYYY-MM-DD HH:MM:SS'
 
         // 3) Loop through each selected ID and insert into DB
         foreach ($request->selector as $memberId) {
             // a) prepare data
             $data = [
-                'member_id'    => $memberId,
-                'member_type'  => $request->type,
+                'member_id' => $memberId,
+                'member_type' => $request->type,
                 'joining_date' => $now,
-                'status'       => 'A',
+                'status' => 'A',
             ];
 
             // b) insert using Query Builder
@@ -41,7 +41,7 @@ class LibraryController extends Controller
         return response()->json([
             'message' => 'New Members Created Successfully!',
             'created' => count($request->selector)
-        ], 201); // 201 = created
+        ], 201);  // 201 = created
     }
 
     public function getNotMembers(Request $request)
@@ -51,64 +51,67 @@ class LibraryController extends Controller
         $section_id = $request->input('section_id', '');
         $name = $request->input('name', '');
         $acd_yr = $request->input('acd_yr', '');
-    
+
         if ($m_type === 'S') {
             // STUDENTS (not in library_member)
             $query = DB::table('student')
-                ->whereNotIn('student.student_id', function($subquery) {
-                    $subquery->select('library_member.member_id')
-                             ->from('library_member')
-                             ->where('library_member.member_type', '=', 'S');
+                ->whereNotIn('student.student_id', function ($subquery) {
+                    $subquery
+                        ->select('library_member.member_id')
+                        ->from('library_member')
+                        ->where('library_member.member_type', '=', 'S');
                 })
                 ->where('student.academic_yr', $acd_yr)
                 ->orderBy('student.roll_no', 'asc');
-    
+
             if (!empty($class_id)) {
                 $query->where('student.class_id', $class_id);
             }
-    
+
             if (!empty($section_id)) {
                 $query->where('student.section_id', $section_id);
             }
-    
+
             if (!empty($name)) {
                 $names = explode(' ', $name);
                 $fname = $names[0];
                 $lname = $names[1] ?? '';
                 $query->where('student.first_name', 'like', "%$fname%");
-    
+
                 if ($lname) {
                     $query->where('student.last_name', 'like', "%$lname%");
                 }
             }
-    
+
             $result = $query->get();
-    
+
             return response()->json($result);
         }
-    
+
         if ($m_type === 'T') {
             // TEACHERS (not in library_member)
             $query = DB::table('teacher')
-                ->whereNotIn('teacher.teacher_id', function($subquery) {
-                    $subquery->select('library_member.member_id')
-                             ->from('library_member')
-                             ->where('library_member.member_type', '=', 'T');
+                ->whereNotIn('teacher.teacher_id', function ($subquery) {
+                    $subquery
+                        ->select('library_member.member_id')
+                        ->from('library_member')
+                        ->where('library_member.member_type', '=', 'T');
                 });
-    
+
             if (!empty($name)) {
-                $query->where('teacher.name', 'like', "%$name%")
-                      ->orderBy('teacher.name', 'asc');
+                $query
+                    ->where('teacher.name', 'like', "%$name%")
+                    ->orderBy('teacher.name', 'asc');
             }
-    
+
             $result = $query->get();
-    
+
             return response()->json($result);
         }
-    
+
         return response()->json(['error' => 'Invalid member type'], 400);
     }
-    
+
     // 1) GET /api/category-group
     public function index()
     {
@@ -182,7 +185,7 @@ class LibraryController extends Controller
     // 5) GET /api/category-group/names -> for autocomplete (label/value)
     public function names()
     {
-        $data = DB::table('category_group')->select('category_group_id','category_group_name')->get();
+        $data = DB::table('category_group')->select('category_group_id', 'category_group_name')->get();
 
         $result = $data->map(function ($row) {
             return [
@@ -193,12 +196,12 @@ class LibraryController extends Controller
 
         return response()->json($result, 200);
     }
-    
+
     public function getLibraryCategory()
     {
         // Fetch all category records from the database
         $data = DB::table('category')->get();
-    
+
         // Format the data to include 'label' and 'value' keys
         $result = $data->map(function ($item) {
             return [
@@ -206,34 +209,32 @@ class LibraryController extends Controller
                 'value' => $item->category_id
             ];
         });
-    
+
         // Return as JSON response
         return response()->json($result, 200);
     }
 
-
-    
     public function Librarystore(Request $request)
     {
         // Validation
-         // Step 1: Validation
+        // Step 1: Validation
         $validator = Validator::make($request->all(), [
             'category_name' => 'required|string|max:100',
             'call_no' => 'required|string|max:50',
             // category_group_ids ab optional hai
             'category_group_ids' => 'nullable|array'
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-    
+
         // Step 2: Insert into category table
         $categoryId = DB::table('category')->insertGetId([
             'category_name' => $request->category_name,
             'call_no' => $request->call_no,
         ]);
-    
+
         // Step 3: Agar group IDs diye gaye hain to hi insert karo
         if ($request->has('category_group_ids') && !empty($request->category_group_ids)) {
             foreach ($request->category_group_ids as $groupId) {
@@ -243,51 +244,49 @@ class LibraryController extends Controller
                 ]);
             }
         }
-    
+
         return response()->json([
             'message' => 'New category created successfully!',
             'category_id' => $categoryId
         ], 201);
     }
 
-    
     public function Libraryupdate(Request $request, $id)
     {
         // Validation (group optional)
-    $validator = Validator::make($request->all(), [
-        'category_name' => 'required|string|max:100',
-        'call_no' => 'required|string|max:50',
-        'category_group_ids' => 'array|nullable' // <-- optional now
-    ]);
+        $validator = Validator::make($request->all(), [
+            'category_name' => 'required|string|max:100',
+            'call_no' => 'required|string|max:50',
+            'category_group_ids' => 'array|nullable'  // <-- optional now
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-    }
-
-    // Step 1: Update category table
-    DB::table('category')->where('category_id', $id)->update([
-        'category_name' => $request->category_name,
-        'call_no' => $request->call_no,
-    ]);
-
-    // Step 2: If category_group_ids provided, update mapping
-    if ($request->has('category_group_ids') && !empty($request->category_group_ids)) {
-        // Delete old mappings
-        DB::table('category_categorygroup')->where('category_id', $id)->delete();
-
-        // Insert new mappings
-        foreach ($request->category_group_ids as $groupId) {
-            DB::table('category_categorygroup')->insert([
-                'category_id' => $id,
-                'category_group_id' => $groupId,
-            ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
         }
+
+        // Step 1: Update category table
+        DB::table('category')->where('category_id', $id)->update([
+            'category_name' => $request->category_name,
+            'call_no' => $request->call_no,
+        ]);
+
+        // Step 2: If category_group_ids provided, update mapping
+        if ($request->has('category_group_ids') && !empty($request->category_group_ids)) {
+            // Delete old mappings
+            DB::table('category_categorygroup')->where('category_id', $id)->delete();
+
+            // Insert new mappings
+            foreach ($request->category_group_ids as $groupId) {
+                DB::table('category_categorygroup')->insert([
+                    'category_id' => $id,
+                    'category_group_id' => $groupId,
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Category updated successfully!'], 200);
     }
 
-    return response()->json(['message' => 'Category updated successfully!'], 200);
-    }
-
-    
     public function Librarydestroy($id)
     {
         // Step 1: Check if category used in books
@@ -308,34 +307,29 @@ class LibraryController extends Controller
 
         return response()->json(['error' => 'Category not found!'], 404);
     }
-    
+
     public function showCategoryGroupById($id)
     {
-         
         $category = DB::table('category')->where('category_id', $id)->first();
-    
-        
+
         if (!$category) {
             return response()->json(['error' => 'Category not found'], 404);
         }
-    
-        
+
         $groupIds = DB::table('category_categorygroup')
             ->where('category_id', $id)
-            ->pluck('category_group_id'); // returns an array of IDs
-    
-        
+            ->pluck('category_group_id');  // returns an array of IDs
+
         $response = [
             'category_id' => $category->category_id,
             'category_name' => $category->category_name,
             'call_no' => $category->call_no,
             'category_groups' => $groupIds,
         ];
-    
-       
+
         return response()->json($response, 200);
     }
-    
+
     public function getBookDetails(Request $request)
     {
         $book_id = $request->book_id;
@@ -375,18 +369,16 @@ class LibraryController extends Controller
         return response()->json(['data' => $bookData], 200);
     }
 
-
     public function searchBooks(Request $request)
     {
         try {
-    
             $status = $request->input('status');
             $category_group_id = $request->input('category_group_id');
             $category_id = $request->input('category_id');
             $author = $request->input('author');
             $title = $request->input('title');
             $isNew = $request->input('is_new');
-    
+
             $query = DB::table('book')
                 ->leftJoin('book_copies', 'book.book_id', '=', 'book_copies.book_id')
                 ->join('category', 'category.category_id', '=', 'book.category_id')
@@ -401,34 +393,35 @@ class LibraryController extends Controller
                     DB::raw('COUNT(book_copies.copy_id) AS total_copies')
                 )
                 ->groupBy('book.book_id');
-    
+
             if (!empty($status)) {
                 $query->where('book_copies.status', $status);
             }
-    
+
             if (!empty($category_group_id)) {
-                $query->join('category_categorygroup as b', 'category.category_id', '=', 'b.category_id')
-                      ->where('b.category_group_id', $category_group_id);
+                $query
+                    ->join('category_categorygroup as b', 'category.category_id', '=', 'b.category_id')
+                    ->where('b.category_group_id', $category_group_id);
             }
-    
+
             if (!empty($category_id)) {
                 $query->where('book.category_id', $category_id);
             }
-    
+
             if (!empty($author)) {
                 $query->where('book.author', 'like', '%' . $author . '%');
             }
-    
+
             if (!empty($title)) {
                 $query->where('book.book_title', 'like', '%' . $title . '%');
             }
-    
+
             if (!empty($isNew) && $isNew == true) {
                 $query->whereRaw('DATEDIFF(NOW(), book_copies.added_date) <= 60');
             }
-    
+
             $books = $query->get();
-    
+
             if ($books->isEmpty()) {
                 return response()->json([
                     'status' => 404,
@@ -436,14 +429,13 @@ class LibraryController extends Controller
                     'success' => false
                 ]);
             }
-    
+
             return response()->json([
                 'status' => 200,
                 'message' => 'Books fetched successfully.',
                 'data' => $books,
                 'success' => true
             ]);
-    
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -458,9 +450,8 @@ class LibraryController extends Controller
     {
         try {
             if ($request->input('operation') == 'edit') {
-
-                $data2 = $request->input('copyedit'); // accession numbers
-                $data3 = $request->input('book_copies_id'); // copy record ids
+                $data2 = $request->input('copyedit');  // accession numbers
+                $data3 = $request->input('book_copies_id');  // copy record ids
                 $source = $request->input('source');
                 $bill = $request->input('bill_no');
                 $isbn = $request->input('isbn');
@@ -482,7 +473,6 @@ class LibraryController extends Controller
 
                 // Loop through book copies
                 for ($i = 0; $i < count($data3); $i++) {
-
                     $data1 = [
                         'book_id' => $book_id,
                         'status' => 'A',
@@ -497,7 +487,7 @@ class LibraryController extends Controller
                         'added_date' => now()
                     ];
 
-                    if ($data3[$i] == "0") {
+                    if ($data3[$i] == '0') {
                         // Check duplicate accession number
                         $exists = DB::table('book_copies')->where('copy_id', $data2[$i])->exists();
                         if ($exists) {
@@ -543,14 +533,14 @@ class LibraryController extends Controller
         }
     }
 
-     public function deleteBook($book_id)
+    public function deleteBook($book_id)
     {
         try {
             // Check if book is issued
             $issued = DB::table('issue_return')
-                        ->where('book_id', $book_id)
-                        ->where('return_date', '0000-00-00')
-                        ->exists();
+                ->where('book_id', $book_id)
+                ->where('return_date', '0000-00-00')
+                ->exists();
 
             if ($issued) {
                 return response()->json([
@@ -569,7 +559,6 @@ class LibraryController extends Controller
                 'success' => true,
                 'message' => 'Book deleted successfully.'
             ], 200);
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return response()->json([
@@ -579,94 +568,89 @@ class LibraryController extends Controller
         }
     }
 
-
     public function createBook(Request $request)
     {
-    try {
-        if ($request->input('operation') == 'create') {
+        try {
+            if ($request->input('operation') == 'create') {
+                // Step 1: Insert into book table
+                $data = [
+                    'book_title' => $request->input('book_title'),
+                    'category_id' => $request->input('category_id'),
+                    'author' => $request->input('author'),
+                    'publisher' => $request->input('publisher'),
+                    'days_borrow' => $request->input('days_borrow'),
+                    'location_of_book' => $request->input('location_of_book'),
+                    'issue_type' => $request->input('issue_type'),
+                ];
 
-            // Step 1: Insert into book table
-            $data = [
-                'book_title' => $request->input('book_title'),
-                'category_id' => $request->input('category_id'),
-                'author' => $request->input('author'),
-                'publisher' => $request->input('publisher'),
-                'days_borrow' => $request->input('days_borrow'),
-                'location_of_book' => $request->input('location_of_book'),
-                'issue_type' => $request->input('issue_type'),
-            ];
+                DB::table('book')->insert($data);
+                $book_id = DB::getPdo()->lastInsertId();
 
-            DB::table('book')->insert($data);
-            $book_id = DB::getPdo()->lastInsertId();
+                // Step 2: Read arrays from request
+                $copies = $request->input('copy');
+                $sources = $request->input('source');
+                $bill_no = $request->input('bill_no');
+                $isbn = $request->input('isbn');
+                $edition = $request->input('edition');
+                $price = $request->input('price');
+                $no_of_pages = $request->input('no_of_pages');
+                $year = $request->input('year');
 
-            // Step 2: Read arrays from request
-            $copies = $request->input('copy');
-            $sources = $request->input('source');
-            $bill_no = $request->input('bill_no');
-            $isbn = $request->input('isbn');
-            $edition = $request->input('edition');
-            $price = $request->input('price');
-            $no_of_pages = $request->input('no_of_pages');
-            $year = $request->input('year');
+                // Step 3: Loop through all copies
+                for ($i = 0; $i < count($copies); $i++) {
+                    // Check duplicate accession number
+                    $exists = DB::table('book_copies')->where('copy_id', $copies[$i])->exists();
 
-            // Step 3: Loop through all copies
-            for ($i = 0; $i < count($copies); $i++) {
+                    if ($exists) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Book for this accession no. already exists!'
+                        ], 409);
+                    } else {
+                        $data1 = [
+                            'book_id' => $book_id,
+                            'copy_id' => $copies[$i],
+                            'source_of_book' => $sources[$i],
+                            'bill_no' => $bill_no[$i],
+                            'isbn' => $isbn[$i],
+                            'edition' => $edition[$i],
+                            'price' => $price[$i],
+                            'no_of_pages' => $no_of_pages[$i],
+                            'year' => $year[$i],
+                            'status' => 'A',
+                            'added_date' => now(),
+                        ];
 
-                // Check duplicate accession number
-                $exists = DB::table('book_copies')->where('copy_id', $copies[$i])->exists();
-
-                if ($exists) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Book for this accession no. already exists!'
-                    ], 409);
-                } else {
-                    $data1 = [
-                        'book_id' => $book_id,
-                        'copy_id' => $copies[$i],
-                        'source_of_book' => $sources[$i],
-                        'bill_no' => $bill_no[$i],
-                        'isbn' => $isbn[$i],
-                        'edition' => $edition[$i],
-                        'price' => $price[$i],
-                        'no_of_pages' => $no_of_pages[$i],
-                        'year' => $year[$i],
-                        'status' => 'A',
-                        'added_date' => now(),
-                    ];
-
-                    DB::table('book_copies')->insert($data1);
+                        DB::table('book_copies')->insert($data1);
+                    }
                 }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'New Book created!',
+                    'book_id' => $book_id
+                ], 201);
             }
 
             return response()->json([
-                'success' => true,
-                'message' => 'New Book created!',
-                'book_id' => $book_id
-            ], 201);
+                'success' => false,
+                'message' => 'Invalid operation.'
+            ], 400);
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Invalid operation.'
-        ], 400);
-
-    } catch (\Exception $e) {
-        Log::error($e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage()
-        ], 500);
     }
-
-}
 
     public function getMaxCopyId()
     {
         $result = DB::table('book_copies')
             ->select(DB::raw('MAX(CAST(copy_id AS UNSIGNED)) as copy_id'))
             ->first();
-    
+
         if ($result && $result->copy_id) {
             return response()->json([
                 'success' => true,
@@ -680,15 +664,15 @@ class LibraryController extends Controller
         }
     }
 
-public function getLibraryMembersInfo(Request $request)
+    public function getLibraryMembersInfo(Request $request)
     {
-        $m_type     = $request->input('m_type', '');
-        $class_id   = $request->input('class_id', '');
+        $m_type = $request->input('m_type', '');
+        $class_id = $request->input('class_id', '');
         $section_id = $request->input('section_id', '');
-        $name       = $request->input('name', '');
-        $status     = $request->input('status', '');
-        $acd_yr     = $request->input('acd_yr', '');
-        $grn_no     = $request->input('grn_no', '');
+        $name = $request->input('name', '');
+        $status = $request->input('status', '');
+        $acd_yr = $request->input('acd_yr', '');
+        $grn_no = $request->input('grn_no', '');
 
         if ($m_type === 'S') {
             $query = DB::table('student')
@@ -723,9 +707,7 @@ public function getLibraryMembersInfo(Request $request)
             }
 
             $data = $query->get();
-        }
-
-        elseif ($m_type === 'T') {
+        } elseif ($m_type === 'T') {
             $query = DB::table('teacher')
                 ->join('library_member', 'teacher.teacher_id', '=', 'library_member.member_id')
                 ->select('teacher.*', 'library_member.*')
@@ -740,93 +722,85 @@ public function getLibraryMembersInfo(Request $request)
             }
 
             $data = $query->get();
-        }
-
-        else {
+        } else {
             return response()->json(['error' => 'Invalid member type'], 400);
         }
 
         return response()->json($data);
     }
 
-    
     public function updateLibraryMemberStatus(Request $request)
     {
-        $status_action = $request->input('action', '');     // 'Active' or 'Inactive'
-        $member_id     = $request->input('member_id', '');  // student_id or teacher_id
-        $member_type   = $request->input('member_type', ''); // 'S' or 'T'
-    
+        $status_action = $request->input('action', '');  // 'Active' or 'Inactive'
+        $member_id = $request->input('member_id', '');  // student_id or teacher_id
+        $member_type = $request->input('member_type', '');  // 'S' or 'T'
+
         if (empty($status_action) || empty($member_id) || empty($member_type)) {
             return response()->json(['error' => 'Missing required parameters'], 400);
         }
-    
+
         // 🔹 Case 1: Make Inactive (check if books are issued)
         if ($status_action === 'Inactive') {
-    
             $issuedBooks = DB::table('issue_return')
                 ->where('member_id', $member_id)
                 ->where('member_type', $member_type)
                 ->where('return_date', '0000-00-00')
                 ->count();
-    
+
             if ($issuedBooks > 0) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'This member cannot be made inactive because books are currently issued to them.'
                 ], 400);
             }
-    
+
             // No active book issue → make inactive
             DB::table('library_member')
                 ->where('member_id', $member_id)
                 ->where('member_type', $member_type)
                 ->update(['status' => 'I']);
-    
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Member is made Inactive!'
             ]);
         }
-    
+
         // 🔹 Case 2: Make Active
         if ($status_action === 'Active') {
-    
             DB::table('library_member')
                 ->where('member_id', $member_id)
                 ->where('member_type', $member_type)
                 ->update(['status' => 'A']);
-    
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Member is made Active!'
             ]);
         }
-    
+
         return response()->json(['error' => 'Invalid action. Use Active or Inactive'], 400);
     }
-    
+
     // Generate Barcode
     public function getAccessionNoFromAndTo(Request $request)
     {
         $copy_id_from = $request->input('copy_id_from');
-        $copy_id_to   = $request->input('copy_id_to');
+        $copy_id_to = $request->input('copy_id_to');
 
         $query = DB::table('book_copies')->select('copy_id');
 
         if (!empty($copy_id_from) && !empty($copy_id_to)) {
-
             $query->whereRaw(
                 'CAST(copy_id AS DECIMAL(10,1)) BETWEEN ? AND ?',
                 [$copy_id_from, $copy_id_to]
             );
         } elseif (!empty($copy_id_from)) {
-
             $query->whereRaw(
                 'CAST(copy_id AS DECIMAL(10,1)) = ?',
                 [$copy_id_from]
             );
         } elseif (!empty($copy_id_to)) {
-
             $query->whereRaw(
                 'CAST(copy_id AS DECIMAL(10,1)) = ?',
                 [$copy_id_to]
@@ -842,7 +816,7 @@ public function getLibraryMembersInfo(Request $request)
             'data' => $result
         ]);
     }
-    
+
     // Issue Book 20-11-2025
     public function getLibraryIssuedMembers(Request $request)
     {
@@ -887,8 +861,8 @@ public function getLibraryMembersInfo(Request $request)
                 'd.status'
             )
             ->where('a.member_id', $memberId)
-            ->where('d.status', 'I')                     // Book is issued
-            ->where('a.return_date', '0000-00-00')       // Not returned yet
+            ->where('d.status', 'I')  // Book is issued
+            ->where('a.return_date', '0000-00-00')  // Not returned yet
             ->get();
 
         return response()->json($issuedBooks);
@@ -909,7 +883,7 @@ public function getLibraryMembersInfo(Request $request)
             ->select(
                 'bc.copy_id',
                 'bc.status',
-                'b.issue_type',       // ✔ FIXED
+                'b.issue_type',  // ✔ FIXED
                 'b.book_id',
                 'b.book_title',
                 'c.category_id',
@@ -955,20 +929,18 @@ public function getLibraryMembersInfo(Request $request)
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-
         $request->validate([
             'issueddate' => 'required|date',
-            'copy_id'    => 'required|array',
-            'book_id'    => 'required|array',
+            'copy_id' => 'required|array',
+            'book_id' => 'required|array',
             'member_type' => 'required|string',
-
         ]);
 
         $memberType = $request->member_type;
         $issueDate = date('Y-m-d', strtotime($request->issueddate));
 
         // grn no
-        if ($request->grn_no != "") {
+        if ($request->grn_no != '') {
             $student = DB::table('student')
                 ->where('reg_no', $request->grn_no)
                 ->where('academic_yr', $academic_yr)
@@ -976,8 +948,8 @@ public function getLibraryMembersInfo(Request $request)
 
             if (!$student) {
                 return response()->json([
-                    "status" => false,
-                    "message" => "Invalid GRN Number"
+                    'status' => false,
+                    'message' => 'Invalid GRN Number'
                 ], 404);
             }
 
@@ -995,16 +967,16 @@ public function getLibraryMembersInfo(Request $request)
 
         if (!$memberCheck) {
             return response()->json([
-                "status" => false,
-                "message" => "Not a valid library member"
+                'status' => false,
+                'message' => 'Not a valid library member'
             ], 403);
         }
 
         // check duplicate copy_id
         if (count($request->copy_id) !== count(array_unique($request->copy_id))) {
             return response()->json([
-                "status" => false,
-                "message" => "Duplicate book copies cannot be issued"
+                'status' => false,
+                'message' => 'Duplicate book copies cannot be issued'
             ], 422);
         }
 
@@ -1012,24 +984,23 @@ public function getLibraryMembersInfo(Request $request)
 
         try {
             foreach ($request->copy_id as $i => $copyId) {
-
                 $bookId = $request->book_id[$i];
 
                 // calculate due date
-                if ($memberType == "S") {
-                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . "+7 days"));
+                if ($memberType == 'S') {
+                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+7 days'));
                 } else {
-                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . "+30 days"));
+                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+30 days'));
                 }
 
                 // new entry of issue book
                 DB::table('issue_return')->insert([
-                    "member_type" => $memberType,
-                    "member_id"   => $memberId,
-                    "book_id"     => $bookId,
-                    "copy_id"     => $copyId,
-                    "issue_date"  => $issueDate,
-                    "due_date"    => $dueDate,
+                    'member_type' => $memberType,
+                    'member_id' => $memberId,
+                    'book_id' => $bookId,
+                    'copy_id' => $copyId,
+                    'issue_date' => $issueDate,
+                    'due_date' => $dueDate,
                 ]);
 
                 // update book status
@@ -1037,28 +1008,27 @@ public function getLibraryMembersInfo(Request $request)
                     ->where('copy_id', $copyId)
                     ->where('book_id', $bookId)
                     ->update([
-                        "status" => "I" // I = Issued
+                        'status' => 'I'  // I = Issued
                     ]);
             }
 
             DB::commit();
 
             return response()->json([
-                "status" => true,
-                "message" => "Books issued successfully"
+                'status' => true,
+                'message' => 'Books issued successfully'
             ], 200);
         } catch (\Exception $e) {
-
             DB::rollBack();
 
             return response()->json([
-                "status" => false,
-                "message" => "Error issuing book",
-                "error" => $e->getMessage()
+                'status' => false,
+                'message' => 'Error issuing book',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
-    
+
     // Return Book 25-11-2025
     public function getMembersForIssuedBook(Request $request)
     {
@@ -1067,7 +1037,6 @@ public function getLibraryMembersInfo(Request $request)
         $section_id = $request->input('section_id');
 
         $data = $this->getIssueReturnBooks($type, $class_id, $section_id, '');
-
 
         foreach ($data as $row) {
             if ($row->member_type == 'T') {
@@ -1085,7 +1054,6 @@ public function getLibraryMembersInfo(Request $request)
 
         return response()->json($data);
     }
-
 
     private function getIssueReturnBooks($m_type, $class_id, $section_id, $name)
     {
@@ -1130,7 +1098,6 @@ public function getLibraryMembersInfo(Request $request)
         return [];
     }
 
-
     public function BooksIssueAPI(Request $request)
     {
         $type = $request->query('type');
@@ -1142,9 +1109,8 @@ public function getLibraryMembersInfo(Request $request)
             ], 400);
         }
 
-        /* 1)  getMemberOnAccession  */
+        /* 1)  getMemberOnAccession */
         if ($type === 'accession') {
-
             $copy_id = $request->query('copy_id');
 
             if (!$copy_id) {
@@ -1160,10 +1126,8 @@ public function getLibraryMembersInfo(Request $request)
             return response()->json($row ? $row : null, $row ? 200 : 204);
         }
 
-
         /* 2)  getMemberOnGrno */
         if ($type === 'grno') {
-
             $reg_no = $request->query('reg_no');
 
             if (!$reg_no) {
@@ -1180,10 +1144,8 @@ public function getLibraryMembersInfo(Request $request)
             return response()->json($row ? $row : null, $row ? 200 : 204);
         }
 
-
-        /*  3)  getIssueReturn */
+        /* 3)  getIssueReturn */
         if ($type === 'records') {
-
             $m_type = $request->query('m_type');
             $member_id = $request->query('member_id');
 
@@ -1201,15 +1163,14 @@ public function getLibraryMembersInfo(Request $request)
             return response()->json($rows, 200);
         }
 
-
-        /* 
-       4) getMemDataTypeStudent */
+        /*
+         * 4) getMemDataTypeStudent
+         */
 
         if ($type === 'student') {
-
             $copy_id = $request->query('copy_id');
-            $acd_yr  = $request->query('acd_yr');
-            $grn_no  = $request->query('grn_no');
+            $acd_yr = $request->query('acd_yr');
+            $grn_no = $request->query('grn_no');
 
             $q = DB::table('issue_return as a')
                 ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
@@ -1235,7 +1196,8 @@ public function getLibraryMembersInfo(Request $request)
                     return response()->json(['error' => 'copy_id required'], 400);
                 }
 
-                $q->where('a.copy_id', $copy_id)
+                $q
+                    ->where('a.copy_id', $copy_id)
                     ->where('a.return_date', '0000-00-00')
                     ->where('b.status', 'I');
 
@@ -1247,10 +1209,8 @@ public function getLibraryMembersInfo(Request $request)
             return response()->json($q->get(), 200);
         }
 
-
         /* 5) getMemDataTypeStaff */
         if ($type === 'staff') {
-
             $copy_id = $request->query('copy_id');
 
             if (!$copy_id) {
@@ -1280,40 +1240,38 @@ public function getLibraryMembersInfo(Request $request)
         ], 400);
     }
 
-
-
     public function returnOrReissue(Request $request)
     {
         // 1) Validate input
         $validator = Validator::make($request->all(), [
-            'operation'    => 'required|in:return,reissue',
-            'selector'     => 'required|array|min:1',
-            'selector.*'   => 'required', // copy_id values
-            'book_id'      => 'nullable|array',
-            'book_id.*'    => 'nullable',
-            'member_id'    => 'required|integer',
-            'member_type'  => 'required|in:S,T',
-            'dateofreturn' => 'required|date', // expecting a date string
+            'operation' => 'required|in:return,reissue',
+            'selector' => 'required|array|min:1',
+            'selector.*' => 'required',  // copy_id values
+            'book_id' => 'nullable|array',
+            'book_id.*' => 'nullable',
+            'member_id' => 'required|integer',
+            'member_type' => 'required|in:S,T',
+            'dateofreturn' => 'required|date',  // expecting a date string
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors'  => $validator->errors()
+                'errors' => $validator->errors()
             ], 422);
         }
 
-        $operation   = $request->input('operation'); // 'return' or 'reissue'
-        $copyIds     = $request->input('selector'); // array
-        $bookIds     = $request->input('book_id', []); // array (may be empty for return)
-        $memberId    = $request->input('member_id');
-        $memberType  = $request->input('member_type'); // 'S' or 'T'
+        $operation = $request->input('operation');  // 'return' or 'reissue'
+        $copyIds = $request->input('selector');  // array
+        $bookIds = $request->input('book_id', []);  // array (may be empty for return)
+        $memberId = $request->input('member_id');
+        $memberType = $request->input('member_type');  // 'S' or 'T'
         $dateOfReturnRaw = $request->input('dateofreturn');
 
         // Normalize date using Carbon (server timezone)
         try {
-            $returnDate = Carbon::parse($dateOfReturnRaw)->toDateString(); // 'Y-m-d'
+            $returnDate = Carbon::parse($dateOfReturnRaw)->toDateString();  // 'Y-m-d'
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -1375,12 +1333,12 @@ public function getLibraryMembersInfo(Request $request)
                 if ($operation === 'reissue') {
                     // prepare fields for new issue_return row
                     $newIssue = [
-                        'book_id'     => isset($bookIds[$i]) ? $bookIds[$i] : ($activeIssue->book_id ?? null),
-                        'copy_id'     => $copyId,
-                        'member_id'   => $memberId,
+                        'book_id' => isset($bookIds[$i]) ? $bookIds[$i] : ($activeIssue->book_id ?? null),
+                        'copy_id' => $copyId,
+                        'member_id' => $memberId,
                         'member_type' => $memberType,
                         // using return date as new issue_date (same as original CI behavior)
-                        'issue_date'  => $returnDate,
+                        'issue_date' => $returnDate,
                     ];
 
                     // due_date depends on member type: students 7 days, others 30 days
@@ -1404,7 +1362,7 @@ public function getLibraryMembersInfo(Request $request)
                         'status' => 'reissued'
                     ];
                 }
-            } // end foreach
+            }  // end foreach
 
             DB::commit();
 
@@ -1423,7 +1381,6 @@ public function getLibraryMembersInfo(Request $request)
         }
     }
 
-
     public function getMemberOnAccession($copy_id)
     {
         // returns single member_id holding the copy (not yet returned)
@@ -1434,7 +1391,7 @@ public function getLibraryMembersInfo(Request $request)
             ->first();
 
         if (!$row) {
-            return response()->json(null, 204); // No Content
+            return response()->json(null, 204);  // No Content
         }
 
         return response()->json(['member_id' => $row->member_id], 200);
@@ -1461,8 +1418,8 @@ public function getLibraryMembersInfo(Request $request)
     // GET /api/issue/records?m_type=S&member_id=12
     public function getIssueReturn(Request $request)
     {
-        $m_type = $request->query('m_type');       // optional
-        $member_id = $request->query('member_id'); // optional
+        $m_type = $request->query('m_type');  // optional
+        $member_id = $request->query('member_id');  // optional
 
         $q = DB::table('issue_return')->select('*');
 
@@ -1514,7 +1471,8 @@ public function getLibraryMembersInfo(Request $request)
             $q->where('d.reg_no', $grn_no);
         } else {
             // search by accession no + active issue + matching academic year + copy status
-            $q->where('a.copy_id', $copy_id)
+            $q
+                ->where('a.copy_id', $copy_id)
                 ->where('a.return_date', '0000-00-00')
                 ->where('b.status', 'I');
 

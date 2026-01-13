@@ -9,13 +9,13 @@ class Grades extends Model
 {
     use HasFactory;
 
-    protected $table ='grade';
-    protected $primaryKey = 'grade_id'; 
-    public $incrementing = true; 
-    protected $fillable = ['grade_id','class_id','subject_type','name','mark_from','mark_upto','comment','academic_yr'];
+    protected $table = 'grade';
+    protected $primaryKey = 'grade_id';
+    public $incrementing = true;
+    protected $fillable = ['grade_id', 'class_id', 'subject_type', 'name', 'mark_from', 'mark_upto', 'comment', 'academic_yr'];
 
     public function Class()
     {
-        return $this->belongsTo(Classes::class, 'class_id');  
-    }    
+        return $this->belongsTo(Classes::class, 'class_id');
+    }
 }

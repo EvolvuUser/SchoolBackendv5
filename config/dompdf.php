@@ -1,25 +1,22 @@
 <?php
 
 return [
-
     /*
-    |--------------------------------------------------------------------------
-    | Settings
-    |--------------------------------------------------------------------------
-    |
-    | Set some default values. It is possible to add all defines that can be set
-    | in dompdf_config.inc.php. You can also override the entire config file.
-    |
-    */
-    'show_warnings' => false,   // Throw an Exception on warnings from dompdf
-
+     * |--------------------------------------------------------------------------
+     * | Settings
+     * |--------------------------------------------------------------------------
+     * |
+     * | Set some default values. It is possible to add all defines that can be set
+     * | in dompdf_config.inc.php. You can also override the entire config file.
+     * |
+     */
+    'show_warnings' => false,  // Throw an Exception on warnings from dompdf
     'public_path' => null,  // Override the public path if needed
 
     /*
      * Dejavu Sans font is missing glyphs for converted entities, turn it off if you need to show € and £.
      */
     'convert_entities' => true,
-
     'options' => [
         /**
          * The location of the DOMPDF font directory
@@ -45,7 +42,7 @@ return [
          * Times-Roman, Times-Bold, Times-BoldItalic, Times-Italic,
          * Symbol, ZapfDingbats.
          */
-        'font_dir' => storage_path('fonts'), // advised by dompdf (https://github.com/dompdf/dompdf/pull/782)
+        'font_dir' => storage_path('fonts'),  // advised by dompdf (https://github.com/dompdf/dompdf/pull/782)
 
         /**
          * The location of the DOMPDF font cache directory
@@ -95,20 +92,11 @@ return [
             'http://' => ['rules' => []],
             'https://' => ['rules' => []],
         ],
-
-        /**
-         * Operational artifact (log files, temporary files) path validation
-         */
+        /** Operational artifact (log files, temporary files) path validation */
         'artifactPathValidation' => null,
-
-        /**
-         * @var string
-         */
+        /** @var string */
         'log_output_file' => null,
-
-        /**
-         * Whether to enable font subsetting or not.
-         */
+        /** Whether to enable font subsetting or not. */
         'enable_font_subsetting' => false,
 
         /**
@@ -281,10 +269,7 @@ return [
          * @var array|null
          */
         'allowed_remote_hosts' => null,
-
-        /**
-         * A ratio applied to the fonts height to be more like browsers' line height
-         */
+        /** A ratio applied to the fonts height to be more like browsers' line height */
         'font_height_ratio' => 1.1,
 
         /**
@@ -296,5 +281,4 @@ return [
          */
         'enable_html5_parser' => true,
     ],
-
 ];

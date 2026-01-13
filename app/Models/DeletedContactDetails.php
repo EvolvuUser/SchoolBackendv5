@@ -11,6 +11,6 @@ class DeletedContactDetails extends Model
 
     protected $table = 'deleted_contact_details';
     protected $primaryKey = 'id';
-    public $incrementing = true;  
-    protected $fillable = [	'phone_no','email_id',	'm_emailid'	];
+    public $incrementing = true;
+    protected $fillable = ['phone_no', 'email_id', 'm_emailid'];
 }
