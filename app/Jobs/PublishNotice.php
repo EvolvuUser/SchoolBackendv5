@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Carbon\Carbon;
 use App\Http\Services\SmsService;
 use App\Http\Services\WhatsAppService;
+use Carbon\Carbon;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PublishNotice implements ShouldQueue
 {
@@ -47,25 +47,24 @@ class PublishNotice implements ShouldQueue
 
                 try {
                     if ($student->phone_no) {
-                         $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
+                        $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                             $student->phone_no,
                             $templateName,
                             $parameters
                         );
 
                         if (isset($result['code']) && isset($result['message'])) {
-                                Log::warning("Rate limit hit", []);
-                        } 
-                        else {
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $result['messages'][0]['id'] ?? null,
-                            'phone_no' => $result['contacts'][0]['input'] ?? $student->phone_no,
-                            'stu_teacher_id' => $student->student_id,
-                            'notice_id' => $notice->notice_id,
-                            'message_type' => 'notice',
-                            'created_at' => now()
-                        ]);
-                     }
+                            Log::warning('Rate limit hit', []);
+                        } else {
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $result['messages'][0]['id'] ?? null,
+                                'phone_no' => $result['contacts'][0]['input'] ?? $student->phone_no,
+                                'stu_teacher_id' => $student->student_id,
+                                'notice_id' => $notice->notice_id,
+                                'message_type' => 'notice',
+                                'created_at' => now()
+                            ]);
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::error('WhatsApp error: ' . $e->getMessage());
@@ -78,12 +77,12 @@ class PublishNotice implements ShouldQueue
         $leftMessages = DB::table('redington_webhook_details')
             ->where('message_type', 'notice')
             ->where('status', 'failed')
-            ->where('notice_id',$notice->notice_id)
+            ->where('notice_id', $notice->notice_id)
             ->where('sms_sent', 'N')
             ->get();
 
         foreach ($leftMessages as $leftMessage) {
-            $message = $noticemessage . ". Login to school application for details - AceVentura";
+            $message = $noticemessage . '. Login to school application for details - AceVentura';
             $temp_id = '1107161354408119887';
 
             $sms = app('App\Http\Controllers\Controller')->send_sms(

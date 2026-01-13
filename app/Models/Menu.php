@@ -10,7 +10,7 @@ class Menu extends Model
     use HasFactory;
 
     protected $table = 'menus';
-    protected $primaryKey = 'menu_id'; 
-    public $incrementing = true; 
-    protected $fillable = ['name', 'url', 'parent_id','sequence'];
+    protected $primaryKey = 'menu_id';
+    public $incrementing = true;
+    protected $fillable = ['name', 'url', 'parent_id', 'sequence'];
 }

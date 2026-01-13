@@ -9,8 +9,8 @@ class Exams extends Model
 {
     use HasFactory;
 
-    protected $table ='exam';
-    protected $primaryKey = 'exam_id'; 
-    public $incrementing = true; 
-    protected $fillable = ['exam_id','name','start_date','end_date','open_day','term_id','comment','academic_yr'];
+    protected $table = 'exam';
+    protected $primaryKey = 'exam_id';
+    public $incrementing = true;
+    protected $fillable = ['exam_id', 'name', 'start_date', 'end_date', 'open_day', 'term_id', 'comment', 'academic_yr'];
 }

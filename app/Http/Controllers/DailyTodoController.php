@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Exceptions\JWTException;
-use Carbon\Carbon;
-use App\Models\Event;
 use App\Models\DailyTodo;
+use App\Models\Event;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Exception;
 
 class DailyTodoController extends Controller
@@ -27,7 +27,8 @@ class DailyTodoController extends Controller
     /**
      * Get all todos for logged-in user (dashboard list)
      */
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
         try {
             $this->authenticateUser();
 
@@ -47,41 +48,35 @@ class DailyTodoController extends Controller
 
             // Today's start & end in USER timezone
             $startOfDay = Carbon::now($timezone)->startOfDay()->timezone('UTC');
-            $endOfDay   = Carbon::now($timezone)->endOfDay()->timezone('UTC');
+            $endOfDay = Carbon::now($timezone)->endOfDay()->timezone('UTC');
 
             $today = Carbon::today();
 
             $todos = DailyTodo::where('reg_id', $reg_id)
                 ->where('login_type', $login_type)
                 ->where(function ($query) use ($today) {
-
                     // Pending tasks → always visible
-                    $query->where('is_completed', 0)
-
+                    $query
+                        ->where('is_completed', 0)
                         // Completed tasks → only if due_date is today or future
                         ->orWhere(function ($q) use ($today) {
-                            $q->where('is_completed', 1)
-                            ->whereDate('due_date', '>=', $today);
+                            $q
+                                ->where('is_completed', 1)
+                                ->whereDate('due_date', '>=', $today);
                         });
-
                 })
-
                 // 🔥 Pending tasks first
                 ->orderByRaw('is_completed ASC')
-
                 // Optional: nearer due dates first
                 ->orderBy('due_date', 'asc')
-
                 // Latest created last
                 ->orderBy('created_at', 'desc')
-
                 ->get();
 
             return response()->json([
                 'status' => 'success',
                 'data' => $todos
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -91,7 +86,8 @@ class DailyTodoController extends Controller
         }
     }
 
-    public function showAll(Request $request) {
+    public function showAll(Request $request)
+    {
         try {
             $this->authenticateUser();
 
@@ -112,7 +108,6 @@ class DailyTodoController extends Controller
                 'status' => 'success',
                 'data' => $todos
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -159,7 +154,6 @@ class DailyTodoController extends Controller
                 'message' => 'Todo created successfully',
                 'data' => $todo
             ], 201);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -195,7 +189,6 @@ class DailyTodoController extends Controller
                 'status' => 'success',
                 'data' => $todo
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -247,7 +240,6 @@ class DailyTodoController extends Controller
                 'message' => 'Todo updated successfully',
                 'data' => $todo
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -285,7 +277,6 @@ class DailyTodoController extends Controller
                 'status' => 'success',
                 'message' => 'Todo deleted successfully'
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -325,7 +316,6 @@ class DailyTodoController extends Controller
                 'message' => 'Todo status updated',
                 'data' => $todo
             ], 200);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',

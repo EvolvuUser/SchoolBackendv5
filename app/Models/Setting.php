@@ -8,13 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Setting extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'settings';
-    protected $fillable = ['institute_name','address','phone_number','	page_title','page_meta_tag','academic_yr_from','academic_yr_to','academic_yr','active'];
-
-
-
-
-
-
+    protected $fillable = ['institute_name', 'address', 'phone_number', "\tpage_title", 'page_meta_tag', 'academic_yr_from', 'academic_yr_to', 'academic_yr', 'active'];
 }

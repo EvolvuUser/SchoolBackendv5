@@ -4,14 +4,13 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
 class TeacherBirthdayEmail extends Mailable
 {
-
     use Queueable, SerializesModels;
 
     public $data;
@@ -33,8 +32,9 @@ class TeacherBirthdayEmail extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.teacher_birthday')
-                    ->subject($this->data['title'])
-                    ->with('data', $this->data);
+        return $this
+            ->view('emails.teacher_birthday')
+            ->subject($this->data['title'])
+            ->with('data', $this->data);
     }
 }

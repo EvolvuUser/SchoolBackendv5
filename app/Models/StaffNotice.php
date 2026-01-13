@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class StaffNotice extends Model
 {
     use HasFactory;
-    protected $table = 'staff_notice'; 
-    protected $primaryKey = 't_notice_id'; 
-    public $incrementing = true; 
+
+    protected $table = 'staff_notice';
+    protected $primaryKey = 't_notice_id';
+    public $incrementing = true;
+
     protected $fillable = [
         'unq_id',
         'subject',
@@ -22,7 +24,7 @@ class StaffNotice extends Model
         'publish',
         'created_by',
         'department_id'
-    ]; // Fillable fields for mass assignment
+    ];  // Fillable fields for mass assignment
 
     // Relationships
 

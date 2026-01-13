@@ -9,8 +9,8 @@ class MarksHeadings extends Model
 {
     use HasFactory;
 
-    protected $table ='marks_headings';
-    protected $primaryKey = 'marks_headings_id'; 
-    public $incrementing = true; 
-    protected $fillable = ['marks_headings_id','name','written_exam','sequence'];
+    protected $table = 'marks_headings';
+    protected $primaryKey = 'marks_headings_id';
+    public $incrementing = true;
+    protected $fillable = ['marks_headings_id', 'name', 'written_exam', 'sequence'];
 }
