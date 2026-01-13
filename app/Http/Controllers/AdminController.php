@@ -19553,7 +19553,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $exists = DB::table('email_templates')->where('key', $request->key)->exists();
 
-            if (!$exists) {
+            if ($exists) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Email Key already found'
@@ -19771,6 +19771,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'totalStudentPresent' => $totalStudentPresent,
                 ];
             }
+            $YAxisData[] = $sectionsData;
         }
 
         return response()->json(
