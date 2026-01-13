@@ -19726,59 +19726,97 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         return DB::table('email_templates')->where('key' , $key)->value('body');
     }
 
-    public function attendanceAnalyticsGraph(Request $request) {
-        $status = $request->query('status');
-        $date = $request->query('date');
-        /*
-            X axis  - classes
-            Y axis  - total count of student 
-            Box     - sections and then inside box total present today / total strength of section
-        */
-        // Get the classes and sections
-        $classes = DB::table('class')
-            ->select('class.class_id' ,  'class.name as class_name')
-            ->where('class.academic_yr' , "2025-2026")->get();
+    public function attendanceAnalyticsGraph(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            // ---------- Inputs ----------
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+            $date = $request->query('date', now()->toDateString());
 
-        $XAxisData = $classes;
-        $YAxisData = [];
+            // ---------- Fetch Classes ----------
+            $classes = DB::table('class')
+                ->select('class_id', 'name as class_name')
+                ->where('academic_yr', $academicYear)
+                ->get();
 
-        foreach($XAxisData as $data) {
-            $class_id = $data->class_id;
-            /*
-                [ 
-                    [
-                        "section":"A",
-                        "totalStudentCount":40,
-                        "totalStudentPresent": 20"
-                    ],
-                    [
-                        "section":"B",
-                        "totalStudentCount":40,
-                        "totalStudentPresent": 31"
-                    ]
-                ]
-            */
-            $sectionsData = [];   
-            $sections = DB::table('section')->select('section.section_id' , 'section.name as section_name')->where('class_id' , $class_id)->get();
-            foreach($sections as $section) {
-                $section_name = $section->section_name;
-                $section_id = $section->section_id;
-                $totalStudentCount = DB::table('student')->where('class_id' , $class_id)->where('section_id' , $section_id)->count();
-                $totalStudentPresent = DB::table('attendance')->where('class_id' , $class_id)->where('section_id' , $section_id)->where('attendance_status' , 1)->count();
-                $sectionsData[] = [
-                    'section' => $section_name,
-                    'totalStudentCount' => $totalStudentCount,
-                    'totalStudentPresent' => $totalStudentPresent,
+            if ($classes->isEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'No classes found',
+                    'data' => []
+                ]);
+            }
+
+            // ---------- Preload Sections ----------
+            $sections = DB::table('section')
+                ->select('section_id', 'class_id', 'name as section_name')
+                ->get()
+                ->groupBy('class_id');
+
+            // ---------- Student Strength ----------
+            $studentCounts = DB::table('student')
+                ->select('class_id', 'section_id', DB::raw('COUNT(*) as total'))
+                ->where('academic_yr', $academicYear)
+                ->groupBy('class_id', 'section_id')
+                ->get()
+                ->keyBy(fn ($row) => $row->class_id . '_' . $row->section_id);
+
+            // ---------- Present Students ----------
+            $presentCounts = DB::table('attendance')
+                ->select('class_id', 'section_id', DB::raw('COUNT(*) as present'))
+                ->where('attendance_status', 1)
+                ->where('only_date', $date)
+                ->where('academic_yr', $academicYear)
+                ->groupBy('class_id', 'section_id')
+                ->get()
+                ->keyBy(fn ($row) => $row->class_id . '_' . $row->section_id);
+
+            // ---------- Build Final Response ----------
+            $responseData = [];
+
+            foreach ($classes as $class) {
+                $classSections = [];
+
+                foreach ($sections[$class->class_id] ?? [] as $section) {
+                    $key = $class->class_id . '_' . $section->section_id;
+
+                    $strength = $studentCounts[$key]->total ?? 0;
+                    $present = $presentCounts[$key]->present ?? 0;
+
+                    $classSections[] = [
+                        'section'  => $section->section_name,
+                        'strength' => $strength,
+                        'present'  => $present,
+                        'absent'   => max($strength - $present, 0),
+                    ];
+                }
+
+                $responseData[] = [
+                    'class_id'   => $class->class_id,
+                    'class_name' => $class->class_name,
+                    'sections'   => $classSections
                 ];
             }
-            $YAxisData[] = $sectionsData;
-        }
 
-        return response()->json(
-            [
+            return response()->json([
                 'status' => true,
-                'x-axis' => $XAxisData,
-            ]
-        );
+                'date'   => $date,
+                'data'   => $responseData
+            ]);
+
+        } catch (\Throwable $e) {
+            // Log::error('Attendance Analytics Error', [
+            //     'error' => $e->getMessage(),
+            //     'trace' => $e->getTraceAsString()
+            // ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong while generating attendance analytics',
+                'errorMessage' => $e->getMessage(),
+                'errorLine' => $e->getLine(),
+            ], 500);
+        }
     }
 }
