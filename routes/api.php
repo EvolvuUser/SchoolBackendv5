@@ -166,7 +166,11 @@
             });
 
             // Principal Changes 
-            Route::get('/attendance/analytics/graph' , [AdminController::class, 'attendanceAnalyticsGraph']);
+            Route::get('/attendance/analytics/graph' , [AdminController::class, 'attendanceAnalyticsGraph']); // Graph
+            Route::get('/birthdays/summary', [AdminController::class, 'birthDaysSummary']);  // Using this api principle will see count of todays birthday of student + staff.  WORKING
+            // INCOMPLETE
+            Route::get('/count_of_lesson_plan_not_created' , [AdminController::class , 'lessonPlanNotCreatedCount']);
+            Route::get('/list_of_lesson_plan_not_created' , [AdminController::class , 'lessonPlanNotCreatedList']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
