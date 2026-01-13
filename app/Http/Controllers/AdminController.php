@@ -19551,6 +19551,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'nullable|integer',
             ]);
 
+            $exists = DB::table('email_templates')->where('key', $request->key)->exists();
+
+            if (!$exists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email Key already found'
+                ], 403);
+            }
+
             DB::table('email_templates')->insert([
                 'key'        => $request->key,
                 'body'       => $request->body,
@@ -19715,5 +19724,60 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     */
     private function getEmailBodyByKey($key) {
         return DB::table('email_templates')->where('key' , $key)->value('body');
+    }
+
+    public function attendanceAnalyticsGraph(Request $request) {
+        $status = $request->query('status');
+        $date = $request->query('date');
+        /*
+            X axis  - classes
+            Y axis  - total count of student 
+            Box     - sections and then inside box total present today / total strength of section
+        */
+        // Get the classes and sections
+        $classes = DB::table('class')
+            ->select('class.class_id' ,  'class.name as class_name')
+            ->where('class.academic_yr' , "2025-2026")->get();
+
+        $XAxisData = $classes;
+        $YAxisData = [];
+
+        foreach($XAxisData as $data) {
+            $class_id = $data->class_id;
+            /*
+                [ 
+                    [
+                        "section":"A",
+                        "totalStudentCount":40,
+                        "totalStudentPresent": 20"
+                    ],
+                    [
+                        "section":"B",
+                        "totalStudentCount":40,
+                        "totalStudentPresent": 31"
+                    ]
+                ]
+            */
+            $sectionsData = [];   
+            $sections = DB::table('section')->select('section.section_id' , 'section.name as section_name')->where('class_id' , $class_id)->get();
+            foreach($sections as $section) {
+                $section_name = $section->section_name;
+                $section_id = $section->section_id;
+                $totalStudentCount = DB::table('student')->where('class_id' , $class_id)->where('section_id' , $section_id)->count();
+                $totalStudentPresent = DB::table('attendance')->where('class_id' , $class_id)->where('section_id' , $section_id)->where('attendance_status' , 1)->count();
+                $sectionsData[] = [
+                    'section' => $section_name,
+                    'totalStudentCount' => $totalStudentCount,
+                    'totalStudentPresent' => $totalStudentPresent,
+                ];
+            }
+        }
+
+        return response()->json(
+            [
+                'status' => true,
+                'x-axis' => $XAxisData,
+            ]
+        );
     }
 }

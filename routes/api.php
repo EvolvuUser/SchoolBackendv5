@@ -165,6 +165,9 @@
                 Route::delete('{id}', [AdminController::class, 'AdmissionEmailDestroy']);// delete
             });
 
+            // Principal Changes 
+            Route::get('/attendance/analytics/graph' , [AdminController::class, 'attendanceAnalyticsGraph']);
+
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
             Route::post('/store_staff', [AdminController::class, 'storeStaff']);
