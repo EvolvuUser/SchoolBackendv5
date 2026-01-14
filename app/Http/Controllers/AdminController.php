@@ -19976,6 +19976,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->from('subjects_excluded_from_curriculum');
                 })
                 ->groupBy('s.teacher_id')
+                ->get()
                 ->count();
 
             $createdCount = DB::table('subject as s')
@@ -20009,6 +20010,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->from('subjects_excluded_from_curriculum');
                 })
                 ->groupBy('s.teacher_id')
+                ->get()
                 ->count();
 
             return response()->json([
@@ -20049,6 +20051,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->from('subjects_excluded_from_curriculum');
                 })
                 ->groupBy('s.teacher_id')
+                ->get()
                 ->count();
 
             $createdCount = DB::table('subject as s')
@@ -20083,6 +20086,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->from('subjects_excluded_from_curriculum');
                 })
                 ->groupBy('s.teacher_id')
+                ->get()
                 ->count();
 
             return response()->json([
@@ -20366,6 +20370,65 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'success' => true,
                 'message' => 'Department wise present teacher count',
                 'data' => $finalArray
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function attendanceSummaryByCategory(Request $request) 
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $date = $request->input('date', date('Y-m-d'));
+
+            if (!in_array($user->role_id, ['A', 'M', 'T'])) {
+                return response()->json([
+                    'status' => 401,
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 2️⃣ Present teachers per category (ONCE, SQL-level)
+            |--------------------------------------------------------------------------
+            */
+            $presentByCateogry = DB::table('teacher_attendance as ta')
+                ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
+                ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->where('t.isDelete', 'N')
+                ->whereDate('ta.punch_time', $date)
+                ->select('t.teacher_id' , 'tc.name')
+                ->get();
+
+            $categories = DB::table('teacher_category')->get();
+
+            $finalData = [];
+
+            foreach($categories as $category) {
+                $finalData[$category->name] = 0;
+            }
+
+            // foreach($presentByCateogry as $pc) {
+            //     if()
+            // }
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Category wise present teacher count',
+                'presentByCateogry' => $presentByCateogry,
+                'data' => $finalData
             ]);
 
         } catch (\Exception $e) {

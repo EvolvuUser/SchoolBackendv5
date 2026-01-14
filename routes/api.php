@@ -163,6 +163,7 @@
             Route::get('/birthdays/summary/list', [AdminController::class, 'birthDaysSummaryList']);
 
             Route::get('/attendance/summary/department' , [AdminController::class , 'attendanceSummaryByDepartment']);
+            Route::get('/attendance/summary/category' , [AdminController::class , 'attendanceSummaryByCategory']);
             // Route::get('/attendance/summary/caretaker' , [AdminController::class , 'attendanceSummaryCaretaker']); // Not used 
 
             Route::get('/count_of_lesson_plan_not_created', [AdminController::class, 'lessonPlanNotCreatedCount']);
