@@ -171,6 +171,7 @@
             Route::get('/birthdays/summary/list' , [AdminController::class, 'birthDaysSummaryList']);
             Route::get('/count_of_lesson_plan_not_created' , [AdminController::class , 'lessonPlanNotCreatedCount']);
             Route::get('/list_of_lesson_plan_not_created' , [AdminController::class , 'lessonPlanNotCreatedList']);
+            Route::get('/attendance/summary/department' , [AdminController::class , 'attendanceSummaryByDepartment']);
 
             // Staff Module API 
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);

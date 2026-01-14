@@ -16626,70 +16626,64 @@ class AdminController extends Controller
             if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
                 $date = $request->input('date');
                 $selectedCategory = $request->get('category');
-                //   dd($date);
-
                 $presentlate = DB::select("SELECT * FROM (
-    SELECT 
-        t.teacher_id, 
-        t.employee_id, 
-        t.name,
-        t.phone, 
-        tc.name as teachercategoryname,
-        tc.tc_id,
-        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
-        (
-            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
-            FROM teacher_attendance 
-            WHERE employee_id = t.employee_id 
-              AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
-              HAVING COUNT(*) > 1
-        ) AS punch_out, 
-        lt.late_time, 
-        'N' AS late 
-    FROM teacher AS t 
-    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
-    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
-    JOIN late_time lt ON lt.tc_id = t.tc_id  
-    WHERE 
-        t.isDelete = 'N' 
-        AND tc.teaching = 'Y'
-        AND ta.punch_time LIKE '$date%' 
-    GROUP BY ta.employee_id 
-    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') <= lt.late_time 
-
-    UNION
-
-    SELECT 
-        t.teacher_id, 
-        t.employee_id, 
-        t.name,
-        t.phone, 
-        tc.name as teachercategoryname,
-        tc.tc_id,
-        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
-        (
-            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
-            FROM teacher_attendance 
-            WHERE employee_id = t.employee_id 
-              AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
-              HAVING COUNT(*) > 1
-        ) AS punch_out, 
-        lt.late_time, 
-        'Y' AS late 
-    FROM teacher AS t 
-    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
-    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
-    JOIN late_time lt ON lt.tc_id = t.tc_id 
-    WHERE 
-        t.isDelete = 'N' 
-        AND tc.teaching = 'Y'
-        AND ta.punch_time LIKE '$date%' 
-    GROUP BY ta.employee_id 
-    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') > lt.late_time 
-) AS attendance_result
-ORDER BY late_time ASC,teachercategoryname;");
-                // dd($presentlate);
-
+                    SELECT 
+                        t.teacher_id, 
+                        t.employee_id, 
+                        t.name,
+                        t.phone, 
+                        tc.name as teachercategoryname,
+                        tc.tc_id,
+                        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
+                        (
+                            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
+                            FROM teacher_attendance 
+                            WHERE employee_id = t.employee_id 
+                            AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
+                            HAVING COUNT(*) > 1
+                        ) AS punch_out, 
+                        lt.late_time, 
+                        'N' AS late 
+                    FROM teacher AS t 
+                    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+                    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+                    JOIN late_time lt ON lt.tc_id = t.tc_id  
+                    WHERE 
+                        t.isDelete = 'N' 
+                        AND tc.teaching = 'Y'
+                        AND ta.punch_time LIKE '$date%' 
+                    GROUP BY ta.employee_id 
+                    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') <= lt.late_time 
+                    UNION
+                    SELECT 
+                        t.teacher_id, 
+                        t.employee_id, 
+                        t.name,
+                        t.phone, 
+                        tc.name as teachercategoryname,
+                        tc.tc_id,
+                        DATE_FORMAT(ta.punch_time, '%H:%i') AS punch_in,
+                        (
+                            SELECT DATE_FORMAT(MAX(punch_time), '%H:%i') 
+                            FROM teacher_attendance 
+                            WHERE employee_id = t.employee_id 
+                            AND DATE_FORMAT(punch_time, '%Y-%m-%d') = '$date'
+                            HAVING COUNT(*) > 1
+                        ) AS punch_out, 
+                        lt.late_time, 
+                        'Y' AS late 
+                    FROM teacher AS t 
+                    JOIN teacher_category tc ON t.tc_id = tc.tc_id 
+                    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id 
+                    JOIN late_time lt ON lt.tc_id = t.tc_id 
+                    WHERE 
+                        t.isDelete = 'N' 
+                        AND tc.teaching = 'Y'
+                        AND ta.punch_time LIKE '$date%' 
+                    GROUP BY ta.employee_id 
+                    HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') > lt.late_time 
+                ) AS attendance_result
+                ORDER BY late_time ASC,teachercategoryname;");
                 foreach ($presentlate as $entry) {
                     // Fetch class-section mapping for each teacher
                     $classSections = DB::table('subject')
@@ -16731,11 +16725,11 @@ ORDER BY late_time ASC,teachercategoryname;");
                     $entry->sms_sent = $redington->sms_sent ?? 'N';
                     $entry->whatsappstatus = $redington->status ?? '';
                 }
-
-                $absentstaff = DB::select("SELECT t.teacher_id, t.name, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t  JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
-    ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date')  UNION
-SELECT t.teacher_id, t.name, t.phone,tc.name as category_name,  'Leave not applied' as leave_status,tc.tc_id FROM teacher AS t  LEFT JOIN teacher_category AS tc
-    ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P') ORDER BY category_name;");
+                $absentstaff = DB::select("
+                        SELECT t.teacher_id, t.name, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t  JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
+                        ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date')  UNION
+                        SELECT t.teacher_id, t.name, t.phone,tc.name as category_name,  'Leave not applied' as leave_status,tc.tc_id FROM teacher AS t  LEFT JOIN teacher_category AS tc
+                        ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P') ORDER BY category_name;");
                 foreach ($absentstaff as $entryabsent) {
                     $classSectionsabsent = DB::table('subject')
                         ->join('class', 'class.class_id', '=', 'subject.class_id')
@@ -16750,7 +16744,6 @@ SELECT t.teacher_id, t.name, t.phone,tc.name as category_name,  'Leave not appli
                         ->distinct()
                         ->orderBy('section_id', 'ASC')
                         ->get();
-
                     if ($classSectionsabsent->isNotEmpty()) {
                         // Group by class name
                         $grouped = [];
@@ -20122,5 +20115,49 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ]);
         }
     }
+
+public function attendanceSummaryByDepartment(Request $request)
+{
+    try {
+        $user = $this->authenticateUser();
+        $academic_year = JWTAuth::getPayload()->get('academic_year');
+        $date = $request->input('date', date('Y-m-d'));
+
+        // Optional role check (same pattern as your other APIs)
+        if (!in_array($user->role_id, ['A', 'M', 'T'])) {
+            return response()->json([
+                'status' => 401,
+                'success' => false,
+                'message' => 'Unauthorized access'
+            ]);
+        }
+
+
+        $data = DB::select("
+                        SELECT t.teacher_id, t.name, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t  JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
+                        ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date')  UNION
+                        SELECT t.teacher_id, t.name, t.phone,tc.name as category_name,  'Leave not applied' as leave_status,tc.tc_id FROM teacher AS t  LEFT JOIN teacher_category AS tc
+                        ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P') ORDER BY category_name;");
+
+        
+
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => 'Department wise present teacher count',
+            'data' => $data,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json([
+            'status' => 500,
+            'success' => false,
+            'message' => 'Something went wrong',
+            'error' => $e->getMessage()
+        ]);
+    }
+}
+
 
 }
