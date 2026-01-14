@@ -20115,100 +20115,142 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-public function attendanceSummaryByDepartment(Request $request)
-{
-    try {
+    public function attendanceSummaryByDepartment(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $date = $request->input('date', date('Y-m-d'));
+
+            if (!in_array($user->role_id, ['A', 'M', 'T'])) {
+                return response()->json([
+                    'status' => 401,
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 1️⃣ Total teachers per department
+            |--------------------------------------------------------------------------
+            */
+            $totalByDepartment = DB::table('subject as sub')
+                ->join('teacher as t', 't.teacher_id', '=', 'sub.teacher_id')
+                ->join('class as c', 'c.class_id', '=', 'sub.class_id')
+                ->join('department as d', 'd.department_id', '=', 'c.department_id')
+                ->where('sub.academic_yr', $academic_year)
+                ->groupBy('d.department_id', 'd.name')
+                ->select(
+                    'd.department_id',
+                    'd.name as department_name',
+                    DB::raw('COUNT(DISTINCT t.teacher_id) as total')
+                )
+                ->get()
+                ->keyBy('department_id');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | 2️⃣ Present teachers per department (ONCE, SQL-level)
+            |--------------------------------------------------------------------------
+            */
+            $presentByDepartment = DB::table('teacher_attendance as ta')
+                ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
+                ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->join('subject as sub', 'sub.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 'c.class_id', '=', 'sub.class_id')
+                ->join('department as d', 'd.department_id', '=', 'c.department_id')
+                ->where('t.isDelete', 'N')
+                ->where('tc.teaching', 'Y')
+                ->where('sub.academic_yr', $academic_year)
+                ->whereDate('ta.punch_time', $date)
+                ->groupBy('d.department_id')
+                ->select(
+                    'd.department_id',
+                    DB::raw('COUNT(DISTINCT t.teacher_id) as present')
+                )
+                ->pluck('present', 'department_id');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | 3️⃣ Final merge (FAST)
+            |--------------------------------------------------------------------------
+            */
+            $finalArray = [];
+
+            foreach ($totalByDepartment as $deptId => $dept) {
+                $present = $presentByDepartment[$deptId] ?? 0;
+                $total   = $dept->total;
+
+                $finalArray[$dept->department_name] = [
+                    'present' => $present,
+                    'absent'  => $total - $present,
+                    'total'   => $total
+                ];
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 4 Caretaker
+            |--------------------------------------------------------------------------
+            */
+            $presentCaretakers = DB::table('teacher_attendance as ta')
+                ->leftJoin('teacher as t', 't.employee_id', '=', 'ta.employee_id')
+                ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->whereDate('ta.punch_time', $date)
+                ->where('tc.name' , 'Caretakers')->count();
+
+            $totalCaretaker = DB::table('teacher as t')
+                    ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('tc.name' , 'Caretakers')->count();
+
+            $finalArray['Caretaker'] = [
+                'present' => $presentCaretakers,
+                'absent' => $totalCaretaker - $presentCaretakers,
+                'total' => $totalCaretaker,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Department wise present teacher count',
+                'data' => $finalArray
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function attendanceSummaryCaretaker(Request $request) {
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
         $date = $request->input('date', date('Y-m-d'));
 
-        if (!in_array($user->role_id, ['A', 'M', 'T'])) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'Unauthorized access'
-            ]);
-        }
+        $presentCaretakers = DB::table('teacher_attendance as ta')
+                ->leftJoin('teacher as t', 't.employee_id', '=', 'ta.employee_id')
+                ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->whereDate('ta.punch_time', $date)
+                ->where('tc.name' , 'Caretakers')->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1️⃣ Total teachers per department
-        |--------------------------------------------------------------------------
-        */
-        $totalByDepartment = DB::table('subject as sub')
-            ->join('teacher as t', 't.teacher_id', '=', 'sub.teacher_id')
-            ->join('class as c', 'c.class_id', '=', 'sub.class_id')
-            ->join('department as d', 'd.department_id', '=', 'c.department_id')
-            ->where('sub.academic_yr', $academic_year)
-            ->groupBy('d.department_id', 'd.name')
-            ->select(
-                'd.department_id',
-                'd.name as department_name',
-                DB::raw('COUNT(DISTINCT t.teacher_id) as total')
-            )
-            ->get()
-            ->keyBy('department_id');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | 2️⃣ Present teachers per department (ONCE, SQL-level)
-        |--------------------------------------------------------------------------
-        */
-        $presentByDepartment = DB::table('teacher_attendance as ta')
-            ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
-            ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-            ->join('subject as sub', 'sub.teacher_id', '=', 't.teacher_id')
-            ->join('class as c', 'c.class_id', '=', 'sub.class_id')
-            ->join('department as d', 'd.department_id', '=', 'c.department_id')
-            ->where('t.isDelete', 'N')
-            ->where('tc.teaching', 'Y')
-            ->where('sub.academic_yr', $academic_year)
-            ->whereDate('ta.punch_time', $date)
-            ->groupBy('d.department_id')
-            ->select(
-                'd.department_id',
-                DB::raw('COUNT(DISTINCT t.teacher_id) as present')
-            )
-            ->pluck('present', 'department_id');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | 3️⃣ Final merge (FAST)
-        |--------------------------------------------------------------------------
-        */
-        $finalArray = [];
-
-        foreach ($totalByDepartment as $deptId => $dept) {
-            $present = $presentByDepartment[$deptId] ?? 0;
-            $total   = $dept->total;
-
-            $finalArray[$dept->department_name] = [
-                'present' => $present,
-                'absent'  => $total - $present,
-                'total'   => $total
-            ];
-        }
+        $totalCaretaker = DB::table('teacher as t')
+                ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->where('tc.name' , 'Caretakers')->count();
 
         return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'Department wise present teacher count',
-            'data' => $finalArray
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json([
-            'status' => 500,
-            'success' => false,
-            'message' => 'Something went wrong',
-            'error' => $e->getMessage()
+            'status' => true, 
+            'presentCaretakers' => $presentCaretakers,
+            'totalCaretaker' => $totalCaretaker,
+            'absentCaretakers' => $totalCaretaker - $presentCaretakers,
         ]);
     }
-}
-
-
 
 }
