@@ -19944,7 +19944,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         // Get next Monday (or accept from request if you want later)
         $nextMonday = now()->next('Monday')->format('Y-m-d');
 
-        if ($role_id == 'P' || $role_id == 'A') {
+        if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
             $data = DB::table('subject as s')
                 ->selectRaw("
                     GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
@@ -20021,6 +20021,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => true,
                 'count'   => $data
             ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => "You are not allowed to access this resource",
+            ] , 403);
         }
     }
 
