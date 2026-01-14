@@ -10,7 +10,6 @@
 // use Illuminate\Database\Eloquent\Factories\HasFactory;
 // use Illuminate\Foundation\Auth\User as Authenticatable;
 
-
 // class User extends Authenticatable
 // {
 //     use HasApiTokens, HasFactory, Notifiable;
@@ -50,48 +49,38 @@
 //             'password' => 'hashed',
 //         ];
 //     }
-    
-   
-     
+
 //     public function getTeacher()
 //     {
-//         return $this->belongsTo(Teacher::class, 'reg_id');  
+//         return $this->belongsTo(Teacher::class, 'reg_id');
 //     }
-
 
 //     public function getAcademicYrAttribute()
 //     {
 //         if (session()->has('sessionData')) {
 //             return session('sessionData')['academic_yr'];
-//         }    
+//         }
 //         return Setting::where('active', 'Y')->first()->academic_yr;
 //     }
-    
-    
-    
+
 //      // public function getAcademicYrAttribute()
 //     // {
 //     //     return Setting::where('active', 'Y')->first()->academic_yr;
 //     // }
-       
 
 // }
 
-
-
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use App\Models\Teacher;
-
 use App\Models\Role;
-
-use Illuminate\Notifications\Notifiable;
+use App\Models\Teacher;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Tymon\JWTAuth\Contracts\JWTSubject; // Import JWTSubject interface
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Tymon\JWTAuth\Contracts\JWTSubject;  // Import JWTSubject interface
 
-class User extends Authenticatable implements JWTSubject // Implement JWTSubject interface
+class User extends Authenticatable implements JWTSubject  // Implement JWTSubject interface
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -101,12 +90,13 @@ class User extends Authenticatable implements JWTSubject // Implement JWTSubject
      * @var array
      */
     protected $table = 'user_master';
-    protected $primaryKey = 'user_id';
-    protected $fillable = ['user_id','name','password','reg_id','role_id','answer_one','answer_two','IsDelete'];
 
-        public function getTeacher()
+    protected $primaryKey = 'user_id';
+    protected $fillable = ['user_id', 'name', 'password', 'reg_id', 'role_id', 'answer_one', 'answer_two', 'IsDelete'];
+
+    public function getTeacher()
     {
-        return $this->belongsTo(Teacher::class, 'reg_id');  
+        return $this->belongsTo(Teacher::class, 'reg_id');
     }
 
     public function role()
@@ -142,11 +132,8 @@ class User extends Authenticatable implements JWTSubject // Implement JWTSubject
     public function getJWTCustomClaims()
     {
         return [
-           'academic_yr' =>  Setting::where('active', 'Y')->first()->academic_yr,
-           'institute_name' =>  Setting::where('active', 'Y')->first()->institute_name,          
+            'academic_yr' => Setting::where('active', 'Y')->first()->academic_yr,
+            'institute_name' => Setting::where('active', 'Y')->first()->institute_name,
         ];
     }
-
-   
 }
-

@@ -14,14 +14,14 @@ class UserMaster extends Authenticatable implements JWTSubject
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'user_master';
-    protected $primaryKey = 'user_id'; 
-    public $incrementing = false; 
-    protected $keyType = 'string'; 
-    protected $fillable = ['user_id','name','password','reg_id','role_id','answer_one','answer_two','IsDelete'];
+    protected $primaryKey = 'user_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $fillable = ['user_id', 'name', 'password', 'reg_id', 'role_id', 'answer_one', 'answer_two', 'IsDelete'];
 
     public function getTeacher()
     {
-        return $this->belongsTo(Teacher::class, 'reg_id');  
+        return $this->belongsTo(Teacher::class, 'reg_id');
     }
 
     public function getJWTIdentifier()

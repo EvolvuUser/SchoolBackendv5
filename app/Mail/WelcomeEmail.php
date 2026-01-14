@@ -21,10 +21,11 @@ class WelcomeEmail extends Mailable
 
     public function build()
     {
-        return $this->view('emails.welcome')
-                    ->with([
-                        'userEmail' => $this->userEmail,
-                        'password' => $this->password,
-                    ]);
+        return $this
+            ->view('emails.welcome')
+            ->with([
+                'userEmail' => $this->userEmail,
+                'password' => $this->password,
+            ]);
     }
 }

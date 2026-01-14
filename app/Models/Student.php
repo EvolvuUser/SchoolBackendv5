@@ -3,17 +3,18 @@
 namespace App\Models;
 
 use App\Models\Classes;
-use App\Models\Parents;
 use App\Models\Division;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Parents;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
     use HasFactory;
-    protected $primaryKey = 'student_id'; 
-    public $incrementing = true;     
-    protected $table ='student';
+
+    protected $primaryKey = 'student_id';
+    public $incrementing = true;
+    protected $table = 'student';
 
     protected $fillable = [
         'academic_yr',
@@ -84,6 +85,7 @@ class Student extends Model
     {
         return $this->belongsTo(Classes::class, 'class_id');
     }
+
     public function getDivision()
     {
         return $this->belongsTo(Division::class, 'section_id');
@@ -93,14 +95,13 @@ class Student extends Model
     {
         return $this->belongsTo(Parents::class, 'parent_id');
     }
-    public function userMaster(){
-        return $this->belongsTo(UserMaster::class,'parent_id','reg_id')->where('role_id','=', 'P');
+
+    public function userMaster()
+    {
+        return $this->belongsTo(UserMaster::class, 'parent_id', 'reg_id')->where('role_id', '=', 'P');
     }
 
-    
     // public function userMaster(){
     //     return $this->belongsTo(House::class,'house','house_id');
     // }
-
-
 }

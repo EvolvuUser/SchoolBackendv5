@@ -3,15 +3,16 @@
 namespace App\Models;
 
 use App\Models\UserMaster;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Parents extends Model
 {
     use HasFactory;
-    protected $primaryKey = 'parent_id'; 
-    public $incrementing = true;     
-    protected $table ='parent';
+
+    protected $primaryKey = 'parent_id';
+    public $incrementing = true;
+    protected $table = 'parent';
 
     protected $fillable = [
         'parent_id',
@@ -37,13 +38,11 @@ class Parents extends Model
         'father_image_name',
         'mother_image_name'
     ];
-     
-    //reg_id and role_id combination is unique .
+
+    // reg_id and role_id combination is unique .
     // role should be 'P'.
-    public function user()  
+    public function user()
     {
         return $this->belongsTo(UserMaster::class, 'parent_id', 'reg_id');
     }
-
-
 }

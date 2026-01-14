@@ -100,7 +100,7 @@
   </table>
 
   <table>
-    <tr><td class="label">Name of Pupil</td><td class="separator">:</td><td><?php echo $data->stud_name . " " . $data->mid_name . " " . $data->last_name; ?></td></tr>
+    <tr><td class="label">Name of Pupil</td><td class="separator">:</td><td><?php echo $data->stud_name . ' ' . $data->mid_name . ' ' . $data->last_name; ?></td></tr>
     <tr><td class="label">Father’s Name</td><td class="separator">:</td><td><?php echo $data->father_name; ?></td></tr>
     <tr><td class="label">Mother’s Name</td><td class="separator">:</td><td><?php echo $data->mother_name; ?></td></tr>
     <tr><td class="label">Date of Birth</td><td class="separator">:</td><td><?php echo date_format(date_create($data->dob), 'd-m-Y') . ' (' . $data->dob_words . ')'; ?></td></tr>
@@ -109,60 +109,37 @@
     <tr><td class="label">Mother Tongue</td><td class="separator">:</td><td><?php echo $data->mother_tongue; ?></td></tr>
     <tr><td class="label">Nationality</td><td class="separator">:</td><td><?php echo $data->nationality; ?></td></tr>
     <?php
-    if($data->religion!='' )
-    {
-        if($data->caste!='')
-        {
-            if($data->subcaste!='')
-            {
-               $relcast = $data->religion.", ".$data->caste." (".$data->subcaste.")";   
-            }
-            else
-            {
-                $relcast = $data->religion.", ".$data->caste;
-            }
-          
+    if ($data->religion != '') {
+      if ($data->caste != '') {
+        if ($data->subcaste != '') {
+          $relcast = $data->religion . ', ' . $data->caste . ' (' . $data->subcaste . ')';
+        } else {
+          $relcast = $data->religion . ', ' . $data->caste;
         }
-        else
-        {
-           if($data->subcaste!='')
-            {
-               $relcast = $data->religion." (".$data->subcaste.")";   
-            }
-            else
-            {
-                $relcast = $data->religion;
-            } 
+      } else {
+        if ($data->subcaste != '') {
+          $relcast = $data->religion . ' (' . $data->subcaste . ')';
+        } else {
+          $relcast = $data->religion;
         }
-        
+      }
+    } elseif ($data->caste != '') {
+      if ($data->subcaste != '') {
+        $relcast = $data->caste . ' (' . $data->subcaste . ')';
+      } else {
+        $relcast = $data->caste;
+      }
+    } else {
+      if ($data->subcaste != '') {
+        $relcast = $data->religion . ' (' . $data->subcaste . ')';
+      } else {
+        $relcast = $data->religion;
+      }
     }
-    elseif($data->caste!='')
-        {
-            if($data->subcaste!='')
-            {
-               $relcast = $data->caste." (".$data->subcaste.")";   
-            }
-            else
-            {
-                $relcast = $data->caste;
-            }
-          
-        }
-        else
-        {
-           if($data->subcaste!='')
-            {
-               $relcast = $data->religion." (".$data->subcaste.")";     
-            }
-            else
-            {
-                $relcast = $data->religion;
-            } 
-        }
-    
+
     ?>
     <tr><td class="label">Religion & Caste</td><td class="separator">:</td><td><?php echo $relcast; ?></td></tr>
-    <tr><td class="label">Date of Admission / Class</td><td class="separator">:</td><td><?php echo date_format(date_create($data->date_of_admission), 'd-m-Y') . " / Class-" . $data->admission_class; ?></td></tr>
+    <tr><td class="label">Date of Admission / Class</td><td class="separator">:</td><td><?php echo date_format(date_create($data->date_of_admission), 'd-m-Y') . ' / Class-' . $data->admission_class; ?></td></tr>
     <tr><td class="label">Last Studied Class</td><td class="separator">:</td><td><?php echo $data->standard_studying; ?></td></tr>
     <tr><td class="label">Promotion Status</td><td class="separator">:</td><td><?php echo $data->promoted_to; ?></td></tr>
     <tr><td class="label">Last Exam & Result</td><td class="separator">:</td><td><?php echo $data->last_exam; ?></td></tr>

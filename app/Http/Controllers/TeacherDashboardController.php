@@ -3,15 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\DB;
-use Tymon\JWTAuth\Exceptions\JWTException;
-use Carbon\Carbon;
-use App\Models\Event;
 use App\Models\DailyTodo;
+use App\Models\Event;
 use App\Models\StaffNotice;
 use App\Models\Teacher;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TeacherDashboardController extends Controller
 {
@@ -27,12 +27,11 @@ class TeacherDashboardController extends Controller
     public function getReminders(Request $request)
     {
         try {
-
             /* ---------------- AUTH ---------------- */
             $user = $this->authenticateUser();
             if (!$user) {
                 return response()->json([
-                    'status'  => false,
+                    'status' => false,
                     'message' => 'Unauthorized user'
                 ], 401);
             }
@@ -42,11 +41,11 @@ class TeacherDashboardController extends Controller
 
             /* ---------------- CLASSES ---------------- */
             $classes = DB::table('subject')
-                ->select('subject.class_id', 'subject.section_id', 'subject.sm_id' , 'class.name as class_name' , 'section.name as section_name'
-                , 'subject_master.name as subject_name')
-                ->leftJoin('class' , 'class.class_id' , '=' , 'subject.class_id')
-                ->leftJoin('section' , 'section.section_id' , '=' , 'subject.section_id')
-                ->leftJoin('subject_master' , 'subject_master.sm_id' , '=' , 'subject.sm_id')
+                ->select('subject.class_id', 'subject.section_id', 'subject.sm_id', 'class.name as class_name', 'section.name as section_name',
+                    'subject_master.name as subject_name')
+                ->leftJoin('class', 'class.class_id', '=', 'subject.class_id')
+                ->leftJoin('section', 'section.section_id', '=', 'subject.section_id')
+                ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
                 ->where('subject.teacher_id', $teacher_id)
                 ->where('subject.academic_yr', $academic_yr)
                 ->get();
@@ -54,11 +53,10 @@ class TeacherDashboardController extends Controller
             $incompleteLessonPlansForNextWeek = [];
 
             $nextWeekStart = Carbon::now()->addWeek()->startOfWeek()->format('Y-m-d');
-            $nextWeekEnd   = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
+            $nextWeekEnd = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
 
             /* ---------------- LESSON PLANS ---------------- */
             foreach ($classes as $data) {
-
                 $lessonPlans = DB::table('lesson_plan')
                     ->select(
                         'lesson_plan.*',
@@ -91,15 +89,15 @@ class TeacherDashboardController extends Controller
                     $key = $data->class_id . '-' . $data->section_id;
                     if (!isset($incompleteLessonPlansForNextWeek[$key])) {
                         $incompleteLessonPlansForNextWeek[$key] = [
-                            'class_id'     => $data->class_id,
-                            'class_name'   => $data->class_name,
-                            'section_id'   => $data->section_id,
+                            'class_id' => $data->class_id,
+                            'class_name' => $data->class_name,
+                            'section_id' => $data->section_id,
                             'section_name' => $data->section_name,
-                            'subjects'     => []
+                            'subjects' => []
                         ];
                     }
                     $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
-                        'subject_id'   => $data->sm_id,
+                        'subject_id' => $data->sm_id,
                         'subject_name' => $data->subject_name,
                         'lesson_plans' => []
                     ];
@@ -110,16 +108,16 @@ class TeacherDashboardController extends Controller
 
                 if (!isset($incompleteLessonPlansForNextWeek[$key])) {
                     $incompleteLessonPlansForNextWeek[$key] = [
-                        'class_id'     => $data->class_id,
-                        'class_name'   => $lessonPlans[0]->class_name,
-                        'section_id'   => $data->section_id,
+                        'class_id' => $data->class_id,
+                        'class_name' => $lessonPlans[0]->class_name,
+                        'section_id' => $data->section_id,
                         'section_name' => $lessonPlans[0]->section_name,
-                        'subjects'     => []
+                        'subjects' => []
                     ];
                 }
 
                 $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
-                    'subject_id'   => $data->sm_id,
+                    'subject_id' => $data->sm_id,
                     'subject_name' => $lessonPlans[0]->subject_name,
                     'lesson_plans' => $lessonPlans
                 ];
@@ -131,12 +129,12 @@ class TeacherDashboardController extends Controller
             $todaysDate = Carbon::today()->format('Y-m-d');
 
             $notices = StaffNotice::select([
-                    'staff_notice.subject',
-                    'staff_notice.notice_desc',
-                    'staff_notice.notice_date',
-                    'staff_notice.notice_type',
-                    DB::raw('GROUP_CONCAT(t.name) as staff_name')
-                ])
+                'staff_notice.subject',
+                'staff_notice.notice_desc',
+                'staff_notice.notice_date',
+                'staff_notice.notice_type',
+                DB::raw('GROUP_CONCAT(t.name) as staff_name')
+            ])
                 ->join('teacher as t', 't.teacher_id', '=', 'staff_notice.teacher_id')
                 ->where('staff_notice.publish', 'Y')
                 ->where('staff_notice.teacher_id', $teacher_id)
@@ -157,22 +155,20 @@ class TeacherDashboardController extends Controller
             $todos = DailyTodo::where('reg_id', $user->reg_id)
                 ->where('login_type', $user->role_id)
                 ->whereDate('due_date', $today)
-                ->where('is_completed', 0)   // 🔥 ONLY pending
+                ->where('is_completed', 0)  // 🔥 ONLY pending
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             /* ---------------- RESPONSE ---------------- */
             return response()->json([
-                'status'  => true,
-                'data'    => [
+                'status' => true,
+                'data' => [
                     'todoForToday' => $todos,
                     'notice_for_teacher' => $notices,
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
                 ]
             ], 200);
-
         } catch (\Throwable $e) {
-
             /* ---------------- LOG ERROR ---------------- */
             // Log::error('getReminders API failed', [
             //     'teacher_id' => $teacher_id ?? null,
@@ -184,7 +180,7 @@ class TeacherDashboardController extends Controller
             /* ---------------- SAFE RESPONSE ---------------- */
             dd($e);
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => $e->getMessage(),
                 'line' => $e->getLine(),
             ], 500);
@@ -200,10 +196,10 @@ class TeacherDashboardController extends Controller
             // Validate teacher_id
             if (!is_numeric($teacher_id)) {
                 return response()->json([
-                    'status'  => 422,
+                    'status' => 422,
                     'success' => false,
                     'message' => 'Invalid teacher id.',
-                    'data'    => []
+                    'data' => []
                 ], 422);
             }
 
@@ -211,20 +207,21 @@ class TeacherDashboardController extends Controller
 
             if (!$academicYr) {
                 return response()->json([
-                    'status'  => 400,
+                    'status' => 400,
                     'success' => false,
                     'message' => 'Academic year not found. Please logout and login again.',
-                    'data'    => []
+                    'data' => []
                 ], 400);
             }
 
             $currentDate = Carbon::now();
             $month = $request->input('month', $currentDate->month);
-            $year  = $request->input('year', $currentDate->year);
+            $year = $request->input('year', $currentDate->year);
 
             // Common conditions
             $commonConditions = function ($query) use ($academicYr, $month, $year) {
-                $query->where('events.isDelete', 'N')
+                $query
+                    ->where('events.isDelete', 'N')
                     ->where('events.publish', 'Y')
                     ->where('events.academic_yr', $academicYr)
                     ->whereMonth('events.start_date', $month)
@@ -241,16 +238,16 @@ class TeacherDashboardController extends Controller
 
             // Events for teacher login
             $eventsForTeacherLogin = Event::select(
-                    'events.unq_id',
-                    'events.title',
-                    'events.event_desc',
-                    'events.class_id',
-                    'events.login_type',
-                    'events.start_date',
-                    'events.start_time',
-                    'events.end_date',
-                    'events.end_time'
-                )
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.class_id',
+                'events.login_type',
+                'events.start_date',
+                'events.start_time',
+                'events.end_date',
+                'events.end_time'
+            )
                 ->where('events.login_type', 'T')
                 ->where($commonConditions)
                 ->orderBy('events.start_date')
@@ -259,17 +256,17 @@ class TeacherDashboardController extends Controller
 
             // Events for classes taught
             $eventsForClasses = Event::select(
-                    'events.unq_id',
-                    'events.title',
-                    'events.event_desc',
-                    'events.class_id',
-                    'events.login_type',
-                    'class.name as class_name',
-                    'events.start_date',
-                    'events.start_time',
-                    'events.end_date',
-                    'events.end_time'
-                )
+                'events.unq_id',
+                'events.title',
+                'events.event_desc',
+                'events.class_id',
+                'events.login_type',
+                'class.name as class_name',
+                'events.start_date',
+                'events.start_time',
+                'events.end_date',
+                'events.end_time'
+            )
                 ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
                 ->where($commonConditions)
                 ->whereIn('events.class_id', $classesTaught)
@@ -297,18 +294,17 @@ class TeacherDashboardController extends Controller
                 ->values();
 
             return response()->json([
-                'status'  => 200,
+                'status' => 200,
                 'success' => true,
                 'message' => 'Events fetched successfully.',
-                'data'    => $allEvents
+                'data' => $allEvents
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => 500,
+                'status' => 500,
                 'success' => false,
                 'message' => 'Something went wrong while fetching events.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -323,7 +319,7 @@ class TeacherDashboardController extends Controller
 
     //     // 1. Classes & sections taught by teacher
     //     $classes = collect(DB::select("
-    //         SELECT 
+    //         SELECT
     //             class.class_id,
     //             class.name AS class_name,
     //             section.name AS section_name,
@@ -352,7 +348,7 @@ class TeacherDashboardController extends Controller
     //     foreach ($class_and_section_ids as $cs) {
 
     //         $subjects = DB::select("
-    //             SELECT 
+    //             SELECT
     //                 sm.name,
     //                 sm.sm_id AS subject_id
     //             FROM subject a
@@ -425,7 +421,6 @@ class TeacherDashboardController extends Controller
     //                 }
     //             }
 
-
     //             $averageMarks = $totalStudents > 0
     //                 ? round($totalMarks / $totalStudents, 2)
     //                 : 0;
@@ -454,7 +449,7 @@ class TeacherDashboardController extends Controller
     //     ]);
     // }
 
-    public function studentAcademicPerformanceGraphData(Request $request , $teacher_id)
+    public function studentAcademicPerformanceGraphData(Request $request, $teacher_id)
     {
         $user = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
@@ -487,7 +482,7 @@ class TeacherDashboardController extends Controller
 
         // have to update
         // $subjects = DB::select("
-        //     SELECT 
+        //     SELECT
         //         sm.name,
         //         sm.sm_id AS subject_id
         //     FROM subject a
@@ -499,7 +494,6 @@ class TeacherDashboardController extends Controller
         // ", [$class_id, $section_id, $reg_id, $academic_yr]);
 
         foreach ($subjects as $row) {
-
             // -------- GET STUDENT MARKS (same for all classes) --------
             $student_marks = DB::table('student_marks as a')
                 ->join('student as b', 'a.student_id', '=', 'b.student_id')
@@ -515,11 +509,10 @@ class TeacherDashboardController extends Controller
                 ->where('a.publish', 'Y')
                 ->first();
 
-
             // -------- CALCULATION --------
-            $totalMarksSum     = (float) ($student_marks->total_marks_sum ?? 0);
-            $totalMarksTotal   = (float) ($student_marks->total_highest ?? 0);
-            $studentCount      = (int)   ($student_marks->student_count ?? 0);
+            $totalMarksSum = (float) ($student_marks->total_marks_sum ?? 0);
+            $totalMarksTotal = (float) ($student_marks->total_highest ?? 0);
+            $studentCount = (int) ($student_marks->student_count ?? 0);
 
             // avoid division by zero
             $averagePercentage = ($totalMarksTotal > 0)
@@ -528,15 +521,15 @@ class TeacherDashboardController extends Controller
 
             // -------- FINAL PUSH --------
             $classSectionSubjects[] = [
-                'class_id'      => $class_id,
-                'section_id'    => $section_id,
-                'subject_name'  => $row->name,
-                'subject_id'    => $row->subject_id,
-                'academic_yr'   => $academic_yr,
-                'studentCount'  => $studentCount,
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'subject_name' => $row->name,
+                'subject_id' => $row->subject_id,
+                'academic_yr' => $academic_yr,
+                'studentCount' => $studentCount,
                 'average_percentage' => $averagePercentage,  // updated field
                 'totalMarksStudentGot' => $totalMarksSum,
-                'outOfTotalMarks' =>  $totalMarksTotal,
+                'outOfTotalMarks' => $totalMarksTotal,
             ];
         }
 
@@ -553,7 +546,7 @@ class TeacherDashboardController extends Controller
     {
         $user = $this->authenticateUser();
         $acd_yr = JWTAuth::getPayload()->get('academic_year');
-        $todayDayOfWeek = date('l'); // Get current day of the week (e.g., 'Monday')
+        $todayDayOfWeek = date('l');  // Get current day of the week (e.g., 'Monday')
         $teacher_id = JWTAuth::getPayload()->get('reg_id');
 
         $timetable = DB::select("
@@ -573,7 +566,6 @@ class TeacherDashboardController extends Controller
                     AND a.t_id = ?
                 ORDER BY a.period_no
             ", [$teacher_id, $acd_yr, $timetable_id]);
-        
 
         $classId = $timetable[0]->class_id;
         $subjectId = $timetable[0]->sm_id;
@@ -583,7 +575,7 @@ class TeacherDashboardController extends Controller
             ->where('subject_id', $subjectId)
             ->where('publish', 'Y')
             ->first();
-            
+
         if (!$lessonPlanTemplate) {
             return response()->json([
                 'status' => 400,
@@ -612,19 +604,20 @@ class TeacherDashboardController extends Controller
             AND lesson_plan_template.class_id = ?
             AND lesson_plan_template.publish = 'Y'
             AND lesson_plan_template.reg_id = ?
-        ", [$subjectId, $classId , $teacher_id]);
+        ", [$subjectId, $classId, $teacher_id]);
 
-        $lessonPlanData = collect($lessonPlanData)
-        ->groupBy('chapter_name')->toArray();
-
-        /*
-        BETTER UI
         $lessonPlanData = collect($lessonPlanData)
             ->groupBy('chapter_name')
-            ->map(function ($items) {
-                return $items->groupBy('heading_name');
-            })->toArray();
-        */
+            ->toArray();
+
+        /*
+         * BETTER UI
+         * $lessonPlanData = collect($lessonPlanData)
+         *     ->groupBy('chapter_name')
+         *     ->map(function ($items) {
+         *         return $items->groupBy('heading_name');
+         *     })->toArray();
+         */
 
         return response()->json([
             'status' => 'success',
@@ -634,7 +627,8 @@ class TeacherDashboardController extends Controller
         ]);
     }
 
-    public function getDefaulters(Request $request) {
+    public function getDefaulters(Request $request)
+    {
         $user = $this->authenticateUser();
         $teacher_id = $user->reg_id;
         $customClaims = JWTAuth::getPayload()->get('academic_year');
@@ -653,22 +647,30 @@ class TeacherDashboardController extends Controller
             ->first();
 
         $class_id = $classes->class_id;
-        $class_name = DB::table('class')->select('name')
-        ->where('class_id' , $class_id)->first()->name;
+        $class_name = DB::table('class')
+            ->select('name')
+            ->where('class_id', $class_id)
+            ->first()
+            ->name;
 
         $section_id = $classes->section_id;
-        $section_name = DB::table('section')->select('name')
-        ->where('section_id' , $section_id)->first()->name;
+        $section_name = DB::table('section')
+            ->select('name')
+            ->where('section_id', $section_id)
+            ->first()
+            ->name;
 
         $installmentId = $request->input('installment_id');
 
         $defaulters = DB::table('view_student_fees_category as s')
             ->leftJoin('view_student_fees_payment as p', function ($join) {
-                $join->on('s.student_id', '=', 'p.student_id')
+                $join
+                    ->on('s.student_id', '=', 'p.student_id')
                     ->on('s.installment', '=', 'p.installment');
             })
             ->leftJoin('fee_concession_details as c', function ($join) {
-                $join->on('s.student_id', '=', 'c.student_id')
+                $join
+                    ->on('s.student_id', '=', 'c.student_id')
                     ->on('s.installment', '=', 'c.installment');
             })
             ->join('student as st', 'st.student_id', '=', 's.student_id')
@@ -681,9 +683,10 @@ class TeacherDashboardController extends Controller
             }, function ($q) {
                 // default behavior
                 $q->where(function ($qq) {
-                    $qq->where('s.installment', 'like', '1%')
-                    ->orWhere('s.installment', 'like', '2%')
-                    ->orWhere('s.installment', 'like', '3%');
+                    $qq
+                        ->where('s.installment', 'like', '1%')
+                        ->orWhere('s.installment', 'like', '2%')
+                        ->orWhere('s.installment', 'like', '3%');
                 });
             })
             ->groupBy(
@@ -711,17 +714,16 @@ class TeacherDashboardController extends Controller
         $defaulterStudents = [];
 
         foreach ($defaulters as $student) {
-            $pending = $student->installment_fees 
-                    - $student->concession 
-                    - $student->paid_amount;
+            $pending = $student->installment_fees
+                - $student->concession
+                - $student->paid_amount;
             if ($pending > 0) {
-
                 $defaulterStudents[] = [
-                    'student_id'   => $student->student_id,
-                    'first_name'         => $student->first_name,
+                    'student_id' => $student->student_id,
+                    'first_name' => $student->first_name,
                     'mid_name' => $student->mid_name,
                     'last_name' => $student->last_name,
-                    'roll_no'      => $student->roll_no,
+                    'roll_no' => $student->roll_no,
                     'installment' => $student->installment,
                     'pending_fee' => $pending
                 ];
@@ -742,22 +744,22 @@ class TeacherDashboardController extends Controller
     public function dashboardSummary($teacher_id)
     {
         $user = $this->authenticateUser();
-        
-        /**
-         * STUDENT CARDS
-         */
-        // get classes data 
+
+        /** STUDENT CARDS */
+        // get classes data
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         // 1. Get unique class-section combinations for the teacher
         $classData = DB::table('subject')
             ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                $join
+                    ->on('class_teachers.class_id', '=', 'subject.class_id')
                     ->on('class_teachers.section_id', '=', 'subject.section_id')
                     ->where('class_teachers.teacher_id', $teacher_id);
             })
             ->where('subject.academic_yr', $customClaims)
             ->where(function ($query) use ($teacher_id) {
-                $query->where('subject.teacher_id', $teacher_id)
+                $query
+                    ->where('subject.teacher_id', $teacher_id)
                     ->orWhere('class_teachers.teacher_id', $teacher_id);
             })
             ->distinct()
@@ -765,7 +767,7 @@ class TeacherDashboardController extends Controller
             ->get();
 
         // 2. Build arrays for WHERE IN
-        $classIds   = $classData->pluck('class_id')->unique();
+        $classIds = $classData->pluck('class_id')->unique();
         $sectionIds = $classData->pluck('section_id')->unique();
 
         // 3. Count students in ONE query
@@ -783,10 +785,7 @@ class TeacherDashboardController extends Controller
             ->whereIn('section_id', $sectionIds)
             ->count();
 
-        /**
-         * Defaulter list card
-         */
-        
+        /** Defaulter list card */
         $classes = DB::table('class_teachers')
             ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
             ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
@@ -803,14 +802,16 @@ class TeacherDashboardController extends Controller
 
         $class_id = $classes->class_id;
         $section_id = $classes->section_id;
-        $installment = 1; // 1 2 3
+        $installment = 1;  // 1 2 3
         $defaulters = DB::table('view_student_fees_category as s')
             ->leftJoin('view_student_fees_payment as p', function ($join) {
-                $join->on('s.student_id', '=', 'p.student_id')
+                $join
+                    ->on('s.student_id', '=', 'p.student_id')
                     ->on('s.installment', '=', 'p.installment');
             })
             ->leftJoin('fee_concession_details as c', function ($join) {
-                $join->on('s.student_id', '=', 'c.student_id')
+                $join
+                    ->on('s.student_id', '=', 'c.student_id')
                     ->on('s.installment', '=', 'c.installment');
             })
             ->join('student as st', 'st.student_id', '=', 's.student_id')
@@ -818,9 +819,10 @@ class TeacherDashboardController extends Controller
             ->where('s.class_id', $class_id)
             ->where('st.section_id', $section_id)
             ->where(function ($q) {
-                $q->where('s.installment', 'like', '1%')
-                ->orWhere('s.installment', 'like', '2%')
-                ->orWhere('s.installment', 'like', '3%');
+                $q
+                    ->where('s.installment', 'like', '1%')
+                    ->orWhere('s.installment', 'like', '2%')
+                    ->orWhere('s.installment', 'like', '3%');
             })
             ->groupBy(
                 's.student_id',
@@ -847,9 +849,9 @@ class TeacherDashboardController extends Controller
         $defaulterStudents = [];
 
         foreach ($defaulters as $student) {
-            $pending = $student->installment_fees 
-                    - $student->concession 
-                    - $student->paid_amount;
+            $pending = $student->installment_fees
+                - $student->concession
+                - $student->paid_amount;
             if ($pending > 0) {
                 $totalNumberOfDefaulters++;
                 $pendingAmount += $pending;
@@ -864,10 +866,7 @@ class TeacherDashboardController extends Controller
             }
         }
 
-
-        /**
-         * Birthday Card
-         */
+        /** Birthday Card */
         $date = Carbon::now();
         $studentCount = DB::table('student')
             ->where('academic_yr', $customClaims)
@@ -877,17 +876,14 @@ class TeacherDashboardController extends Controller
             ->whereDay('dob', $date->day)
             ->count();
 
-        
         $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
-            ->whereMonth('birthday',  $date->month)
-            ->whereDay('birthday',  $date->day)
+            ->whereMonth('birthday', $date->month)
+            ->whereDay('birthday', $date->day)
             ->count();
 
-        /**
-         * Homework Card
-         */
+        /** Homework Card */
         $today = Carbon::now()->toDateString();
-        $countOfHomeworksDueToday = 0; // Placeholder for homework due today logic
+        $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
         $countOfHomeworksDueToday = DB::table('homework')
             ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
             ->where('homework.academic_yr', $customClaims)
@@ -928,23 +924,24 @@ class TeacherDashboardController extends Controller
         $role = $user->role_id;
         // get ticket assigned to the teacher for today  ticket , ticket_comments.appointment_date_time
         $tickets = DB::table('ticket')
-            ->select('ticket.*', 'service_type.service_name','student.first_name','student.mid_name','student.last_name' , 'ticket_comments.appointment_date_time')
+            ->select('ticket.*', 'service_type.service_name', 'student.first_name', 'student.mid_name', 'student.last_name', 'ticket_comments.appointment_date_time')
             ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
             ->join('student', 'student.student_id', '=', 'ticket.student_id')
             ->join('class_teachers', function ($join) {
-                $join->on('class_teachers.class_id', '=', 'student.class_id')
-                        ->on('class_teachers.section_id', '=', 'student.section_id');
+                $join
+                    ->on('class_teachers.class_id', '=', 'student.class_id')
+                    ->on('class_teachers.section_id', '=', 'student.section_id');
             })
             ->leftJoin('ticket_comments', 'ticket.ticket_id', '=', 'ticket_comments.ticket_id')
             ->where('ticket_comments.appointment_date_time', 'LIKE', date('d-M-Y') . '%')
-            ->where('ticket_comments.status' , 'Approved')
+            ->where('ticket_comments.status', 'Approved')
             ->where('service_type.role_id', $role)
             ->where('class_teachers.teacher_id', $reg_id)
             // ->where('ticket.raised_on' , '=', date('Y-m-d'))
             ->orderBy('raised_on', 'DESC')
             ->get()
             ->map(function ($ticket) {
-                $ticket->description = strip_tags($ticket->description); // Remove HTML tags
+                $ticket->description = strip_tags($ticket->description);  // Remove HTML tags
                 return $ticket;
             });
 
@@ -962,7 +959,7 @@ class TeacherDashboardController extends Controller
         $reg_id = JWTAuth::getPayload()->get('reg_id');
         $acd_yr = JWTAuth::getPayload()->get('academic_year');
 
-        $todayDayOfWeek = date('l'); // Get current day of the week (e.g., 'Monday')
+        $todayDayOfWeek = date('l');  // Get current day of the week (e.g., 'Monday')
 
         // Fetch timetable entries for the teacher for today
         $timetableEntries = DB::select("
@@ -988,6 +985,25 @@ class TeacherDashboardController extends Controller
             'data' => [
                 'timetable' => $timetableEntries,
             ]
+        ]);
+    }
+
+    // Dev Name - Manish Kumar Sharma
+    public function getPendingBookForReturn(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $pending_books = DB::table('issue_return')
+            ->join('book', 'book.book_id', '=', 'issue_return.book_id')
+            ->where('member_id', $reg_id)
+            ->where('member_type', 'T')
+            ->where('return_date', '0000-00-00')
+            ->get();
+        return response()->json([
+            'status' => 200,
+            'message' => 'Books pending for return',
+            'data' => $pending_books,
+            'success' => true
         ]);
     }
 }

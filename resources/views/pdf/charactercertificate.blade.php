@@ -43,15 +43,16 @@
     <div style="width:80%;margin-top:23%;margin-left:5%;text-align:center;display: inline-block">
      <table border="0"  class="table-responsive" style="width:95%;margin-left:5%;margin-top:20%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top:5%;" cellpadding="1" cellspacing="10" >
              <tr>
-                 <?php if($student_image =''){ ?>
+                 <?php if ($student_image = '') { ?>
                 <td style="font-size:15px;text-align:right;">BONAFIDE AND CHARACTER CERTIFICATE  
-<?php 	
-$image_url	=  m; ?>
-	<img src="<?php echo $image_url;?>"  class="image_thumbnail studimg" width="50" height="50" style="margin-left:80px;"/>
+<?php
+    $image_url = m;
+    ?>
+	<img src="<?php echo $image_url; ?>"  class="image_thumbnail studimg" width="50" height="50" style="margin-left:80px;"/>
 	</td>
-<?php }else{?>
+<?php } else { ?>
 <td style="font-size:15px;text-align:center;">BONAFIDE AND CHARACTER CERTIFICATE  
-<?php }?><br></td>
+<?php } ?><br></td>
                 <!--<td rowspan=2>-->
                    
                 <!--</td>-->
@@ -67,7 +68,7 @@ $image_url	=  m; ?>
                     <!--<br>-->
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td class="cursive1" style="font-size:15px;width: 18%; word-wrap:break-word;">Master / Miss </td>
-						<td style="font-size:15px;width: auto;text-align:center;"><div class="statistics_line"><?php echo $data->stud_name;?></div></td>
+						<td style="font-size:15px;width: auto;text-align:center;"><div class="statistics_line"><?php echo $data->stud_name; ?></div></td>
 						<td style="font-size:15px;width: 5%;text-align:center;">was</td>
                     </table>
                 </td>
@@ -76,9 +77,9 @@ $image_url	=  m; ?>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border-collapse: collapse;" cellpadding="0" cellspacing="0">
                         <td style="font-size:15px;width: 15%;white-space: nowrap;" class="cursive">a Bonafide student of our school studying in Std</td>
-                        <td style="font-size:15px;width: 5%;text-align:center;"><div class="statistics_line"><?php echo $data->class_division;?></div></td>
+                        <td style="font-size:15px;width: 5%;text-align:center;"><div class="statistics_line"><?php echo $data->class_division; ?></div></td>
                         <td style="font-size:15px;width: 5%;padding-left:2%;white-space: nowrap;"> in the year </td>
-						<td style="font-size:15px;width: 15%;text-align:center;"><div class="statistics_line"><?php echo $data->academic_yr;?></div></td>
+						<td style="font-size:15px;width: 15%;text-align:center;"><div class="statistics_line"><?php echo $data->academic_yr; ?></div></td>
 						<!--<td style="font-size:15px;width:7%;padding-top: 15px;padding-left:3%;">  place</td>-->
                     </table>
                 </td>
@@ -114,7 +115,7 @@ $image_url	=  m; ?>
              <tr>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-size:15px;width: 1%;word-wrap:break-word;text-align: center;">She / He has passed her /his CBSE Std. <?php echo $data->class_division;?> Examination of</td>
+                        <td style="font-size:15px;width: 1%;word-wrap:break-word;text-align: center;">She / He has passed her /his CBSE Std. <?php echo $data->class_division; ?> Examination of</td>
                     </table>
                     
                 </td>
@@ -125,16 +126,16 @@ $image_url	=  m; ?>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:15px;width: 10%;word-wrap:break-word;text-align: center;"></td>
                         <td style="font-size:15px;width: 8%;word-wrap:break-word;text-align: center;"> Feb / March</td>
-                        <?php 
+                        <?php
                         // $academic_yr_to = $this->crud_model->get_academic_yr_to();
-                        // $to_year = date('Y', strtotime($academic_yr_to) ); 
+                        // $to_year = date('Y', strtotime($academic_yr_to) );
                         $academic_yr_to = $data->academic_yr;
-                        $acd_yr = explode('-',$academic_yr_to);
-                        $to_year = date('Y', strtotime($acd_yr[1])); 
-                        //$to_year = '2024';
+                        $acd_yr = explode('-', $academic_yr_to);
+                        $to_year = date('Y', strtotime($acd_yr[1]));
+                        // $to_year = '2024';
                         ?>
-                        <td style=" width:5%;text-align:center;font-size:15px;"><div class="statistics_line"><?php echo $to_year;?></div></td>
-                        <td style=" width:9%;text-align:center;font-size:15px;">in the <?php echo $data->attempt;?></td>
+                        <td style=" width:5%;text-align:center;font-size:15px;"><div class="statistics_line"><?php echo $to_year; ?></div></td>
+                        <td style=" width:9%;text-align:center;font-size:15px;">in the <?php echo $data->attempt; ?></td>
                         <td style="font-size:15px;width: 11%;word-wrap:break-word;text-align: center;"></td>
                     </table>
                     
@@ -145,7 +146,7 @@ $image_url	=  m; ?>
             <tr>
                  <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Date: <?php echo date_format(date_create($data->issue_date_bonafide),'d-m-Y');?></td>
+                        <td style="font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Date: <?php echo date_format(date_create($data->issue_date_bonafide), 'd-m-Y'); ?></td>
                         <td style=" width:10%;text-align:center;font-size:15px;"></td>
                         <td style="font-size:15px;width: 10%;padding-top: 10px;word-wrap:break-word;text-align: center;">Principal</td>
                     </table>

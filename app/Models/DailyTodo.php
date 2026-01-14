@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class DailyTodo extends Model
 {
     use HasFactory;
+
     public $table = 'daily_todos';
+
     protected $fillable = [
         'title',
         'description',

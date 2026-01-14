@@ -9,8 +9,8 @@ class Term extends Model
 {
     use HasFactory;
 
-    protected $table ='term';
-    protected $primaryKey = 'term_id'; 
-    public $incrementing = true; 
-    protected $fillable = ['term_id','name'];
+    protected $table = 'term';
+    protected $primaryKey = 'term_id';
+    public $incrementing = true;
+    protected $fillable = ['term_id', 'name'];
 }

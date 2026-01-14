@@ -19,8 +19,8 @@ class GlobalVariablesProvider extends ServiceProvider
      */
     public function boot(): void
     {
-         app()->singleton('global_variables', function () {
-            if (auth()->check()) { // Only load after JWT login
+        app()->singleton('global_variables', function () {
+            if (auth()->check()) {  // Only load after JWT login
                 $globalData = imagesforall();
                 return [
                     'parent_app_url' => $globalData[0]['url'],

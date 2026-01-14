@@ -39,10 +39,10 @@
 <div class="pdfdiv"> <!--Ends Here -->
 <!--	<div style="width:100%;height:95%;margin: auto;text-align:center;border-style:groove;border:4px groove grey;">-->
 
- <?php 
-//$stud_image = $this->crud_model->get_student_profile_image($stud_id);
-$student_image='';
-//$image_url	=	base_url().'uploads/student_image/'.$student_image;
+ <?php
+// $stud_image = $this->crud_model->get_student_profile_image($stud_id);
+$student_image = '';
+// $image_url	=	base_url().'uploads/student_image/'.$student_image;
 ?> 
 					
 	<br/>
@@ -51,15 +51,16 @@ $student_image='';
 	<div style="width:80%;margin-top:23%;margin-left:5%;text-align:center;display: inline-block">
      <table border="0"  class="table-responsive" style="width:95%;margin-left:5%;margin-top:20%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top:5%;" cellpadding="1" cellspacing="10" >
              <tr>
-                 <?php if($student_image!=''){ ?>
+                 <?php if ($student_image != '') { ?>
                 <td style="font-style: italic;font-size:15px;text-align:right;">BONAFIDE CERTIFICATE  
-<?php 	
-$image_url	=	m ?>
-	<img src="<?php echo $image_url;?>"  class="image_thumbnail studimg" width="50" height="50" style="margin-left:80px;"/>
+<?php
+    $image_url = m
+    ?>
+	<img src="<?php echo $image_url; ?>"  class="image_thumbnail studimg" width="50" height="50" style="margin-left:80px;"/>
 	</td>
-<?php }else{?>
+<?php } else { ?>
 <td style="font-style: italic;font-size:15px;text-align:center;">BONAFIDE CERTIFICATE  
-<?php }?></td>
+<?php } ?></td>
 
 </tr>
 
@@ -67,7 +68,7 @@ $image_url	=	m ?>
         <td>
             <!--<br>-->
             <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                <td class="cursive1" style="font-style: italic;font-size:16px;width: 90%; word-wrap:break-word;text-align:right;">Ref. No : <?php echo $data->academic_yr."/ B.C/".$data->sr_no;?><br></td>
+                <td class="cursive1" style="font-style: italic;font-size:16px;width: 90%; word-wrap:break-word;text-align:right;">Ref. No : <?php echo $data->academic_yr . '/ B.C/' . $data->sr_no; ?><br></td>
                  <!--<td style="font-style: italic;font-size:14px;width: 20%; word-wrap:break-word;"></td>-->
                 
             </table>
@@ -81,7 +82,7 @@ $image_url	=	m ?>
                     <!--<br>-->
                     <table class="table-responsive" style="width:109%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td class="cursive1" style="font-style: italic;font-size:14.5px;width: 15%; word-wrap:break-word;"><b>Master / Miss </td>
-						<td style="font-style: italic;font-size:14.5px;width: auto;text-align:center;"><div class="statistics_line"><b><?php echo $data->stud_name?></div></td>
+						<td style="font-style: italic;font-size:14.5px;width: auto;text-align:center;"><div class="statistics_line"><b><?php echo $data->stud_name ?></div></td>
 						<td style="font-style: italic;font-size:14.5px;width: 5%;text-align:center;">,</td>
                     </table>
                 </td>
@@ -90,7 +91,7 @@ $image_url	=	m ?>
                 <td>
                     <table class="table-responsive" style="width:112%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border-collapse: collapse;" cellpadding="0" cellspacing="0">
                         <td style="font-style: italic;font-size:14.5px;width: 4%;white-space: nowrap;" class="cursive"><b> son / daughter of Mr.</td>
-                        <td nowrap style="font-style: italic;font-size:14.5px;width: 5%;text-align:center;"><div class="statistics_line"><b><?php echo $data->father_name?></div></td>
+                        <td nowrap style="font-style: italic;font-size:14.5px;width: 5%;text-align:center;"><div class="statistics_line"><b><?php echo $data->father_name ?></div></td>
                         <td style="font-style: italic;font-size:14.5px;width: 15%;"><b>is a bonafide student of St. Arnolds Central School</td>
                     </table>
                 </td>
@@ -109,8 +110,8 @@ $image_url	=	m ?>
                 <td>
                     <table class="table-responsive" style="width:105%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border-collapse: collapse;" cellpadding="0" cellspacing="0">
                         <td style="font-style: italic;font-size:14.5px;width: 6%;padding-left:2%;white-space: nowrap;"><b>studying in our school in class</td>
-						<td style="font-style: italic;font-size:14.5px;width: 5%;text-align:center;"><div class="statistics_line"><b><?php echo $data->class_division?> </div></td>
-						<td style="font-style: italic;font-size:14.5px;width:7%;text-align:center;"><b>for the academic year <?php echo $data->academic_yr?>.</td>
+						<td style="font-style: italic;font-size:14.5px;width: 5%;text-align:center;"><div class="statistics_line"><b><?php echo $data->class_division ?> </div></td>
+						<td style="font-style: italic;font-size:14.5px;width:7%;text-align:center;"><b>for the academic year <?php echo $data->academic_yr ?>.</td>
                     </table>
                 </td>
                 
@@ -165,7 +166,7 @@ $image_url	=	m ?>
                     
                 </td>
             </tr>
-            <?php $date_new = date_format(date_create($data->issue_date_bonafide) , 'M d, Y');?>
+            <?php $date_new = date_format(date_create($data->issue_date_bonafide), 'M d, Y'); ?>
             <tr>
                  <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">

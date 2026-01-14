@@ -3,18 +3,16 @@
 namespace App\Models;
 
 use App\Models\Classes;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
 {
     use HasFactory;
-   
 
-    protected $table = 'events'; // Specify the table name if different from the model name
+    protected $table = 'events';  // Specify the table name if different from the model name
 
-    protected $primaryKey = 'event_id'; // Specify the primary key column name if different
-
+    protected $primaryKey = 'event_id';  // Specify the primary key column name if different
 
     protected $fillable = [
         'unq_id',
@@ -33,7 +31,8 @@ class Event extends Model
         'activity',
         'notify',
         'academic_yr',
-    ]; 
+    ];
+
     public function class()
     {
         return $this->belongsTo(Classes::class, 'class_id', 'class_id');

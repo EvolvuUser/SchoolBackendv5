@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Attendence extends Model
 {
     use HasFactory;
-    protected $primaryKey = 'attendance_id'; 
-    public $incrementing = true;     
-    protected $table ='attendance';
+
+    protected $primaryKey = 'attendance_id';
+    public $incrementing = true;
+    protected $table = 'attendance';
 
     protected $fillable = [
         'attendance_id',
