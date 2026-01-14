@@ -19945,7 +19945,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $nextMonday = now()->next('Monday')->format('Y-m-d');
 
         if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
-            $data = DB::table('subject as s')
+            $notCreatedCount = DB::table('subject as s')
                 ->selectRaw("
                     GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
                     s.teacher_id,
@@ -19978,12 +19978,46 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->groupBy('s.teacher_id')
                 ->count();
 
+            $createdCount = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->count();
+
             return response()->json([
                 'status' => true,
-                'count'   => $data
+                'notCreatedCount'   => $notCreatedCount,
+                'createdCount' => $createdCount,
             ] , 200);
         } else if($role_id == 'T') {
-            $data = DB::table('subject as s')
+            $notCreatedCount = DB::table('subject as s')
                 ->selectRaw("
                     GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
                     s.teacher_id,
@@ -20017,9 +20051,45 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->groupBy('s.teacher_id')
                 ->count();
 
+            $createdCount = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->where('s.teacher_id' , $reg_id)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->count();
+
             return response()->json([
                 'status' => true,
-                'count'   => $data
+                'count'   => $notCreatedCount,
+                'createdCount' => $createdCount,
+
             ]);
         } else {
             return response()->json([
@@ -20040,8 +20110,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         // Get next Monday (or accept from request if you want later)
         $nextMonday = now()->next('Monday')->format('Y-m-d');
 
-        if ($role_id == 'P' || $role_id == 'A') {
-            $data = DB::table('subject as s')
+        if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
+            $notCreatedList = DB::table('subject as s')
                 ->selectRaw("
                     GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
                     s.teacher_id,
@@ -20074,9 +20144,43 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->groupBy('s.teacher_id')
                 ->get();
 
+            $createdList = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
+
             return response()->json([
                 'status' => true,
-                'count'   => $data
+                'notCreatedList'   => $notCreatedList,
+                'createdList' => $createdList,
             ] , 200);
         } else if($role_id == 'T') {
             $data = DB::table('subject as s')
@@ -20113,10 +20217,50 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->groupBy('s.teacher_id')
                 ->get();
 
+            $createdList = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->where('s.teacher_id' , $reg_id)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
+
             return response()->json([
                 'status' => true,
-                'list'   => $data
+                'list'   => $data,
+                'createdList' => $createdList,
             ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => "You are not allowed to access this resource",
+            ] , 403);
         }
     }
 
