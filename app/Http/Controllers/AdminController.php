@@ -20383,12 +20383,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function attendanceSummaryByCategory(Request $request) 
+    public function attendanceSummaryByCategory(Request $request)
     {
         try {
             $user = $this->authenticateUser();
-            $academic_year = JWTAuth::getPayload()->get('academic_year');
-            $date = $request->input('date', date('Y-m-d'));
+            $date = $request->input('date', now()->toDateString());
 
             if (!in_array($user->role_id, ['A', 'M', 'T'])) {
                 return response()->json([
@@ -20400,47 +20399,71 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             /*
             |--------------------------------------------------------------------------
-            | 2️⃣ Present teachers per category (ONCE, SQL-level)
+            | 1️⃣ Total teachers per category
             |--------------------------------------------------------------------------
             */
-            $presentByCateogry = DB::table('teacher_attendance as ta')
+            $totalByCategory = DB::table('teacher as t')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->groupBy('tc.name')
+                ->select(
+                    'tc.name as category',
+                    DB::raw('COUNT(t.teacher_id) as total')
+                )
+                ->pluck('total', 'category');
+
+            /*
+            |--------------------------------------------------------------------------
+            | 2️⃣ Present teachers per category (distinct attendance)
+            |--------------------------------------------------------------------------
+            */
+            $presentByCategory = DB::table('teacher_attendance as ta')
                 ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
-                ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->whereDate('ta.punch_time', $date)
-                ->select('t.teacher_id' , 'tc.name')
-                ->get();
+                ->groupBy('tc.name')
+                ->select(
+                    'tc.name as category',
+                    DB::raw('COUNT(DISTINCT t.teacher_id) as present')
+                )
+                ->pluck('present', 'category');
 
-            $categories = DB::table('teacher_category')->get();
-
+            /*
+            |--------------------------------------------------------------------------
+            | 3️⃣ Final response build
+            |--------------------------------------------------------------------------
+            */
             $finalData = [];
 
-            foreach($categories as $category) {
-                $finalData[$category->name] = 0;
-            }
+            foreach ($totalByCategory as $category => $total) {
+                $present = $presentByCategory[$category] ?? 0;
 
-            // foreach($presentByCateogry as $pc) {
-            //     if()
-            // }
+                $finalData[$category] = [
+                    'total'   => $total,
+                    'present' => $present,
+                    'absent'  => $total - $present
+                ];
+            }
 
             return response()->json([
                 'status' => 200,
                 'success' => true,
-                'message' => 'Category wise present teacher count',
-                'presentByCateogry' => $presentByCateogry,
+                'message' => 'Category wise teacher attendance summary',
                 'data' => $finalData
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error($e);
+
             return response()->json([
                 'status' => 500,
                 'success' => false,
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
+                'message' => 'Something went wrong'
             ]);
         }
     }
+
 
     public function attendanceSummaryCaretaker(Request $request) {
         $user = $this->authenticateUser();
