@@ -88,7 +88,7 @@ class TeacherDashboardController extends Controller
                 ->groupBy('s.teacher_id')
                 ->get();
 
-            $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlan);
+            $incompleteLessonPlansForNextWeek = $incompleteLessonPlan;
 
             /* ---------------- NOTICES ---------------- */
             $todaysDate = Carbon::today()->format('Y-m-d');
