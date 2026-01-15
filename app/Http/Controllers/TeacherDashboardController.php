@@ -613,7 +613,12 @@ class TeacherDashboardController extends Controller
                 ->where('class_id', $classId)
                 ->where('subject_id', $subjectId)
                 ->where('academic_yr', $acd_yr)
-                ->whereBetween('week_date', [$weekStart, $weekEnd])
+                ->whereRaw("
+                    ? BETWEEN
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', 1)), '%d-%m-%Y')
+                    AND
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', -1)), '%d-%m-%Y')
+                ", [$currentDate])
                 ->first();
 
             if (!$lessonPlanTemplate) {
