@@ -53,7 +53,7 @@ class TeacherDashboardController extends Controller
             $incompleteLessonPlansForNextWeek = [];
 
             $nextMonday = now()->next('Monday')->format('Y-m-d');
-            
+
             $incompleteLessonPlan = DB::table('subject as s')
                 ->selectRaw("
                     GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
@@ -143,10 +143,11 @@ class TeacherDashboardController extends Controller
             // ]);
 
             /* ---------------- SAFE RESPONSE ---------------- */
-            dd($e);
+            // dd($e);
             return response()->json([
                 'status' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Integernal Server Error',
+                'error' => $e->getMessage(),
                 'line' => $e->getLine(),
             ], 500);
         }
