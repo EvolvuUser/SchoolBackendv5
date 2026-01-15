@@ -656,6 +656,9 @@ class TeacherDashboardController extends Controller
                     STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', -1)), '%d-%m-%Y')
                 ", [$currentDate])
                 ->select(
+                    'lesson_plan.lesson_plan_id',
+                    'lesson_plan_heading.lesson_plan_headings_id as heading_id',
+                    'lesson_plan_heading.change_daily',
                     'chapters.name as chapter_name',
                     'lesson_plan_heading.name as heading_name',
                     'lesson_plan_details.description as description'
