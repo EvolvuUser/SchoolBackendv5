@@ -542,89 +542,160 @@ class TeacherDashboardController extends Controller
         ]);
     }
 
+    /**
+     * Get timetable details along with current week lesson plan data for a teacher.
+     *
+     * Logic overview:
+     * 1. Authenticate user and fetch academic year from JWT.
+     * 2. Identify current day of the week (Monday, Tuesday, etc.).
+     * 3. Fetch today's timetable for the logged-in teacher.
+     * 4. From timetable, derive class_id and subject_id.
+     * 5. Calculate current week start and end dates.
+     * 6. Check if a lesson plan exists for the same class, subject, academic year,
+     *    and falls within the current week.
+     * 7. Fetch lesson plan details using Query Builder (DB::table),
+     *    group them by chapter, and return the response.
+     *
+     * @param int $teacher_id      (Ignored, taken from JWT for security)
+     * @param int $timetable_id    Timetable identifier
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function timetableDetails($teacher_id, $timetable_id)
     {
-        $user = $this->authenticateUser();
-        $acd_yr = JWTAuth::getPayload()->get('academic_year');
-        $todayDayOfWeek = date('l');  // Get current day of the week (e.g., 'Monday')
-        $teacher_id = JWTAuth::getPayload()->get('reg_id');
+        try {
+            /* ------------------------- AUTH & CONTEXT ------------------------- */
+            $user = $this->authenticateUser();
+            $acd_yr = JWTAuth::getPayload()->get('academic_year');
+            $teacher_id = JWTAuth::getPayload()->get('reg_id');
 
-        $timetable = DB::select("
+            $todayDayOfWeek = date('l'); // e.g. Monday, Tuesday
+
+            /* ------------------------- TIMETABLE DATA -------------------------- */
+            $timetable = DB::select("
                 SELECT 
-                    d.name AS class, 
-                    e.name AS section, 
-                    c.name AS subject, 
-                    a.period_no, 
+                    d.name AS class,
+                    e.name AS section,
+                    c.name AS subject,
+                    a.period_no,
                     a.class_id,
                     c.sm_id
                 FROM timetable a
-                JOIN subject_master c ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
-                JOIN class d ON a.class_id = d.class_id
-                JOIN section e ON a.section_id = e.section_id
+                JOIN subject_master c 
+                    ON SUBSTRING_INDEX(a.$todayDayOfWeek, '^', 1) = c.sm_id
+                JOIN class d 
+                    ON a.class_id = d.class_id
+                JOIN section e 
+                    ON a.section_id = e.section_id
                 WHERE SUBSTRING_INDEX(a.$todayDayOfWeek, '^', -1) = ?
-                    AND a.academic_yr = ?
-                    AND a.t_id = ?
+                AND a.academic_yr = ?
+                AND a.t_id = ?
                 ORDER BY a.period_no
             ", [$teacher_id, $acd_yr, $timetable_id]);
 
-        $classId = $timetable[0]->class_id;
-        $subjectId = $timetable[0]->sm_id;
+            if (empty($timetable)) {
+                return response()->json([
+                    'status'  => 404,
+                    'success' => false,
+                    'message' => 'No timetable found for today.'
+                ], 404);
+            }
 
-        $lessonPlanTemplate = DB::table('lesson_plan_template')
-            ->where('class_id', $classId)
-            ->where('subject_id', $subjectId)
-            ->where('publish', 'Y')
-            ->first();
+            $classId   = $timetable[0]->class_id;
+            $subjectId = $timetable[0]->sm_id;
 
-        if (!$lessonPlanTemplate) {
+            /* ----------------------- CURRENT WEEK LOGIC ------------------------ */
+            // Week: Monday to Sunday (adjust if your system uses a different rule)
+            $weekStart = date('Y-m-d', strtotime('monday this week'));
+            $weekEnd   = date('Y-m-d', strtotime('sunday this week'));
+
+            /* --------------------- LESSON PLAN EXISTENCE ----------------------- */
+            $lessonPlanTemplate = DB::table('lesson_plan')
+                ->where('class_id', $classId)
+                ->where('subject_id', $subjectId)
+                ->where('academic_yr', $acd_yr)
+                ->whereBetween('week_date', [$weekStart, $weekEnd])
+                ->first();
+
+            if (!$lessonPlanTemplate) {
+                return response()->json([
+                    'status'  => 404,
+                    'success' => false,
+                    'message' => 'Lesson Plan is not created for the current week.'
+                ], 404);
+            }
+
+            /* ------------------ LESSON PLAN DETAILS (QB) ----------------------- */
+            $lessonPlanData = DB::table('lesson_plan')
+                ->leftJoin(
+                    'lesson_plan_details',
+                    'lesson_plan.lesson_plan_id',
+                    '=',
+                    'lesson_plan_details.lesson_plan_id'
+                )
+                ->leftJoin(
+                    'lesson_plan_heading',
+                    'lesson_plan_details.lesson_plan_headings_id',
+                    '=',
+                    'lesson_plan_heading.lesson_plan_headings_id'
+                )
+                ->leftJoin(
+                    'chapters',
+                    'lesson_plan.chapter_id',
+                    '=',
+                    'chapters.chapter_id'
+                )
+                ->where('lesson_plan.subject_id', $subjectId)
+                ->where('lesson_plan.class_id', $classId)
+                ->where('lesson_plan.reg_id', $teacher_id)
+                ->where('lesson_plan.academic_yr', $acd_yr)
+                ->whereBetween('lesson_plan.week_date', [$weekStart, $weekEnd])
+                ->select(
+                    'chapters.name as chapter_name',
+                    'lesson_plan_heading.name as heading_name',
+                    'lesson_plan_details.description as description'
+                )
+                ->get();
+
+            if ($lessonPlanData->isEmpty()) {
+                return response()->json([
+                    'status'  => 204,
+                    'success' => true,
+                    'message' => 'No lesson plan details found for the current week.',
+                    'data'    => []
+                ], 204);
+            }
+
+            $lessonPlanData = $lessonPlanData
+                ->groupBy('chapter_name')
+                ->toArray();
+
+            /* ----------------------------- RESPONSE ----------------------------- */
             return response()->json([
-                'status' => 400,
-                'message' => 'Lesson Plan Template is not created!!!',
-                'success' => false
-            ]);
+                'status'  => 200,
+                'success' => true,
+                'data'    => [
+                    'lessonPlanData' => $lessonPlanData
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Database related errors
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Database error occurred.',
+                'error'   => $e->getMessage()
+            ], 500);
+
+        } catch (\Exception $e) {
+            // Generic/unexpected errors
+            return response()->json([
+                'status'  => 500,
+                'success' => false,
+                'message' => 'Something went wrong while fetching timetable details.',
+                'error'   => $e->getMessage()
+            ], 500);
         }
-
-        $lessonPlanData = DB::select("
-            SELECT 
-                chapters.name as chapter_name,
-                lesson_plan_heading.name AS heading_name,
-                lesson_plan_template_details.description AS description
-            FROM lesson_plan_template
-            LEFT JOIN lesson_plan_template_details
-                ON lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id
-            LEFT JOIN class 
-                ON lesson_plan_template.class_id = class.class_id
-            LEFT JOIN lesson_plan_heading 
-                ON lesson_plan_template_details.lesson_plan_headings_id = lesson_plan_heading.lesson_plan_headings_id
-            LEFT JOIN subject_master 
-                ON lesson_plan_template.subject_id = subject_master.sm_id
-            LEFT JOIN chapters  
-                ON lesson_plan_template.chapter_id = chapters.chapter_id
-            WHERE lesson_plan_template.subject_id = ?
-            AND lesson_plan_template.class_id = ?
-            AND lesson_plan_template.publish = 'Y'
-            AND lesson_plan_template.reg_id = ?
-        ", [$subjectId, $classId, $teacher_id]);
-
-        $lessonPlanData = collect($lessonPlanData)
-            ->groupBy('chapter_name')
-            ->toArray();
-
-        /*
-         * BETTER UI
-         * $lessonPlanData = collect($lessonPlanData)
-         *     ->groupBy('chapter_name')
-         *     ->map(function ($items) {
-         *         return $items->groupBy('heading_name');
-         *     })->toArray();
-         */
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'lessonPlanData' => $lessonPlanData
-            ]
-        ]);
     }
 
     public function getDefaulters(Request $request)
