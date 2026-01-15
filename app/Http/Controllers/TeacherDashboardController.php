@@ -569,6 +569,7 @@ class TeacherDashboardController extends Controller
             $teacher_id = JWTAuth::getPayload()->get('reg_id');
 
             $todayDayOfWeek = date('l'); // e.g. Monday, Tuesday
+            $currentDate = date('Y-m-d');
 
             /* ------------------------- TIMETABLE DATA -------------------------- */
             $timetable = DB::select("
@@ -603,21 +604,16 @@ class TeacherDashboardController extends Controller
             $classId   = $timetable[0]->class_id;
             $subjectId = $timetable[0]->sm_id;
 
-            /* ----------------------- CURRENT WEEK LOGIC ------------------------ */
-            // Week: Monday to Sunday (adjust if your system uses a different rule)
-            $weekStart = date('Y-m-d', strtotime('monday this week'));
-            $weekEnd   = date('Y-m-d', strtotime('sunday this week'));
-
-            /* --------------------- LESSON PLAN EXISTENCE ----------------------- */
+            /* ---------------- LESSON PLAN EXISTENCE CHECK ---------------- */
             $lessonPlanTemplate = DB::table('lesson_plan')
                 ->where('class_id', $classId)
                 ->where('subject_id', $subjectId)
                 ->where('academic_yr', $acd_yr)
                 ->whereRaw("
                     ? BETWEEN
-                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', 1)), '%d-%m-%Y')
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(week_date, '/', 1)), '%d-%m-%Y')
                     AND
-                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', -1)), '%d-%m-%Y')
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(week_date, '/', -1)), '%d-%m-%Y')
                 ", [$currentDate])
                 ->first();
 
@@ -629,7 +625,7 @@ class TeacherDashboardController extends Controller
                 ], 404);
             }
 
-            /* ------------------ LESSON PLAN DETAILS (QB) ----------------------- */
+            /* ---------------- LESSON PLAN DETAILS QUERY ---------------- */
             $lessonPlanData = DB::table('lesson_plan')
                 ->leftJoin(
                     'lesson_plan_details',
@@ -653,7 +649,12 @@ class TeacherDashboardController extends Controller
                 ->where('lesson_plan.class_id', $classId)
                 ->where('lesson_plan.reg_id', $teacher_id)
                 ->where('lesson_plan.academic_yr', $acd_yr)
-                ->whereBetween('lesson_plan.week_date', [$weekStart, $weekEnd])
+                ->whereRaw("
+                    ? BETWEEN
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', 1)), '%d-%m-%Y')
+                    AND
+                    STR_TO_DATE(TRIM(SUBSTRING_INDEX(lesson_plan.week_date, '/', -1)), '%d-%m-%Y')
+                ", [$currentDate])
                 ->select(
                     'chapters.name as chapter_name',
                     'lesson_plan_heading.name as heading_name',
