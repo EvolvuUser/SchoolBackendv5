@@ -20645,6 +20645,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // 👨‍🏫 Total teaching staff
             $totalNumberOfTeachers = DB::table('teacher')
+            ->select('teacher.*')
             ->leftJoin('teacher_category', 'teacher_category.tc_id', '=', 'teacher.tc_id')
             ->where('teacher_category.teaching', 'Y')
             ->where('teacher.isDelete' , 'N')
