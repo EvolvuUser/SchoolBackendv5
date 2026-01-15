@@ -168,6 +168,11 @@
 
             Route::get('/count_of_lesson_plan_not_created', [AdminController::class, 'lessonPlanNotCreatedCount']);
             Route::get('/list_of_lesson_plan_not_created', [AdminController::class, 'lessonPlanNotCreatedList']);
+            Route::get('/lessonplan/summary' , [AdminController::class , 'lessonPlanSummary']);
+            Route::get('/total_teachers/' , [AdminController::class , 'totalTeachers']);
+            Route::get('/list/lessonplan/submitted' , [AdminController::class , 'lessonPlanSubmitted']);
+            Route::get('/list/lessonplan/notsubmitted' , [AdminController::class , 'lessonPlanNotSubmitted']);
+            Route::get('/list/lessonplan/pending_for_approval' , [AdminController::class , 'lessonPlanPending']);
 
             // Staff Module API
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);

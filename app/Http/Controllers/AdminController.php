@@ -20488,4 +20488,435 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         ]);
     }
 
+    public function lessonPlanSummary(Request $request)
+    {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 🔑 JWT payload
+            $role_id       = JWTAuth::getPayload()->get('role_id');
+            $reg_id        = JWTAuth::getPayload()->get('reg_id');
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // 📅 Next Monday
+            $nextMonday = now()->next('Monday')->format('Y-m-d');
+
+            // 👨‍🏫 Total teaching staff
+            $totalNumberOfTeachers = DB::table('teacher')
+            ->leftJoin('teacher_category', 'teacher_category.tc_id', '=', 'teacher.tc_id')
+            ->where('teacher_category.teaching', 'Y')
+            ->where('teacher.isDelete' , 'N')
+            ->get()
+            ->count();
+
+            // ✅ Lesson plan submitted
+            $lessonPlanSubmitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
+
+            // ❌ Lesson plan not submitted
+            $lessonPlanNotSubmitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereNotIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
+
+            // ⏳ Pending for approval
+            $pendingForApproval = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->where('approve', '!=', 'Y')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
+
+            // ✅ Success response
+            return response()->json([
+                'status' => true,
+                'totalNumberOfTeachers' => $totalNumberOfTeachers,
+                'lessonPlanSubmitted' => $lessonPlanSubmitted,
+                'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
+                'pendingForApproval' => $pendingForApproval,
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 🛑 Database errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error while fetching lesson plan summary',
+                'error' => $e->getMessage()
+            ], 500);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            // 🔐 JWT errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Authentication token error',
+                'error' => $e->getMessage()
+            ], 401);
+
+        } catch (\Exception $e) {
+            // ❗ Any other error
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function totalTeachers(Request $request) {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 🔑 JWT payload
+            $role_id       = JWTAuth::getPayload()->get('role_id');
+            $reg_id        = JWTAuth::getPayload()->get('reg_id');
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // 👨‍🏫 Total teaching staff
+            $totalNumberOfTeachers = DB::table('teacher')
+            ->leftJoin('teacher_category', 'teacher_category.tc_id', '=', 'teacher.tc_id')
+            ->where('teacher_category.teaching', 'Y')
+            ->where('teacher.isDelete' , 'N')
+            ->get();
+
+            // ✅ Success response
+            return response()->json([
+                'status' => true,
+                'data' => $totalNumberOfTeachers,
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 🛑 Database errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error while fetching lesson plan summary',
+                'error' => $e->getMessage()
+            ], 500);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            // 🔐 JWT errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Authentication token error',
+                'error' => $e->getMessage()
+            ], 401);
+
+        } catch (\Exception $e) {
+            // ❗ Any other error
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function lessonPlanSubmitted(Request $request) {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 🔑 JWT payload
+            $role_id       = JWTAuth::getPayload()->get('role_id');
+            $reg_id        = JWTAuth::getPayload()->get('reg_id');
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // 📅 Next Monday
+            $nextMonday = now()->next('Monday')->format('Y-m-d');
+
+            // ✅ Lesson plan submitted
+            $createdList = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
+
+            // ✅ Success response
+            return response()->json([
+                'status' => true,
+                'data' => $createdList,
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 🛑 Database errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error while fetching lesson plan summary',
+                'error' => $e->getMessage()
+            ], 500);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            // 🔐 JWT errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Authentication token error',
+                'error' => $e->getMessage()
+            ], 401);
+
+        } catch (\Exception $e) {
+            // ❗ Any other error
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function lessonPlanNotSubmitted(Request $request) {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 🔑 JWT payload
+            $role_id       = JWTAuth::getPayload()->get('role_id');
+            $reg_id        = JWTAuth::getPayload()->get('reg_id');
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // 📅 Next Monday
+            $nextMonday = now()->next('Monday')->format('Y-m-d');
+
+            // ✅ Lesson plan submitted
+            $notCreatedList = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereNotIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
+
+            // ✅ Success response
+            return response()->json([
+                'status' => true,
+                'data' => $notCreatedList,
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 🛑 Database errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error while fetching lesson plan summary',
+                'error' => $e->getMessage()
+            ], 500);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            // 🔐 JWT errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Authentication token error',
+                'error' => $e->getMessage()
+            ], 401);
+
+        } catch (\Exception $e) {
+            // ❗ Any other error
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function lessonPlanPending(Request $request) {
+        try {
+            // 🔐 Authenticate user
+            $user = $this->authenticateUser();
+
+            // 🔑 JWT payload
+            $role_id       = JWTAuth::getPayload()->get('role_id');
+            $reg_id        = JWTAuth::getPayload()->get('reg_id');
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // 📅 Next Monday
+            $nextMonday = now()->next('Monday')->format('Y-m-d');
+
+            // ✅ Lesson plan submitted
+            $data = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->where('approve' , '!=' , 'N')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
+
+            // ✅ Success response
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+            ], 200);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 🛑 Database errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error while fetching lesson plan summary',
+                'error' => $e->getMessage()
+            ], 500);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            // 🔐 JWT errors
+            return response()->json([
+                'status' => false,
+                'message' => 'Authentication token error',
+                'error' => $e->getMessage()
+            ], 401);
+
+        } catch (\Exception $e) {
+            // ❗ Any other error
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
