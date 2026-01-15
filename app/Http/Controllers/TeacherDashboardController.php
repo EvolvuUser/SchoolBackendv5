@@ -66,8 +66,8 @@ class TeacherDashboardController extends Controller
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
                 ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academic_year)
-                ->where('s.teacher_id' , $reg_id)
+                ->where('s.academic_yr', $academic_yr)
+                ->where('s.teacher_id' , $teacher_id)
                 ->whereNotIn(
                     DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
                     function ($query) use ($nextMonday) {
