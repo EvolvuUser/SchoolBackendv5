@@ -659,6 +659,7 @@ class TeacherDashboardController extends Controller
                     'lesson_plan.lesson_plan_id',
                     'lesson_plan_heading.lesson_plan_headings_id as heading_id',
                     'lesson_plan_heading.change_daily',
+                    'lesson_plan_details.start_date',
                     'chapters.name as chapter_name',
                     'lesson_plan_heading.name as heading_name',
                     'lesson_plan_details.description as description'
