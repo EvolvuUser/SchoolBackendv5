@@ -52,78 +52,43 @@ class TeacherDashboardController extends Controller
 
             $incompleteLessonPlansForNextWeek = [];
 
-            $nextWeekStart = Carbon::now()->addWeek()->startOfWeek()->format('Y-m-d');
-            $nextWeekEnd = Carbon::now()->addWeek()->endOfWeek()->format('Y-m-d');
-
-            /* ---------------- LESSON PLANS ---------------- */
-            foreach ($classes as $data) {
-                $lessonPlans = DB::table('lesson_plan')
-                    ->select(
-                        'lesson_plan.*',
-                        'class.name as class_name',
-                        'section.name as section_name',
-                        'subject_master.name as subject_name',
-                        'chapters.chapter_no',
-                        'chapters.name as chapter_name',
-                        'chapters.sub_subject'
-                    )
-                    ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
-                    ->join('section', 'lesson_plan.section_id', '=', 'section.section_id')
-                    ->join('subject_master', 'lesson_plan.subject_id', '=', 'subject_master.sm_id')
-                    ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                    ->where('chapters.isDelete', '!=', 'Y')
-                    ->where('lesson_plan.reg_id', $teacher_id)
-                    ->where('lesson_plan.class_id', $data->class_id)
-                    ->where('lesson_plan.section_id', $data->section_id)
-                    ->where('lesson_plan.subject_id', $data->sm_id)
-                    ->where('lesson_plan.academic_yr', $academic_yr)
-                    ->where('lesson_plan.status', 'I')
-                    ->whereRaw("
-                        STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', 1), '%d-%m-%Y') <= ?
-                        AND
-                        STR_TO_DATE(SUBSTRING_INDEX(lesson_plan.week_date, ' / ', -1), '%d-%m-%Y') >= ?
-                    ", [$nextWeekEnd, $nextWeekStart])
-                    ->get();
-
-                if ($lessonPlans->isEmpty()) {
-                    $key = $data->class_id . '-' . $data->section_id;
-                    if (!isset($incompleteLessonPlansForNextWeek[$key])) {
-                        $incompleteLessonPlansForNextWeek[$key] = [
-                            'class_id' => $data->class_id,
-                            'class_name' => $data->class_name,
-                            'section_id' => $data->section_id,
-                            'section_name' => $data->section_name,
-                            'subjects' => []
-                        ];
+            $nextMonday = now()->next('Monday')->format('Y-m-d');
+            
+            $incompleteLessonPlan = DB::table('subject as s')
+                ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->where('s.teacher_id' , $reg_id)
+                ->whereNotIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
                     }
-                    $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
-                        'subject_id' => $data->sm_id,
-                        'subject_name' => $data->subject_name,
-                        'lesson_plans' => []
-                    ];
-                    continue;
-                }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get();
 
-                $key = $data->class_id . '-' . $data->section_id;
-
-                if (!isset($incompleteLessonPlansForNextWeek[$key])) {
-                    $incompleteLessonPlansForNextWeek[$key] = [
-                        'class_id' => $data->class_id,
-                        'class_name' => $lessonPlans[0]->class_name,
-                        'section_id' => $data->section_id,
-                        'section_name' => $lessonPlans[0]->section_name,
-                        'subjects' => []
-                    ];
-                }
-
-                $incompleteLessonPlansForNextWeek[$key]['subjects'][] = [
-                    'subject_id' => $data->sm_id,
-                    'subject_name' => $lessonPlans[0]->subject_name,
-                    'lesson_plans' => $lessonPlans
-                ];
-            }
-
-            $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlansForNextWeek);
+            $incompleteLessonPlansForNextWeek = array_values($incompleteLessonPlan);
 
             /* ---------------- NOTICES ---------------- */
             $todaysDate = Carbon::today()->format('Y-m-d');
