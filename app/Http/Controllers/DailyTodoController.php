@@ -211,7 +211,8 @@ class DailyTodoController extends Controller
             $validator = Validator::make($request->all(), [
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'is_completed' => 'nullable|boolean'
+                'is_completed' => 'nullable|boolean',
+                'due_date' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -233,7 +234,7 @@ class DailyTodoController extends Controller
                 ], 404);
             }
 
-            $todo->update($request->only(['title', 'description', 'is_completed']));
+            $todo->update($request->only(['title', 'description', 'is_completed' , 'due_date']));
 
             return response()->json([
                 'status' => 'success',
