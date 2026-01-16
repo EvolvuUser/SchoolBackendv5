@@ -454,47 +454,58 @@ class LibraryController extends Controller
     public function editBook(Request $request, $book_id)
     {
         try {
-            if ($request->input('operation') == 'edit') {
-                $data2 = $request->input('copyedit');  // accession numbers
-                $data3 = $request->input('book_copies_id');  // copy record ids
-                $source = $request->input('source');
-                $bill = $request->input('bill_no');
-                $isbn = $request->input('isbn');
-                $edition = $request->input('edition');
-                $price = $request->input('price');
-                $no_of_pages = $request->input('no_of_pages');
-                $year = $request->input('year');
-                $status = $request->input('status');
+            if ($request->input('operation') === 'edit') {
 
-                // $data = main book data
-                $data = [
-                    'book_title' => $request->input('book_title'),
-                    'author' => $request->input('author'),
-                    'category_id' => $request->input('category_id'),
+                $copyIds      = $request->input('copyedit');        // accession numbers
+                $copyRowIds   = $request->input('book_copies_id');  // book_copies_id
+                $source       = $request->input('source');
+                $bill         = $request->input('bill_no');
+                $isbn         = $request->input('isbn');
+                $edition      = $request->input('edition');
+                $price        = $request->input('price');
+                $no_of_pages  = $request->input('no_of_pages');
+                $year         = $request->input('year');
+                $status       = $request->input('status');
+
+                // 🔹 MAIN BOOK DATA (MATCHED WITH CI)
+                $bookData = [
+                    'book_title'       => $request->input('book_title'),
+                    'author'           => $request->input('author'),
+                    'category_id'      => $request->input('category_id'),
+                    'publisher'        => $request->input('publisher'),
+                    'days_borrow'      => $request->input('days_borrow'),
+                    'location_of_book' => $request->input('location_of_book'),
+                    'issue_type'       => $request->input('issue_type'),
                 ];
 
-                // Update main book record
-                DB::table('book')->where('book_id', $book_id)->update($data);
+                DB::table('book')
+                    ->where('book_id', $book_id)
+                    ->update($bookData);
 
-                // Loop through book copies
-                for ($i = 0; $i < count($data3); $i++) {
-                    $data1 = [
-                        'book_id' => $book_id,
-                        'status' => 'A',
-                        'copy_id' => $data2[$i],
+                // 🔹 BOOK COPIES LOOP
+                for ($i = 0; $i < count($copyRowIds); $i++) {
+
+                    $copyData = [
+                        'book_id'        => $book_id,
+                        'status'         => 'A',
+                        'copy_id'        => $copyIds[$i],
                         'source_of_book' => $source[$i],
-                        'bill_no' => $bill[$i],
-                        'isbn' => $isbn[$i],
-                        'edition' => $edition[$i],
-                        'price' => $price[$i],
-                        'no_of_pages' => $no_of_pages[$i],
-                        'year' => $year[$i],
-                        'added_date' => now()
+                        'bill_no'        => $bill[$i],
+                        'isbn'           => $isbn[$i],
+                        'edition'        => $edition[$i],
+                        'price'          => $price[$i],
+                        'no_of_pages'    => $no_of_pages[$i],
+                        'year'           => $year[$i],
+                        'added_date'     => now(),
                     ];
 
-                    if ($data3[$i] == '0') {
-                        // Check duplicate accession number
-                        $exists = DB::table('book_copies')->where('copy_id', $data2[$i])->exists();
+                    // 🔹 INSERT
+                    if ($copyRowIds[$i] == '0') {
+
+                        $exists = DB::table('book_copies')
+                            ->where('copy_id', $copyIds[$i])
+                            ->exists();
+
                         if ($exists) {
                             return response()->json([
                                 'success' => false,
@@ -502,19 +513,23 @@ class LibraryController extends Controller
                             ], 409);
                         }
 
-                        DB::table('book_copies')->insert($data1);
-                    } else {
+                        DB::table('book_copies')->insert($copyData);
+
+                    }
+                    // 🔹 UPDATE
+                    else {
+
                         DB::table('book_copies')
-                            ->where('book_copies_id', $data3[$i])
+                            ->where('book_copies_id', $copyRowIds[$i])
                             ->update([
-                                'status' => $status[$i],
+                                'status'         => $status[$i],
                                 'source_of_book' => $source[$i],
-                                'bill_no' => $bill[$i],
-                                'isbn' => $isbn[$i],
-                                'edition' => $edition[$i],
-                                'price' => $price[$i],
-                                'no_of_pages' => $no_of_pages[$i],
-                                'year' => $year[$i],
+                                'bill_no'        => $bill[$i],
+                                'isbn'           => $isbn[$i],
+                                'edition'        => $edition[$i],
+                                'price'          => $price[$i],
+                                'no_of_pages'    => $no_of_pages[$i],
+                                'year'           => $year[$i],
                             ]);
                     }
                 }
@@ -530,7 +545,7 @@ class LibraryController extends Controller
                 'message' => 'Invalid operation.'
             ], 400);
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
+            // Log::error($e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
