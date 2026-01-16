@@ -330,43 +330,78 @@ class LibraryController extends Controller
         return response()->json($response, 200);
     }
 
+    // Old
+    // public function getBookDetails(Request $request)
+    // {
+    //     $book_id = $request->input('book_id');
+
+    //     // ✅ Direct Query Builder Join
+    //     $bookData = DB::table('book')
+    //         ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
+    //         ->where('book.book_id', $book_id)
+    //         ->select(
+    //             'book.book_id',
+    //             'book.book_title',
+    //             'book.category_id',
+    //             'book.author',
+    //             'book.publisher',
+    //             'book.days_borrow',
+    //             'book.location_of_book',
+    //             'book.issue_type',
+    //             'book_copies.book_copies_id',
+    //             'book_copies.copy_id',
+    //             'book_copies.bill_no',
+    //             'book_copies.source_of_book',
+    //             'book_copies.isbn',
+    //             'book_copies.year',
+    //             'book_copies.edition',
+    //             'book_copies.no_of_pages',
+    //             'book_copies.price',
+    //             'book_copies.added_date',
+    //             'book_copies.status',
+    //             'book_copies.IsNew'
+    //         )
+    //         ->get();
+
+    //     if (empty($bookData)) {
+    //         return response()->json(['message' => 'No records found'], 404);
+    //     }
+
+    //     return response()->json(['data' => $bookData], 200);
+    // }
+
     public function getBookDetails(Request $request)
     {
-        $book_id = $request->book_id;
+        $book_id = $request->input('book_id');
+        $status = $request->input('status') ?? '';
 
         // ✅ Direct Query Builder Join
         $bookData = DB::table('book')
-            ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
             ->where('book.book_id', $book_id)
-            ->select(
-                'book.book_id',
-                'book.book_title',
-                'book.category_id',
-                'book.author',
-                'book.publisher',
-                'book.days_borrow',
-                'book.location_of_book',
-                'book.issue_type',
-                'book_copies.book_copies_id',
-                'book_copies.copy_id',
-                'book_copies.bill_no',
-                'book_copies.source_of_book',
-                'book_copies.isbn',
-                'book_copies.year',
-                'book_copies.edition',
-                'book_copies.no_of_pages',
-                'book_copies.price',
-                'book_copies.added_date',
-                'book_copies.status',
-                'book_copies.IsNew'
-            )
+            ->select('book.*')
             ->get();
 
-        if ($bookData->isEmpty()) {
+        if (empty($bookData)) {
             return response()->json(['message' => 'No records found'], 404);
         }
 
-        return response()->json(['data' => $bookData], 200);
+        $bookCopyData = DB::table('book_copies')
+        ->where('book_id' , $book_id)->get();
+
+        if($status!='')
+		{
+			if($status=='I')
+			{
+				$this->db->where_not_in('status',$status);
+			}else{
+				$this->db->where('status',$status);
+			}
+		}
+
+        return response()->json([
+            'book-details' => $bookData,
+            'book-copy-details' => $bookCopyData,
+        ], 200);
     }
 
     public function searchBooks(Request $request)

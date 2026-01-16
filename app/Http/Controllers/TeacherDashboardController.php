@@ -212,12 +212,14 @@ class TeacherDashboardController extends Controller
                 'events.start_date',
                 'events.start_time',
                 'events.end_date',
-                'events.end_time'
+                'events.end_time',
+                'class.name as class_name',
             )
                 ->where('events.login_type', 'T')
                 ->where($commonConditions)
                 ->orderBy('events.start_date')
                 ->orderByDesc('events.start_time')
+                ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
                 ->get();
 
             // Events for classes taught
@@ -445,19 +447,6 @@ class TeacherDashboardController extends Controller
             ->orderBy('c.sequence', 'asc')
             ->get()
             ->toArray();
-
-        // have to update
-        // $subjects = DB::select("
-        //     SELECT
-        //         sm.name,
-        //         sm.sm_id AS subject_id
-        //     FROM subject a
-        //     LEFT JOIN subject_master sm ON a.sm_id = sm.sm_id
-        //     WHERE a.class_id   = ?
-        //     AND a.section_id = ?
-        //     AND a.teacher_id = ?
-        //     AND a.academic_yr = ?
-        // ", [$class_id, $section_id, $reg_id, $academic_yr]);
 
         foreach ($subjects as $row) {
             // -------- GET STUDENT MARKS (same for all classes) --------
