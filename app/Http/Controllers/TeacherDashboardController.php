@@ -628,7 +628,10 @@ class TeacherDashboardController extends Controller
                     'lesson_plan_details.start_date',
                     'chapters.name as chapter_name',
                     'lesson_plan_heading.name as heading_name',
-                    'lesson_plan_details.description as description'
+                    'lesson_plan_details.description as description',
+                    'lesson_plan.week_date',
+                    'chapters.chapter_no'
+
                 )
                 ->get();
 
