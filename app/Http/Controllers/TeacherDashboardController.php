@@ -76,6 +76,7 @@ class TeacherDashboardController extends Controller
                                 DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
                             )
                             ->from('lesson_plan')
+                            ->where('lesson_plan.status' , '!=', 'C')
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
                                 [$nextMonday]
