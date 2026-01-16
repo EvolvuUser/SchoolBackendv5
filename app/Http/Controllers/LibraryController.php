@@ -378,6 +378,7 @@ class LibraryController extends Controller
             $author = $request->input('author');
             $title = $request->input('title');
             $isNew = $request->input('is_new');
+            $accession_no = $request->input('accession_no');
 
             $query = DB::table('book')
                 ->leftJoin('book_copies', 'book.book_id', '=', 'book_copies.book_id')
@@ -393,6 +394,10 @@ class LibraryController extends Controller
                     DB::raw('COUNT(book_copies.copy_id) AS total_copies')
                 )
                 ->groupBy('book.book_id');
+
+            if($accession_no) {
+                $query->where('book_copies.copy_id', $accession_no);
+            }
 
             if (!empty($status)) {
                 $query->where('book_copies.status', $status);
