@@ -162,17 +162,17 @@
             Route::get('/birthdays/summary/count', [AdminController::class, 'birthDaysSummaryCount']);  // Using this api principle will see count of todays birthday of student + staff.  WORKING
             Route::get('/birthdays/summary/list', [AdminController::class, 'birthDaysSummaryList']);
 
-            Route::get('/attendance/summary/department' , [AdminController::class , 'attendanceSummaryByDepartment']);
-            Route::get('/attendance/summary/category' , [AdminController::class , 'attendanceSummaryByCategory']);
-            // Route::get('/attendance/summary/caretaker' , [AdminController::class , 'attendanceSummaryCaretaker']); // Not used 
-    
+            Route::get('/attendance/summary/department', [AdminController::class, 'attendanceSummaryByDepartment']);
+            Route::get('/attendance/summary/category', [AdminController::class, 'attendanceSummaryByCategory']);
+            // Route::get('/attendance/summary/caretaker' , [AdminController::class , 'attendanceSummaryCaretaker']); // Not used
+
             Route::get('/count_of_lesson_plan_not_created', [AdminController::class, 'lessonPlanNotCreatedCount']);
             Route::get('/list_of_lesson_plan_not_created', [AdminController::class, 'lessonPlanNotCreatedList']);
-            Route::get('/lessonplan/summary' , [AdminController::class , 'lessonPlanSummary']);
-            Route::get('/total_teachers/' , [AdminController::class , 'totalTeachers']);
-            Route::get('/list/lessonplan/submitted' , [AdminController::class , 'lessonPlanSubmitted']);
-            Route::get('/list/lessonplan/notsubmitted' , [AdminController::class , 'lessonPlanNotSubmitted']);
-            Route::get('/list/lessonplan/pending_for_approval' , [AdminController::class , 'lessonPlanPending']);
+            Route::get('/lessonplan/summary', [AdminController::class, 'lessonPlanSummary']);
+            Route::get('/total_teachers/', [AdminController::class, 'totalTeachers']);
+            Route::get('/list/lessonplan/submitted', [AdminController::class, 'lessonPlanSubmitted']);
+            Route::get('/list/lessonplan/notsubmitted', [AdminController::class, 'lessonPlanNotSubmitted']);
+            Route::get('/list/lessonplan/pending_for_approval', [AdminController::class, 'lessonPlanPending']);
 
             // Staff Module API
             Route::get('/staff_list', [AdminController::class, 'getStaffList']);
@@ -1327,8 +1327,12 @@
             // Get Teacher data for id card
             Route::get('/teachersdata/{id}', [AssessmentController::class, 'teacherDataIdCard']);
             Route::get('/teacher/image/{teacher_id}', [AssessmentController::class, 'getTeacherImageById']);
-            // Dev Name - Manish Kumar Sharma 14-01-2026
+
+            // Used in teacher app for the listing of pending for return Dev Name - Manish Kumar Sharma 14-01-2026
             Route::get('get_pendingbookforreturn', [TeacherDashboardController::class, 'getPendingBookForReturn']);
+
+            // Used in teacher app for the listing of exams for classes teacher teaches Dev Name - Manish Kumar Sharma 16-01-2026
+            Route::get('get_teachertaughtclassesexams', [TeacherDashboardController::class, 'getTeacherTaughtClassExam']);
         });
     });
 
