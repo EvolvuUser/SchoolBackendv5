@@ -52,6 +52,11 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+            'dump' => [
+                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'use_single_transaction' => true,
+                'timeout' => 300,
+            ],
         ],
         'SACS' => [
             'driver' => 'mysql',
@@ -62,6 +67,11 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
+            'dump' => [
+                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'use_single_transaction' => true,
+                'timeout' => 300,
+            ],
         ],
         'HSCS' => [
             'driver' => 'mysql',
@@ -72,6 +82,11 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
+            'dump' => [
+                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'use_single_transaction' => true,
+                'timeout' => 300,
+            ],
         ],
         'DEMO' => [
             'driver' => 'mysql',
