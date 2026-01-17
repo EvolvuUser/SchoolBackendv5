@@ -435,6 +435,7 @@ class LibraryController extends Controller
                     'book.category_id',
                     'category.category_name',
                     'category.call_no',
+                    'book_copies.copy_id as accession_no',
                     DB::raw('COUNT(book_copies.copy_id) AS total_copies')
                 )
                 ->groupBy('book.book_id');
