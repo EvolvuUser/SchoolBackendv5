@@ -381,8 +381,8 @@ class LibraryController extends Controller
 
     public function getBookDetails(Request $request)
     {
-        $book_id = $request->input('book_id');
-        $status = $request->input('status') ?? '';
+        $book_id = $request->query('book_id');
+        $status = $request->query('status') ?? '';
 
         // ✅ Direct Query Builder Join
         $bookData = DB::table('book')
