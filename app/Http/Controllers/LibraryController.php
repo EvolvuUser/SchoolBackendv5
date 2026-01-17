@@ -601,29 +601,31 @@ class LibraryController extends Controller
     public function deleteBook($book_id)
     {
         try {
-            // Check if book is issued
-            $issued = DB::table('issue_return')
+            // Match CI logic: ANY issue_return record blocks delete
+            $exists = DB::table('issue_return')
                 ->where('book_id', $book_id)
-                ->where('return_date', '0000-00-00')
                 ->exists();
 
-            if ($issued) {
+            if ($exists) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This Book is issued. Delete failed.'
                 ], 409);
             }
 
-            // Delete from book_copies
-            DB::table('book_copies')->where('book_id', $book_id)->delete();
+            DB::table('book_copies')
+                ->where('book_id', $book_id)
+                ->delete();
 
-            // Delete from book
-            DB::table('book')->where('book_id', $book_id)->delete();
+            DB::table('book')
+                ->where('book_id', $book_id)
+                ->delete();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Book deleted successfully.'
             ], 200);
+
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return response()->json([
