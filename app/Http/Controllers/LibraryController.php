@@ -1580,4 +1580,36 @@ class LibraryController extends Controller
 
         return response()->json($rows, 200);
     }
+
+    public function checkForAccessionNo(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $accession_no = $request->query('accesion_no'); // keep spelling as-is
+
+        if (!$accession_no) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Accession number is required'
+            ], 400);
+        }
+
+        $exists = DB::table('book_copies')
+            ->where('copy_id', $accession_no)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'status' => true,
+                'available' => false,
+                'message' => 'Accession number already exists'
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'available' => true,
+            'message' => 'Accession number is available'
+        ]);
+    }
+
 }

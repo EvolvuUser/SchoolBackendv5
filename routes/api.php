@@ -1255,6 +1255,7 @@
 
             Route::post('/create-member', [LibraryController::class, 'createMembers']);
             Route::get('/get-not-members', [LibraryController::class, 'getNotMembers']);
+            Route::get('/library/check_accession_no', [LibraryController::class , 'checkForAccessionNo']);
 
             Route::get('/category-group', [LibraryController::class, 'index']);
             Route::post('/category-group', [LibraryController::class, 'store']);
