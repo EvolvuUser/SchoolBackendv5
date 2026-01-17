@@ -1273,7 +1273,7 @@
 
             Route::get('/books/search', [LibraryController::class, 'searchBooks']);
             Route::post('/books/edit/{book_id}', [LibraryController::class, 'editBook']);
-            Route::post('/get-book-details', [LibraryController::class, 'getBookDetails']);
+            Route::get('/get-book-details', [LibraryController::class, 'getBookDetails']);
             Route::post('/books/create', [LibraryController::class, 'createBook']);
             Route::delete('/books/delete/{book_id}', [LibraryController::class, 'deleteBook']);
             Route::get('/books/max-copy-id', [LibraryController::class, 'getMaxCopyId']);

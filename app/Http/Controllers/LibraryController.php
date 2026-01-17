@@ -253,38 +253,47 @@ class LibraryController extends Controller
 
     public function Libraryupdate(Request $request, $id)
     {
-        // Validation (group optional)
         $validator = Validator::make($request->all(), [
             'category_name' => 'required|string|max:100',
             'call_no' => 'required|string|max:50',
-            'category_group_ids' => 'array|nullable'  // <-- optional now
+            'category_group_ids' => 'array|nullable'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Step 1: Update category table
-        DB::table('category')->where('category_id', $id)->update([
-            'category_name' => $request->category_name,
-            'call_no' => $request->call_no,
-        ]);
+        DB::transaction(function () use ($request, $id) {
 
-        // Step 2: If category_group_ids provided, update mapping
-        if ($request->has('category_group_ids') && !empty($request->category_group_ids)) {
-            // Delete old mappings
-            DB::table('category_categorygroup')->where('category_id', $id)->delete();
-
-            // Insert new mappings
-            foreach ($request->category_group_ids as $groupId) {
-                DB::table('category_categorygroup')->insert([
-                    'category_id' => $id,
-                    'category_group_id' => $groupId,
+            // 1️⃣ Update category
+            DB::table('category')
+                ->where('category_id', $id)
+                ->update([
+                    'category_name' => $request->category_name,
+                    'call_no'       => $request->call_no,
                 ]);
-            }
-        }
 
-        return response()->json(['message' => 'Category updated successfully!'], 200);
+            // 2️⃣ ALWAYS delete old mappings (CI behavior)
+            DB::table('category_categorygroup')
+                ->where('category_id', $id)
+                ->delete();
+
+            // 3️⃣ Insert only if groups are provided
+            if (!empty($request->category_group_ids)) {
+                foreach ($request->category_group_ids as $groupId) {
+                    if ($groupId) {
+                        DB::table('category_categorygroup')->insert([
+                            'category_id'       => $id,
+                            'category_group_id' => $groupId,
+                        ]);
+                    }
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Category edited!!!'
+        ], 200);
     }
 
     public function Librarydestroy($id)
