@@ -733,18 +733,24 @@ class LibraryController extends Controller
 
     public function getLibraryMembersInfo(Request $request)
     {
+
+        $user = $this->authenticateUser();
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+
         $m_type = $request->input('m_type', '');
         $class_id = $request->input('class_id', '');
         $section_id = $request->input('section_id', '');
         $name = $request->input('name', '');
+
         $status = $request->input('status', '');
-        $acd_yr = $request->input('acd_yr', '');
         $grn_no = $request->input('grn_no', '');
 
         if ($m_type === 'S') {
             $query = DB::table('student')
-                ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
-                ->select('student.*', 'library_member.*')
+                ->leftjoin('library_member', 'student.student_id', '=', 'library_member.member_id')
+                ->leftjoin('class', 'student.class_id', '=', 'class.class_id')
+                ->leftjoin('section', 'section.section_id', '=', 'student.section_id')
+                ->select('student.*', 'library_member.*' , 'class.name as class_name' , 'section.name as section_name')
                 ->where('library_member.member_type', $m_type);
 
             if (!empty($grn_no)) {
