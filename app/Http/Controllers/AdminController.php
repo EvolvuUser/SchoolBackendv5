@@ -140,91 +140,179 @@ class AdminController extends Controller
 
     public function staff()
     {
-        $teachingStaff = count(
-            DB::select("
-                SELECT DISTINCT t.teacher_id
-                FROM teacher t
-                JOIN user_master u
-                    ON t.teacher_id = u.reg_id
-                LEFT JOIN teacher_category tc
-                    ON t.tc_id = tc.tc_id
-                WHERE t.isDelete = 'N'
-                AND tc.teaching = 'Y'
-            ")
-        );
+        $user = $this->authenticateUser();
+        $short_code = JWTAuth::getPayload()->get('short_code');
+        if($short_code == 'HSCS') {
+            $teachingStaff = count(
+                DB::select("
+                    SELECT DISTINCT t.teacher_id
+                    FROM teacher t
+                    JOIN user_master u
+                        ON t.teacher_id = u.reg_id
+                    LEFT JOIN teacher_category tc
+                        ON t.tc_id = tc.tc_id
+                    WHERE t.isDelete = 'N'
+                    AND tc.teaching = 'Y'
+                ")
+            );
 
-        $attendanceteachingstaff = count(
-            DB::select("
-                SELECT DISTINCT ta.employee_id
-                FROM teacher_attendance ta,
-                    teacher t,
-                    user_master u,
-                    teacher_category tc
-                WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-                AND t.isDelete = 'N'
-                AND tc.teaching = 'Y'
-                AND t.tc_id = tc.tc_id
-                AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            ")
-        );
+            $attendanceteachingstaff = count(
+                DB::select("
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t,
+                        user_master u,
+                        teacher_category tc
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.isDelete = 'N'
+                    AND tc.teaching = 'Y'
+                    AND t.tc_id = tc.tc_id
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+                ")
+            );
 
-        $non_teachingStaff = count(
-            DB::select("
-                SELECT DISTINCT t.teacher_id
-                FROM teacher t
-                JOIN user_master u
-                    ON t.teacher_id = u.reg_id
-                LEFT JOIN teacher_category tc
-                    ON t.tc_id = tc.tc_id
-                WHERE t.isDelete = 'N'
-                AND tc.teaching = 'N'
+            $non_teachingStaff = count(
+                DB::select("
+                    SELECT DISTINCT t.teacher_id
+                    FROM teacher t
+                    JOIN user_master u
+                        ON t.teacher_id = u.reg_id
+                    LEFT JOIN teacher_category tc
+                        ON t.tc_id = tc.tc_id
+                    WHERE t.isDelete = 'N'
+                    AND tc.teaching = 'N'
 
-                UNION
+                    UNION
 
-                SELECT DISTINCT c.teacher_id
-                FROM teacher c
-                LEFT JOIN teacher_category tc
-                    ON c.tc_id = tc.tc_id
-                WHERE c.designation = 'Caretaker'
-                AND c.isDelete = 'N'
-                AND tc.teaching = 'N'
+                    SELECT DISTINCT c.teacher_id
+                    FROM teacher c
+                    LEFT JOIN teacher_category tc
+                        ON c.tc_id = tc.tc_id
+                    WHERE c.designation = 'Caretaker'
+                    AND c.isDelete = 'N'
+                    AND tc.teaching = 'N'
 
-                ORDER BY teacher_id ASC
-            ")
-        );
+                    ORDER BY teacher_id ASC
+                ")
+            );
 
-        $attendancenonteachingstaff = count(
-            DB::select("
-                SELECT DISTINCT ta.employee_id
-                FROM teacher_attendance ta,
-                    teacher t,
-                    user_master u,
-                    teacher_category tc
-                WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-                AND t.teacher_id = u.reg_id
-                AND t.tc_id = tc.tc_id
-                AND t.isDelete = 'N'
-                AND tc.teaching = 'N'
-                AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+            $attendancenonteachingstaff = count(
+                DB::select("
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t,
+                        user_master u,
+                        teacher_category tc
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.teacher_id = u.reg_id
+                    AND t.tc_id = tc.tc_id
+                    AND t.isDelete = 'N'
+                    AND tc.teaching = 'N'
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
 
-                UNION
+                    UNION
 
-                SELECT DISTINCT ta.employee_id
-                FROM teacher_attendance ta,
-                    teacher t
-                WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-                AND t.isDelete = 'N'
-                AND t.designation = 'Caretaker'
-                AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            ")
-        );
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.isDelete = 'N'
+                    AND t.designation = 'Caretaker'
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+                ")
+            );
 
-        return response()->json([
-            'teachingStaff'              => $teachingStaff,
-            'non_teachingStaff'          => $non_teachingStaff,
-            'attendancenonteachingstaff' => $attendancenonteachingstaff,
-            'attendanceteachingstaff'    => $attendanceteachingstaff
-        ]);
+            return response()->json([
+                'teachingStaff'              => $teachingStaff,
+                'non_teachingStaff'          => $non_teachingStaff,
+                'attendancenonteachingstaff' => $attendancenonteachingstaff,
+                'attendanceteachingstaff'    => $attendanceteachingstaff
+            ]);
+        } else if('SACS') {
+            $teachingStaff = count(
+                DB::select("
+                    SELECT DISTINCT t.teacher_id
+                    FROM teacher t
+                    JOIN user_master u
+                        ON t.teacher_id = u.reg_id
+                    LEFT JOIN teacher_category tc
+                        ON t.tc_id = tc.tc_id
+                    WHERE t.isDelete = 'N'
+                    AND tc.teaching = 'Y'
+                ")
+            );
+
+            $attendanceteachingstaff = count(
+                DB::select("
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t,
+                        user_master u,
+                        teacher_category tc
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.isDelete = 'N'
+                    AND tc.teaching = 'Y'
+                    AND t.tc_id = tc.tc_id
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+                ")
+            );
+
+            $non_teachingStaff = count(
+                DB::select("
+                    SELECT DISTINCT t.teacher_id
+                    FROM teacher t
+                    JOIN user_master u
+                        ON t.teacher_id = u.reg_id
+                    LEFT JOIN teacher_category tc
+                        ON t.tc_id = tc.tc_id
+                    WHERE t.isDelete = 'N'
+                    AND tc.teaching = 'N'
+
+                    UNION
+
+                    SELECT DISTINCT c.teacher_id
+                    FROM teacher c
+                    LEFT JOIN teacher_category tc
+                        ON c.tc_id = tc.tc_id
+                    AND c.isDelete = 'N'
+                    AND tc.teaching = 'N'
+
+                    ORDER BY teacher_id ASC
+                ")
+            );
+
+            $attendancenonteachingstaff = count(
+                DB::select("
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t,
+                        user_master u,
+                        teacher_category tc
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.teacher_id = u.reg_id
+                    AND t.tc_id = tc.tc_id
+                    AND t.isDelete = 'N'
+                    AND tc.teaching = 'N'
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+
+                    UNION
+
+                    SELECT DISTINCT ta.employee_id
+                    FROM teacher_attendance ta,
+                        teacher t
+                    WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
+                    AND t.isDelete = 'N'
+                    AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+                ")
+            );
+
+            return response()->json([
+                'teachingStaff'              => $teachingStaff,
+                'non_teachingStaff'          => $non_teachingStaff,
+                'attendancenonteachingstaff' => $attendancenonteachingstaff,
+                'attendanceteachingstaff'    => $attendanceteachingstaff
+            ]);
+        }
     }
 
 
