@@ -20952,7 +20952,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
                         )
                         ->from('lesson_plan')
-                        ->where('approve' , '!=' , 'N')
+                        ->where('approve' , '!=' , 'Y')
                         ->whereRaw(
                             "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
                             [$nextMonday]
