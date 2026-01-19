@@ -20740,12 +20740,30 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             // 👨‍🏫 Total teaching staff
-            $totalNumberOfTeachers = DB::table('teacher')
-            ->select('teacher.*' , 'teacher_category.name as category_name')
-            ->leftJoin('teacher_category', 'teacher_category.tc_id', '=', 'teacher.tc_id')
-            ->where('teacher_category.teaching', 'Y')
-            ->where('teacher.isDelete' , 'N')
-            ->get();
+            // $totalNumberOfTeachers = DB::table('teacher')
+            // ->select('teacher.*' , 'teacher_category.name as category_name')
+            // ->leftJoin('teacher_category', 'teacher_category.tc_id', '=', 'teacher.tc_id')
+            // ->where('teacher_category.teaching', 'Y')
+            // ->where('teacher.isDelete' , 'N')
+            // ->get();
+
+            $totalNumberOfTeachers = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academic_year)
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->select(
+                    't.*',
+                    'tc.name as category_name',
+                )
+                ->distinct()
+                ->orderBy('t.teacher_name')
+                ->get();
 
             // ✅ Success response
             return response()->json([
