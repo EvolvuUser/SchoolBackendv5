@@ -20762,7 +20762,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'tc.name as category_name',
                 )
                 ->distinct()
-                ->orderBy('t.teacher_name')
                 ->get();
 
             // ✅ Success response
