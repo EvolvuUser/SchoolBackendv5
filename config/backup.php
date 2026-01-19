@@ -329,7 +329,7 @@ return [
     'database_dumpers' => [
         'mysql' => [
             // REQUIRED on Windows
-            'dump_binary_path' => 'C:/xampp/mysql/bin',
+            'dump_binary_path' => '/usr/bin',
             // Required for remote DBs
             'use_single_transaction' => true,
             'timeout' => 300,
