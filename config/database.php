@@ -53,7 +53,7 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
             'dump' => [
-                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'dump_binary_path' => '/usr/bin',
                 'use_single_transaction' => true,
                 'timeout' => 300,
             ],
@@ -68,7 +68,7 @@ return [
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
             'dump' => [
-                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'dump_binary_path' => '/usr/bin',
                 'use_single_transaction' => true,
                 'timeout' => 300,
             ],
@@ -83,7 +83,7 @@ return [
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
             'dump' => [
-                'dump_binary_path' => 'C:/xampp/mysql/bin',
+                'dump_binary_path' => '/usr/bin',
                 'use_single_transaction' => true,
                 'timeout' => 300,
             ],
