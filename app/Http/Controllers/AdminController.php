@@ -274,6 +274,7 @@ class AdminController extends Controller
                     FROM teacher c
                     LEFT JOIN teacher_category tc
                         ON c.tc_id = tc.tc_id
+                    WHERE c.designation = 'Caretaker'
                     AND c.isDelete = 'N'
                     AND tc.teaching = 'N'
 
@@ -302,6 +303,7 @@ class AdminController extends Controller
                         teacher t
                     WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
                     AND t.isDelete = 'N'
+                    AND t.designation = 'Caretaker'
                     AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
                 ")
             );
