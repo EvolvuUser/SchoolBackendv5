@@ -20822,6 +20822,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -20902,6 +20904,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
@@ -20981,6 +20985,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
