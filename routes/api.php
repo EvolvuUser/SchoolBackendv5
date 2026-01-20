@@ -104,6 +104,7 @@
             // Count of classes for which the attendance is not marked
             Route::get('/attendance/notmarked/count' , [AdminController::class , 'attendanceNotMarkedCount']);
             // List of classes for which the attendance is not marked: class Teacher Name, class , division.
+            Route::get('/attendance/notmarked/list' , [AdminController::class , 'attendanceNotMarkedList']);
 
             // Reminders API
             Route::get('/teachers/dashboard/reminders', [TeacherDashboardController::class, 'getReminders']);

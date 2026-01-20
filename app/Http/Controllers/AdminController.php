@@ -21131,45 +21131,120 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function  attendanceNotMarkedCount() {
+    public function attendanceNotMarkedCount(Request $request)
+    {
         $user = $this->authenticateUser();
+
         // ---------- Inputs ----------
         $academicYear = JWTAuth::getPayload()->get('academic_year');
         $date = $request->query('date', now()->toDateString());
 
         // ---------- Fetch Classes ----------
         $classes = DB::table('class')
-            ->select('class_id', 'name as class_name')
+            ->select('class_id')
             ->where('academic_yr', $academicYear)
             ->get();
+
         // ---------- Preload Sections ----------
-        $sections = DB::table('section')
-            ->select('section_id', 'class_id', 'name as section_name')
+        $sectionsByClass = DB::table('section')
+            ->select('section_id', 'class_id')
             ->get()
             ->groupBy('class_id');
 
-        $responseData = [];
-
+        $notMarkedCount = 0;
+        $totalClasses = 0;
         foreach ($classes as $class) {
-            $classSections = [];
-
-            foreach ($sections[$class->class_id] ?? [] as $section) {
-                
-                
-
+            foreach ($sectionsByClass[$class->class_id] ?? [] as $section) {
+                $exists = DB::table('attendance')
+                    ->where('class_id', $class->class_id)
+                    ->where('section_id', $section->section_id)
+                    ->whereDate('only_date', $date)
+                    ->exists();
+                if (!$exists) {
+                    $notMarkedCount++;
+                }
+                $totalClasses++;
             }
-
-            $responseData[] = [
-                'class_id'   => $class->class_id,
-                'class_name' => $class->class_name,
-                'sections'   => $classSections
-            ];
         }
 
         return response()->json([
             'status' => true,
             'date'   => $date,
-            'data'   => $responseData
+            'AttendanceNotMarkedCount'   => $notMarkedCount,
+            'TotalClassesCount' => $totalClasses,
         ]);
     }
+
+    public function attendanceNotMarkedList(Request $request)
+    {
+        $user = $this->authenticateUser();
+
+        // ---------- Inputs ----------
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $date = $request->query('date', now()->toDateString());
+
+        // ---------- Fetch Classes ----------
+        $classes = DB::table('class')
+            ->select('class_id')
+            ->where('academic_yr', $academicYear)
+            ->get();
+
+        // ---------- Preload Sections ----------
+        $sectionsByClass = DB::table('section')
+            ->select('section_id', 'class_id')
+            ->get()
+            ->groupBy('class_id');
+
+        $notMarkedCount = 0;
+        $totalClasses = 0;
+
+        $notMarkedData = [];
+        foreach ($classes as $class) {
+            foreach ($sectionsByClass[$class->class_id] ?? [] as $section) {
+                $exists = DB::table('attendance')
+                    ->where('class_id', $class->class_id)
+                    ->where('section_id', $section->section_id)
+                    ->whereDate('only_date', $date)
+                    ->exists();
+                if (!$exists) {
+                    $notMarkedData[] = ['class_id' => $class->class_id, 'section_id' => $section->section_id];
+                    $notMarkedCount++;
+                }
+                $totalClasses++;
+            }
+        }
+
+        // Find out listing
+        $list = [];
+        foreach($notMarkedData as $nmd) {
+            $class_id = $nmd['class_id'];
+            $section_id = $nmd['section_id'];
+
+            $data = DB::table('class_teachers')
+                ->leftJoin('teacher' , 'teacher.teacher_id' ,'=', 'class_teachers.teacher_id')
+                ->leftJoin('class' , 'class.class_id' ,'=', 'class_teachers.class_id')
+                ->leftJoin('section' , 'section.section_id' ,'=', 'class_teachers.section_id')
+                ->where('class_teachers.class_id' , $class_id)
+                ->where('class_teachers.section_id', $section_id)
+                ->select(
+                    'teacher.teacher_id',
+                    'teacher.name as teacher_name',
+                    'teacher.employee_id',
+                    'class.name as class_name', 
+                    'section.name as section_name',
+                )
+                ->first();
+
+            $list[] = $data;
+        }
+
+        return response()->json([
+            'status' => true,
+            'date'   => $date,
+            'AttendanceNotMarkedList' => $list,
+            'AttendanceNotMarkedCount'   => count($list),
+            'TotalClassesCount' => $totalClasses,
+        ]);
+    }
+
 }
