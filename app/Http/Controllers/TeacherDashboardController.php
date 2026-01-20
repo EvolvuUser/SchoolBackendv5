@@ -820,6 +820,7 @@ class TeacherDashboardController extends Controller
         $todayDate = date('Y-m-d');
         $totalStudentsPresentToday = DB::table('attendance')
             ->where('only_date', $todayDate)
+            ->where('attendance_status' , 0)
             ->whereIn('class_id', $classIds)
             ->whereIn('section_id', $sectionIds)
             ->count();
