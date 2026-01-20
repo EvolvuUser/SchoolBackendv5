@@ -787,46 +787,8 @@ class TeacherDashboardController extends Controller
         /** STUDENT CARDS */
         // get classes data
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        // 1. Get unique class-section combinations for the teacher
-        $classData = DB::table('subject')
-            ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-                $join
-                    ->on('class_teachers.class_id', '=', 'subject.class_id')
-                    ->on('class_teachers.section_id', '=', 'subject.section_id')
-                    ->where('class_teachers.teacher_id', $teacher_id);
-            })
-            ->where('subject.academic_yr', $customClaims)
-            ->where(function ($query) use ($teacher_id) {
-                $query
-                    ->where('subject.teacher_id', $teacher_id)
-                    ->orWhere('class_teachers.teacher_id', $teacher_id);
-            })
-            ->distinct()
-            ->select('subject.class_id', 'subject.section_id')
-            ->get();
 
-        // 2. Build arrays for WHERE IN
-        $classIds = $classData->pluck('class_id')->unique();
-        $sectionIds = $classData->pluck('section_id')->unique();
-
-        // 3. Count students in ONE query
-        $totalStudents = DB::table('student')
-            ->where('academic_yr', $customClaims)
-            ->whereIn('class_id', $classIds)
-            ->whereIn('section_id', $sectionIds)
-            ->count();
-
-        // Count total number of students present today in those classes
-        $todayDate = date('Y-m-d');
-        $totalStudentsPresentToday = DB::table('attendance')
-            ->where('only_date', $todayDate)
-            ->where('attendance_status' , 0)
-            ->whereIn('class_id', $classIds)
-            ->whereIn('section_id', $sectionIds)
-            ->count();
-
-        /** Defaulter list card */
-        $classes = DB::table('class_teachers')
+        $queryToFindClassTeacherClassAndSection = DB::table('class_teachers')
             ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
             ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
             ->select(
@@ -838,123 +800,361 @@ class TeacherDashboardController extends Controller
             )
             ->where('class_teachers.teacher_id', $teacher_id)
             ->where('class_teachers.academic_yr', $customClaims)
+            ->orderBy('class_teachers.section_id')
             ->first();
 
-        $class_id = $classes->class_id;
-        $section_id = $classes->section_id;
-        $installment = 1;  // 1 2 3
-        $defaulters = DB::table('view_student_fees_category as s')
-            ->leftJoin('view_student_fees_payment as p', function ($join) {
-                $join
-                    ->on('s.student_id', '=', 'p.student_id')
-                    ->on('s.installment', '=', 'p.installment');
-            })
-            ->leftJoin('fee_concession_details as c', function ($join) {
-                $join
-                    ->on('s.student_id', '=', 'c.student_id')
-                    ->on('s.installment', '=', 'c.installment');
-            })
-            ->join('student as st', 'st.student_id', '=', 's.student_id')
-            ->where('s.academic_yr', $customClaims)
-            ->where('s.class_id', $class_id)
-            ->where('st.section_id', $section_id)
-            ->where(function ($q) {
-                $q
-                    ->where('s.installment', 'like', '1%')
-                    ->orWhere('s.installment', 'like', '2%')
-                    ->orWhere('s.installment', 'like', '3%');
-            })
-            ->groupBy(
-                's.student_id',
-                's.installment',
-                's.installment_fees',
-                'st.first_name',
-                'st.last_name',
-                'st.roll_no'
-            )
-            ->select(
-                's.student_id',
-                'st.first_name',
-                'st.last_name',
-                'st.roll_no',
-                's.installment',
-                's.installment_fees',
-                DB::raw('COALESCE(SUM(c.amount),0) as concession'),
-                DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
-            )
-            ->get();
+        // teacher is not a class teacher
+        if($queryToFindClassTeacherClassAndSection == null) {
+            // teacher is a class teacher
+            $classTeacherClassId = $queryToFindClassTeacherClassAndSection->class_id ?? 0;
+            $classTeacherSectionId = $queryToFindClassTeacherClassAndSection->section_id ?? 0;
 
-        $pendingAmount = 0.0;
-        $totalNumberOfDefaulters = 0;
-        $defaulterStudents = [];
+            // 1. Get unique class-section combinations for the teacher
+            $classData = DB::table('subject')
+                ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                    $join
+                        ->on('class_teachers.class_id', '=', 'subject.class_id')
+                        ->on('class_teachers.section_id', '=', 'subject.section_id')
+                        ->where('class_teachers.teacher_id', $teacher_id);
+                })
+                ->where('subject.academic_yr', $customClaims)
+                ->where(function ($query) use ($teacher_id) {
+                    $query
+                        ->where('subject.teacher_id', $teacher_id)
+                        ->orWhere('class_teachers.teacher_id', $teacher_id);
+                })
+                ->distinct()
+                ->select('subject.class_id', 'subject.section_id')
+                ->get();
 
-        foreach ($defaulters as $student) {
-            $pending = $student->installment_fees
-                - $student->concession
-                - $student->paid_amount;
-            if ($pending > 0) {
-                $totalNumberOfDefaulters++;
-                $pendingAmount += $pending;
+            // 2. Build arrays for WHERE IN
+            $classIds = $classData->pluck('class_id')->unique();
+            $sectionIds = $classData->pluck('section_id')->unique();
 
-                // $defaulterStudents[] = [
-                //     'student_id'   => $student->student_id,
-                //     'name'         => $student->first_name . ' ' . $student->last_name,
-                //     'roll_no'      => $student->roll_no,
-                //     'installment' => $student->installment,
-                //     'pending_fee' => $pending
-                // ];
+            // 3. Count students in ONE query
+            $totalStudents = DB::table('student')
+                ->where('academic_yr', $customClaims)
+                ->where('class_id', $classTeacherClassId)
+                ->where('section_id', $classTeacherSectionId)
+                ->count();
+
+            // Count total number of students present today in those classes
+            $todayDate = date('Y-m-d');
+            $totalStudentsPresentToday = DB::table('attendance')
+                ->where('only_date', $todayDate)
+                ->where('attendance_status' , 0)
+                ->where('class_id', $classTeacherClassId)
+                ->where('section_id', $classTeacherSectionId)
+                ->count();
+
+            /** Defaulter list card */
+            $classes = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id',
+                    DB::raw('1 as is_class_teacher')
+                )
+                ->where('class_teachers.teacher_id', $teacher_id)
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->first();
+
+            $class_id = $classes->class_id ?? 0;
+            $section_id = $classes->section_id ?? 0;
+            $installment = 1;  // 1 2 3
+            $defaulters = DB::table('view_student_fees_category as s')
+                ->leftJoin('view_student_fees_payment as p', function ($join) {
+                    $join
+                        ->on('s.student_id', '=', 'p.student_id')
+                        ->on('s.installment', '=', 'p.installment');
+                })
+                ->leftJoin('fee_concession_details as c', function ($join) {
+                    $join
+                        ->on('s.student_id', '=', 'c.student_id')
+                        ->on('s.installment', '=', 'c.installment');
+                })
+                ->join('student as st', 'st.student_id', '=', 's.student_id')
+                ->where('s.academic_yr', $customClaims)
+                ->where('s.class_id', $class_id)
+                ->where('st.section_id', $section_id)
+                ->where(function ($q) {
+                    $q
+                        ->where('s.installment', 'like', '1%')
+                        ->orWhere('s.installment', 'like', '2%')
+                        ->orWhere('s.installment', 'like', '3%');
+                })
+                ->groupBy(
+                    's.student_id',
+                    's.installment',
+                    's.installment_fees',
+                    'st.first_name',
+                    'st.last_name',
+                    'st.roll_no'
+                )
+                ->select(
+                    's.student_id',
+                    'st.first_name',
+                    'st.last_name',
+                    'st.roll_no',
+                    's.installment',
+                    's.installment_fees',
+                    DB::raw('COALESCE(SUM(c.amount),0) as concession'),
+                    DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
+                )
+                ->get();
+
+            $pendingAmount = 0.0;
+            $totalNumberOfDefaulters = 0;
+            $defaulterStudents = [];
+
+            foreach ($defaulters as $student) {
+                $pending = $student->installment_fees
+                    - $student->concession
+                    - $student->paid_amount;
+                if ($pending > 0) {
+                    $totalNumberOfDefaulters++;
+                    $pendingAmount += $pending;
+
+                    // $defaulterStudents[] = [
+                    //     'student_id'   => $student->student_id,
+                    //     'name'         => $student->first_name . ' ' . $student->last_name,
+                    //     'roll_no'      => $student->roll_no,
+                    //     'installment' => $student->installment,
+                    //     'pending_fee' => $pending
+                    // ];
+                }
             }
+
+            /** Birthday Card */
+            $date = Carbon::now();
+            $studentCount = DB::table('student')
+                ->where('academic_yr', $customClaims)
+                ->whereIn('class_id', $classIds)
+                ->whereIn('section_id', $sectionIds)
+                ->whereMonth('dob', $date->month)
+                ->whereDay('dob', $date->day)
+                ->count();
+
+            $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
+                ->whereMonth('birthday', $date->month)
+                ->whereDay('birthday', $date->day)
+                ->count();
+
+            /** Homework Card */
+            $today = Carbon::now()->toDateString();
+            $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
+            $countOfHomeworksDueToday = DB::table('homework')
+                ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
+                ->where('homework.academic_yr', $customClaims)
+                ->where('homework.publish', 'Y')
+                ->whereIn('homework.class_id', $classIds)
+                ->whereIn('homework.section_id', $sectionIds)
+                ->where('homework.end_date', $today)
+                ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
+                ->count();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'studentCard' => [
+                        'totalStudents' => $totalStudents,
+                        'totalStudentsPresentToday' => $totalStudentsPresentToday
+                    ],
+                    'birthDayCard' => [
+                        'countOfBirthdaysToday' => $countOfBirthdaysToday
+                    ],
+                    'homeworkCard' => [
+                        'countOfHomeworksDueToday' => $countOfHomeworksDueToday
+                    ],
+                    'defaulterCount' => [
+                        'totalPendingAmount' => $pendingAmount,
+                        'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
+                        // 'defaulterStudents' => $defaulterStudents,
+                        // 'count' => count($defaulterStudents)
+                    ],
+                    'isClassTeacher' => $queryToFindClassTeacherClassAndSection == null ? 0 : 1,
+                ]
+            ]);
+        } else {
+            // teacher is a class teacher
+            $classTeacherClassId = $queryToFindClassTeacherClassAndSection->class_id ?? 0;
+            $classTeacherSectionId = $queryToFindClassTeacherClassAndSection->section_id ?? 0;
+
+            // 1. Get unique class-section combinations for the teacher
+            $classData = DB::table('subject')
+                ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                    $join
+                        ->on('class_teachers.class_id', '=', 'subject.class_id')
+                        ->on('class_teachers.section_id', '=', 'subject.section_id')
+                        ->where('class_teachers.teacher_id', $teacher_id);
+                })
+                ->where('subject.academic_yr', $customClaims)
+                ->where(function ($query) use ($teacher_id) {
+                    $query
+                        ->where('subject.teacher_id', $teacher_id)
+                        ->orWhere('class_teachers.teacher_id', $teacher_id);
+                })
+                ->distinct()
+                ->select('subject.class_id', 'subject.section_id')
+                ->get();
+
+            // 2. Build arrays for WHERE IN
+            $classIds = $classData->pluck('class_id')->unique();
+            $sectionIds = $classData->pluck('section_id')->unique();
+
+            // 3. Count students in ONE query
+            $totalStudents = DB::table('student')
+                ->where('academic_yr', $customClaims)
+                ->where('class_id', $classTeacherClassId)
+                ->where('section_id', $classTeacherSectionId)
+                ->count();
+
+            // Count total number of students present today in those classes
+            $todayDate = date('Y-m-d');
+            $totalStudentsPresentToday = DB::table('attendance')
+                ->where('only_date', $todayDate)
+                ->where('attendance_status' , 0)
+                ->where('class_id', $classTeacherClassId)
+                ->where('section_id', $classTeacherSectionId)
+                ->count();
+
+            /** Defaulter list card */
+            $classes = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id',
+                    DB::raw('1 as is_class_teacher')
+                )
+                ->where('class_teachers.teacher_id', $teacher_id)
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->first();
+
+            $class_id = $classes->class_id;
+            $section_id = $classes->section_id;
+            $installment = 1;  // 1 2 3
+            $defaulters = DB::table('view_student_fees_category as s')
+                ->leftJoin('view_student_fees_payment as p', function ($join) {
+                    $join
+                        ->on('s.student_id', '=', 'p.student_id')
+                        ->on('s.installment', '=', 'p.installment');
+                })
+                ->leftJoin('fee_concession_details as c', function ($join) {
+                    $join
+                        ->on('s.student_id', '=', 'c.student_id')
+                        ->on('s.installment', '=', 'c.installment');
+                })
+                ->join('student as st', 'st.student_id', '=', 's.student_id')
+                ->where('s.academic_yr', $customClaims)
+                ->where('s.class_id', $class_id)
+                ->where('st.section_id', $section_id)
+                ->where(function ($q) {
+                    $q
+                        ->where('s.installment', 'like', '1%')
+                        ->orWhere('s.installment', 'like', '2%')
+                        ->orWhere('s.installment', 'like', '3%');
+                })
+                ->groupBy(
+                    's.student_id',
+                    's.installment',
+                    's.installment_fees',
+                    'st.first_name',
+                    'st.last_name',
+                    'st.roll_no'
+                )
+                ->select(
+                    's.student_id',
+                    'st.first_name',
+                    'st.last_name',
+                    'st.roll_no',
+                    's.installment',
+                    's.installment_fees',
+                    DB::raw('COALESCE(SUM(c.amount),0) as concession'),
+                    DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
+                )
+                ->get();
+
+            $pendingAmount = 0.0;
+            $totalNumberOfDefaulters = 0;
+            $defaulterStudents = [];
+
+            foreach ($defaulters as $student) {
+                $pending = $student->installment_fees
+                    - $student->concession
+                    - $student->paid_amount;
+                if ($pending > 0) {
+                    $totalNumberOfDefaulters++;
+                    $pendingAmount += $pending;
+
+                    // $defaulterStudents[] = [
+                    //     'student_id'   => $student->student_id,
+                    //     'name'         => $student->first_name . ' ' . $student->last_name,
+                    //     'roll_no'      => $student->roll_no,
+                    //     'installment' => $student->installment,
+                    //     'pending_fee' => $pending
+                    // ];
+                }
+            }
+
+            /** Birthday Card */
+            $date = Carbon::now();
+            $studentCount = DB::table('student')
+                ->where('academic_yr', $customClaims)
+                ->whereIn('class_id', $classIds)
+                ->whereIn('section_id', $sectionIds)
+                ->whereMonth('dob', $date->month)
+                ->whereDay('dob', $date->day)
+                ->count();
+
+            $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
+                ->whereMonth('birthday', $date->month)
+                ->whereDay('birthday', $date->day)
+                ->count();
+
+            /** Homework Card */
+            $today = Carbon::now()->toDateString();
+            $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
+            $countOfHomeworksDueToday = DB::table('homework')
+                ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
+                ->where('homework.academic_yr', $customClaims)
+                ->where('homework.publish', 'Y')
+                ->whereIn('homework.class_id', $classIds)
+                ->whereIn('homework.section_id', $sectionIds)
+                ->where('homework.end_date', $today)
+                ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
+                ->count();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'studentCard' => [
+                        'totalStudents' => $totalStudents,
+                        'totalStudentsPresentToday' => $totalStudentsPresentToday
+                    ],
+                    'birthDayCard' => [
+                        'countOfBirthdaysToday' => $countOfBirthdaysToday
+                    ],
+                    'homeworkCard' => [
+                        'countOfHomeworksDueToday' => $countOfHomeworksDueToday
+                    ],
+                    'defaulterCount' => [
+                        'totalPendingAmount' => $pendingAmount,
+                        'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
+                        // 'defaulterStudents' => $defaulterStudents,
+                        // 'count' => count($defaulterStudents)
+                    ],
+                    'isClassTeacher' => $queryToFindClassTeacherClassAndSection == null ? 0 : 1,
+                ]
+            ]);
         }
 
-        /** Birthday Card */
-        $date = Carbon::now();
-        $studentCount = DB::table('student')
-            ->where('academic_yr', $customClaims)
-            ->whereIn('class_id', $classIds)
-            ->whereIn('section_id', $sectionIds)
-            ->whereMonth('dob', $date->month)
-            ->whereDay('dob', $date->day)
-            ->count();
-
-        $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
-            ->whereMonth('birthday', $date->month)
-            ->whereDay('birthday', $date->day)
-            ->count();
-
-        /** Homework Card */
-        $today = Carbon::now()->toDateString();
-        $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
-        $countOfHomeworksDueToday = DB::table('homework')
-            ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
-            ->where('homework.academic_yr', $customClaims)
-            ->where('homework.publish', 'Y')
-            ->whereIn('homework.class_id', $classIds)
-            ->whereIn('homework.section_id', $sectionIds)
-            ->where('homework.end_date', $today)
-            ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
-            ->count();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'studentCard' => [
-                    'totalStudents' => $totalStudents,
-                    'totalStudentsPresentToday' => $totalStudentsPresentToday
-                ],
-                'birthDayCard' => [
-                    'countOfBirthdaysToday' => $countOfBirthdaysToday
-                ],
-                'homeworkCard' => [
-                    'countOfHomeworksDueToday' => $countOfHomeworksDueToday
-                ],
-                'defaulterCount' => [
-                    'totalPendingAmount' => $pendingAmount,
-                    'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
-                    // 'defaulterStudents' => $defaulterStudents,
-                    // 'count' => count($defaulterStudents)
-                ]
-            ]
-        ]);
+        
     }
 
     public function ticketsList($teacher_id)
