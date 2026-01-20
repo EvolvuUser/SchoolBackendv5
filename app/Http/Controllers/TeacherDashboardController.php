@@ -52,7 +52,7 @@ class TeacherDashboardController extends Controller
 
             $incompleteLessonPlansForNextWeek = [];
 
-            $nextMonday = now()->next('Monday')->format('Y-m-d');
+            $nextMonday = now()->next('Monday')->format('d-m-Y');
 
             $incompleteLessonPlan = DB::table('subject as s')
                 ->selectRaw("
