@@ -142,11 +142,11 @@ class AuthController extends Controller
 
                 if ($remember_me == 'true') {
                     // e.g. 1 week in minutes
-                    JWTAuth::factory()->setTTL(60 * 24 * 7);
+                    JWTAuth::factory()->setTTL(null);
                 } else {
                     // Default e.g. 1 hour
                     // dd("Hello from else");
-                    JWTAuth::factory()->setTTL(60 * 24);
+                    JWTAuth::factory()->setTTL(null);
                 }
                 if (!$user) {
                     Log::warning('Username is not valid:', $credentials);
