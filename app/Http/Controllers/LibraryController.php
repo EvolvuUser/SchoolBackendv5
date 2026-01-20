@@ -1171,146 +1171,387 @@ class LibraryController extends Controller
         return [];
     }
 
-    public function BooksIssueAPI(Request $request)
-    {
-        $type = $request->query('type');
+    // OLD
+    // public function BooksIssueAPI(Request $request)
+    // {
+    //     $type = $request->query('type');
 
-        if (!$type) {
-            return response()->json([
-                'status' => false,
-                'message' => "Missing 'type' parameter"
-            ], 400);
+    //     if (!$type) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => "Missing 'type' parameter"
+    //         ], 400);
+    //     }
+
+    //     /* 1)  getMemberOnAccession */
+    //     if ($type === 'accession') {
+    //         $copy_id = $request->query('copy_id');
+
+    //         if (!$copy_id) {
+    //             return response()->json(['error' => 'copy_id required'], 400);
+    //         }
+
+    //         $row = DB::table('issue_return')
+    //             ->select('member_id')
+    //             ->where('copy_id', $copy_id)
+    //             ->where('return_date', '0000-00-00')
+    //             ->first();
+
+    //         return response()->json($row ? $row : null, $row ? 200 : 204);
+    //     }
+
+    //     /* 2)  getMemberOnGrno */
+    //     if ($type === 'grno') {
+    //         $reg_no = $request->query('reg_no');
+
+    //         if (!$reg_no) {
+    //             return response()->json(['error' => 'reg_no required'], 400);
+    //         }
+
+    //         $row = DB::table('issue_return as a')
+    //             ->join('student as b', 'a.member_id', '=', 'b.student_id')
+    //             ->select('a.member_id')
+    //             ->where('b.reg_no', $reg_no)
+    //             ->where('a.return_date', '0000-00-00')
+    //             ->first();
+
+    //         return response()->json($row ? $row : null, $row ? 200 : 204);
+    //     }
+
+    //     /* 3)  getIssueReturn */
+    //     if ($type === 'records') {
+    //         $m_type = $request->query('m_type');
+    //         $member_id = $request->query('member_id');
+
+    //         $q = DB::table('issue_return')->select('*');
+
+    //         if (!empty($member_id)) {
+    //             $q->where('issue_return.member_id', $member_id);
+    //         }
+    //         if (!empty($m_type)) {
+    //             $q->where('issue_return.member_type', $m_type);
+    //         }
+
+    //         $rows = $q->where('issue_return.return_date', '0000-00-00')->get();
+
+    //         return response()->json($rows, 200);
+    //     }
+
+    //     /*
+    //      * 4) getMemDataTypeStudent
+    //      */
+
+    //     if ($type === 'student') {
+    //         $copy_id = $request->query('copy_id');
+    //         $acd_yr = $request->query('acd_yr');
+    //         $grn_no = $request->query('grn_no');
+
+    //         $q = DB::table('issue_return as a')
+    //             ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+    //             ->join('student as d', 'a.member_id', '=', 'd.student_id')
+    //             ->select(
+    //                 'a.*',
+    //                 'b.copy_id as copy_id',
+    //                 'b.status as copy_status',
+    //                 'd.first_name',
+    //                 'd.mid_name',
+    //                 'd.last_name',
+    //                 'd.roll_no',
+    //                 'd.class_id',
+    //                 'd.section_id',
+    //                 'd.academic_yr',
+    //                 'd.reg_no'
+    //             );
+
+    //         if (!empty($grn_no)) {
+    //             $q->where('d.reg_no', $grn_no);
+    //         } else {
+    //             if (!$copy_id) {
+    //                 return response()->json(['error' => 'copy_id required'], 400);
+    //             }
+
+    //             $q
+    //                 ->where('a.copy_id', $copy_id)
+    //                 ->where('a.return_date', '0000-00-00')
+    //                 ->where('b.status', 'I');
+
+    //             if (!empty($acd_yr)) {
+    //                 $q->where('d.academic_yr', $acd_yr);
+    //             }
+    //         }
+
+    //         return response()->json($q->get(), 200);
+    //     }
+
+    //     /* 5) getMemDataTypeStaff */
+    //     if ($type === 'staff') {
+    //         $copy_id = $request->query('copy_id');
+
+    //         if (!$copy_id) {
+    //             return response()->json(['error' => 'copy_id required'], 400);
+    //         }
+
+    //         $rows = DB::table('issue_return as a')
+    //             ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+    //             ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
+    //             ->select(
+    //                 'a.*',
+    //                 'b.copy_id as copy_id',
+    //                 'b.status as copy_status',
+    //                 'e.name as teacher_name'
+    //             )
+    //             ->where('a.copy_id', $copy_id)
+    //             ->where('a.return_date', '0000-00-00')
+    //             ->where('b.status', 'I')
+    //             ->get();
+
+    //         return response()->json($rows, 200);
+    //     }
+
+    //     return response()->json([
+    //         'status' => false,
+    //         'message' => 'Invalid type. Allowed values: accession, grno, records, student, staff'
+    //     ], 400);
+    // }
+
+    private function getMemberDetails($grn_no , $acd_yr , $copy_id , $m_type) {
+        $data = null;
+        $member_id = 0;
+        $member = null;
+        if(!$m_type) {
+            $member_id = DB::table('issue_return')
+            ->select('member_id')
+            ->where('copy_id' , $copy_id)
+            ->where('return_date' , '0000-00-00')
+            ->first()->member_id;
+            $member = DB::table('library_member')->where('member_id' , $member_id)->first();
+            $m_type = $member->member_type;
         }
 
-        /* 1)  getMemberOnAccession */
-        if ($type === 'accession') {
-            $copy_id = $request->query('copy_id');
-
-            if (!$copy_id) {
-                return response()->json(['error' => 'copy_id required'], 400);
-            }
-
-            $row = DB::table('issue_return')
-                ->select('member_id')
-                ->where('copy_id', $copy_id)
-                ->where('return_date', '0000-00-00')
-                ->first();
-
-            return response()->json($row ? $row : null, $row ? 200 : 204);
-        }
-
-        /* 2)  getMemberOnGrno */
-        if ($type === 'grno') {
-            $reg_no = $request->query('reg_no');
-
-            if (!$reg_no) {
-                return response()->json(['error' => 'reg_no required'], 400);
-            }
-
-            $row = DB::table('issue_return as a')
-                ->join('student as b', 'a.member_id', '=', 'b.student_id')
-                ->select('a.member_id')
-                ->where('b.reg_no', $reg_no)
-                ->where('a.return_date', '0000-00-00')
-                ->first();
-
-            return response()->json($row ? $row : null, $row ? 200 : 204);
-        }
-
-        /* 3)  getIssueReturn */
-        if ($type === 'records') {
-            $m_type = $request->query('m_type');
-            $member_id = $request->query('member_id');
-
-            $q = DB::table('issue_return')->select('*');
-
-            if (!empty($member_id)) {
-                $q->where('issue_return.member_id', $member_id);
-            }
-            if (!empty($m_type)) {
-                $q->where('issue_return.member_type', $m_type);
-            }
-
-            $rows = $q->where('issue_return.return_date', '0000-00-00')->get();
-
-            return response()->json($rows, 200);
-        }
-
-        /*
-         * 4) getMemDataTypeStudent
-         */
-
-        if ($type === 'student') {
-            $copy_id = $request->query('copy_id');
-            $acd_yr = $request->query('acd_yr');
-            $grn_no = $request->query('grn_no');
-
-            $q = DB::table('issue_return as a')
-                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
-                ->join('student as d', 'a.member_id', '=', 'd.student_id')
+        // Find out member details
+        if($m_type == 'S') {
+            $query = DB::table('issue_return as a')
                 ->select(
                     'a.*',
-                    'b.copy_id as copy_id',
-                    'b.status as copy_status',
+                    'b.copy_id',
+                    'b.status',
                     'd.first_name',
+                    'd.roll_no',
                     'd.mid_name',
                     'd.last_name',
-                    'd.roll_no',
                     'd.class_id',
                     'd.section_id',
                     'd.academic_yr',
                     'd.reg_no'
-                );
+                )
+                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+                ->join('student as d', 'a.member_id', '=', 'd.student_id');
 
             if (!empty($grn_no)) {
-                $q->where('d.reg_no', $grn_no);
+                $query->where('d.reg_no', $grn_no);
             } else {
-                if (!$copy_id) {
-                    return response()->json(['error' => 'copy_id required'], 400);
-                }
-
-                $q
-                    ->where('a.copy_id', $copy_id)
+                $query->where('a.copy_id', $copy_id)
                     ->where('a.return_date', '0000-00-00')
-                    ->where('b.status', 'I');
-
-                if (!empty($acd_yr)) {
-                    $q->where('d.academic_yr', $acd_yr);
-                }
+                    ->where('b.status', 'I')
+                    ->where('d.academic_yr', $acd_yr);
             }
-
-            return response()->json($q->get(), 200);
-        }
-
-        /* 5) getMemDataTypeStaff */
-        if ($type === 'staff') {
-            $copy_id = $request->query('copy_id');
-
-            if (!$copy_id) {
-                return response()->json(['error' => 'copy_id required'], 400);
-            }
-
-            $rows = DB::table('issue_return as a')
-                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
-                ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
+            $data = $query->first();
+        } else if ($m_type == 'T') {
+            $data = DB::table('issue_return as a')
                 ->select(
                     'a.*',
-                    'b.copy_id as copy_id',
-                    'b.status as copy_status',
-                    'e.name as teacher_name'
+                    'b.copy_id',
+                    'b.status',
+                    'e.name'
                 )
+                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+                ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
                 ->where('a.copy_id', $copy_id)
                 ->where('a.return_date', '0000-00-00')
                 ->where('b.status', 'I')
-                ->get();
+                ->first();
+        }
 
-            return response()->json($rows, 200);
+        // Find out Book details
+        $query = DB::table('issue_return')
+        ->select(
+            'issue_return.*',
+            'book.book_title',
+            );
+
+        $query->leftJoin('book' , 'book.book_id' , '=' , 'issue_return.book_id');
+
+        if (!empty($member_id)) {
+            $query->where('issue_return.member_id', $member_id);
+        }
+        if (!empty($m_type)) {
+            $query->where('issue_return.member_type', $m_type);
+        }
+        $query->where('issue_return.return_date', '0000-00-00');
+        $bookDetails = $query->get();
+        return [
+            'member' => $data,
+            'book' => $bookDetails,
+        ];
+    }
+
+    private function getMemberDetailsUsingSearch( $m_type , $member_id , $acd_yr ) 
+    {
+        $data = null;
+        $member = DB::table('library_member')->where('member_id' , $member_id)->first();
+
+        // Find out member details
+        if($m_type == 'S') {
+            $query = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'b.copy_id',
+                    'b.status',
+                    'd.first_name',
+                    'd.roll_no',
+                    'd.mid_name',
+                    'd.last_name',
+                    'd.class_id',
+                    'd.section_id',
+                    'd.academic_yr',
+                    'd.reg_no'
+                )
+                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+                ->join('student as d', 'a.member_id', '=', 'd.student_id');
+
+            $query
+                ->where('a.member_id' , $member->member_id)
+                ->where('a.member_type' , $member->member_type)
+                ->where('a.return_date', '0000-00-00')
+                ->where('b.status', 'I')
+                ->where('d.academic_yr', $acd_yr);
+            
+            $data = $query->first();
+        } else if ($m_type == 'T') {
+            $data = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'b.copy_id',
+                    'b.status',
+                    'e.name'
+                )
+                ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+                ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
+                ->where('a.member_type' , $member->member_type)
+                ->where('a.member_id' , $member->member_id)
+                ->where('a.return_date', '0000-00-00')
+                ->where('b.status', 'I')
+                ->first();
+        }
+
+        // Find out Book details
+        $query = DB::table('issue_return')
+        ->select(
+            'issue_return.*',
+            'book.book_title',
+            );
+
+        $query->leftJoin('book' , 'book.book_id' , '=' , 'issue_return.book_id');
+
+        if (!empty($member_id)) {
+            $query->where('issue_return.member_id', $member_id);
+        }
+        if (!empty($m_type)) {
+            $query->where('issue_return.member_type', $m_type);
+        }
+        $query->where('issue_return.return_date', '0000-00-00');
+        $bookDetails = $query->get();
+        return [
+            'member' => $data,
+            'book' => $bookDetails,
+        ];
+    }
+
+    private function getMemberDetailsUsingGrn($grn_no) {
+        $member_id = DB::table('issue_return as a')
+            ->join('student as b', 'a.member_id', '=', 'b.student_id')
+            ->join('book_copies as d', 'a.copy_id', '=', 'd.copy_id')
+            ->where('b.reg_no', $grn_no)
+            ->where('a.return_date', '0000-00-00')
+            ->value('a.member_id');
+        $query = DB::table('issue_return as a')
+            ->select(
+                'a.*',
+                'b.copy_id',
+                'b.status',
+                'd.first_name',
+                'd.roll_no',
+                'd.mid_name',
+                'd.last_name',
+                'd.class_id',
+                'd.section_id',
+                'd.academic_yr',
+                'd.reg_no'
+            )
+            ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+            ->join('student as d', 'a.member_id', '=', 'd.student_id')
+            ->where('d.reg_no', $grn_no)
+            ->where('a.member_id' , $member_id);
+        $data = $query->first();
+        // Find out Book details
+        $query = DB::table('issue_return')
+        ->select(
+            'issue_return.*',
+            'book.book_title',
+            );
+        $query->leftJoin('book' , 'book.book_id' , '=' , 'issue_return.book_id');
+        if (!empty($member_id)) {
+            $query->where('issue_return.member_id', $member_id);
+        }
+        $query->where('issue_return.return_date', '0000-00-00');
+        $bookDetails = $query->get();
+        return [
+            'member' => $data,
+            'book' => $bookDetails,
+        ];
+    }
+
+    public function returnBookDetails(Request $request) {
+
+        $user = $this->authenticateUser();
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $copy_id = $request->query('copy_id');
+
+        $m_type = $request->query('m_type');
+        $class_id = $request->query('class_id');
+        $section_id = $request->query('section_id');
+        $member_id = $request->query('member_id');
+
+        $grn_no = $request->query('grn_no');
+
+        $con1 = $copy_id != "";
+        $con2 = $m_type != "" && $member_id != "";
+        $con3 = $grn_no != "";
+
+        if(!$con1 && !$con2 && !$con3) {
+            return response()->json([
+                'message' => "Invalid inputs given to API"
+            ], 403);
+        }
+
+        $memberDetails = null;
+
+        if($con1 && !$con2 && !$con3) {
+            $memberDetails = $this->getMemberDetails("" , $acd_yr , $copy_id , "");
+        } else if(!$con1 && $con2 && !$con3) {
+            $memberDetails = $this->getMemberDetailsUsingSearch(
+                $m_type , 
+                $member_id,
+                $acd_yr,
+            );
+        } else if(!$con1 && !$con2 && $con3) {
+            $memberDetails = $this->getMemberDetailsUsingGrn($grn_no);
         }
 
         return response()->json([
-            'status' => false,
-            'message' => 'Invalid type. Allowed values: accession, grno, records, student, staff'
-        ], 400);
+            'data' => $memberDetails,
+        ]);
     }
 
     public function returnOrReissue(Request $request)

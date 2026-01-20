@@ -1303,7 +1303,10 @@
             Route::post('/marks_upload_status', [ReportController::class, 'marksUploadStatus']);
 
             Route::post('members/issued_books', [LibraryController::class, 'getMembersForIssuedBook']);
-            Route::get('issue_book_details', [LibraryController::class, 'BooksIssueAPI']);
+
+            // Api is called in return book to fetch details
+            Route::get('issue_book_details', [LibraryController::class, 'returnBookDetails']);
+
             Route::post('library/book_return_reissue', [LibraryController::class, 'returnOrReissue']);
             Route::get('issue/member_on_accession/{copy_id}', [LibraryController::class, 'getMemberOnAccession']);
             Route::get('issue/member_on_grno/{reg_no}', [LibraryController::class, 'getMemberOnGrno']);
