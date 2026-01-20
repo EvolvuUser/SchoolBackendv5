@@ -1695,6 +1695,62 @@ class LibraryController extends Controller
         }
     }
 
+    public function returnBook(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            // ---------- Inputs ----------
+            $copyIds     = $request->input('selector', []); // array of copy_ids
+            $bookId      = $request->input('book_id');
+            $memberId    = $request->input('member_id');
+            $memberType  = $request->input('member_type');
+            $returnDate  = Carbon::parse($request->input('dateofreturn'))->format('Y-m-d');
+
+            // ---------- Data to update ----------
+            $issueReturnData = [
+                'return_date' => $returnDate
+            ];
+
+            $bookCopyData = [
+                'status' => 'A'
+            ];
+
+            // ---------- Loop through copies ----------
+            foreach ($copyIds as $copyId) {
+
+                // Update issue_return table
+                DB::table('issue_return')
+                    ->where('copy_id', $copyId)
+                    ->where('member_id', $memberId)
+                    ->where('member_type', $memberType)
+                    ->where('return_date', '0000-00-00')
+                    ->update($issueReturnData);
+
+                // Update book_copies table
+                DB::table('book_copies')
+                    ->where('copy_id', $copyId)
+                    ->update($bookCopyData);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Book(s) returned successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to return book(s)',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getMemberOnAccession($copy_id)
     {
         // returns single member_id holding the copy (not yet returned)
