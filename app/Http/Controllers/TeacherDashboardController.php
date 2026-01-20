@@ -127,6 +127,38 @@ class TeacherDashboardController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
+            /* ------------- Attendance Reminder -------------------- */
+            $classTeacher = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id'
+                )
+                ->where('class_teachers.teacher_id', $teacher_id)
+                ->where('class_teachers.academic_yr', $academic_yr)
+                ->orderBy('class_teachers.section_id')
+                ->first();
+
+            $isClassTeacher = $classTeacher !== null;
+
+            $classTeacherClassId   = $classTeacher->class_id   ?? null;
+            $classTeacherSectionId = $classTeacher->section_id ?? null;
+
+            $isAttendanceMarked = false;
+
+            $today = now()->toDateString();
+
+            if ($isClassTeacher) {
+                $isAttendanceMarked = DB::table('attendance')
+                    ->where('class_id', $classTeacherClassId)
+                    ->where('section_id', $classTeacherSectionId)
+                    ->where('only_date', $today)
+                    ->exists();
+            }
+
             /* ---------------- RESPONSE ---------------- */
             return response()->json([
                 'status' => true,
@@ -134,6 +166,8 @@ class TeacherDashboardController extends Controller
                     'todoForToday' => $todos,
                     'notice_for_teacher' => $notices,
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
+                    'isAttendanceMarked' => $isAttendanceMarked,
+                    'isClassTeacher' => $isClassTeacher,
                 ]
             ], 200);
         } catch (\Throwable $e) {
