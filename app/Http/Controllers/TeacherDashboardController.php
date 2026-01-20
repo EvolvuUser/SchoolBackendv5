@@ -875,8 +875,8 @@ class TeacherDashboardController extends Controller
             ->where('class_teachers.academic_yr', $customClaims)
             ->first();
 
-        $class_id = $classes->class_id;
-        $section_id = $classes->section_id;
+        $class_id = $classes->class_id ?? 0;
+        $section_id = $classes->section_id ?? 0;
         $installment = 1;  // 1 2 3
         $defaulters = DB::table('view_student_fees_category as s')
             ->leftJoin('view_student_fees_payment as p', function ($join) {

@@ -21130,4 +21130,46 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
+
+    public function  attendanceNotMarkedCount() {
+        $user = $this->authenticateUser();
+        // ---------- Inputs ----------
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $date = $request->query('date', now()->toDateString());
+
+        // ---------- Fetch Classes ----------
+        $classes = DB::table('class')
+            ->select('class_id', 'name as class_name')
+            ->where('academic_yr', $academicYear)
+            ->get();
+        // ---------- Preload Sections ----------
+        $sections = DB::table('section')
+            ->select('section_id', 'class_id', 'name as section_name')
+            ->get()
+            ->groupBy('class_id');
+
+        $responseData = [];
+
+        foreach ($classes as $class) {
+            $classSections = [];
+
+            foreach ($sections[$class->class_id] ?? [] as $section) {
+                
+                
+
+            }
+
+            $responseData[] = [
+                'class_id'   => $class->class_id,
+                'class_name' => $class->class_name,
+                'sections'   => $classSections
+            ];
+        }
+
+        return response()->json([
+            'status' => true,
+            'date'   => $date,
+            'data'   => $responseData
+        ]);
+    }
 }

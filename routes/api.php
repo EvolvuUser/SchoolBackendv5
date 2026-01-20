@@ -100,6 +100,11 @@
             Route::get('/teachers/{teacher_id}/dashboard/graph', [TeacherDashboardController::class, 'studentAcademicPerformanceGraphData']);
             Route::get('/teachers/{teacher_id}/dashboard/events', [TeacherDashboardController::class, 'eventsList']);
 
+            // Badge API for attendance (today): Leo 2026-01-20
+            // Count of classes for which the attendance is not marked
+            Route::get('/attendance/notmarked/count' , [AdminController::class , 'attendanceNotMarkedCount']);
+            // List of classes for which the attendance is not marked: class Teacher Name, class , division.
+
             // Reminders API
             Route::get('/teachers/dashboard/reminders', [TeacherDashboardController::class, 'getReminders']);
             Route::get('/teachers/class-teacher/defaulter-students', [TeacherDashboardController::class, 'getDefaulters']);
