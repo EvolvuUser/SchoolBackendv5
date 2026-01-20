@@ -1751,6 +1751,71 @@ class LibraryController extends Controller
         }
     }
 
+    public function reissueBook(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            // ---------- Inputs ----------
+            $copyIds     = $request->input('selector', []);   // array
+            $bookIds     = $request->input('book_id', []);    // array (index-mapped)
+            $memberId    = $request->input('member_id');
+            $memberType  = $request->input('member_type');
+
+            $returnDate = Carbon::parse($request->input('dateofreturn'))->format('Y-m-d');
+
+            // ---------- Loop through copies ----------
+            foreach ($copyIds as $index => $copyId) {
+
+                // 1️⃣ Mark previous issue as returned
+                DB::table('issue_return')
+                    ->where('copy_id', $copyId)
+                    ->where('member_id', $memberId)
+                    ->where('member_type', $memberType)
+                    ->where('return_date', '0000-00-00')
+                    ->update([
+                        'return_date' => $returnDate
+                    ]);
+
+                // 2️⃣ Calculate new issue & due dates
+                $issueDate = Carbon::parse($returnDate);
+
+                if ($memberType === 'S') {
+                    $dueDate = $issueDate->copy()->addDays(7);
+                } else {
+                    $dueDate = $issueDate->copy()->addDays(30);
+                }
+
+                // 3️⃣ Insert new issue record (re-issue)
+                DB::table('issue_return')->insert([
+                    'book_id'     => $bookIds[$index] ?? null,
+                    'copy_id'     => $copyId,
+                    'member_id'   => $memberId,
+                    'member_type' => $memberType,
+                    'issue_date'  => $issueDate->format('Y-m-d'),
+                    'due_date'    => $dueDate->format('Y-m-d H:i:s'),
+                    'return_date' => '0000-00-00'
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Book(s) reissued successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to reissue book(s)',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getMemberOnAccession($copy_id)
     {
         // returns single member_id holding the copy (not yet returned)
