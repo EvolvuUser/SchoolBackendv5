@@ -50,7 +50,7 @@ class StudentController extends Controller
             ->where('attendance.attendance_status', '1')  // absent
             ->where('attendance.only_date', $only_date)
             ->where('student.isDelete', 'N')
-            ->where('attendance.teacher_id', $teacher_id)
+            // ->where('attendance.teacher_id', $teacher_id)
             ->where('attendance.class_id' , $class_id)
             ->where('attendance.section_id' , $section_id)
             ->select(
