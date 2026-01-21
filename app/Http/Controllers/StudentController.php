@@ -68,14 +68,10 @@ class StudentController extends Controller
             // ✅ Class filter
             ->when($class_id, function ($query) use ($class_id) {
                 $query->where('attendance.class_id', $class_id);
-            }, function ($query) use ($classesTaught) {
-                $query->whereIn('attendance.class_id', $classesTaught);
             })
             // ✅ Section filter
             ->when($section_id, function ($query) use ($section_id) {
                 $query->where('attendance.section_id', $section_id);
-            }, function ($query) use ($sectionsTaught) {
-                $query->whereIn('attendance.section_id', $sectionsTaught);
             })
             ->select(
                 'attendance.teacher_id',
@@ -121,7 +117,8 @@ class StudentController extends Controller
             'status' => 200,
             'data' => $absentstudentdata,
             'message' => 'Absent students list.',
-            'success' => true
+            'success' => true,
+            'only_date' => $only_date
         ]);
     }
 
