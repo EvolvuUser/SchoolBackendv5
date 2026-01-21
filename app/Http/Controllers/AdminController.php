@@ -17855,449 +17855,24 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     }
 
     public function updateApplicationStatus(Request $request, $form_id) {
+
         $status = $request->status;
+
+        if($status == "Approved") {
+            return response()->json([
+                'message' => 'Invalid status value passed. Allowed: Applied, Hold, Reject'
+            ] , 400);
+        }
+
         $form = DB::table('online_admission_form')->where('form_id' , $form_id)->first();
+
         if(!$form) {
             return response()->json([
                 'status' => false,
-                'message' => "Form not found",
+                'message' => "Form not found for the form_id",
             ] , 404);
         }
-        if($status == 'Approved') {
-            $sibling_student_id     = $form->sibling_student_id ?? '';
-            $father_name            = $form->father_name ?? '';
-            $f_occupation           = $form->father_occupation ?? '';
-            $f_mobile               = $form->f_mobile ?? '';
-            $f_email                = $form->f_email ?? '';
-            $mother_name            = $form->mother_name ?? '';
-            $m_occupation           = $form->mother_occupation ?? '';
-            $m_mobile               = $form->m_mobile ?? '';
-            $m_emailid              = $form->m_emailid ?? '';
-            $parent_adhar_no        = $form->parent_adhar_no ?? '';
-            $academic_yr            = $form->academic_yr ?? '';
-            $first_name             = $form->first_name ?? '';
-            $mid_name               = $form->mid_name ?? '';
-            $last_name              = $form->last_name ?? '';
-            $dob                    = $form->dob ?? '';
-            $gender                 = $form->gender ?? '';
-            $application_date       = $form->application_date ?? '';
-            $religion               = $form->religion ?? '';
-            $caste                  = $form->caste ?? '';
-            $category               = $form->category ?? '';
-            $nationality            = $form->nationality ?? '';
-            $sms_sending_phone_no   = $form->sms_sending_phone_no ?? '';
-            $class_id               = $form->class_id ?? '';
-
-            if($sibling_student_id != 0) {
-
-                $parent_id = DB::table('student')
-                    ->where('student_id', $sibling_student_id)
-                    ->value('parent_id');
-
-                $section_id = DB::table('section')
-                    ->where('class_id' , $class_id)
-                    ->where('name' , 'A')
-                    ->where('academic_yr' , $academic_yr)
-                    ->value('section_id');
-
-                $existing_student_id = DB::table('online_admission_form')->where('form_id' , $form_id)->value('student_id');
-
-				if ($existing_student_id == 0) {
-
-                    // 1️⃣ Insert into student table
-                    $student_id_new = DB::table('student')->insertGetId([
-                        'academic_yr' => $academic_yr,
-                        'parent_id'   => $parent_id,
-                        'first_name'  => $first_name,
-                        'mid_name'    => $mid_name,
-                        'last_name'   => $last_name,
-                        'dob'         => $dob,
-                        'gender'      => $gender,
-                        'class_id'    => $class_id,
-                        'section_id'  => $section_id,
-                        'religion'    => $religion,
-                        'caste'       => $caste,
-                        'category'    => $category,
-                        'IsDelete'    => 'N',
-                        'isPromoted'  => 'N',
-                        'isNew'       => 'Y',
-                        'isModify'    => 'N'
-                    ]);
-
-                    if ($student_id_new) {
-
-                        // 2️⃣ Create user_master entry
-                        $password = Hash::make('arnolds');
-
-                        $user_id = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
-                        DB::table('user_master')->insert([
-                            'user_id' => $user_id,
-                            'name'    => $first_name,
-                            'password'=> $password,
-                            'reg_id'  => $student_id_new,
-                            'role_id' => 'S'
-                        ]);
-
-                        // 3️⃣ Update online_admission_form with student_id
-                        DB::table('online_admission_form')
-                            ->where('form_id', $reqData['form_id'])
-                            ->update([
-                                'student_id' => $student_id_new
-                            ]);
-                    }
-
-                } else {
-
-                    // 4️⃣ Update existing student
-                    DB::table('student')
-                        ->where('student_id', $existing_student_id)
-                        ->update([
-                            'IsDelete' => 'N',
-                            'isModify' => 'Y'
-                        ]);
-
-                    // 5️⃣ Update existing user_master
-                    DB::table('user_master')
-                        ->where('reg_id', $existing_student_id)
-                        ->where('role_id', 'S')
-                        ->update([
-                            'IsDelete' => 'N'
-                        ]);
-                }
-            } else {
-                $existing_student_id = DB::table('online_admission_form')->where('form_id' , $form_id)->value('student_id');
-                if($existing_student_id != 0) {
-
-                    $existing_parent_id = DB::table('student')
-                        ->where('student_id', $existing_student_id)
-                        ->value('parent_id');
-
-					/* 1️⃣ Update parent table */
-                    DB::table('parent')
-                        ->where('parent_id', $existing_parent_id)
-                        ->update([
-                            'IsDelete' => 'N'
-                        ]);
-
-                    /* 2️⃣ Update parent user_master */
-                    DB::table('user_master')
-                        ->where('reg_id', $existing_parent_id)
-                        ->where('role_id', 'P')
-                        ->update([
-                            'IsDelete' => 'N'
-                        ]);
-
-                    /* 3️⃣ Update student table */
-                    DB::table('student')
-                        ->where('student_id', $existing_student_id)
-                        ->update([
-                            'IsDelete' => 'N',
-                            'isModify' => 'Y'
-                        ]);
-
-                    /* 4️⃣ Update student user_master */
-                    DB::table('user_master')
-                        ->where('reg_id', $existing_student_id)
-                        ->where('role_id', 'S')
-                        ->update([
-                            'IsDelete' => 'N'
-                        ]);
-
-                    /* 5️⃣ Email selection logic */
-                    $f_email_id = !empty($f_email) ? $f_email : '';
-                    $m_email_id = !empty($m_emailid) ? $m_emailid : '';
-
-                    /* 6️⃣ Phone number priority logic */
-                    $phone_no = !empty($f_mobile) ? $f_mobile : $m_mobile;
-
-					DB::table('contact_details')->insert([
-                        'id'         => $existing_parent_id,
-                        'phone_no'   => $phone_no,
-                        'email_id'   => $f_email_id,
-                        'm_emailid'  => $m_email_id,
-                    ]);
-							
-				} else {
-					$parent_id = null;
-
-                    /**
-                     * 1️⃣ Try with father's mobile
-                     */
-                    if (!empty($f_mobile) && $f_mobile !== 'null') {
-                        $parent_id = DB::table('user_master')
-                            ->where('user_id', $f_mobile)
-                            ->value('reg_id');
-                    }
-
-                    /**
-                     * 2️⃣ If not found, try with mother's mobile
-                     */
-                    if (!$parent_id && !empty($m_mobile) && $m_mobile !== 'null') {
-                        $parent_id = DB::table('user_master')
-                            ->where('user_id', $m_mobile)
-                            ->value('reg_id');
-                    }
-
-                    /**
-                     * 3️⃣ If still not found, try name-based user_id
-                     */
-                    if (!$parent_id) {
-
-                        if ($last_name !== 'null' && $father_name !== 'null') {
-                            $userId = str_replace(' ', '', $father_name) . $last_name;
-
-                        } elseif ($last_name !== 'null') {
-                            $userId = str_replace(' ', '', $last_name);
-
-                        } elseif ($father_name !== 'null') {
-                            $userId = str_replace(' ', '', $father_name);
-
-                        } elseif ($father_name === 'null' && $mother_name !== 'null') {
-                            $userId = str_replace(' ', '', $mother_name);
-
-                        } else {
-                            $userId = null;
-                        }
-
-                        if ($userId) {
-                            $parent_id = DB::table('user_master')
-                                ->where('user_id', $userId)
-                                ->value('reg_id');
-                        }
-                    }
-
-                    if (empty($parent_id)) {
-                    
-                        /* -------------------- INSERT INTO parent -------------------- */
-
-                        $parent_id = DB::table('parent')->insertGetId([
-                            'father_name'       => $father_name,
-                            'father_occupation' => $f_occupation,
-                            'f_office_add'      => null,
-                            'f_office_tel'      => null,
-                            'f_mobile'          => $f_mobile ?: null,
-                            'f_email'           => $f_email,
-                            'mother_name'       => $mother_name,
-                            'mother_occupation' => $m_occupation,
-                            'm_office_add'      => null,
-                            'm_mobile'          => $m_mobile ?: null,
-                            'm_emailid'         => $m_emailid,
-                            'parent_adhar_no'   => $parent_adhar_no,
-                            'IsDelete'          => 'N',
-                        ]);
-
-                        /* -------------------- CREATE parent user_id -------------------- */
-
-                        if (empty($f_mobile) || $f_mobile === 'null') {
-
-                            if (empty($m_mobile) || $m_mobile === 'null') {
-
-                                if ($last_name !== 'null' && $father_name !== 'null') {
-                                    $user_id = str_replace(' ', '', $father_name) . $last_name;
-                                } elseif ($last_name !== 'null') {
-                                    $user_id = str_replace(' ', '', $last_name);
-                                } elseif ($father_name !== 'null') {
-                                    $user_id = str_replace(' ', '', $father_name);
-                                } else {
-                                    $user_id = null;
-                                }
-
-                            } else {
-                                $user_id = $m_mobile;
-                            }
-
-                        } else {
-                            $user_id = $f_mobile;
-                        }
-
-                        $user_id = str_replace("''", '', $user_id);
-
-                        $name = ($father_name !== 'null') ? $father_name : $mother_name;
-
-                        /* -------------------- INSERT parent user -------------------- */
-
-                        DB::table('user_master')->insert([
-                            'user_id'  => $user_id,
-                            'name'     => $name,
-                            'password' => Hash::make('arnolds'),
-                            'reg_id'   => $parent_id,
-                            'role_id'  => 'P',
-                        ]);
-
-                        /* -------------------- CONTACT DETAILS -------------------- */
-
-                        $phone_no = !empty($f_mobile) ? $f_mobile : $m_mobile;
-
-                        DB::table('contact_details')->insert([
-                            'id'        => $parent_id,
-                            'phone_no'  => $phone_no,
-                            'email_id'  => $f_email ?: '',
-                            'm_emailid' => $m_emailid ?: '',
-                        ]);
-
-                        /* -------------------- GET DEFAULT SECTION -------------------- */
-
-                        $section_id = DB::table('section')
-                            ->where('class_id', $class_id)
-                            ->where('name', 'A')
-                            ->where('academic_yr', $academic_yr)
-                            ->value('section_id');
-
-                        /* -------------------- INSERT STUDENT -------------------- */
-
-                        $student_id = DB::table('student')->insertGetId([
-                            'academic_yr' => $academic_yr,
-                            'parent_id'   => $parent_id,
-                            'first_name'  => $first_name,
-                            'mid_name'    => $mid_name,
-                            'last_name'   => $last_name,
-                            'dob'         => $dob,
-                            'gender'      => $gender,
-                            'class_id'    => $class_id,
-                            'section_id'  => $section_id,
-                            'religion'    => $religion,
-                            'caste'       => $caste,
-                            'IsDelete'    => 'N',
-                            'isPromoted'  => 'N',
-                            'isNew'       => 'Y',
-                            'isModify'    => 'N',
-                            'category'    => $category,
-                        ]);
-
-                        /* -------------------- INSERT student user -------------------- */
-
-                        DB::table('user_master')->insert([
-                            'user_id'  => 'S' . str_pad($student_id, 4, '0', STR_PAD_LEFT),
-                            'name'     => $first_name,
-                            'password' => Hash::make('arnolds'),
-                            'reg_id'   => $student_id,
-                            'role_id'  => 'S',
-                        ]);
-
-                        /* -------------------- UPDATE ADMISSION FORM -------------------- */
-
-                        DB::table('online_admission_form')
-                            ->where('form_id', $form_id)
-                            ->update([
-                                'student_id' => $student_id
-                            ]);
-
-                        // will do this part later keep as it is 
-                        $textmsg ="<div class='col-md-12'><h3>Dear Parent, <br />Your Child is being Selected for the Admission Process.<br/ ><br/>Kindly come for the Meeting on 24th February 2021 Wednesday between 11:30 am to 12:30 pm.<br/><br/>Please carry the necessary documents mentioned in the notice.<br/>Thank you. God bless. </h3></div>"; 
-                        if($m_emailid!= ''){ 
-                            $mmail = str_replace("'","",$m_emailid); 
-                            // $this->send_email($textmsg,"SACS-Admission Details",$mmail); 
-                            $emailData = [
-                                'subject' => 'SACS-Admission Details',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($mmail, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                        } 
-                        if($f_email!=''){ 
-                            $fmail = str_replace("'","",$f_email); 
-                            // $this->send_email($textmsg,"SACS-Admission Details",$fmail);
-                            $emailData = [
-                                'subject' => 'SACS-Admission Details',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($fmail, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                        } 
-                        // $textsms ="Dear Parent, your child is selected for admission process. Login email for details"; 
-                        // $this->send_sms($sms_sending_phone_no,$textsms);
-                    } elseif (!empty($parent_id)) {
-
-                        /* -------------------- GET DEFAULT SECTION -------------------- */
-
-                        $section_id = DB::table('section')
-                            ->where('class_id', $class_id)
-                            ->where('name', 'A')
-                            ->where('academic_yr', $academic_yr)
-                            ->value('section_id');
-
-                        /* -------------------- INSERT STUDENT -------------------- */
-
-                        $student_id = DB::table('student')->insertGetId([
-                            'academic_yr' => $academic_yr,
-                            'parent_id'   => $parent_id,
-                            'first_name'  => $first_name,
-                            'mid_name'    => $mid_name,
-                            'last_name'   => $last_name,
-                            'dob'         => $dob,
-                            'gender'      => $gender,
-                            'class_id'    => $class_id,
-                            'section_id'  => $section_id,
-                            'religion'    => $religion,
-                            'caste'       => $caste,
-                            'IsDelete'    => 'N',
-                            'isPromoted'  => 'N',
-                            'isNew'       => 'Y',
-                            'isModify'    => 'N',
-                            'category'    => $category,
-                        ]);
-
-                        /* -------------------- INSERT STUDENT USER -------------------- */
-
-                        DB::table('user_master')->insert([
-                            'user_id'  => 'S' . str_pad($student_id, 4, '0', STR_PAD_LEFT),
-                            'name'     => $first_name,
-                            'password' => bcrypt('arnolds'),
-                            'reg_id'   => $student_id,
-                            'role_id'  => 'S',
-                        ]);
-
-                        /* -------------------- UPDATE ADMISSION FORM -------------------- */
-
-                        DB::table('online_admission_form')
-                            ->where('form_id', $reqData['form_id'])
-                            ->update([
-                                'student_id' => $student_id
-                            ]);
-
-                        /* -------------------- MESSAGE CONTENT (kept as-is) -------------------- */
-
-                        $textmsg = "<div class='col-md-12'>
-                                        <h3>
-                                            Dear Parent,<br />
-                                            Your Child is being Selected for the Admission Process.<br /><br />
-                                            Kindly come for the Meeting on 24th February 2021 Wednesday between 11:30 am to 12:30 pm.<br /><br />
-                                            Please carry the necessary documents mentioned in the notice.<br />
-                                            Thank you. God bless.
-                                        </h3>
-                                    </div>";
-
-                        $cc   = 'sjhskurla@gmail.com';
-                        $from = 'supportsjskw@aceventura.in';
-
-                        // will do this part later keep it as it is 
-                        if($m_emailid!= ''){
-                            $mmail = str_replace("'","",$m_emailid);
-                            // $this->send_email($textmsg,"SACS-Admission Details",$mmail,$from,$cc);
-                            $emailData = [
-                                'subject' => 'SACS-Admission Details',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($mmail, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                        } 
-
-                        if($f_email!=''){
-                            $fmail = str_replace("'","",$f_email);
-                            $emailData = [
-                                'subject' => 'SACS-Admission Details',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($fmail, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                            // $this->send_email($textmsg,"SACS-Admission Details",$fmail,$from,$cc);
-                        }
-                        // $textsms ="Dear Parent, your child is selected for Nursery admission process. Login email for details";
-						// $this->send_sms($sms_sending_phone_no,$textsms);
-						// $user_id = $this->crud_model->get_parent_userid($parent_id);
-
-                        
-                    }
-				}
-            }
-        } else if($status == 'Rejected') {
+        if($status == 'Rejected') {
             $student_id = $form->student_id;
             $sibling_student_id = $form->sibling_student_id;
             $statusOLD = $form->admission_form_status;
@@ -18367,12 +17942,38 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->update([
                     'admission_form_status' => $status
                 ]);
-        } else {
+        } else if($status == 'Hold') {
             DB::table('online_admission_form')
                 ->where('form_id', $form->form_id)
                 ->update([
                     'admission_form_status' => $status
                 ]);
+        } else if($status == 'Applied') {
+
+            // check if the status is Approved then only move ahead. ( later )
+            
+            // change the form status
+            DB::table('online_admission_form')
+            ->where('form_id', $form_id)
+            ->update([
+                'admission_form_status' => $status,
+            ]);
+
+            // soft delete the student. 
+            $student_id = $form->student_id;
+            DB::table('student')
+            ->where('student_id' , $student_id)
+            ->update([
+                'isDelete' => 'Y',
+            ]);
+
+            // soft delete the student from user_master. 
+            DB::table('user_master')
+            ->where('reg_id' , $student_id)
+            ->update([
+                'isDelete' => 'Y',
+            ]);
+
         }
         return response()->json([
             'status'  => true,
@@ -18903,6 +18504,10 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    /*
+    Update 2026-01-21: Check if student data is already there before adding
+    a new student. 
+    */
     public function updateApprovalList(Request $request) 
     {
         try {
@@ -19082,36 +18687,50 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     'm_emailid' => $m_emailid,
                                 ]);
 
-                                $student_id_new = DB::table('student')->insertGetId([
-                                    'academic_yr'     => $academic_yr,
-                                    'parent_id'      => $parent_id,
-                                    'first_name'     => $first_name,
-                                    'mid_name'       => $mid_name,
-                                    'last_name'      => $last_name,
-                                    'dob'            => $dob,
-                                    'gender'         => $gender,
-                                    'class_id'       => $class_id,
-                                    'section_id'     => $section_id,
-                                    'religion'       => $religion,
-                                    'caste'          => $caste,
-                                    'IsDelete'       => 'N',
-                                    'isNew'          => 'Y',
-                                    'isModify'       => 'N',
-                                    'category'       => $category,
-                                    'mother_tongue'  => $mother_tongue,
-                                    'subcaste'       => $sub_caste,
-                                    'permant_add'    => $perm_address,
-                                    'city'           => $city,
-                                    'state'          => $state,
-                                    'pincode'        => $pincode,
-                                    'stu_aadhaar_no' => $stud_aadhar,
-                                    'blood_group'    => $blood_group,
-                                    'admission_date' => date('Y-m-d'),
-                                    'admission_class'=> $class_name,
-                                    'birth_place'    => $birth_place,
-                                    'nationality'    => $nationality,
-                                    'student_name'   => $first_name,
-                                ]);
+                                $formRecord = DB::table('online_admission_form')
+                                    ->where('form_id', $form_id)
+                                    ->first();
+
+                                $student_id_new = null;
+
+                                $studentOldRecord = DB::table('student')
+                                ->where('student_id', $formRecord->student_id)
+                                ->first();
+
+                                if($studentOldRecord) {
+                                    $student_id_new = $studentOldRecord->studentId;
+                                } else {
+                                    $student_id_new = DB::table('student')->insertGetId([
+                                        'academic_yr'     => $academic_yr,
+                                        'parent_id'      => $parent_id,
+                                        'first_name'     => $first_name,
+                                        'mid_name'       => $mid_name,
+                                        'last_name'      => $last_name,
+                                        'dob'            => $dob,
+                                        'gender'         => $gender,
+                                        'class_id'       => $class_id,
+                                        'section_id'     => $section_id,
+                                        'religion'       => $religion,
+                                        'caste'          => $caste,
+                                        'IsDelete'       => 'N',
+                                        'isNew'          => 'Y',
+                                        'isModify'       => 'N',
+                                        'category'       => $category,
+                                        'mother_tongue'  => $mother_tongue,
+                                        'subcaste'       => $sub_caste,
+                                        'permant_add'    => $perm_address,
+                                        'city'           => $city,
+                                        'state'          => $state,
+                                        'pincode'        => $pincode,
+                                        'stu_aadhaar_no' => $stud_aadhar,
+                                        'blood_group'    => $blood_group,
+                                        'admission_date' => date('Y-m-d'),
+                                        'admission_class'=> $class_name,
+                                        'birth_place'    => $birth_place,
+                                        'nationality'    => $nationality,
+                                        'student_name'   => $first_name,
+                                    ]);
+                                }
 
                                 if ($student_id_new) {
                                     $password = $passwordCode;
@@ -19187,36 +18806,51 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             } 
                         }
                     } elseif($parent_id != "") {
-                        $student_id_new = DB::table('student')->insertGetId([
-                            'academic_yr'      => $academic_yr,
-                            'parent_id'       => $parent_id,
-                            'first_name'      => $first_name,
-                            'mid_name'        => $mid_name,
-                            'last_name'       => $last_name,
-                            'dob'             => $dob,
-                            'gender'          => $gender,
-                            'class_id'        => $class_id,
-                            'section_id'      => $section_id,
-                            'religion'        => $religion,
-                            'caste'           => $caste,
-                            'IsDelete'        => 'N',
-                            'isNew'           => 'Y',
-                            'isModify'        => 'N',
-                            'category'        => $category,
-                            'mother_tongue'   => $mother_tongue,
-                            'subcaste'        => $sub_caste,
-                            'permant_add'     => $perm_address,
-                            'city'            => $city,
-                            'state'           => $state,
-                            'pincode'         => $pincode,
-                            'stu_aadhaar_no'  => $stud_aadhar,
-                            'blood_group'     => $blood_group,
-                            'admission_date'  => date('Y-m-d'),
-                            'admission_class' => $class_name,
-                            'birth_place'     => $birth_place,
-                            'nationality'     => $nationality,
-                            'student_name'    => $first_name,
-                        ]);
+
+                        $formRecord = DB::table('online_admission_form')
+                            ->where('form_id', $form_id)
+                            ->first();
+
+                        $student_id_new = null;
+
+                        $studentOldRecord = DB::table('student')
+                        ->where('student_id', $formRecord->student_id)
+                        ->first();
+
+                        if($studentOldRecord) {
+                            $student_id_new = $studentOldRecord->studentId;
+                        } else {
+                            $student_id_new = DB::table('student')->insertGetId([
+                                'academic_yr'      => $academic_yr,
+                                'parent_id'       => $parent_id,
+                                'first_name'      => $first_name,
+                                'mid_name'        => $mid_name,
+                                'last_name'       => $last_name,
+                                'dob'             => $dob,
+                                'gender'          => $gender,
+                                'class_id'        => $class_id,
+                                'section_id'      => $section_id,
+                                'religion'        => $religion,
+                                'caste'           => $caste,
+                                'IsDelete'        => 'N',
+                                'isNew'           => 'Y',
+                                'isModify'        => 'N',
+                                'category'        => $category,
+                                'mother_tongue'   => $mother_tongue,
+                                'subcaste'        => $sub_caste,
+                                'permant_add'     => $perm_address,
+                                'city'            => $city,
+                                'state'           => $state,
+                                'pincode'         => $pincode,
+                                'stu_aadhaar_no'  => $stud_aadhar,
+                                'blood_group'     => $blood_group,
+                                'admission_date'  => date('Y-m-d'),
+                                'admission_class' => $class_name,
+                                'birth_place'     => $birth_place,
+                                'nationality'     => $nationality,
+                                'student_name'    => $first_name,
+                            ]);
+                        }
 
                         if ($student_id_new) {
 

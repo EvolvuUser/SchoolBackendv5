@@ -123,7 +123,7 @@
             Route::delete('/daily_todos/{id}', [DailyTodoController::class, 'destroy']);
             Route::put('/daily_todos/{id}/toggle', [DailyTodoController::class, 'toggleCompletion']);
 
-            // Admin admission module
+            // Admin admission module : Leo
             Route::get('/admin/admission-classes', [AdminController::class, 'listAdmissionClasses']);
             Route::get('/admin/classes/{class_id}/sections', [AdminController::class, 'getSectionsByClass']);
 
