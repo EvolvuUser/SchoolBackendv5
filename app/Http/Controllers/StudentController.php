@@ -37,6 +37,16 @@ class StudentController extends Controller
         $only_date = Carbon::today()->toDateString();
         // $only_date = '2025-12-04';
 
+        $classes = DB::table('subject')
+            ->select('class_id', 'section_id')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_yr', '2025-2026')
+            ->distinct()
+            ->get();
+
+        $classArray = $classes->pluck('class_id')->unique()->values()->toArray();
+        $sectionArray = $classes->pluck('section_id')->unique()->values()->toArray();
+
         $absentstudents = DB::table('attendance')
             ->join('student', 'student.student_id', '=', 'attendance.student_id')
             ->join('class', 'class.class_id', '=', 'attendance.class_id')
@@ -51,8 +61,7 @@ class StudentController extends Controller
             ->where('attendance.only_date', $only_date)
             ->where('student.isDelete', 'N')
             // ->where('attendance.teacher_id', $teacher_id)
-            ->where('attendance.class_id' , $class_id)
-            ->where('attendance.section_id' , $section_id)
+            
             ->select(
                 'attendance.teacher_id',
                 'student.first_name',
@@ -84,8 +93,25 @@ class StudentController extends Controller
                 'class.class_id',
                 'section.section_id'
             )
-            ->orderBy('section.section_id')
-            ->get();
+            ->orderBy('section.section_id');
+
+        if ($class_id && $section_id) {
+            // Specific class & section passed
+            $absentstudents->where('attendance.class_id', $class_id)
+                        ->where('attendance.section_id', $section_id);
+        } else {
+            // Apply teacher's class–section pairs
+            $absentstudents->where(function ($query) use ($classes) {
+                foreach ($classes as $cls) {
+                    $query->orWhere(function ($q) use ($cls) {
+                        $q->where('attendance.class_id', $cls->class_id)
+                        ->where('attendance.section_id', $cls->section_id);
+                    });
+                }
+            });
+        }
+
+        $absentstudents = $absentstudents->get();
 
         $countstudents = count($absentstudents);
         $absentstudentdata = [
