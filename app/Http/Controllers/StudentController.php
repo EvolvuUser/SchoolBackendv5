@@ -37,20 +37,6 @@ class StudentController extends Controller
         $only_date = Carbon::today()->toDateString();
         // $only_date = '2025-12-04';
 
-        $classesTaught = DB::table('subject')
-            ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $customClaims)
-            ->distinct()
-            ->pluck('class_id')
-            ->toArray();
-
-        $sectionsTaught = DB::table('subject')
-            ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $customClaims)
-            ->distinct()
-            ->pluck('section_id')
-            ->toArray();
-
         $absentstudents = DB::table('attendance')
             ->join('student', 'student.student_id', '=', 'attendance.student_id')
             ->join('class', 'class.class_id', '=', 'attendance.class_id')
@@ -65,14 +51,8 @@ class StudentController extends Controller
             ->where('attendance.only_date', $only_date)
             ->where('student.isDelete', 'N')
             ->where('attendance.teacher_id', $teacher_id)
-            // ✅ Class filter
-            ->when($class_id, function ($query) use ($class_id) {
-                $query->where('attendance.class_id', $class_id);
-            })
-            // ✅ Section filter
-            ->when($section_id, function ($query) use ($section_id) {
-                $query->where('attendance.section_id', $section_id);
-            })
+            ->where('attendance.class_id' , $class_id)
+            ->where('attendance.section_id' , $section_id)
             ->select(
                 'attendance.teacher_id',
                 'student.first_name',
