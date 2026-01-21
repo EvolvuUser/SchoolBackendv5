@@ -1305,7 +1305,7 @@
             Route::post('members/issued_books', [LibraryController::class, 'getMembersForIssuedBook']);
 
             // Api is called in return book to fetch details
-            Route::get('issue_book_details', [LibraryController::class, 'returnBookDetails']);
+            Route::get('/library/issue_book_details', [LibraryController::class, 'returnBookDetails']);
             Route::post('/library/return_book' , [LibraryController::class, 'returnBook']);
             Route::post('/library/reissue_book' , [LibraryController::class , 'reissueBook']);
 

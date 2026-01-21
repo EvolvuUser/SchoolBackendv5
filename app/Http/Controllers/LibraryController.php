@@ -1554,146 +1554,147 @@ class LibraryController extends Controller
         ]);
     }
 
-    public function returnOrReissue(Request $request)
-    {
-        // 1) Validate input
-        $validator = Validator::make($request->all(), [
-            'operation' => 'required|in:return,reissue',
-            'selector' => 'required|array|min:1',
-            'selector.*' => 'required',  // copy_id values
-            'book_id' => 'nullable|array',
-            'book_id.*' => 'nullable',
-            'member_id' => 'required|integer',
-            'member_type' => 'required|in:S,T',
-            'dateofreturn' => 'required|date',  // expecting a date string
-        ]);
+    // Old
+    // public function returnOrReissue(Request $request)
+    // {
+    //     // 1) Validate input
+    //     $validator = Validator::make($request->all(), [
+    //         'operation' => 'required|in:return,reissue',
+    //         'selector' => 'required|array|min:1',
+    //         'selector.*' => 'required',  // copy_id values
+    //         'book_id' => 'nullable|array',
+    //         'book_id.*' => 'nullable',
+    //         'member_id' => 'required|integer',
+    //         'member_type' => 'required|in:S,T',
+    //         'dateofreturn' => 'required|date',  // expecting a date string
+    //     ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Validation failed',
+    //             'errors' => $validator->errors()
+    //         ], 422);
+    //     }
 
-        $operation = $request->input('operation');  // 'return' or 'reissue'
-        $copyIds = $request->input('selector');  // array
-        $bookIds = $request->input('book_id', []);  // array (may be empty for return)
-        $memberId = $request->input('member_id');
-        $memberType = $request->input('member_type');  // 'S' or 'T'
-        $dateOfReturnRaw = $request->input('dateofreturn');
+    //     $operation = $request->input('operation');  // 'return' or 'reissue'
+    //     $copyIds = $request->input('selector');  // array
+    //     $bookIds = $request->input('book_id', []);  // array (may be empty for return)
+    //     $memberId = $request->input('member_id');
+    //     $memberType = $request->input('member_type');  // 'S' or 'T'
+    //     $dateOfReturnRaw = $request->input('dateofreturn');
 
-        // Normalize date using Carbon (server timezone)
-        try {
-            $returnDate = Carbon::parse($dateOfReturnRaw)->toDateString();  // 'Y-m-d'
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid dateofreturn format'
-            ], 422);
-        }
+    //     // Normalize date using Carbon (server timezone)
+    //     try {
+    //         $returnDate = Carbon::parse($dateOfReturnRaw)->toDateString();  // 'Y-m-d'
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Invalid dateofreturn format'
+    //         ], 422);
+    //     }
 
-        // Use transactions to keep DB consistent
-        DB::beginTransaction();
+    //     // Use transactions to keep DB consistent
+    //     DB::beginTransaction();
 
-        try {
-            $processed = [];
-            foreach ($copyIds as $i => $copyId) {
-                // Ensure we are working with trimmed values
-                $copyId = trim($copyId);
+    //     try {
+    //         $processed = [];
+    //         foreach ($copyIds as $i => $copyId) {
+    //             // Ensure we are working with trimmed values
+    //             $copyId = trim($copyId);
 
-                // 1) Ensure there is an active issue record for this copy (return_date = '0000-00-00')
-                $issueQuery = DB::table('issue_return')
-                    ->where('copy_id', $copyId)
-                    ->where('return_date', '0000-00-00');
+    //             // 1) Ensure there is an active issue record for this copy (return_date = '0000-00-00')
+    //             $issueQuery = DB::table('issue_return')
+    //                 ->where('copy_id', $copyId)
+    //                 ->where('return_date', '0000-00-00');
 
-                // If the action is return or reissue we also verify member & member_type matches if given
-                if (!empty($memberId)) {
-                    $issueQuery->where('member_id', $memberId);
-                    $issueQuery->where('member_type', $memberType);
-                }
+    //             // If the action is return or reissue we also verify member & member_type matches if given
+    //             if (!empty($memberId)) {
+    //                 $issueQuery->where('member_id', $memberId);
+    //                 $issueQuery->where('member_type', $memberType);
+    //             }
 
-                $activeIssue = $issueQuery->first();
+    //             $activeIssue = $issueQuery->first();
 
-                if (!$activeIssue) {
-                    // no active issue found — record and continue (or you can choose to abort)
-                    $processed[] = [
-                        'copy_id' => $copyId,
-                        'status' => 'not_found_or_already_returned'
-                    ];
-                    // choose to continue with other copy_ids rather than aborting all
-                    continue;
-                }
+    //             if (!$activeIssue) {
+    //                 // no active issue found — record and continue (or you can choose to abort)
+    //                 $processed[] = [
+    //                     'copy_id' => $copyId,
+    //                     'status' => 'not_found_or_already_returned'
+    //                 ];
+    //                 // choose to continue with other copy_ids rather than aborting all
+    //                 continue;
+    //             }
 
-                // 2) Update existing issue_return row's return_date (mark as returned)
-                $updated = DB::table('issue_return')
-                    ->where('copy_id', $copyId)
-                    ->where('return_date', '0000-00-00')
-                    ->update(['return_date' => $returnDate]);
+    //             // 2) Update existing issue_return row's return_date (mark as returned)
+    //             $updated = DB::table('issue_return')
+    //                 ->where('copy_id', $copyId)
+    //                 ->where('return_date', '0000-00-00')
+    //                 ->update(['return_date' => $returnDate]);
 
-                // 3) Update book_copies.status = 'A' (Available) for a plain return
-                if ($operation === 'return') {
-                    DB::table('book_copies')
-                        ->where('copy_id', $copyId)
-                        ->update(['status' => 'A']);
+    //             // 3) Update book_copies.status = 'A' (Available) for a plain return
+    //             if ($operation === 'return') {
+    //                 DB::table('book_copies')
+    //                     ->where('copy_id', $copyId)
+    //                     ->update(['status' => 'A']);
 
-                    $processed[] = [
-                        'copy_id' => $copyId,
-                        'status' => $updated ? 'returned' : 'update_failed'
-                    ];
-                }
+    //                 $processed[] = [
+    //                     'copy_id' => $copyId,
+    //                     'status' => $updated ? 'returned' : 'update_failed'
+    //                 ];
+    //             }
 
-                // 4) For reissue: after marking old record returned, insert a new issue_return row
-                if ($operation === 'reissue') {
-                    // prepare fields for new issue_return row
-                    $newIssue = [
-                        'book_id' => isset($bookIds[$i]) ? $bookIds[$i] : ($activeIssue->book_id ?? null),
-                        'copy_id' => $copyId,
-                        'member_id' => $memberId,
-                        'member_type' => $memberType,
-                        // using return date as new issue_date (same as original CI behavior)
-                        'issue_date' => $returnDate,
-                    ];
+    //             // 4) For reissue: after marking old record returned, insert a new issue_return row
+    //             if ($operation === 'reissue') {
+    //                 // prepare fields for new issue_return row
+    //                 $newIssue = [
+    //                     'book_id' => isset($bookIds[$i]) ? $bookIds[$i] : ($activeIssue->book_id ?? null),
+    //                     'copy_id' => $copyId,
+    //                     'member_id' => $memberId,
+    //                     'member_type' => $memberType,
+    //                     // using return date as new issue_date (same as original CI behavior)
+    //                     'issue_date' => $returnDate,
+    //                 ];
 
-                    // due_date depends on member type: students 7 days, others 30 days
-                    if ($memberType === 'S') {
-                        $due = Carbon::parse($returnDate)->addDays(7);
-                    } else {
-                        $due = Carbon::parse($returnDate)->addDays(30);
-                    }
-                    $newIssue['due_date'] = $due->toDateTimeString();
+    //                 // due_date depends on member type: students 7 days, others 30 days
+    //                 if ($memberType === 'S') {
+    //                     $due = Carbon::parse($returnDate)->addDays(7);
+    //                 } else {
+    //                     $due = Carbon::parse($returnDate)->addDays(30);
+    //                 }
+    //                 $newIssue['due_date'] = $due->toDateTimeString();
 
-                    // Insert new issue row
-                    DB::table('issue_return')->insert($newIssue);
+    //                 // Insert new issue row
+    //                 DB::table('issue_return')->insert($newIssue);
 
-                    // Ensure book_copies.status => 'I' (Issued)
-                    DB::table('book_copies')
-                        ->where('copy_id', $copyId)
-                        ->update(['status' => 'I']);
+    //                 // Ensure book_copies.status => 'I' (Issued)
+    //                 DB::table('book_copies')
+    //                     ->where('copy_id', $copyId)
+    //                     ->update(['status' => 'I']);
 
-                    $processed[] = [
-                        'copy_id' => $copyId,
-                        'status' => 'reissued'
-                    ];
-                }
-            }  // end foreach
+    //                 $processed[] = [
+    //                     'copy_id' => $copyId,
+    //                     'status' => 'reissued'
+    //                 ];
+    //             }
+    //         }  // end foreach
 
-            DB::commit();
+    //         DB::commit();
 
-            return response()->json([
-                'status' => true,
-                'message' => $operation === 'return' ? 'Book(s) Returned' : 'Book(s) Reissued',
-                'details' => $processed
-            ], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            // log exception in real app
-            return response()->json([
-                'status' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => $operation === 'return' ? 'Book(s) Returned' : 'Book(s) Reissued',
+    //             'details' => $processed
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         // log exception in real app
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Database error: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     public function returnBook(Request $request)
     {
