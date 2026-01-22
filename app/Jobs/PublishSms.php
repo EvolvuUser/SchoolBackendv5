@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Http\Services\SmsService;
+use App\Http\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Services\SmsService;
-use App\Http\Services\WhatsAppService;
 
 class PublishSms implements ShouldQueue
 {
@@ -58,22 +58,21 @@ class PublishSms implements ShouldQueue
 
                     Log::info($result);
                     if (isset($result['code']) && isset($result['message'])) {
-                            Log::warning("Rate limit hit", []);
-                    } 
-                    else {
-                    $wamid = $result['messages'][0]['id'];
-                    $phone_no = $result['contacts'][0]['input'];
-                    $message_type = 'short_sms';
+                        Log::warning('Rate limit hit', []);
+                    } else {
+                        $wamid = $result['messages'][0]['id'];
+                        $phone_no = $result['contacts'][0]['input'];
+                        $message_type = 'short_sms';
 
-                    DB::table('redington_webhook_details')->insert([
-                        'wa_id' => $wamid,
-                        'phone_no' => $phone_no,
-                        'stu_teacher_id' => $student->student_id,
-                        'notice_id' => $notice->notice_id,
-                        'message_type' => $message_type,
-                        'created_at' => now()
-                    ]);
-                 }
+                        DB::table('redington_webhook_details')->insert([
+                            'wa_id' => $wamid,
+                            'phone_no' => $phone_no,
+                            'stu_teacher_id' => $student->student_id,
+                            'notice_id' => $notice->notice_id,
+                            'message_type' => $message_type,
+                            'created_at' => now()
+                        ]);
+                    }
                 }
             }
 
@@ -86,7 +85,7 @@ class PublishSms implements ShouldQueue
                 ->get();
 
             foreach ($leftmessages as $leftmessage) {
-                $message = $noticemessage . ". Login to school application for details - AceVentura";
+                $message = $noticemessage . '. Login to school application for details - AceVentura';
                 $temp_id = '1107161354408119887';
 
                 $sms_status = app('App\Http\Services\SmsService')->sendSms(
@@ -95,10 +94,10 @@ class PublishSms implements ShouldQueue
                     $temp_id
                 );
 
-                Log::info("TestCronJob JOB Failed AFter sending text Message",$sms_status);
+                Log::info('TestCronJob JOB Failed AFter sending text Message', $sms_status);
                 $messagestatus = $sms_status['data']['status'] ?? null;
 
-                if ($messagestatus == "success") {
+                if ($messagestatus == 'success') {
                     DB::table('redington_webhook_details')->where('webhook_id', $leftmessage->webhook_id)->update(['sms_sent' => 'Y']);
                 }
 
@@ -139,7 +138,7 @@ class PublishSms implements ShouldQueue
                         'description' => $notice->notice_desc
                     ]
                 ]);
-             }
+            }
         }
     }
 }

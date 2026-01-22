@@ -140,10 +140,10 @@
         <tr><td>Sub Caste</td><td><?php echo $data->subcaste; ?></td></tr>
         <tr>
             <td>Date of Birth</td>
-            <td><?php echo date_format(date_create($data->dob),'d-m-Y').' ( '.$data->dob_words.')'; ?></td>
+            <td><?php echo date_format(date_create($data->dob), 'd-m-Y') . ' ( ' . $data->dob_words . ')'; ?></td>
         </tr>
         <tr><td>Previous School and Class</td><td><?php echo $data->prev_school_class; ?></td></tr>
-        <tr><td>Date of Admission</td><td><?php echo date_format(date_create($data->admission_date),'d-m-Y'); ?></td></tr>
+        <tr><td>Date of Admission</td><td><?php echo date_format(date_create($data->admission_date), 'd-m-Y'); ?></td></tr>
         <tr><td>In Which Class and When</td><td><?php echo $data->class_when_learning; ?></td></tr>
         <tr><td>Progress Report</td><td><?php echo $data->progress; ?></td></tr>
         <tr><td>Behaviour</td><td><?php echo $data->behaviour; ?></td></tr>

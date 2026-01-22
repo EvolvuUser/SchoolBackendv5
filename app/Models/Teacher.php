@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use App\Models\User;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Teacher extends Model
 {
     use HasFactory;
-    protected $table = 'teacher'; 
-    
-    protected $primaryKey = 'teacher_id'; 
+
+    protected $table = 'teacher';
+
+    protected $primaryKey = 'teacher_id';
+
     public $timestamps = false;
+
     protected $fillable = [
         'employee_id',
         'name',
@@ -36,12 +39,14 @@ class Teacher extends Model
         'class_id',
         'section_id',
         'isDelete',
+        'tc_id',
+        'emergency_phone',
+        'permanent_address',
         'tc_id'
-    ];  //getTeacher
+    ];  // getTeacher
 
     public function getTeacher()
     {
-        return $this->belongsTo(User::class, 'teacher_id');  
+        return $this->belongsTo(User::class, 'teacher_id');
     }
-
 }
