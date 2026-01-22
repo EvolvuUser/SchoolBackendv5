@@ -2397,9 +2397,26 @@ class LibraryController extends Controller
     }
     
     // /library/periodicals
-    // public function periodicalsIndex(Request $request) {
-    //     try {
+    public function periodicalsIndex(Request $request) {
+        try {
+            $user = $this->authenticateUser();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-    //     } catch(Exception )
-    // }
+            $data = DB::table('periodicals')
+            ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+                'count' => count($data),
+            ] , 200);
+        } catch(Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch periodicals',
+                'error'   => $e->getMessage(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
 }
