@@ -911,15 +911,19 @@ class LibraryController extends Controller
     public function getIssuedBooksByMember(Request $request)
     {
         $memberId = $request->input('member_id');
+        $grn_no = $request->input('grn_no');
 
-        if (!$memberId) {
+        if (!$memberId && !$grn_no) {
             return response()->json([
                 'status' => false,
-                'message' => 'Member ID is required'
-            ], 400);
+                'message' => 'Member ID Or GRN No is required'
+            ], 403);
         }
 
-        $issuedBooks = DB::table('book_copies as d')
+        $issuedBooks = null;
+
+        if($memberId) {
+            $issuedBooks = DB::table('book_copies as d')
             ->join('book as b', 'b.book_id', '=', 'd.book_id')
             ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
             ->join('category as c', 'c.category_id', '=', 'b.category_id')
@@ -937,6 +941,29 @@ class LibraryController extends Controller
             ->where('d.status', 'I')  // Book is issued
             ->where('a.return_date', '0000-00-00')  // Not returned yet
             ->get();
+        } else if($grn_no) {
+            $issuedBooks = DB::table('book_copies as d')
+            ->join('book as b', 'b.book_id', '=', 'd.book_id')
+            ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
+            ->join('category as c', 'c.category_id', '=', 'b.category_id')
+            ->join('student as e', 'e.student_id', '=', 'a.member_id')
+            ->select(
+                'a.member_id',
+                'a.copy_id',
+                'a.return_date',
+                DB::raw("DATE_FORMAT(a.issue_date, '%d-%m-%Y') as issue_date"),
+                DB::raw("DATE_FORMAT(a.due_date, '%d-%m-%Y') as due_date"),
+                'b.book_title',
+                'b.author',
+                'c.category_name',
+                'd.copy_id',
+                'd.status'
+            )
+            ->where('e.reg_no', $grn_no)
+            ->where('d.status', 'I')
+            ->where('a.return_date', '0000-00-00')
+            ->get();
+        }
 
         return response()->json($issuedBooks);
     }
@@ -1977,7 +2004,7 @@ class LibraryController extends Controller
 
     public function searchReminderRemark(Request $request) {
         try {
-            
+
         } catch(Exception $err) {
             return response()->json([
                 'message' => 'Something unexpected happend. Please contact support',

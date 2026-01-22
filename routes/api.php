@@ -1256,7 +1256,7 @@
             Route::put('/update_stationery_req/{id}', [AssessmentController::class, 'updateStationeryReq']);
             Route::delete('/delete_stationery_req/{id}', [AssessmentController::class, 'deleteStationeryReq']);
 
-            // Library Module - Send Remainder Remark
+            // Library Module - Send Reminder Remark
             Route::get('/library/reminder/search' , [LibraryController::class , 'searchReminderRemark']);
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
