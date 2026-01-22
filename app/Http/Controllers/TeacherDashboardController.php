@@ -719,10 +719,10 @@ class TeacherDashboardController extends Controller
             ->where('class_teachers.academic_yr', $customClaims)
             ->first();
 
-        if($classes == null) {
+        if ($classes == null) {
             return response()->json([
                 'status' => false,
-                'message' => "No data found for this teacher",
+                'message' => 'No data found for this teacher',
             ], 404);
         }
 
@@ -1420,6 +1420,18 @@ class TeacherDashboardController extends Controller
         $lessonPlanCount = $notCreatedCount[0]->pending_classes
             ? count(array_filter(array_map('trim', explode(',', $notCreatedCount[0]->pending_classes))))
             : 0;
+        $teacherremark = DB::select("select * from(select  tr.*,0 as read_status from teachers_remark tr  join teacher  on teacher.teacher_id=tr.teachers_id where tr.remark_type='Remark' and tr.academic_yr='" . $customClaims . "' and tr.teachers_id='" . $teacher_id . "'
+         AND t_remark_id not IN( select t_remark_id FROM tremarks_read_log where teachers_id='" . $teacher_id . "'  )
+              UNION
+             select  tr.*,1 as read_status from teachers_remark tr  join teacher on teacher.teacher_id=tr.teachers_id where  tr.remark_type='Remark' and tr.academic_yr= '" . $customClaims . "'and tr.teachers_id='" . $teacher_id . "'  AND t_remark_id IN(select t_remark_id FROM tremarks_read_log where teachers_id='" . $teacher_id . "' ) )  as x ORDER BY publish_date DESC");
+        $unreadCount = 0;
+
+        foreach ($teacherremark as $row) {
+            if ($row->read_status == 0) {
+                $unreadCount++;
+            }
+        }
+
         $cards = [
             [
                 'key' => 'lessonPlan',
@@ -1449,66 +1461,72 @@ class TeacherDashboardController extends Controller
                     'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
                 ],
             ],
+            [
+                'key' => 'Reminder',
+                'value' => $unreadCount,
+                'data' => [
+                    'unreadreminder' => $unreadCount,
+                ],
+            ]
         ];
         foreach ($cards as &$card) {
-            // 👇 ADD THIS LINE (UI flag)
+            // UI flag
             $card['show'] = (($card['value'] ?? 0) > 0) ? 1 : 0;
 
-            // Default priority
-            $card['priority'] = 4;
+            // Default group
+            $card['group'] = 3;
 
+            // ZERO value → bottom group
             if (($card['value'] ?? 0) == 0) {
-                $card['priority'] = 5;
+                $card['group'] = 5;
                 continue;
             }
 
+            // Lesson plan special day → top group
             if (
                 $isLessonPlanPriorityDay &&
                 ($card['key'] ?? '') === 'lessonPlan' &&
                 $lessonPlanCount > 0
             ) {
-                $card['priority'] = 1;
+                $card['group'] = 1;
                 continue;
             }
 
-            switch ($card['key'] ?? '') {
-                case 'birthDayCard':
-                    $card['priority'] = 1;
-                    break;
-                case 'homeworkCard':
-                    $card['priority'] = 2;
-                    break;
-                case 'pendingBooks':
-                    $card['priority'] = 3;
-                    break;
-                case 'lessonPlan':
-                    $card['priority'] = 4;
-                    break;
-                case 'defaulterCount':
-                    $card['priority'] = 5;
-                    break;
+            // Defaulter always last (even if value > 0)
+            if (($card['key'] ?? '') === 'defaulterCount') {
+                $card['group'] = 6;
+                continue;
             }
+
+            // Normal cards with value > 0
+            $card['group'] = 3;
         }
         unset($card);
-        $orderWeight = [
+        $stableOrder = [
             'birthDayCard' => 1,
-            'lessonPlan' => 2,
-            'homeworkCard' => 3,
+            'homeworkCard' => 2,
+            'Reminder' => 3,
             'pendingBooks' => 4,
-            'defaulterCount' => 5,
+            'lessonPlan' => 5,
+            'defaulterCount' => 6,
         ];
 
-        // First sort
-        usort($cards, function ($a, $b) use ($orderWeight) {
-            if ($a['priority'] !== $b['priority']) {
-                return $a['priority'] <=> $b['priority'];
+        usort($cards, function ($a, $b) use ($stableOrder) {
+            // 1️⃣ Group sorting (business rules)
+            if ($a['group'] !== $b['group']) {
+                return $a['group'] <=> $b['group'];
             }
 
-            return ($orderWeight[$a['key']] ?? 99) <=>
-                ($orderWeight[$b['key']] ?? 99);
+            // 2️⃣ Same group & value > 0 → VALUE DESC
+            if (($a['value'] ?? 0) !== ($b['value'] ?? 0)) {
+                return ($b['value'] ?? 0) <=> ($a['value'] ?? 0);
+            }
+
+            // 3️⃣ Stable fallback
+            return ($stableOrder[$a['key']] ?? 99) <=>
+                ($stableOrder[$b['key']] ?? 99);
         });
 
-        // 🔥 FINAL STEP — re-number priority as 1,2,3,4,5
         $displayPriority = 1;
         foreach ($cards as &$card) {
             $card['priority'] = $displayPriority++;
