@@ -1258,6 +1258,7 @@
 
             // Library Module - Send Reminder Remark
             Route::get('/library/reminder/search' , [LibraryController::class , 'searchReminderRemark']);
+            Route::post('/library/reminder/send' , [LibraryController::class , 'sendReminderRemark']);
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);
