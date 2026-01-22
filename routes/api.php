@@ -102,9 +102,9 @@
 
             // Badge API for attendance (today): Leo 2026-01-20
             // Count of classes for which the attendance is not marked
-            Route::get('/attendance/notmarked/count' , [AdminController::class , 'attendanceNotMarkedCount']);
+            Route::get('/attendance/notmarked/count', [AdminController::class, 'attendanceNotMarkedCount']);
             // List of classes for which the attendance is not marked: class Teacher Name, class , division.
-            Route::get('/attendance/notmarked/list' , [AdminController::class , 'attendanceNotMarkedList']);
+            Route::get('/attendance/notmarked/list', [AdminController::class, 'attendanceNotMarkedList']);
 
             // Reminders API
             Route::get('/teachers/dashboard/reminders', [TeacherDashboardController::class, 'getReminders']);
@@ -1261,7 +1261,7 @@
 
             Route::post('/create-member', [LibraryController::class, 'createMembers']);
             Route::get('/get-not-members', [LibraryController::class, 'getNotMembers']);
-            Route::get('/library/check_accession_no', [LibraryController::class , 'checkForAccessionNo']);
+            Route::get('/library/check_accession_no', [LibraryController::class, 'checkForAccessionNo']);
 
             Route::get('/category-group', [LibraryController::class, 'index']);
             Route::post('/category-group', [LibraryController::class, 'store']);
@@ -1306,8 +1306,8 @@
 
             // Api is called in return book to fetch details
             Route::get('issue_book_details', [LibraryController::class, 'returnBookDetails']);
-            Route::post('/library/return_book' , [LibraryController::class, 'returnBook']);
-            Route::post('/library/reissue_book' , [LibraryController::class , 'reissueBook']);
+            Route::post('/library/return_book', [LibraryController::class, 'returnBook']);
+            Route::post('/library/reissue_book', [LibraryController::class, 'reissueBook']);
 
             Route::post('library/book_return_reissue', [LibraryController::class, 'returnOrReissue']);
             Route::get('issue/member_on_accession/{copy_id}', [LibraryController::class, 'getMemberOnAccession']);
@@ -1345,6 +1345,9 @@
 
             // Used in teacher app for the listing of exams for classes teacher teaches Dev Name - Manish Kumar Sharma 16-01-2026
             Route::get('get_teachertaughtclassesexams', [TeacherDashboardController::class, 'getTeacherTaughtClassExam']);
+
+            // Used in teacher app for the dashboard Dev Name - Manish Kumar Sharma 21-01-2026
+            Route::get('get_teachermobiledashboard', [TeacherDashboardController::class, 'getTeacherMobileDashboard']);
         });
     });
 
