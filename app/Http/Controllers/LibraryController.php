@@ -1975,4 +1975,15 @@ class LibraryController extends Controller
         ]);
     }
 
+    public function searchReminderRemark(Request $request) {
+        try {
+            
+        } catch(Exception $err) {
+            return response()->json([
+                'message' => 'Something unexpected happend. Please contact support',
+                'error' => $err->getMessage(),
+                'line' => $err->getLine(),
+            ] , 500);
+        }
+    }
 }
