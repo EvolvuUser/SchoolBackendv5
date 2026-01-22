@@ -8,9 +8,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Http\Services\WhatsAppService;
 
 class LibraryController extends Controller
 {
+
+    protected $whatsAppService;
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
+
     // API method: POST /api/create-member
     public function createMembers(Request $request)
     {
@@ -2100,11 +2108,158 @@ class LibraryController extends Controller
         }
     }
 
+    // public function sendReminderRemark(Request $request) {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $reg_id = $user->reg_id;
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         $remark_type = 'Remark';
+    //         $kvalue = $request->input('kvalue');
+
+    //         for($i = 0; $i < $kvalue; $i++) {
+    //             $student_id = $request->input('checkbox'.$i);
+    //             if(isset($student_id)) {
+    //                 $class_id =  $request->input('class_id'.$i);
+    //                 $section_id =   $request->input('section_id'.$i);  
+    //                 $teacher_id =  $reg_id;
+    //                 $academic_yr = $academic_year;
+    //                 $remark_desc = $request->input('remark_desc'.$i); 
+    //                 $remark_subject = $request->input('remark_subject'.$i); 
+    //                 $remark_date =	date_format(date_create($request->input('remark_date'.$i)),'Y-m-d');
+    //                 $publish = 'N';
+    //                 $publish_date= date('Y-m-d'); //05-09-19
+    //                 $acknowledge = 'N';
+    //                 $student_id =  $student_id;
+
+    //                 $remark_id = DB::table('remark')->insertGetId([
+    //                     'class_id' => $class_id,
+    //                     'section_id' => $section_id,
+    //                     'teacher_id' => $teacher_id, 
+    //                     'academic_yr' => $academic_yr,
+    //                     'remark_desc' => $remark_desc,
+    //                     'remark_subject' => $remark_subject,
+    //                     'remark_date' => $remark_date,
+    //                     'publish' => $publish, 
+    //                     'publish_date' => $publish_date,
+    //                     'acknowledge' => $acknowledge,
+    //                     'student_id' => $student_id,
+    //                 ]);
+
+    //                 // $publish = $this->crud_model->remark_publish($data['remark_id'],$student_id);
+    //                 $data['publish']='Y';
+	// 	            $data['publish_date']= date('Y-m-d');
+    //                 DB::table('remark')->where('remark_id' , $remark_id)->update($data);
+
+    //                 $contactDetails = DB::table('student as a')
+    //                 ->select(
+    //                     'b.phone_no',
+    //                     'b.email_id',
+    //                     'a.parent_id',
+    //                     'a.student_id'
+    //                 )
+    //                 ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+    //                 ->where('a.student_id', $student_id)
+    //                 ->get();
+
+    //                 foreach($contactDetails as $cd) {
+    //                     $smsdata = DB::table('daily_sms')
+    //                     ->where('parent_id', $cd->parent_id)
+    //                     ->where('student_id', $student_id)
+    //                     ->first();
+
+    //                     if (!$smsdata) {
+    //                         DB::table('daily_sms')->insert([
+    //                             'student_id'   => $student_id,
+    //                             'parent_id'    => $cd->parent_id,
+    //                             'phone'        => $cd->phone_no,
+    //                             'homework'     => 0,
+    //                             'remark'       => 1,
+    //                             'notice'       => 0,
+    //                             'note'         => 0,
+    //                             'achievement'  => 0,
+    //                             'sms_date'     => now(), // or date('Y-m-d H:i:s')
+    //                         ]);
+    //                     } else {
+    //                         DB::table('daily_sms')
+    //                         ->where('parent_id', $cd->parent_id)
+    //                         ->where('student_id', $student_id)
+    //                         ->increment('remark', 1, ['sms_date' => now()]);
+    //                     }
+    //                 }
+
+    //                 // Token part
+    //                 // $tokendata = $this->getTokenDataParentId($student_id);
+    //                 $tokenData =  DB::table('student as a')
+    //                 ->select(
+    //                     'b.token',
+    //                     'b.user_id',
+    //                     'b.parent_teacher_id',
+    //                     'b.login_type',
+    //                     'a.parent_id',
+    //                     'a.student_id'
+    //                 )
+    //                 ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
+    //                 ->where('a.student_id', $student_id)
+    //                 ->where('b.login_type', 'P')
+    //                 ->get();
+
+    //                 foreach ($tokenData as $td) {
+    //                     if (!empty($td->token)) {
+    //                         DB::table('daily_notifications')->insert([
+    //                             'student_id'         => $td->student_id,
+    //                             'parent_id'          => $td->parent_teacher_id,
+    //                             'homework_id'        => 0,
+    //                             'remark_id'          => $remark_id,
+    //                             'notice_id'          => 0,
+    //                             'notes_id'           => 0,
+    //                             'notification_date'  => now()->toDateString(), // Y-m-d
+    //                             'token'              => $td->token,
+    //                         ]);
+    //                     }
+    //                 }
+
+    //                 $book_id = $request->input('book_id'.$i); 
+    //                 $due_date = $request->input('due_date'.$i); 
+    //                 if(isset($remark_id)) {
+    //                     // $this->db->insert('nonreturned_books_remark_log' , $data);  
+    //                     DB::table('nonreturned_books_remark_log')
+    //                     ->insert([
+    //                         'remark_id' => $remark_id,
+    //                         'book_id' => $book_id,
+    //                         'student_id' => $student_id,
+    //                         'due_date' => $due_date,
+    //                     ]);
+    //                 }
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => "Remark Sent!!!",
+    //         ]);
+    //     } catch(Exception $e) {
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Failed to fetch reminder remarks',
+    //             'error'   => config('app.debug') ? $e->getMessage() : null
+    //         ], 500);
+    //     }
+    // }
+
     public function sendReminderRemark(Request $request) {
         try {
             $user = $this->authenticateUser();
             $reg_id = $user->reg_id;
             $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $settingsData = getSchoolSettingsData();
+            $schoolName = $settingsData->institute_name;
+            $defaultPassword = $settingsData->default_pwd;
+            $websiteUrl = $settingsData->website_url;
+            $shortName = $settingsData->short_name;
+            $whatsappIntegration = $settingsData->whatsapp_integration;
+            $smsIntegration = $settingsData->sms_integration;
+            $savepublish = 'Y';
 
             $remark_type = 'Remark';
             $kvalue = $request->input('kvalue');
@@ -2118,111 +2273,113 @@ class LibraryController extends Controller
                     $academic_yr = $academic_year;
                     $remark_desc = $request->input('remark_desc'.$i); 
                     $remark_subject = $request->input('remark_subject'.$i); 
-                    $remark_date =	date_format(date_create($request->input('remark_date'.$i)),'Y-m-d');
                     $publish = 'N';
                     $publish_date= date('Y-m-d'); //05-09-19
                     $acknowledge = 'N';
                     $student_id =  $student_id;
 
-                    $remark_id = DB::table('remark')->insertGetId([
-                        'class_id' => $class_id,
-                        'section_id' => $section_id,
-                        'teacher_id' => $teacher_id, 
-                        'academic_yr' => $academic_yr,
+                    // NOTIFICATION STUFF - START
+
+                    $insertData = [
+                        'remark_type' => $remark_type,
                         'remark_desc' => $remark_desc,
                         'remark_subject' => $remark_subject,
-                        'remark_date' => $remark_date,
-                        'publish' => $publish, 
-                        'publish_date' => $publish_date,
-                        'acknowledge' => $acknowledge,
+                        'class_id' => $class_id,
+                        'section_id' => $section_id,
+                        'subject_id' => '',
+                        'teacher_id' => $user->reg_id,
+                        'academic_yr' => $academic_year,
+                        'remark_date' => \Carbon\Carbon::parse($request->input('remark_date'))->format('Y-m-d'),
+                        'publish_date' => \Carbon\Carbon::today()->toDateString(),
+                        'publish' => 'Y',
+                        'acknowledge' => 'N',
                         'student_id' => $student_id,
-                    ]);
+                    ];
 
-                    // $publish = $this->crud_model->remark_publish($data['remark_id'],$student_id);
-                    $data['publish']='Y';
-		            $data['publish_date']= date('Y-m-d');
-                    DB::table('remark')->where('remark_id' , $remark_id)->update($data);
+                    $remarkId = DB::table('remark')->insertGetId($insertData);
 
-                    $contactDetails = DB::table('student as a')
-                    ->select(
-                        'b.phone_no',
-                        'b.email_id',
-                        'a.parent_id',
-                        'a.student_id'
-                    )
-                    ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
-                    ->where('a.student_id', $student_id)
-                    ->get();
-
-                    foreach($contactDetails as $cd) {
-                        $smsdata = DB::table('daily_sms')
-                        ->where('parent_id', $cd->parent_id)
-                        ->where('student_id', $student_id)
+                    $studentcontactdata = DB::table('student as a')
+                        ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
+                        ->where('a.student_id', $student_id)
+                        ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
                         ->first();
 
-                        if (!$smsdata) {
-                            DB::table('daily_sms')->insert([
-                                'student_id'   => $student_id,
-                                'parent_id'    => $cd->parent_id,
-                                'phone'        => $cd->phone_no,
-                                'homework'     => 0,
-                                'remark'       => 1,
-                                'notice'       => 0,
-                                'note'         => 0,
-                                'achievement'  => 0,
-                                'sms_date'     => now(), // or date('Y-m-d H:i:s')
-                            ]);
-                        } else {
-                            DB::table('daily_sms')
-                            ->where('parent_id', $cd->parent_id)
-                            ->where('student_id', $student_id)
-                            ->increment('remark', 1, ['sms_date' => now()]);
+                    $phone = $studentcontactdata->phone_no ?? null;
+                    if ($phone) {
+                        if ($whatsappIntegration == 'Y') {
+                            $templateName = 'emergency_message';
+                            $parameters = ['Parent,' . $remark_desc];
+
+                            $result = $this->whatsAppService->sendTextMessage(
+                                $phone,
+                                $templateName,
+                                $parameters
+                            );
+                            if (isset($result['code']) && isset($result['message'])) {
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id' => null,
+                                    'phone_no' => $phone,
+                                    'stu_teacher_id' => $student_id,
+                                    'notice_id' => $remarkId,
+                                    'message_type' => 'remarkforstudent',
+                                    'status' => 'failed',
+                                    'sms_sent' => 'N',
+                                    'created_at' => now()
+                                ]);
+                            } else {
+                                DB::table('redington_webhook_details')->insert([
+                                    'wa_id' => $result['messages'][0]['id'] ?? null,
+                                    'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                                    'stu_teacher_id' => $student_id,
+                                    'notice_id' => $remarkId,
+                                    'message_type' => 'remarkforstudent',
+                                    'created_at' => now()
+                                ]);
+                            }
+                        }
+                        if ($smsIntegration == 'Y') {
+                            $message = 'Dear Parent,' . $remark_desc . '. Login to school application for details - AceVentura';
+                            $temp_id = '1107161354408119887';
+                            $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
                         }
                     }
 
-                    // Token part
-                    // $tokendata = $this->getTokenDataParentId($student_id);
-                    $tokenData =  DB::table('student as a')
-                    ->select(
-                        'b.token',
-                        'b.user_id',
-                        'b.parent_teacher_id',
-                        'b.login_type',
-                        'a.parent_id',
-                        'a.student_id'
-                    )
-                    ->join('user_tokens as b', 'a.parent_id', '=', 'b.parent_teacher_id')
-                    ->where('a.student_id', $student_id)
-                    ->where('b.login_type', 'P')
-                    ->get();
+                    $tokenData = getTokenDataParentId($student_id);
 
-                    foreach ($tokenData as $td) {
-                        if (!empty($td->token)) {
-                            DB::table('daily_notifications')->insert([
-                                'student_id'         => $td->student_id,
-                                'parent_id'          => $td->parent_teacher_id,
-                                'homework_id'        => 0,
-                                'remark_id'          => $remark_id,
-                                'notice_id'          => 0,
-                                'notes_id'           => 0,
-                                'notification_date'  => now()->toDateString(), // Y-m-d
-                                'token'              => $td->token,
-                            ]);
+                    foreach ($tokenData as $item) {
+                        if (!empty($item->token)) {
+                            // DB::table('daily_notifications')->insert([
+                            //     'student_id'        => $item->student_id,
+                            //     'parent_id'         => $item->parent_teacher_id,
+                            //     'homework_id'       => 0,
+                            //     'remark_id'         => $remark_id,
+                            //     'notice_id'         => 0,
+                            //     'notes_id'          => 0,
+                            //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
+                            //     'token'             => $item->token,
+                            // ]);
                         }
+                        $data = [
+                            'token' => $item->token,  // FCM token of parent/student device
+                            'notification' => [
+                                'title' => 'Remark',
+                                'description' => $remark_desc,
+                            ]
+                        ];
+                        sendnotificationusinghttpv1($data);
                     }
 
+                    // NOTIFICATION STUFF - END
+                    // Rest of the part
                     $book_id = $request->input('book_id'.$i); 
                     $due_date = $request->input('due_date'.$i); 
-                    if(isset($remark_id)) {
-                        // $this->db->insert('nonreturned_books_remark_log' , $data);  
-                        DB::table('nonreturned_books_remark_log')
-                        ->insert([
-                            'remark_id' => $remark_id,
-                            'book_id' => $book_id,
-                            'student_id' => $student_id,
-                            'due_date' => $due_date,
-                        ]);
-                    }
+                    DB::table('nonreturned_books_remark_log')
+                    ->insert([
+                        'remark_id' => $remarkId,
+                        'book_id' => $book_id,
+                        'student_id' => $student_id,
+                        'due_date' => $due_date,
+                    ]);
                 }
             }
 
@@ -2238,4 +2395,11 @@ class LibraryController extends Controller
             ], 500);
         }
     }
+    
+    // /library/periodicals
+    // public function periodicalsIndex(Request $request) {
+    //     try {
+
+    //     } catch(Exception )
+    // }
 }

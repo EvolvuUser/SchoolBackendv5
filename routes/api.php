@@ -1260,6 +1260,10 @@
             Route::get('/library/reminder/search' , [LibraryController::class , 'searchReminderRemark']);
             Route::post('/library/reminder/send' , [LibraryController::class , 'sendReminderRemark']);
 
+            // Periodicals - Menu
+            // Periodicals - Tab
+            // Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);
+
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);
 

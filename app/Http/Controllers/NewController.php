@@ -3553,7 +3553,6 @@ class NewController extends Controller
                                 'description' => $request->input('remark_desc'),
                             ]
                         ];
-
                         sendnotificationusinghttpv1($data);
                     }
                 }
