@@ -37,19 +37,15 @@ class StudentController extends Controller
         $only_date = Carbon::today()->toDateString();
         // $only_date = '2025-12-04';
 
-        $classesTaught = DB::table('subject')
+        $classes = DB::table('subject')
+            ->select('class_id', 'section_id')
             ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $customClaims)
+            ->where('academic_yr', '2025-2026')
             ->distinct()
-            ->pluck('class_id')
-            ->toArray();
+            ->get();
 
-        $sectionsTaught = DB::table('subject')
-            ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', $customClaims)
-            ->distinct()
-            ->pluck('section_id')
-            ->toArray();
+        $classArray = $classes->pluck('class_id')->unique()->values()->toArray();
+        $sectionArray = $classes->pluck('section_id')->unique()->values()->toArray();
 
         $absentstudents = DB::table('attendance')
             ->join('student', 'student.student_id', '=', 'attendance.student_id')
@@ -64,19 +60,8 @@ class StudentController extends Controller
             ->where('attendance.attendance_status', '1')  // absent
             ->where('attendance.only_date', $only_date)
             ->where('student.isDelete', 'N')
-            ->where('attendance.teacher_id', $teacher_id)
-            // ✅ Class filter
-            ->when($class_id, function ($query) use ($class_id) {
-                $query->where('attendance.class_id', $class_id);
-            }, function ($query) use ($classesTaught) {
-                $query->whereIn('attendance.class_id', $classesTaught);
-            })
-            // ✅ Section filter
-            ->when($section_id, function ($query) use ($section_id) {
-                $query->where('attendance.section_id', $section_id);
-            }, function ($query) use ($sectionsTaught) {
-                $query->whereIn('attendance.section_id', $sectionsTaught);
-            })
+            // ->where('attendance.teacher_id', $teacher_id)
+            
             ->select(
                 'attendance.teacher_id',
                 'student.first_name',
@@ -108,8 +93,25 @@ class StudentController extends Controller
                 'class.class_id',
                 'section.section_id'
             )
-            ->orderBy('section.section_id')
-            ->get();
+            ->orderBy('section.section_id');
+
+        if ($class_id && $section_id) {
+            // Specific class & section passed
+            $absentstudents->where('attendance.class_id', $class_id)
+                        ->where('attendance.section_id', $section_id);
+        } else {
+            // Apply teacher's class–section pairs
+            $absentstudents->where(function ($query) use ($classes) {
+                foreach ($classes as $cls) {
+                    $query->orWhere(function ($q) use ($cls) {
+                        $q->where('attendance.class_id', $cls->class_id)
+                        ->where('attendance.section_id', $cls->section_id);
+                    });
+                }
+            });
+        }
+
+        $absentstudents = $absentstudents->get();
 
         $countstudents = count($absentstudents);
         $absentstudentdata = [
@@ -121,7 +123,8 @@ class StudentController extends Controller
             'status' => 200,
             'data' => $absentstudentdata,
             'message' => 'Absent students list.',
-            'success' => true
+            'success' => true,
+            'only_date' => $only_date
         ]);
     }
 

@@ -719,6 +719,13 @@ class TeacherDashboardController extends Controller
             ->where('class_teachers.academic_yr', $customClaims)
             ->first();
 
+        if($classes == null) {
+            return response()->json([
+                'status' => false,
+                'message' => "No data found for this teacher",
+            ], 404);
+        }
+
         $class_id = $classes->class_id;
         $class_name = DB::table('class')
             ->select('name')

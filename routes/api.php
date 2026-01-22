@@ -1308,6 +1308,9 @@
             Route::get('issue_book_details', [LibraryController::class, 'returnBookDetails']);
             Route::post('/library/return_book', [LibraryController::class, 'returnBook']);
             Route::post('/library/reissue_book', [LibraryController::class, 'reissueBook']);
+            Route::get('/library/issue_book_details', [LibraryController::class, 'returnBookDetails']);
+            Route::post('/library/return_book' , [LibraryController::class, 'returnBook']);
+            Route::post('/library/reissue_book' , [LibraryController::class , 'reissueBook']);
 
             Route::post('library/book_return_reissue', [LibraryController::class, 'returnOrReissue']);
             Route::get('issue/member_on_accession/{copy_id}', [LibraryController::class, 'getMemberOnAccession']);
