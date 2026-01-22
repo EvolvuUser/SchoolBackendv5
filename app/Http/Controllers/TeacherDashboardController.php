@@ -144,7 +144,7 @@ class TeacherDashboardController extends Controller
 
             $isClassTeacher = $classTeacher !== null;
 
-            $classTeacherClassId   = $classTeacher->class_id   ?? null;
+            $classTeacherClassId = $classTeacher->class_id ?? null;
             $classTeacherSectionId = $classTeacher->section_id ?? null;
 
             $isAttendanceMarked = false;
@@ -828,7 +828,7 @@ class TeacherDashboardController extends Controller
         /** STUDENT CARDS */
         // get classes data
         $customClaims = JWTAuth::getPayload()->get('academic_year');
-        
+
         // 1. Get unique class-section combinations for the teacher
         $classData = DB::table('subject')
             ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
@@ -862,7 +862,7 @@ class TeacherDashboardController extends Controller
         $todayDate = date('Y-m-d');
         $totalStudentsPresentToday = DB::table('attendance')
             ->where('only_date', $todayDate)
-            ->where('attendance_status' , 0)
+            ->where('attendance_status', 0)
             ->whereIn('class_id', $classIds)
             ->whereIn('section_id', $sectionIds)
             ->count();
@@ -1218,6 +1218,306 @@ class TeacherDashboardController extends Controller
             'message' => 'Teacher class exam timetable fetched successfully',
             'data' => $result,
             'success' => true
+        ]);
+    }
+
+    public function getTeacherMobileDashboard(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $nextMonday = now()->next('Monday')->format('Y-m-d');
+        /** STUDENT CARDS */
+        // get classes data
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $teacher_id = JWTAuth::getPayload()->get('reg_id');
+        // 1. Get unique class-section combinations for the teacher
+        $classData = DB::table('subject')
+            ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                $join
+                    ->on('class_teachers.class_id', '=', 'subject.class_id')
+                    ->on('class_teachers.section_id', '=', 'subject.section_id')
+                    ->where('class_teachers.teacher_id', $teacher_id);
+            })
+            ->where('subject.academic_yr', $customClaims)
+            ->where(function ($query) use ($teacher_id) {
+                $query
+                    ->where('subject.teacher_id', $teacher_id)
+                    ->orWhere('class_teachers.teacher_id', $teacher_id);
+            })
+            ->distinct()
+            ->select('subject.class_id', 'subject.section_id')
+            ->get();
+
+        // 2. Build arrays for WHERE IN
+        $classIds = $classData->pluck('class_id')->unique();
+        $sectionIds = $classData->pluck('section_id')->unique();
+
+        // 3. Count students in ONE query
+        $totalStudents = DB::table('student')
+            ->where('academic_yr', $customClaims)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->count();
+
+        // Count total number of students present today in those classes
+        $todayDate = date('Y-m-d');
+        $totalStudentsPresentToday = DB::table('attendance')
+            ->where('only_date', $todayDate)
+            ->where('attendance_status', 0)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->count();
+
+        /** Defaulter list card */
+        $classes = DB::table('class_teachers')
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id',
+                DB::raw('1 as is_class_teacher')
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $customClaims)
+            ->first();
+
+        $class_id = $classes->class_id ?? 0;
+        $section_id = $classes->section_id ?? 0;
+        $installment = 1;  // 1 2 3
+        $defaulters = DB::table('view_student_fees_category as s')
+            ->leftJoin('view_student_fees_payment as p', function ($join) {
+                $join
+                    ->on('s.student_id', '=', 'p.student_id')
+                    ->on('s.installment', '=', 'p.installment');
+            })
+            ->leftJoin('fee_concession_details as c', function ($join) {
+                $join
+                    ->on('s.student_id', '=', 'c.student_id')
+                    ->on('s.installment', '=', 'c.installment');
+            })
+            ->join('student as st', 'st.student_id', '=', 's.student_id')
+            ->where('s.academic_yr', $customClaims)
+            ->where('s.class_id', $class_id)
+            ->where('st.section_id', $section_id)
+            ->where(function ($q) {
+                $q
+                    ->where('s.installment', 'like', '1%')
+                    ->orWhere('s.installment', 'like', '2%')
+                    ->orWhere('s.installment', 'like', '3%');
+            })
+            ->groupBy(
+                's.student_id',
+                's.installment',
+                's.installment_fees',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no'
+            )
+            ->select(
+                's.student_id',
+                'st.first_name',
+                'st.last_name',
+                'st.roll_no',
+                's.installment',
+                's.installment_fees',
+                DB::raw('COALESCE(SUM(c.amount),0) as concession'),
+                DB::raw('COALESCE(SUM(p.fees_paid),0) as paid_amount')
+            )
+            ->get();
+
+        $pendingAmount = 0.0;
+        $totalNumberOfDefaulters = 0;
+        $defaulterStudents = [];
+
+        foreach ($defaulters as $student) {
+            $pending = $student->installment_fees
+                - $student->concession
+                - $student->paid_amount;
+            if ($pending > 0) {
+                $totalNumberOfDefaulters++;
+                $pendingAmount += $pending;
+
+                // $defaulterStudents[] = [
+                //     'student_id'   => $student->student_id,
+                //     'name'         => $student->first_name . ' ' . $student->last_name,
+                //     'roll_no'      => $student->roll_no,
+                //     'installment' => $student->installment,
+                //     'pending_fee' => $pending
+                // ];
+            }
+        }
+
+        /** Birthday Card */
+        $date = Carbon::now();
+        $studentCount = DB::table('student')
+            ->where('academic_yr', $customClaims)
+            ->whereIn('class_id', $classIds)
+            ->whereIn('section_id', $sectionIds)
+            ->whereMonth('dob', $date->month)
+            ->whereDay('dob', $date->day)
+            ->count();
+
+        $countOfBirthdaysToday = $studentCount + Teacher::where('IsDelete', 'N')
+            ->whereMonth('birthday', $date->month)
+            ->whereDay('birthday', $date->day)
+            ->count();
+
+        /** Homework Card */
+        $today = Carbon::now()->toDateString();
+        $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
+        $countOfHomeworksDueToday = DB::table('homework')
+            ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
+            ->where('homework.academic_yr', $customClaims)
+            ->where('homework.publish', 'Y')
+            ->whereIn('homework.class_id', $classIds)
+            ->whereIn('homework.section_id', $sectionIds)
+            ->where('homework.end_date', $today)
+            ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
+            ->count();
+        $pending_books = DB::table('issue_return')
+            ->join('book', 'book.book_id', '=', 'issue_return.book_id')
+            ->where('member_id', $teacher_id)
+            ->where('member_type', 'T')
+            ->where('return_date', '0000-00-00')
+            ->count();
+        $notCreatedCount = DB::table('subject as s')
+            ->selectRaw("
+                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
+                    s.teacher_id,
+                    t.name,
+                    t.phone
+                ")
+            ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+            ->join('class as c', 's.class_id', '=', 'c.class_id')
+            ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+            ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+            ->where('t.isDelete', 'N')
+            ->where('s.academic_yr', $customClaims)
+            ->where('s.teacher_id', $teacher_id)
+            ->whereNotIn(
+                DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
+                function ($query) use ($nextMonday) {
+                    $query
+                        ->select(
+                            DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                }
+            )
+            ->whereNotIn('s.sm_id', function ($query) {
+                $query
+                    ->select('sm_id')
+                    ->from('subjects_excluded_from_curriculum');
+            })
+            ->groupBy('s.teacher_id')
+            ->get();
+        $isLessonPlanPriorityDay = now()->isSaturday() || now()->isMonday();
+        $lessonPlanCount = $notCreatedCount[0]->pending_classes
+            ? count(array_filter(array_map('trim', explode(',', $notCreatedCount[0]->pending_classes))))
+            : 0;
+        $cards = [
+            [
+                'key' => 'lessonPlan',
+                'value' => $lessonPlanCount,
+                'data' => ['notcreatedCount' => $lessonPlanCount],
+            ],
+            [
+                'key' => 'birthDayCard',
+                'value' => $countOfBirthdaysToday,
+                'data' => ['countOfBirthdaysToday' => $countOfBirthdaysToday],
+            ],
+            [
+                'key' => 'homeworkCard',
+                'value' => $countOfHomeworksDueToday,
+                'data' => ['countOfHomeworksDueToday' => $countOfHomeworksDueToday],
+            ],
+            [
+                'key' => 'pendingBooks',
+                'value' => $pending_books,
+                'data' => ['totalpendingBooks' => $pending_books],
+            ],
+            [
+                'key' => 'defaulterCount',
+                'value' => $pendingAmount,
+                'data' => [
+                    'totalPendingAmount' => $pendingAmount,
+                    'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
+                ],
+            ],
+        ];
+        foreach ($cards as &$card) {
+            // 👇 ADD THIS LINE (UI flag)
+            $card['show'] = (($card['value'] ?? 0) > 0) ? 1 : 0;
+
+            // Default priority
+            $card['priority'] = 4;
+
+            if (($card['value'] ?? 0) == 0) {
+                $card['priority'] = 5;
+                continue;
+            }
+
+            if (
+                $isLessonPlanPriorityDay &&
+                ($card['key'] ?? '') === 'lessonPlan' &&
+                $lessonPlanCount > 0
+            ) {
+                $card['priority'] = 1;
+                continue;
+            }
+
+            switch ($card['key'] ?? '') {
+                case 'birthDayCard':
+                    $card['priority'] = 1;
+                    break;
+                case 'homeworkCard':
+                    $card['priority'] = 2;
+                    break;
+                case 'pendingBooks':
+                    $card['priority'] = 3;
+                    break;
+                case 'lessonPlan':
+                    $card['priority'] = 4;
+                    break;
+                case 'defaulterCount':
+                    $card['priority'] = 5;
+                    break;
+            }
+        }
+        unset($card);
+        $orderWeight = [
+            'birthDayCard' => 1,
+            'lessonPlan' => 2,
+            'homeworkCard' => 3,
+            'pendingBooks' => 4,
+            'defaulterCount' => 5,
+        ];
+
+        // First sort
+        usort($cards, function ($a, $b) use ($orderWeight) {
+            if ($a['priority'] !== $b['priority']) {
+                return $a['priority'] <=> $b['priority'];
+            }
+
+            return ($orderWeight[$a['key']] ?? 99) <=>
+                ($orderWeight[$b['key']] ?? 99);
+        });
+
+        // 🔥 FINAL STEP — re-number priority as 1,2,3,4,5
+        $displayPriority = 1;
+        foreach ($cards as &$card) {
+            $card['priority'] = $displayPriority++;
+        }
+        unset($card);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $cards
         ]);
     }
 }
