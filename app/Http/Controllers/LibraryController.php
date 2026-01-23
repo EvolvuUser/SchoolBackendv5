@@ -2439,19 +2439,36 @@ class LibraryController extends Controller
         }
     }
 
+    // /library/periodicals
     public function storePeriodical(Request $request) {
         try {
+
+            $this->authenticateUser();
+
             $title 			    =	$request->input('title');
-            $subscription_no    =	$request->input('subscription');
+            $subscription_no    =	$request->input('subscription_no');
             $frequency          =	$request->input('frequency');
             $email_ids 			=	$request->input('email_ids');
 
             if(!$title || !$subscription_no || !$frequency) {
                 return response()->json([
                     'status' => false,
-                    'Message' => "title "
-                ]);
+                    'Message' => "title, subscription_no, frequency are required "
+                ] , 403);
             }
+
+            $data = DB::table('periodicals')->insert([
+                'title' => $title,
+                'subscription_no' => $subscription_no,
+                'frequency' => $frequency,
+                'email_ids' => $email_ids ?? "",
+            ]);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Periodical Created',
+                'data' => $data,
+            ], 200);
 
         } catch(Exception $e) {
             return response()->json([
