@@ -4548,44 +4548,35 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $substituteTeacherList = DB::table('class_teacher_substitute')
-                    ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
-                    ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')
-                    ->where('class_teacher_substitute.academic_yr', $customClaims)
-                    ->select(
-                        'class_teacher_substitute.*',
-                        'main_teacher.name as class_teacher_name',
-                        'sub_teacher.name as substitute_teacher_name'
-                    )
-                    ->get();
-                foreach ($substituteTeacherList as $substituteTeacher) {
-                    $class = DB::table('class_teachers')
-                        ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
-                        ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
-                        ->where('class_teachers.teacher_id', $substituteTeacher->class_teacher_id)
-                        ->where('class_teachers.academic_yr', $customClaims)
-                        ->select('class.class_id', 'section.section_id', 'class.name as classname', 'section.name as sectionname')
-                        ->first();
-                    $substituteTeacher->class_id = $class->class_id ?? null;
-                    $substituteTeacher->classname = $class->classname ?? null;
-                    $substituteTeacher->section_id = $class->section_id ?? null;
-                    $substituteTeacher->sectionname = $class->sectionname ?? null;
-                }
-                return response()->json([
-                    'status' => 200,
-                    'data' => $substituteTeacherList,
-                    'message' => 'Substitute class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $substituteTeacherList = DB::table('class_teacher_substitute')
+                ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
+                ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')
+                ->where('class_teacher_substitute.academic_yr', $customClaims)
+                ->select(
+                    'class_teacher_substitute.*',
+                    'main_teacher.name as class_teacher_name',
+                    'sub_teacher.name as substitute_teacher_name'
+                )
+                ->get();
+            foreach ($substituteTeacherList as $substituteTeacher) {
+                $class = DB::table('class_teachers')
+                    ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
+                    ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
+                    ->where('class_teachers.teacher_id', $substituteTeacher->class_teacher_id)
+                    ->where('class_teachers.academic_yr', $customClaims)
+                    ->select('class.class_id', 'section.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->first();
+                $substituteTeacher->class_id = $class->class_id ?? null;
+                $substituteTeacher->classname = $class->classname ?? null;
+                $substituteTeacher->section_id = $class->section_id ?? null;
+                $substituteTeacher->sectionname = $class->sectionname ?? null;
             }
+            return response()->json([
+                'status' => 200,
+                'data' => $substituteTeacherList,
+                'message' => 'Substitute class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
