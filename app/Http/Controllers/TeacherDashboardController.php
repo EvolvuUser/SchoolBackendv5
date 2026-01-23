@@ -1455,7 +1455,7 @@ class TeacherDashboardController extends Controller
             ],
             [
                 'key' => 'defaulterCount',
-                'value' => $pendingAmount,
+                'value' => $totalNumberOfDefaulters,
                 'data' => [
                     'totalPendingAmount' => $pendingAmount,
                     'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
