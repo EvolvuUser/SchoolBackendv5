@@ -976,6 +976,11 @@ class TeacherDashboardController extends Controller
             ->whereIn('homework_comments.homework_status', ['Assigned', 'Partial'])
             ->count();
 
+        /** Substitution Count */
+        $substituteCount = DB::table('class_teacher_substitute')
+            ->where('academic_yr', $customClaims)
+            ->count();
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -994,7 +999,8 @@ class TeacherDashboardController extends Controller
                     'totalNumberOfDefaulters' => $totalNumberOfDefaulters,
                     // 'defaulterStudents' => $defaulterStudents,
                     // 'count' => count($defaulterStudents)
-                ]
+                ],
+                'substituteCount' => $substituteCount,
             ]
         ]);
     }
