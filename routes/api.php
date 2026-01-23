@@ -1264,10 +1264,10 @@
             // Periodicals - Menu
             // =============================
             //// Periodicals - Tab
-            Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
-            Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
-            Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
-            Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
+                Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
+                Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
+                Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
+                Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
             //// Subscription - Tab
             Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);        // Listing
             Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);      // Create

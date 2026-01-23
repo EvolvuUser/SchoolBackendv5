@@ -1370,13 +1370,16 @@ class LibraryController extends Controller
             ->where('copy_id' , $copy_id)
             ->where('return_date' , '0000-00-00')
             ->first()->member_id ?? null;
+
+            if($member_id == null) {
+                return false;
+            }
+
             $member = DB::table('library_member')->where('member_id' , $member_id)->first();
             $m_type = $member->member_type;
         }
 
-        if($member_id == null) {
-            return false;
-        }
+        
 
         // Find out member details
         if($m_type == 'S') {
@@ -2474,7 +2477,7 @@ class LibraryController extends Controller
                     return response()->json([
                         'status' => false,
                         'Message' => "title, subscription_no, frequency are required "
-                    ] , 403);
+                    ] , 400);
                 }
 
                 $data = DB::table('periodicals')->insert([
@@ -2610,22 +2613,44 @@ class LibraryController extends Controller
         try {
             $user = $this->authenticateUser();
             $role = $user->role_id;
-            if($role != 'L' || $role != 'U') {
+
+            if($role != 'L' && $role != 'U') {
                 return response()->json([
                     'message' => 'You are not allowed to access this resource.'
                 ], 401);
             }
-            $periodical_id = $request->input('periodical_id');
-            $oldSubscriptions = DB::table('subscription')->where('periodical_id' , $periodical_id)->get();
-            $from_date = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('from_date'))->format('Y-m-d');
-            $to_date   = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('to_date'))->format('Y-m-d');
-            $status = 'Active';
+
+            $periodical_id      = $request->input('periodical_id');
+            $oldSubscriptions   = DB::table('subscription')->where('periodical_id' , $periodical_id)->get();
+            $from_date = date('Y-m-d', strtotime($request->from_date));
+            $to_date   = date('Y-m-d', strtotime($request->to_date));
+            $receiving_date     = $request->input('receiving_date');
+            $status             = 'Active';
+
+            if(!$periodical_id || !$from_date || !$to_date || !$receiving_date) {
+                return response()->json([
+                    'status' => false,
+                    'Message' => "periodical_id, from_date, to_date, receiving_date are required"
+                ] , 400);
+            }
 
             if(count($oldSubscriptions) > 0) {
                 DB::table('subscription')->where('periodical_id' , $periodical_id)->update(['status' => 'Expired']);
             }
 
-            // DB::table('subscription')->insert();
+            $data = DB::table('subscription')->insert([
+                'periodical_id' => $periodical_id,
+                'from_date' => $from_date,
+                'to_date' => $to_date,
+                'status' => $status,
+                'receiving_date' => $receiving_date,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => "Subscription Created Successfully",
+                'data' => $data,
+            ] , 200);
         } catch(Exception $e) {
             return response()->json([
                 'status'  => false,
