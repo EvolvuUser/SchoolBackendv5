@@ -973,7 +973,17 @@ class LibraryController extends Controller
             ->get();
         }
 
-        return response()->json($issuedBooks);
+        if(count($issuedBooks) == 0) {
+            return response()->json([
+                'status' => false,
+                'message' => "This is not a library member",
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $issuedBooks,
+        ]);
     }
 
     public function getBookByAccession(Request $request)
@@ -2430,6 +2440,16 @@ class LibraryController extends Controller
 
     public function storePeriodical(Request $request) {
         try {
+            $title 			    =	$request->input('title');
+            $subscription_no    =	$request->input('subscription');
+            $frequency          =	$request->input('frequency');
+            $email_ids 			=	$request->input('email_ids');
+
+            if(!$title || !$subscription_no || !$frequency) {
+                return response()->json([
+
+                ]);
+            }
 
         } catch(Exception $e) {
             return response()->json([
