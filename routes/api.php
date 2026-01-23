@@ -1271,6 +1271,8 @@
             //// Subscription - Tab
             Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);        // Listing
             Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);      // Create
+            Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']); // Edit
+            Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);

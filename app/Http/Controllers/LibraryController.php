@@ -2587,7 +2587,8 @@ class LibraryController extends Controller
     /** Periodicals - Tab - END  */
 
     /** Subscription - Tab - START */
-    public function subscriptionIndex(Request $request) {
+    public function subscriptionIndex(Request $request) 
+    {
         try {
             $user = $this->authenticateUser();
             $academic_year = JWTAuth::getPayload()->get('academic_year');
@@ -2609,7 +2610,8 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-    public function subscriptionCreate(Request $request) {
+    public function subscriptionCreate(Request $request) 
+    {
         try {
             $user = $this->authenticateUser();
             $role = $user->role_id;
@@ -2655,6 +2657,123 @@ class LibraryController extends Controller
             return response()->json([
                 'status'  => false,
                 'message' => 'Failed to store subscription details, Server Error',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function subscriptionUpdate(Request $request, $subscription_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $role = $user->role_id;
+
+            if ($role != 'L' && $role != 'U') {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'You are not allowed to access this resource.'
+                ], 401);
+            }
+
+            // Check subscription exists
+            $subscription = DB::table('subscription')
+                ->where('subscription_id', $subscription_id)
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Subscription not found'
+                ], 404);
+            }
+
+            // Allowed editable fields ONLY
+            $from_date       = $request->input('from_date') ? date('Y-m-d', strtotime($request->input('from_date'))) : $subscription->from_date;
+            $to_date         = $request->input('to_date') ? date('Y-m-d', strtotime($request->input('to_date'))) : $subscription->to_date;
+            $receiving_date  = $request->input('receiving_date') ?? $subscription->receiving_date;
+            $status          = $request->input('status') ?? $subscription->status;
+
+            $updated = DB::table('subscription')
+                ->where('subscription_id', $subscription_id)
+                ->update([
+                    'from_date'      => $from_date,
+                    'to_date'        => $to_date,
+                    'receiving_date' => $receiving_date,
+                    'status'         => $status,
+                ]);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Subscription Updated Successfully',
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to update subscription details',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function subscriptionDelete($subscription_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $role = $user->role_id;
+
+            if ($role != 'L' && $role != 'U') {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'You are not allowed to access this resource.'
+                ], 401);
+            }
+
+            // 1️⃣ Check if volumes/issues exist with date_received != '0000-00-00'
+            $issues = DB::table('subscription as a')
+                ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
+                ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
+                ->where('a.subscription_id', $subscription_id)
+                ->where('b.date_received', '!=', '0000-00-00')
+                ->get();
+
+            if ($issues->count() > 0) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Subscription Details cannot be deleted'
+                ], 400);
+            }
+
+            // 2️⃣ Get subscription_vol_id
+            $subscriptionVol = DB::table('subscription_volume')
+                ->where('subscription_id', $subscription_id)
+                ->first();
+
+            if ($subscriptionVol) {
+
+                // 3️⃣ Delete subscription_issues
+                DB::table('subscription_issues')
+                    ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
+                    ->delete();
+
+                // 4️⃣ Delete subscription_volume
+                DB::table('subscription_volume')
+                    ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
+                    ->delete();
+            }
+
+            // 5️⃣ Delete subscription
+            DB::table('subscription')
+                ->where('subscription_id', $subscription_id)
+                ->delete();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Subscription Details deleted successfully'
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to delete subscription',
                 'error'   => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
