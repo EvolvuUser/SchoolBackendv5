@@ -2924,8 +2924,22 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-    public function subscriptionVolumeDelete(Request $request , $subscription_id) {
-        
+    public function subscriptionVolumeDelete(Request $request , $subscription_vol_id) {
+        try {
+            $user = $this->authenticateUser();
+            DB::table('subscription_volume')->where('subscription_vol_id' , $subscription_vol_id)->delete();
+            DB::table('subscription_issues')->where('subscription_vol_id' , $subscription_vol_id)->delete();
+            return response()->json([
+                'status'  => true,
+                'message' => 'Volume deleted.'
+            ], 200);
+        } catch(Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to delete volume',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
     /** Subscription - Tab - END  */
 }

@@ -1271,14 +1271,14 @@
             //// Periodicals - Tab - END
                 
             //// Subscription - Tab - START
-                Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);        // Listing
-                Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);      // Create
-                Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']); // Edit
+                Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);                        // Listing
+                Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);                      // Create
+                Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']);       // Edit
                 Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
 
                 Route::get('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeIndex']);
                 Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
-                Route::delete('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeDelete']);
+                Route::delete('/library/subscriptions/volumes/{subscription_vol_id}' , [LibraryController::class, 'subscriptionVolumeDelete']);
             //// Subscription - Tab - END
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
