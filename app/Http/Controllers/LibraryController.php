@@ -2585,7 +2585,6 @@ class LibraryController extends Controller
             }
         }
     /** Periodicals - Tab - END  */
-
     /** Subscription - Tab - START */
         public function subscriptionIndex(Request $request) 
         {

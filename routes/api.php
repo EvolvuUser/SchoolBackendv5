@@ -1268,8 +1268,7 @@
                 Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
                 Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
                 Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
-            //// Periodicals - Tab - END
-                
+            //// Periodicals - Tab - END                
             //// Subscription - Tab - START
                 Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);                        // Listing
                 Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);                      // Create
