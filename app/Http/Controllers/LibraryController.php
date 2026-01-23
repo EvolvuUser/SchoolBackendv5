@@ -1509,6 +1509,7 @@ class LibraryController extends Controller
             ->where('b.reg_no', $grn_no)
             ->where('a.return_date', '0000-00-00')
             ->value('a.member_id');
+
         $query = DB::table('issue_return as a')
             ->select(
                 'a.*',
@@ -1546,6 +1547,7 @@ class LibraryController extends Controller
         ];
     }
 
+    // issue_book_details
     public function returnBookDetails(Request $request) {
 
         $user = $this->authenticateUser();
@@ -1582,6 +1584,12 @@ class LibraryController extends Controller
             );
         } else if(!$con1 && !$con2 && $con3) {
             $memberDetails = $this->getMemberDetailsUsingGrn($grn_no);
+            if($memberDetails['member'] == null) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "The book is not issued!!!",
+                ] , 404);
+            }
         }
 
         return response()->json([
@@ -2416,6 +2424,18 @@ class LibraryController extends Controller
                 'message' => 'Failed to fetch periodicals',
                 'error'   => $e->getMessage(),
                 'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    public function storePeriodical(Request $request) {
+        try {
+
+        } catch(Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to store periodical, Server Error',
+                'error'   => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
