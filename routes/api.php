@@ -1263,16 +1263,23 @@
             // ============================
             // Periodicals - Menu
             // =============================
-            //// Periodicals - Tab
+            //// Periodicals - Tab - START
                 Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
                 Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
                 Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
                 Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
-            //// Subscription - Tab
-            Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);        // Listing
-            Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);      // Create
-            Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']); // Edit
-            Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
+            //// Periodicals - Tab - END
+                
+            //// Subscription - Tab - START
+                Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);        // Listing
+                Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);      // Create
+                Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']); // Edit
+                Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
+
+                Route::get('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeIndex']);
+                Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
+                Route::delete('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeDelete']);
+            //// Subscription - Tab - END
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);

@@ -2778,5 +2778,154 @@ class LibraryController extends Controller
             ], 500);
         }
     }
+    public function subscriptionVolumeIndex($subscription_id) {
+        try {
+            $user = $this->authenticateUser();
+            $role = $user->role_id;
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            if($role != 'L' && $role != 'U') {
+                return response()->json([
+                    'message' => 'You are not allowed to access this resource.'
+                ], 401);
+            }
+
+            $data = DB::table('subscription_volume')->where('subscription_id' , $subscription_id)->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+                'count' => count($data),
+            ] , 200);
+        } catch(Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch Subscription Volume Details',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function subscriptionVolumeStore(Request $request , $subscription_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $role = $user->role_id;
+
+            if ($role !== 'L' && $role !== 'U') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to access this resource.'
+                ], 401);
+            }
+
+            // Inputs
+            $subscription_id        = $subscription_id;
+            $volume_start_date      = date('Y-m-d', strtotime($request->input('volume_start_date')));
+            $subscription_to_date   = $request->input('subscription_to_date');
+            $receiving_date         = $request->input('receiving_date');
+            $frequency              = $request->input('frequency');
+            $volume_lists           = $request->input('volume');
+            $issue_lists            = $request->input('issue');
+
+            if (
+                !$subscription_id || !$volume_start_date || !$subscription_to_date ||
+                !$receiving_date || !$frequency || !$volume_lists || !$issue_lists
+            ) {
+                return response()->json([ 
+                    'status' => false, 
+                    'Message' => "subscription_id, volume_start_date, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
+                ] , 400);
+            }
+
+            $from_year  = date('Y', strtotime($volume_start_date));
+            $from_month = date('m', strtotime($volume_start_date));
+
+            // Initial receive_by_date
+            if ($frequency === 'Weekly') {
+                $received_by_date = date(
+                    'Y-m-d',
+                    strtotime($receiving_date, strtotime($volume_start_date))
+                );
+            } else {
+                $received_by_date = $from_year . '-' . $from_month . '-' . $receiving_date;
+            }
+
+            DB::beginTransaction();
+
+            for ($i = 0; $i < count($volume_lists); $i++) {
+
+                // Insert subscription_volume
+                $subscriptionVolId = DB::table('subscription_volume')->insertGetId([
+                    'subscription_id'    => $subscription_id,
+                    'volume_start_date'  => $volume_start_date,
+                    'volume'             => $volume_lists[$i],
+                    'no_of_issues'       => $issue_lists[$i],
+                ]);
+
+                $no_of_issue_count = $issue_lists[$i];
+
+                for ($j = 1; $j <= $no_of_issue_count; $j++) {
+
+                    if ($j != 1) {
+
+                        if ($frequency === 'Monthly') {
+                            $received_by_date = date(
+                                'Y-m-d',
+                                strtotime($received_by_date . ' +1 month')
+                            );
+                        }
+
+                        if ($frequency === 'Bimonthly') {
+                            $received_by_date = date(
+                                'Y-m-d',
+                                strtotime('+15 day', strtotime($received_by_date))
+                            );
+
+                            if ($j % 2 != 0) {
+                                $month = date('m', strtotime($received_by_date));
+                                $year  = date('Y', strtotime($received_by_date));
+                                $received_by_date = $year . '-' . $month . '-' . $receiving_date;
+                            }
+                        }
+
+                        if ($frequency === 'Weekly') {
+                            $received_by_date = date(
+                                'Y-m-d',
+                                strtotime('+7 day', strtotime($received_by_date))
+                            );
+                        }
+                    }
+
+                    // Insert subscription_issues
+                    DB::table('subscription_issues')->insert([
+                        'subscription_vol_id' => $subscriptionVolId,
+                        'issue'               => $j,
+                        'receive_by_date'     => $received_by_date,
+                        'created_at'          => now(),
+                        'updated_at'          => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Volume Created Successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to store Volume, Server Error',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function subscriptionVolumeDelete(Request $request , $subscription_id) {
+        
+    }
     /** Subscription - Tab - END  */
 }
