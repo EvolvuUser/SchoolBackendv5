@@ -1362,16 +1362,20 @@ class LibraryController extends Controller
 
     private function getMemberDetails($grn_no , $acd_yr , $copy_id , $m_type) {
         $data = null;
-        $member_id = 0;
+        $member_id = null;
         $member = null;
         if(!$m_type) {
             $member_id = DB::table('issue_return')
             ->select('member_id')
             ->where('copy_id' , $copy_id)
             ->where('return_date' , '0000-00-00')
-            ->first()->member_id;
+            ->first()->member_id ?? null;
             $member = DB::table('library_member')->where('member_id' , $member_id)->first();
             $m_type = $member->member_type;
+        }
+
+        if($member_id == null) {
+            return false;
         }
 
         // Find out member details
@@ -1587,6 +1591,12 @@ class LibraryController extends Controller
 
         if($con1 && !$con2 && !$con3) {
             $memberDetails = $this->getMemberDetails("" , $acd_yr , $copy_id , "");
+            if(!$memberDetails) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "The book is not issued!!!",
+                ] , 404);
+            }
         } else if(!$con1 && $con2 && !$con3) {
             $memberDetails = $this->getMemberDetailsUsingSearch(
                 $m_type , 
@@ -2414,14 +2424,173 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-    
-    // /library/periodicals
-    public function periodicalsIndex(Request $request) {
+
+    // ============================
+    // Periodicals - Menu
+    // ============================
+    // Developer - Leo The Great - 2026-01-23
+    /** Periodicals - Tab - START */
+        /**
+         * Listing of Periodicals
+         * GET /library/periodicals
+         */
+        public function periodicalsIndex(Request $request) {
+            try {
+                $user = $this->authenticateUser();
+                $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+                $data = DB::table('periodicals')
+                ->get();
+
+                return response()->json([
+                    'status' => true,
+                    'data' => $data,
+                    'count' => count($data),
+                ] , 200);
+            } catch(Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch periodicals',
+                    'error'   => $e->getMessage(),
+                    'line' => $e->getLine(),
+                ], 500);
+            }
+        }
+        /**
+         * Create Periodical
+         * POST /library/periodicals
+         */
+        public function storePeriodical(Request $request) {
+            try {
+
+                $this->authenticateUser();
+
+                $title 			    =	$request->input('title');
+                $subscription_no    =	$request->input('subscription_no');
+                $frequency          =	$request->input('frequency');
+                $email_ids 			=	$request->input('email_ids');
+
+                if(!$title || !$subscription_no || !$frequency) {
+                    return response()->json([
+                        'status' => false,
+                        'Message' => "title, subscription_no, frequency are required "
+                    ] , 403);
+                }
+
+                $data = DB::table('periodicals')->insert([
+                    'title' => $title,
+                    'subscription_no' => $subscription_no,
+                    'frequency' => $frequency,
+                    'email_ids' => $email_ids ?? "",
+                ]);
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Periodical Created',
+                    'data' => $data,
+                ], 200);
+
+            } catch(Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to store periodical, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+        /**
+         * Update Periodical
+         * PUT /library/periodicals/{id}
+         */
+        public function updatePeriodical(Request $request, $id) {
+            try {
+
+                $this->authenticateUser();
+
+                $title           = $request->input('title');
+                $subscription_no = $request->input('subscription_no');
+                $frequency       = $request->input('frequency');
+                $email_ids       = $request->input('email_ids');
+
+                if(!$title || !$subscription_no || !$frequency) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'title, subscription_no, frequency are required'
+                    ], 403);
+                }
+
+                $updated = DB::table('periodicals')
+                    ->where('periodical_id', $id)
+                    ->update([
+                        'title' => $title,
+                        'subscription_no' => $subscription_no,
+                        'frequency' => $frequency,
+                        'email_ids' => $email_ids ?? ""
+                    ]);
+
+                if(!$updated) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Periodical not found or no changes made'
+                    ], 404);
+                }
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Periodical Updated Successfully'
+                ], 200);
+
+            } catch(Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to update periodical, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+        /**
+         * Delete Periodical
+         * DELETE /library/periodicals/{id}
+         */
+        public function deletePeriodical($id) {
+            try {
+
+                $this->authenticateUser();
+
+                $deleted = DB::table('periodicals')
+                    ->where('periodical_id', $id)
+                    ->delete();
+
+                if(!$deleted) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Periodical not found'
+                    ], 404);
+                }
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Periodical Deleted Successfully'
+                ], 200);
+
+            } catch(Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to delete periodical, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+    /** Periodicals - Tab - END  */
+
+    /** Subscription - Tab - START */
+    public function subscriptionIndex(Request $request) {
         try {
             $user = $this->authenticateUser();
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            $data = DB::table('periodicals')
+            $data = DB::table('subscription')
+            ->leftJoin('periodicals' , 'periodicals.periodical_id' , '=' , 'subscription.periodical_id')
             ->get();
 
             return response()->json([
@@ -2432,50 +2601,38 @@ class LibraryController extends Controller
         } catch(Exception $e) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Failed to fetch periodicals',
-                'error'   => $e->getMessage(),
-                'line' => $e->getLine(),
-            ], 500);
-        }
-    }
-
-    // /library/periodicals
-    public function storePeriodical(Request $request) {
-        try {
-
-            $this->authenticateUser();
-
-            $title 			    =	$request->input('title');
-            $subscription_no    =	$request->input('subscription_no');
-            $frequency          =	$request->input('frequency');
-            $email_ids 			=	$request->input('email_ids');
-
-            if(!$title || !$subscription_no || !$frequency) {
-                return response()->json([
-                    'status' => false,
-                    'Message' => "title, subscription_no, frequency are required "
-                ] , 403);
-            }
-
-            $data = DB::table('periodicals')->insert([
-                'title' => $title,
-                'subscription_no' => $subscription_no,
-                'frequency' => $frequency,
-                'email_ids' => $email_ids ?? "",
-            ]);
-
-            return response()->json([
-                'status'  => true,
-                'message' => 'Periodical Created',
-                'data' => $data,
-            ], 200);
-
-        } catch(Exception $e) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Failed to store periodical, Server Error',
+                'message' => 'Failed to fetch Subscription Details',
                 'error'   => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
+    public function subscriptionCreate(Request $request) {
+        try {
+            $user = $this->authenticateUser();
+            $role = $user->role_id;
+            if($role != 'L' || $role != 'U') {
+                return response()->json([
+                    'message' => 'You are not allowed to access this resource.'
+                ], 401);
+            }
+            $periodical_id = $request->input('periodical_id');
+            $oldSubscriptions = DB::table('subscription')->where('periodical_id' , $periodical_id)->get();
+            $from_date = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('from_date'))->format('Y-m-d');
+            $to_date   = \Carbon\Carbon::createFromFormat('Y-m-d', $request->input('to_date'))->format('Y-m-d');
+            $status = 'Active';
+
+            if(count($oldSubscriptions) > 0) {
+                DB::table('subscription')->where('periodical_id' , $periodical_id)->update(['status' => 'Expired']);
+            }
+
+            // DB::table('subscription')->insert();
+        } catch(Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to store subscription details, Server Error',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    /** Subscription - Tab - END  */
 }
