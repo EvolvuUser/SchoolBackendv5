@@ -916,6 +916,7 @@ class LibraryController extends Controller
         return response()->json($result);
     }
 
+    // library/issued_books
     public function getIssuedBooksByMember(Request $request)
     {
         $memberId = $request->input('member_id');
@@ -977,13 +978,13 @@ class LibraryController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => "This is not a library member",
-            ]);
+            ] , 404);
         }
 
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
-        ]);
+        ] , 200);
     }
 
     public function getBookByAccession(Request $request)
@@ -2447,7 +2448,8 @@ class LibraryController extends Controller
 
             if(!$title || !$subscription_no || !$frequency) {
                 return response()->json([
-
+                    'status' => false,
+                    'Message' => "title "
                 ]);
             }
 
