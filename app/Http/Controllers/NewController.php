@@ -4474,29 +4474,20 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $classteachers = DB::table('class_teachers')
-                    ->join('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
-                    ->where('class_teachers.academic_yr', $customClaims)
-                    ->orderBy('class_teachers.class_id', 'ASC')
-                    ->select('class_teachers.*', 'teacher.teacher_id', 'teacher.name')
-                    ->get()
-                    ->toArray();
+            $classteachers = DB::table('class_teachers')
+                ->join('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->orderBy('class_teachers.class_id', 'ASC')
+                ->select('class_teachers.*', 'teacher.teacher_id', 'teacher.name')
+                ->get()
+                ->toArray();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $classteachers,
-                    'message' => 'Class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $classteachers,
+                'message' => 'Class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -4508,35 +4499,26 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $roles = ['T', 'L'];
+            $roles = ['T', 'L'];
 
-                $subquery = DB::table('class_teachers')
-                    ->select('teacher_id')
-                    ->where('academic_yr', $customClaims);
+            $subquery = DB::table('class_teachers')
+                ->select('teacher_id')
+                ->where('academic_yr', $customClaims);
 
-                $nonclassteachers = DB::table('teacher')
-                    ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
-                    ->whereNotIn('teacher.teacher_id', $subquery)
-                    ->whereIn('user_master.role_id', $roles)
-                    ->select('teacher.*', 'user_master.role_id')
-                    ->get()
-                    ->toArray();
+            $nonclassteachers = DB::table('teacher')
+                ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+                ->whereNotIn('teacher.teacher_id', $subquery)
+                ->whereIn('user_master.role_id', $roles)
+                ->select('teacher.*', 'user_master.role_id')
+                ->get()
+                ->toArray();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $nonclassteachers,
-                    'message' => 'Non class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $nonclassteachers,
+                'message' => 'Non class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
