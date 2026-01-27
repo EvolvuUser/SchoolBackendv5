@@ -3073,4 +3073,72 @@ class LibraryController extends Controller
             }
         }
     /** Periodical Not Received Report - END */
+    /** Periodical Report - START */
+        /**
+         * GET /library/periodicals_report
+         */
+        public function periodicalsReport(Request $request) {
+            try {
+                $user = $this->authenticateUser();
+                $role_id = $user->role_id ?? null;
+
+                if ($role_id !== "L") {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'You are not allowed to access this resource',
+                    ], 401);
+                }
+
+                $periodical_id        = $request->input('periodical_id');
+                $subscription_vol_id  = $request->input('subscription_vol_id');
+                $subscription_issue_id = $request->input('subscription_issue_id');
+                $received_date        = $request->input('received_date');
+
+                $query = DB::table('subscription_issues as a')
+                    ->select(
+                        'a.issue',
+                        'a.receive_by_date',
+                        'a.date_received',
+                        'b.volume',
+                        'd.title',
+                        'd.subscription_no'
+                    )
+                    ->join('subscription_volume as b', 'a.subscription_vol_id', '=', 'b.subscription_vol_id')
+                    ->join('subscription as c', 'c.subscription_id', '=', 'b.subscription_id')
+                    ->join('periodicals as d', 'c.periodical_id', '=', 'd.periodical_id')
+                    ->where('a.status', 'Received');
+
+                if (!empty($periodical_id)) {
+                    $query->where('d.periodical_id', $periodical_id);
+                }
+
+                if (!empty($subscription_vol_id)) {
+                    $query->where('b.subscription_vol_id', $subscription_vol_id);
+                }
+
+                if (!empty($received_date)) {
+                    $query->where('a.date_received', $received_date);
+                }
+
+                if (!empty($subscription_issue_id)) {
+                    $query->where('a.subscription_issue_id', $subscription_issue_id);
+                }
+
+                $data = $query->get();
+
+                return response()->json([
+                    'status' => true,
+                    'data'   => $data,
+                    'count' => count($data),
+                ], 200);
+
+            } catch (Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+    /** Periodical Report - END */
 }

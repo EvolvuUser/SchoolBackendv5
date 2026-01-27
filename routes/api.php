@@ -1288,7 +1288,10 @@
                 Route::get('/library/periodical_not_received_report/{periodical_id}' , [LibraryController::class , 'periodicalNotReceivedReport']);
                 Route::get('/library/periodical_not_received_report' , [LibraryController::class , 'periodicalNotReceivedReport']);
             //// Periodical Not Received Report - Tab - END
-            
+            //// Periodical Report - Tab - START
+                Route::get('/library/periodicals_report' , [LibraryController::class , 'periodicalsReport']);
+            //// Periodical Report - Tab - END
+
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);
