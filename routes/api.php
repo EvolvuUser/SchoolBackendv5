@@ -1263,35 +1263,36 @@
             // ============================
             // Periodicals - Menu
             // =============================
-            //// Periodicals - Tab - START
-                Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
-                Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
-                Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
-                Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
-            //// Periodicals - Tab - END                
-            //// Subscription - Tab - START
-                Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);                        // Listing
-                Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);                      // Create
-                Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']);       // Edit
-                Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
+            /** Tabs - START */
+                //// Periodicals - Tab - START
+                    Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
+                    Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
+                    Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
+                    Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
+                //// Periodicals - Tab - END                
+                //// Subscription - Tab - START
+                    Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);                        // Listing
+                    Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);                      // Create
+                    Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']);       // Edit
+                    Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
 
-                Route::get('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeIndex']);
-                Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
-                Route::delete('/library/subscriptions/volumes/{subscription_vol_id}' , [LibraryController::class, 'subscriptionVolumeDelete']);
-            //// Subscription - Tab - END
-            //// Change Periodical Status - Tab - START 
-                Route::get('/library/get_volumes_by_periodical_id/{id}' , [LibraryController::class, 'getVolumesByPeriodicalId']);
-                Route::get('/library/get_volumes_issues/{subscription_vol_id}' , [LibraryController::class, 'getVolumesIssues']);
-                Route::post('/library/update_periodical_status/{subscription_vol_id}' , [LibraryController::class, 'updatePeriodicalStatus']);
-            //// Change Periodical Status - Tab - END 
-            //// Periodical Not Received Report - Tab - START
-                Route::get('/library/periodical_not_received_report/{periodical_id}' , [LibraryController::class , 'periodicalNotReceivedReport']);
-                Route::get('/library/periodical_not_received_report' , [LibraryController::class , 'periodicalNotReceivedReport']);
-            //// Periodical Not Received Report - Tab - END
-            //// Periodical Report - Tab - START
-                Route::get('/library/periodicals_report' , [LibraryController::class , 'periodicalsReport']);
-            //// Periodical Report - Tab - END
-
+                    Route::get('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeIndex']);
+                    Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
+                    Route::delete('/library/subscriptions/volumes/{subscription_vol_id}' , [LibraryController::class, 'subscriptionVolumeDelete']);
+                //// Subscription - Tab - END
+                //// Change Periodical Status - Tab - START 
+                    Route::get('/library/get_volumes_by_periodical_id/{id}' , [LibraryController::class, 'getVolumesByPeriodicalId']);
+                    Route::get('/library/get_volumes_issues/{subscription_vol_id}' , [LibraryController::class, 'getVolumesIssues']);
+                    Route::post('/library/update_periodical_status/{subscription_vol_id}' , [LibraryController::class, 'updatePeriodicalStatus']);
+                //// Change Periodical Status - Tab - END 
+                //// Periodical Not Received Report - Tab - START
+                    Route::get('/library/periodical_not_received_report/{periodical_id}' , [LibraryController::class , 'periodicalNotReceivedReport']);
+                    Route::get('/library/periodical_not_received_report' , [LibraryController::class , 'periodicalNotReceivedReport']);
+                //// Periodical Not Received Report - Tab - END
+                //// Periodical Report - Tab - START
+                    Route::get('/library/periodicals_report' , [LibraryController::class , 'periodicalsReport']);
+                //// Periodical Report - Tab - END
+            /** Tabs - END */
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);
