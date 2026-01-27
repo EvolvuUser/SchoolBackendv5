@@ -2,7 +2,42 @@
 
 function show_listing_of_proficiency_students_class9($class_id, $section_id, $from, $to)
 {
-    $query = DB::select('SELECT v.student_id, v.exam_id, exam_name, round(avg(v.percent)) as percentage, s.first_name,s.mid_name,s.last_name FROM view_finalmarks_percent_for_class9 as v join student as s on v.student_id = s.student_id WHERE v.class_id=' . $class_id . ' and v.section_id=' . $section_id . ' group by v.student_id, v.exam_id having round(avg(v.percent))>=' . $from . ' and round(avg(v.percent))<=' . $to . ' order by v.exam_id, percentage desc');
+    // $query = DB::select('SELECT v.student_id, v.exam_id, exam_name, round(avg(v.percent)) as percentage, s.first_name,s.mid_name,s.last_name FROM view_finalmarks_percent_for_class9 as v join student as s on v.student_id = s.student_id WHERE v.class_id=' . $class_id . ' and v.section_id=' . $section_id . ' group by v.student_id, v.exam_id having round(avg(v.percent))>=' . $from . ' and round(avg(v.percent))<=' . $to . ' order by v.exam_id, percentage desc');
+    $query = "
+    SELECT
+        v.student_id,
+        v.exam_id,
+        v.exam_name,
+        ROUND(AVG(v.percent)) AS percentage,
+        s.first_name,
+        s.mid_name,
+        s.last_name,
+        class.name as class_name , 
+        section.name as section_name
+    FROM
+        view_finalmarks_percent_for_class9 AS v
+    JOIN
+        student AS s
+        ON v.student_id = s.student_id
+    LEFT JOIN 
+        class
+        ON class.class_id = s.class_id
+    LEFT JOIN 
+        section
+        ON section.section_id = s.section_id
+    WHERE
+        v.class_id = {$class_id}
+        AND v.section_id = {$section_id}
+    GROUP BY
+        v.student_id,
+        v.exam_id
+    HAVING
+        ROUND(AVG(v.percent)) >= {$from}
+        AND ROUND(AVG(v.percent)) <= {$to}
+    ORDER BY
+        v.exam_id,
+        percentage DESC;
+    ";
     return $query;
 }
 

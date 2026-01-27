@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Services\WhatsAppService;
+use App\Jobs\SendStudentRemarkJob;
 
 class LibraryController extends Controller
 {
@@ -2330,78 +2331,19 @@ class LibraryController extends Controller
 
                     $remarkId = DB::table('remark')->insertGetId($insertData);
 
-                    $studentcontactdata = DB::table('student as a')
-                        ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
-                        ->where('a.student_id', $student_id)
-                        ->select('b.phone_no', 'b.email_id', 'a.parent_id', 'a.student_id')
-                        ->first();
+                    // Job call stuff. 
+                    // 2. Dispatch async job
+                    SendStudentRemarkJob::dispatch(
+                        $student_id,
+                        [
+                            'remark_desc' => $remark_desc,
+                            'remark_subject' => $remark_subject,
+                            'academic_year' => $academic_year,
+                            'teacher_id' => $reg_id,
+                        ],
+                        $remarkId
+                    );
 
-                    $phone = $studentcontactdata->phone_no ?? null;
-                    if ($phone) {
-                        if ($whatsappIntegration == 'Y') {
-                            $templateName = 'emergency_message';
-                            $parameters = ['Parent,' . $remark_desc];
-
-                            $result = $this->whatsAppService->sendTextMessage(
-                                $phone,
-                                $templateName,
-                                $parameters
-                            );
-                            if (isset($result['code']) && isset($result['message'])) {
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => null,
-                                    'phone_no' => $phone,
-                                    'stu_teacher_id' => $student_id,
-                                    'notice_id' => $remarkId,
-                                    'message_type' => 'remarkforstudent',
-                                    'status' => 'failed',
-                                    'sms_sent' => 'N',
-                                    'created_at' => now()
-                                ]);
-                            } else {
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => $result['messages'][0]['id'] ?? null,
-                                    'phone_no' => $result['contacts'][0]['input'] ?? $phone,
-                                    'stu_teacher_id' => $student_id,
-                                    'notice_id' => $remarkId,
-                                    'message_type' => 'remarkforstudent',
-                                    'created_at' => now()
-                                ]);
-                            }
-                        }
-                        if ($smsIntegration == 'Y') {
-                            $message = 'Dear Parent,' . $remark_desc . '. Login to school application for details - AceVentura';
-                            $temp_id = '1107161354408119887';
-                            $sms_status = app('App\Http\Services\SmsService')->sendSms($phone, $message, $temp_id);
-                        }
-                    }
-
-                    $tokenData = getTokenDataParentId($student_id);
-
-                    foreach ($tokenData as $item) {
-                        if (!empty($item->token)) {
-                            // DB::table('daily_notifications')->insert([
-                            //     'student_id'        => $item->student_id,
-                            //     'parent_id'         => $item->parent_teacher_id,
-                            //     'homework_id'       => 0,
-                            //     'remark_id'         => $remark_id,
-                            //     'notice_id'         => 0,
-                            //     'notes_id'          => 0,
-                            //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
-                            //     'token'             => $item->token,
-                            // ]);
-                        }
-                        $data = [
-                            'token' => $item->token,  // FCM token of parent/student device
-                            'notification' => [
-                                'title' => 'Remark',
-                                'description' => $remark_desc,
-                            ]
-                        ];
-                        sendnotificationusinghttpv1($data);
-                    }
-
-                    // NOTIFICATION STUFF - END
                     // Rest of the part
                     $book_id = $request->input('book_id'.$i); 
                     $due_date = $request->input('due_date'.$i); 
