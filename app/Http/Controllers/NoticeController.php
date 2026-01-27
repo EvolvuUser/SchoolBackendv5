@@ -2019,30 +2019,21 @@ class NoticeController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $results = DB::table('subjects_on_report_card as a')
-                    ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
-                    ->distinct()
-                    ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
-                    ->where('a.class_id', '=', $class_id)
-                    ->where('a.academic_yr', '=', $customClaims)
-                    ->orderBy('a.class_id', 'asc')
-                    ->orderBy('b.sequence', 'asc')
-                    ->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'List of Subjects',
-                    'data' => $results,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Saving of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $results = DB::table('subjects_on_report_card as a')
+                ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
+                ->distinct()
+                ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
+                ->where('a.class_id', '=', $class_id)
+                ->where('a.academic_yr', '=', $customClaims)
+                ->orderBy('a.class_id', 'asc')
+                ->orderBy('b.sequence', 'asc')
+                ->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'List of Subjects',
+                'data' => $results,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
