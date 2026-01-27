@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Bus\Dispatchable;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +38,7 @@ class SendReminderRemarkJob implements ShouldQueue
         $student = DB::table('student as a')
             ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
             ->where('a.student_id', $this->studentId)
-            ->select('b.phone_no', 'b.email_id')
+            ->select('b.phone_no', 'b.email_id' , 'a.student_id')
             ->first();
 
         if (!$student || !$student->phone_no) {
@@ -78,7 +78,7 @@ class SendReminderRemarkJob implements ShouldQueue
                     'wa_id' => $result['messages'][0]['id'] ?? null,
                     'phone_no' => $result['contacts'][0]['input'] ?? $student->phone_no,
                     'stu_teacher_id' => $student->student_id,
-                    'notice_id' => $this->$remarkId,
+                    'notice_id' => $this->remarkId,
                     'message_type' => 'remarkforstudent',
                     'created_at' => now()
                 ]);

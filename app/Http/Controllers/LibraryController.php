@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Services\WhatsAppService;
-use App\Jobs\SendStudentRemarkJob;
+use App\Jobs\SendReminderRemarkJob;
 
 class LibraryController extends Controller
 {
@@ -2333,7 +2333,7 @@ class LibraryController extends Controller
 
                     // Job call stuff. 
                     // 2. Dispatch async job
-                    SendStudentRemarkJob::dispatch(
+                    SendReminderRemarkJob::dispatch(
                         $student_id,
                         [
                             'remark_desc' => $remark_desc,
