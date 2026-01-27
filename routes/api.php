@@ -1279,6 +1279,11 @@
                 Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
                 Route::delete('/library/subscriptions/volumes/{subscription_vol_id}' , [LibraryController::class, 'subscriptionVolumeDelete']);
             //// Subscription - Tab - END
+            //// Change Periodical Status - Tab - START 
+            Route::get('/library/get_volumes_by_periodical_id/{id}' , [LibraryController::class, 'getVolumesByPeriodicalId']);
+            Route::get('/library/get_volumes_issues/{subscription_vol_id}' , [LibraryController::class, 'getVolumesIssues']);
+            Route::post('/library/update_periodical_status/{subscription_vol_id}' , [LibraryController::class, 'updatePeriodicalStatus']);
+            //// Change Periodical Status - Tab - END 
 
             Route::post('send_messagefordailyattendance', [StudentController::class, 'sendMessageForDailyAttendance']);
             Route::post('send_pendingsmsfordailyattendancestudent/{webhook_id}', [StudentController::class, 'sendPendingSMSForDailyAttendanceStudent']);

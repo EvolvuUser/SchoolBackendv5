@@ -2883,4 +2883,116 @@ class LibraryController extends Controller
             }
         }
     /** Subscription - Tab - END  */
+    /** Change Periodical Status - START */
+    public function getVolumesByPeriodicalId($id)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $volumes = DB::table('subscription_volume as sv')
+                ->join('subscription as s', 'sv.subscription_id', '=', 's.subscription_id')
+                ->join('periodicals as p', 's.periodical_id', '=', 'p.periodical_id')
+                ->where('s.periodical_id', $id)
+                ->select(
+                    '*'
+                )
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $volumes
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch Volumes for pid: ' . $id,
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function getVolumesIssues($subscription_vol_id) {
+        try {
+            $user = $this->authenticateUser();
+
+            $issues = DB::table('subscription_issues')
+                ->where('subscription_vol_id', $subscription_vol_id)
+                ->get();
+
+            $status = DB::table('subscription as a')
+                ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
+                ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
+                ->where('c.subscription_vol_id', $subscription_vol_id)
+                ->value('a.status');
+
+            return response()->json([
+                'status' => true,
+                'data'   => $issues,
+                'subscription_status' => $status,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to fetch Issues for subscription_vol_id: ' . $subscription_vol_id,
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    public function updatePeriodicalStatus(Request $request, $subscription_vol_id)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $issues = $request->input('issue', []);
+            $dateReceived = $request->input('date_received', []);
+            $receiveBy = $request->input('receive_by_date', []);
+
+            if(!$issues || !$dateReceived || !$receiveBy) {
+                return response()->json([
+                    'message' => 'issues, date_received, receive_by_date is required',
+                ], 403);
+            }
+
+            foreach ($issues as $i => $issue) {
+
+                if (!$issue) {
+                    continue;
+                }
+
+                $data = [
+                    'receive_by_date' => !empty($receiveBy[$i])
+                        ? date('Y-m-d', strtotime($receiveBy[$i]))
+                        : null,
+                ];
+
+                if (!empty($dateReceived[$i])) {
+                    $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
+                    $data['status'] = 'Received';
+                } else {
+                    $data['date_received'] = null;
+                    $data['status'] = null;
+                }
+
+                DB::table('subscription_issues')
+                    ->where('subscription_vol_id', $subscription_vol_id)
+                    ->where('issue', $issue)
+                    ->update($data);
+            }
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Issue Status Changed'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Failed to save, Server Error',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /** Change Periodical Status - END */
 }
