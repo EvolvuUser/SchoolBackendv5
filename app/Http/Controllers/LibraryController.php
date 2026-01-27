@@ -2528,6 +2528,9 @@ class LibraryController extends Controller
         }
     /** Periodicals - Tab - END  */
     /** Subscription - Tab - START */
+        /**
+         * GET /library/subscriptions
+         */
         public function subscriptionIndex(Request $request) 
         {
             try {
@@ -2551,6 +2554,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * POST /library/subscriptions
+         */
         public function subscriptionCreate(Request $request) 
         {
             try {
@@ -2602,6 +2608,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * PUT /library/subscriptions/{subscription_id}
+         */
         public function subscriptionUpdate(Request $request, $subscription_id)
         {
             try {
@@ -2655,6 +2664,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * DELETE /library/subscriptions/{subscription_id}
+         */
         public function subscriptionDelete($subscription_id)
         {
             try {
@@ -2719,6 +2731,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * GET /library/subscriptions/{subscription_id}/volumes
+         */
         public function subscriptionVolumeIndex($subscription_id) {
             try {
                 $user = $this->authenticateUser();
@@ -2746,6 +2761,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * POST /library/subscriptions/{subscription_id}/volumes
+         */
         public function subscriptionVolumeStore(Request $request , $subscription_id)
         {
             try {
@@ -2865,6 +2883,9 @@ class LibraryController extends Controller
                 ], 500);
             }
         }
+        /**
+         * DELETE /library/subscriptions/volumes/{subscription_vol_id}
+         */
         public function subscriptionVolumeDelete(Request $request , $subscription_vol_id) {
             try {
                 $user = $this->authenticateUser();
@@ -2884,115 +2905,172 @@ class LibraryController extends Controller
         }
     /** Subscription - Tab - END  */
     /** Change Periodical Status - START */
-    public function getVolumesByPeriodicalId($id)
-    {
-        try {
-            $user = $this->authenticateUser();
+        /**
+         * GET  /library/get_volumes_by_periodical_id/{id}
+         */
+        public function getVolumesByPeriodicalId($id)
+        {
+            try {
+                $user = $this->authenticateUser();
 
-            $volumes = DB::table('subscription_volume as sv')
-                ->join('subscription as s', 'sv.subscription_id', '=', 's.subscription_id')
-                ->join('periodicals as p', 's.periodical_id', '=', 'p.periodical_id')
-                ->where('s.periodical_id', $id)
-                ->select(
-                    '*'
-                )
-                ->get();
+                $volumes = DB::table('subscription_volume as sv')
+                    ->join('subscription as s', 'sv.subscription_id', '=', 's.subscription_id')
+                    ->join('periodicals as p', 's.periodical_id', '=', 'p.periodical_id')
+                    ->where('s.periodical_id', $id)
+                    ->select(
+                        '*'
+                    )
+                    ->get();
 
-            return response()->json([
-                'status' => true,
-                'data'   => $volumes
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Failed to fetch Volumes for pid: ' . $id,
-                'error'   => config('app.debug') ? $e->getMessage() : null
-            ], 500);
-        }
-    }
-    public function getVolumesIssues($subscription_vol_id) {
-        try {
-            $user = $this->authenticateUser();
-
-            $issues = DB::table('subscription_issues')
-                ->where('subscription_vol_id', $subscription_vol_id)
-                ->get();
-
-            $status = DB::table('subscription as a')
-                ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
-                ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
-                ->where('c.subscription_vol_id', $subscription_vol_id)
-                ->value('a.status');
-
-            return response()->json([
-                'status' => true,
-                'data'   => $issues,
-                'subscription_status' => $status,
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Failed to fetch Issues for subscription_vol_id: ' . $subscription_vol_id,
-                'error'   => config('app.debug') ? $e->getMessage() : null
-            ], 500);
-        }
-    }
-    public function updatePeriodicalStatus(Request $request, $subscription_vol_id)
-    {
-        try {
-            $user = $this->authenticateUser();
-
-            $issues = $request->input('issue', []);
-            $dateReceived = $request->input('date_received', []);
-            $receiveBy = $request->input('receive_by_date', []);
-
-            if(!$issues || !$dateReceived || !$receiveBy) {
                 return response()->json([
-                    'message' => 'issues, date_received, receive_by_date is required',
-                ], 403);
+                    'status' => true,
+                    'data'   => $volumes
+                ], 200);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch Volumes for pid: ' . $id,
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
             }
-
-            foreach ($issues as $i => $issue) {
-
-                if (!$issue) {
-                    continue;
-                }
-
-                $data = [
-                    'receive_by_date' => !empty($receiveBy[$i])
-                        ? date('Y-m-d', strtotime($receiveBy[$i]))
-                        : null,
-                ];
-
-                if (!empty($dateReceived[$i])) {
-                    $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
-                    $data['status'] = 'Received';
-                } else {
-                    $data['date_received'] = null;
-                    $data['status'] = null;
-                }
-
-                DB::table('subscription_issues')
-                    ->where('subscription_vol_id', $subscription_vol_id)
-                    ->where('issue', $issue)
-                    ->update($data);
-            }
-
-            return response()->json([
-                'status'  => true,
-                'message' => 'Issue Status Changed'
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Failed to save, Server Error',
-                'error'   => config('app.debug') ? $e->getMessage() : null
-            ], 500);
         }
-    }
+        /**
+         * GET  /library/get_volumes_issues/{subscription_vol_id}
+         */
+        public function getVolumesIssues($subscription_vol_id) {
+            try {
+                $user = $this->authenticateUser();
 
+                $issues = DB::table('subscription_issues')
+                    ->where('subscription_vol_id', $subscription_vol_id)
+                    ->get();
+
+                $status = DB::table('subscription as a')
+                    ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
+                    ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
+                    ->where('c.subscription_vol_id', $subscription_vol_id)
+                    ->value('a.status');
+
+                return response()->json([
+                    'status' => true,
+                    'data'   => $issues,
+                    'subscription_status' => $status,
+                ], 200);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch Issues for subscription_vol_id: ' . $subscription_vol_id,
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+        /**
+         * POST /library/update_periodical_status/{subscription_vol_id}
+         */
+        public function updatePeriodicalStatus(Request $request, $subscription_vol_id)
+        {
+            try {
+                $user = $this->authenticateUser();
+
+                $issues = $request->input('issue', []);
+                $dateReceived = $request->input('date_received', []);
+                $receiveBy = $request->input('receive_by_date', []);
+
+                if(!$issues || !$dateReceived || !$receiveBy) {
+                    return response()->json([
+                        'message' => 'issues, date_received, receive_by_date is required',
+                    ], 403);
+                }
+
+                foreach ($issues as $i => $issue) {
+
+                    if (!$issue) {
+                        continue;
+                    }
+
+                    $data = [
+                        'receive_by_date' => !empty($receiveBy[$i])
+                            ? date('Y-m-d', strtotime($receiveBy[$i]))
+                            : null,
+                    ];
+
+                    if (!empty($dateReceived[$i])) {
+                        $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
+                        $data['status'] = 'Received';
+                    } else {
+                        $data['date_received'] = null;
+                        $data['status'] = null;
+                    }
+
+                    DB::table('subscription_issues')
+                        ->where('subscription_vol_id', $subscription_vol_id)
+                        ->where('issue', $issue)
+                        ->update($data);
+                }
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Issue Status Changed'
+                ], 200);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to save, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
     /** Change Periodical Status - END */
+    /** Periodical Not Received Report - START */
+        /**
+         * /library/periodical_not_received_report
+         */
+        public function periodicalNotReceivedReport($periodical_id = null)
+        {
+            try {
+                $user = $this->authenticateUser();
+                $role_id = $user->role_id;
+
+                if ($role_id !== "L") {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'You are not allowed to access this resource',
+                    ], 401);
+                }
+
+                $query = DB::table('periodicals as a')
+                    ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+                    ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+                    ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+                    ->where('b.status', 'Active')
+                    ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
+                    ->where('d.status', '!=', 'Received');
+
+                // apply condition only if periodical_id is passed
+                if (!empty($periodical_id)) {
+                    $query->where('a.periodical_id', $periodical_id);
+                }
+
+                $data = $query
+                    ->select('a.*', 'b.*', 'c.*', 'd.*')
+                    ->get();
+
+                return response()->json([
+                    'status' => true,
+                    'data'   => $data,
+                    'count' => count($data),
+                ], 200);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch, Server Error',
+                    'error'   => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
+        }
+    /** Periodical Not Received Report - END */
 }
