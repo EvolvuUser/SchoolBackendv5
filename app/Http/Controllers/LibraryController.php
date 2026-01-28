@@ -2043,125 +2043,27 @@ class LibraryController extends Controller
         ]);
     }
 
-    // public function searchReminderRemark(Request $request)
-    // {
-    //     DB::beginTransaction();
-
-    //     try {
-    //         // Optional params
-    //         $class_id   = $request->query('class_id');
-    //         $section_id = $request->query('section_id');
-    //         $date       = $request->query('date');  // Y / N
-
-    //         $today = Carbon::today()->toDateString();
-
-    //         // =========================
-    //         // BASE QUERY (COMMON PART)
-    //         // =========================
-    //         $baseQuery = DB::table('issue_return as a')
-    //             ->join('book', 'a.book_id', '=', 'book.book_id')
-    //             ->join('student', 'a.member_id', '=', 'student.student_id')
-    //             ->join('class as b', 'student.class_id', '=', 'b.class_id')
-    //             ->join('section as c', 'student.section_id', '=', 'c.section_id')
-    //             ->join()
-    //             ->select(
-    //                 'a.*',
-    //                 'b.name as class_name',
-    //                 'c.name as section_name',
-    //                 'book.book_title',
-    //                 'student.first_name',
-    //                 'student.mid_name',
-    //                 'student.last_name',
-    //                 'student.class_id',
-    //                 'student.section_id'
-    //             )
-    //             ->where('a.member_type', 'S')
-    //             ->where('a.return_date', '0000-00-00');
-
-    //         // =========================
-    //         // DATE CONDITION
-    //         // =========================
-    //         if (!empty($date)) {
-    //             $baseQuery->where('a.due_date','<=', $today);
-    //         }
-
-    //         // =========================
-    //         // CLASS / SECTION CONDITION
-    //         // =========================
-    //         if (!empty($class_id)) {
-    //             $baseQuery->where('student.class_id', $class_id);
-    //         }
-
-    //         if (!empty($section_id)) {
-    //             $baseQuery->where('student.section_id', $section_id);
-    //         }
-
-    //         // =========================
-    //         // NOT IN REMARK LOG
-    //         // =========================
-    //         $notInQuery = (clone $baseQuery)->whereRaw(
-    //             "CONCAT(student.student_id, book.book_id, a.due_date) NOT IN (
-    //                 SELECT CONCAT(student_id, book_id, due_date)
-    //                 FROM nonreturned_books_remark_log
-    //             )"
-    //         );
-
-    //         // =========================
-    //         // IN REMARK LOG
-    //         // =========================
-    //         $inQuery = (clone $baseQuery)->whereRaw(
-    //             "CONCAT(student.student_id, book.book_id, a.due_date) IN (
-    //                 SELECT CONCAT(student_id, book_id, due_date)
-    //                 FROM nonreturned_books_remark_log
-    //             )"
-    //         );
-
-    //         // =========================
-    //         // UNION BOTH
-    //         // =========================
-    //         $result = $notInQuery
-    //             ->union($inQuery)
-    //             ->get();
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status'  => true,
-    //             'count'   => $result->count(),
-    //             'data'    => $result
-    //         ], 200);
-
-    //     } catch (\Throwable $e) {
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'status'  => false,
-    //             'message' => 'Failed to fetch reminder remarks',
-    //             'error'   => config('app.debug') ? $e->getMessage() : null
-    //         ], 500);
-    //     }
-    // }
-
     public function searchReminderRemark(Request $request)
     {
+        DB::beginTransaction();
+
         try {
             // Optional params
             $class_id   = $request->query('class_id');
             $section_id = $request->query('section_id');
-            $date       = $request->query('date'); // Y / N
+            $date       = $request->query('date');  // Y / N
 
             $today = Carbon::today()->toDateString();
 
-            $query = DB::table('issue_return as a')
+            // =========================
+            // BASE QUERY (COMMON PART)
+            // =========================
+            $baseQuery = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('student', 'a.member_id', '=', 'student.student_id')
                 ->join('class as b', 'student.class_id', '=', 'b.class_id')
                 ->join('section as c', 'student.section_id', '=', 'c.section_id')
-                ->leftJoin('nonreturned_books_remark_log as nr', function ($join) {
-                    $join->on('nr.student_id', '=', 'student.student_id')
-                        ->on('nr.book_id', '=', 'a.book_id')
-                        ->on('nr.due_date', '=', 'a.due_date');
-                })
+                ->join()
                 ->select(
                     'a.*',
                     'b.name as class_name',
@@ -2171,8 +2073,7 @@ class LibraryController extends Controller
                     'student.mid_name',
                     'student.last_name',
                     'student.class_id',
-                    'student.section_id',
-                    DB::raw('COUNT(nr.id) as remark_count')
+                    'student.section_id'
                 )
                 ->where('a.member_type', 'S')
                 ->where('a.return_date', '0000-00-00');
@@ -2181,44 +2082,66 @@ class LibraryController extends Controller
             // DATE CONDITION
             // =========================
             if (!empty($date)) {
-                $query->where('a.due_date', '<=', $today);
+                $baseQuery->where('a.due_date','<=', $today);
             }
 
             // =========================
             // CLASS / SECTION CONDITION
             // =========================
             if (!empty($class_id)) {
-                $query->where('student.class_id', $class_id);
+                $baseQuery->where('student.class_id', $class_id);
             }
 
             if (!empty($section_id)) {
-                $query->where('student.section_id', $section_id);
+                $baseQuery->where('student.section_id', $section_id);
             }
 
             // =========================
-            // GROUP BY (IMPORTANT)
+            // NOT IN REMARK LOG
             // =========================
-            $query->groupBy(
-                'a.issue_return_id',
-                'b.name',
-                'c.name',
-                'book.book_title',
-                'student.first_name',
-                'student.mid_name',
-                'student.last_name',
-                'student.class_id',
-                'student.section_id'
+            $notInQuery = (clone $baseQuery)->whereRaw(
+                "CONCAT(student.student_id, book.book_id, a.due_date) NOT IN (
+                    SELECT CONCAT(student_id, book_id, due_date)
+                    FROM nonreturned_books_remark_log
+                )"
             );
 
-            $result = $query->get();
+            // =========================
+            // IN REMARK LOG
+            // =========================
+            $inQuery = (clone $baseQuery)->whereRaw(
+                "CONCAT(student.student_id, book.book_id, a.due_date) IN (
+                    SELECT CONCAT(student_id, book_id, due_date)
+                    FROM nonreturned_books_remark_log
+                )"
+            );
+
+            // =========================
+            // UNION BOTH
+            // =========================
+            $results = $notInQuery
+                ->union($inQuery)
+                ->get();
+
+            foreach($results as $result) {
+                $result->count = DB::table('nonreturned_books_remark_log')
+                    ->where('student_id', $result->member_id)
+                    ->where('book_id', $result->book_id)
+                    ->where('due_date', $result->due_date)
+                    ->count();
+            }
+
+            DB::commit();
 
             return response()->json([
-                'status' => true,
-                'count'  => $result->count(),
-                'data'   => $result
+                'status'  => true,
+                'count'   => $results->count(),
+                'data'    => $results
             ], 200);
 
         } catch (\Throwable $e) {
+            DB::rollBack();
+
             return response()->json([
                 'status'  => false,
                 'message' => 'Failed to fetch reminder remarks',
@@ -2226,6 +2149,91 @@ class LibraryController extends Controller
             ], 500);
         }
     }
+
+    // public function searchReminderRemark(Request $request)
+    // {
+    //     try {
+    //         // Optional params
+    //         $class_id   = $request->query('class_id');
+    //         $section_id = $request->query('section_id');
+    //         $date       = $request->query('date'); // Y / N
+
+    //         $today = Carbon::today()->toDateString();
+
+    //         $query = DB::table('issue_return as a')
+    //             ->join('book', 'a.book_id', '=', 'book.book_id')
+    //             ->join('student', 'a.member_id', '=', 'student.student_id')
+    //             ->join('class as b', 'student.class_id', '=', 'b.class_id')
+    //             ->join('section as c', 'student.section_id', '=', 'c.section_id')
+    //             ->leftJoin('nonreturned_books_remark_log as nr', function ($join) {
+    //                 $join->on('nr.student_id', '=', 'student.student_id')
+    //                     ->on('nr.book_id', '=', 'a.book_id')
+    //                     ->on('nr.due_date', '=', 'a.due_date');
+    //             })
+    //             ->select(
+    //                 'a.*',
+    //                 'b.name as class_name',
+    //                 'c.name as section_name',
+    //                 'book.book_title',
+    //                 'student.first_name',
+    //                 'student.mid_name',
+    //                 'student.last_name',
+    //                 'student.class_id',
+    //                 'student.section_id',
+    //                 DB::raw('COUNT(nr.id) as remark_count')
+    //             )
+    //             ->where('a.member_type', 'S')
+    //             ->where('a.return_date', '0000-00-00');
+
+    //         // =========================
+    //         // DATE CONDITION
+    //         // =========================
+    //         if (!empty($date)) {
+    //             $query->where('a.due_date', '<=', $today);
+    //         }
+
+    //         // =========================
+    //         // CLASS / SECTION CONDITION
+    //         // =========================
+    //         if (!empty($class_id)) {
+    //             $query->where('student.class_id', $class_id);
+    //         }
+
+    //         if (!empty($section_id)) {
+    //             $query->where('student.section_id', $section_id);
+    //         }
+
+    //         // =========================
+    //         // GROUP BY (IMPORTANT)
+    //         // =========================
+    //         $query->groupBy(
+    //             'a.issue_return_id',
+    //             'b.name',
+    //             'c.name',
+    //             'book.book_title',
+    //             'student.first_name',
+    //             'student.mid_name',
+    //             'student.last_name',
+    //             'student.class_id',
+    //             'student.section_id'
+    //         );
+
+    //         $result = $query->get();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'count'  => $result->count(),
+    //             'data'   => $result
+    //         ], 200);
+
+    //     } catch (\Throwable $e) {
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Failed to fetch reminder remarks',
+    //             'error'   => config('app.debug') ? $e->getMessage() : null
+    //         ], 500);
+    //     }
+    // }
 
 
     public function sendReminderRemark(Request $request) {
