@@ -123,14 +123,14 @@ class SendReminderRemarkJob implements ShouldQueue
 
         }
 
-        // SMS
-        if ($schoolSettings->sms_integration === 'Y' && !$whatsappFailed) {
-            app(SmsService::class)->sendSms(
-                $student->phone_no,
-                'Dear Parent,' . $this->remarkData['remark_desc'],
-                '1107161354408119887'
-            );
-        }
+        // // SMS
+        // if ($schoolSettings->sms_integration === 'Y' && !$whatsappFailed) {
+        //     app(SmsService::class)->sendSms(
+        //         $student->phone_no,
+        //         'Dear Parent,' . $this->remarkData['remark_desc'],
+        //         '1107161354408119887'
+        //     );
+        // }
 
         // Push notifications
         $tokens = getTokenDataParentId($this->studentId);
