@@ -2051,7 +2051,7 @@ class LibraryController extends Controller
             // Optional params
             $class_id   = $request->query('class_id');
             $section_id = $request->query('section_id');
-            $date       = $request->query('date');  // Y / N
+            $date       = $request->query('date'); // expected: YYYY-MM-DD
 
             $today = Carbon::today()->toDateString();
 
@@ -2078,10 +2078,14 @@ class LibraryController extends Controller
                 ->where('a.return_date', '0000-00-00');
 
             // =========================
-            // DATE CONDITION
+            // DATE CONDITION (FIXED)
             // =========================
             if (!empty($date)) {
-                $baseQuery->where('a.due_date','<=', $today);
+                // exact date match (CI: due_date = $date)
+                $baseQuery->whereDate('a.due_date', $date);
+            } else {
+                // overdue till today (CI: due_date <= today)
+                $baseQuery->whereDate('a.due_date', '<=', $today);
             }
 
             // =========================
@@ -2122,7 +2126,10 @@ class LibraryController extends Controller
                 ->union($inQuery)
                 ->get();
 
-            foreach($results as $result) {
+            // =========================
+            // REMARK COUNT
+            // =========================
+            foreach ($results as $result) {
                 $result->count = DB::table('nonreturned_books_remark_log')
                     ->where('student_id', $result->member_id)
                     ->where('book_id', $result->book_id)
@@ -2133,9 +2140,9 @@ class LibraryController extends Controller
             DB::commit();
 
             return response()->json([
-                'status'  => true,
-                'count'   => $results->count(),
-                'data'    => $results
+                'status' => true,
+                'count'  => $results->count(),
+                'data'   => $results
             ], 200);
 
         } catch (\Throwable $e) {

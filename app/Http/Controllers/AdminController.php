@@ -21093,7 +21093,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->where('academic_yr', $academicYr)
                 ->count();
             $teacherStudentBdayCount = $teachercount + $studentcount;
-            
+
             $response['staff_student_bday_count'] = [
                 'count' => $teacherStudentBdayCount,
             ];
@@ -21184,6 +21184,42 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $response['approve_leave'] = [
                 'count' => $leaveapplication,
             ];
+
+            // 6. AttendanceNotMarkedCount
+            $date = $request->query('date', now()->toDateString());
+            $classes = DB::table('class')
+                ->select('class_id')
+                ->where('academic_yr', $academicYr)
+                ->get();
+
+            $sectionsByClass = DB::table('section')
+                ->select('section_id', 'class_id')
+                ->get()
+                ->groupBy('class_id');
+
+            $notMarkedCount = 0;
+            $totalClasses = 0;
+            foreach ($classes as $class) {
+                foreach ($sectionsByClass[$class->class_id] ?? [] as $section) {
+                    $exists = DB::table('attendance')
+                        ->where('class_id', $class->class_id)
+                        ->where('section_id', $section->section_id)
+                        ->whereDate('only_date', $date)
+                        ->exists();
+                    if (!$exists) {
+                        $notMarkedCount++;
+                    }
+                    $totalClasses++;
+                }
+            }
+
+            $response['attendanceNotMarkedCount'] = [
+                'attendanceNotMarkedCount' => $notMarkedCount,
+                'totalClassesCount' => $totalClasses,
+            ];
+
+            // 7. lesson plan summary 
+            $nextMonday = now()->next('Monday')->format('d-m-Y');
 
             return response()->json([
                 'data' => $response,
