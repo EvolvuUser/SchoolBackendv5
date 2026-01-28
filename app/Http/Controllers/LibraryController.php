@@ -2063,7 +2063,6 @@ class LibraryController extends Controller
                 ->join('student', 'a.member_id', '=', 'student.student_id')
                 ->join('class as b', 'student.class_id', '=', 'b.class_id')
                 ->join('section as c', 'student.section_id', '=', 'c.section_id')
-                ->join()
                 ->select(
                     'a.*',
                     'b.name as class_name',
