@@ -502,9 +502,25 @@ class TeacherDashboardController extends Controller
                 ->first();
 
             // -------- CALCULATION --------
-            $totalMarksSum = (float) ($student_marks->total_marks_sum ?? 0);
-            $totalMarksTotal = (float) ($student_marks->total_highest ?? 0);
-            $studentCount = (int) ($student_marks->student_count ?? 0);
+            $totalMarksSum =  $student_marks->total_marks_sum ?? 0;
+            $totalMarksTotal =  $student_marks->total_highest ?? 0;
+            $studentCount =  $student_marks->student_count ?? 0;
+
+            if(!$totalMarksSum && !$totalMarksTotal) {
+                // -------- FINAL PUSH --------
+                $classSectionSubjects[] = [
+                    'class_id' => $class_id,
+                    'section_id' => $section_id,
+                    'subject_name' => $row->name,
+                    'subject_id' => $row->subject_id,
+                    'academic_yr' => $academic_yr,
+                    'studentCount' => null,
+                    'average_percentage' => null, 
+                    'totalMarksStudentGot' => null,
+                    'outOfTotalMarks' => null,
+                ];
+                continue;
+            }
 
             // avoid division by zero
             $averagePercentage = ($totalMarksTotal > 0)

@@ -2370,775 +2370,882 @@ class LibraryController extends Controller
         }
     }
 
-    // ============================
-    // Periodicals - Menu
-    // ============================
-    // Developer - Leo The Great - 2026-01-23
-    /** Periodicals - Tab - START */
-        /**
-         * Listing of Periodicals
-         * GET /library/periodicals
-         */
-        public function periodicalsIndex(Request $request) {
-            try {
-                $user = $this->authenticateUser();
-                $academic_year = JWTAuth::getPayload()->get('academic_year');
+    // ##############################
+    // Library Module 
+    // ##############################
+    // ------------------------------------
 
-                $data = DB::table('periodicals')
-                ->get();
+        // ============================
+        // Periodicals - Menu
+        // ============================
+        // Developer - Leo The Great - 2026-01-23
+        // ----------------------------------------------
+            /** Periodicals - Tab - START */
+                /**
+                 * Listing of Periodicals
+                 * GET /library/periodicals
+                 */
+                public function periodicalsIndex(Request $request) {
+                    try {
+                        $user = $this->authenticateUser();
+                        $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-                return response()->json([
-                    'status' => true,
-                    'data' => $data,
-                    'count' => count($data),
-                ] , 200);
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch periodicals',
-                    'error'   => $e->getMessage(),
-                    'line' => $e->getLine(),
-                ], 500);
-            }
-        }
-        /**
-         * Create Periodical
-         * POST /library/periodicals
-         */
-        public function storePeriodical(Request $request) {
-            try {
+                        $data = DB::table('periodicals')
+                        ->get();
 
-                $this->authenticateUser();
-
-                $title 			    =	$request->input('title');
-                $subscription_no    =	$request->input('subscription_no');
-                $frequency          =	$request->input('frequency');
-                $email_ids 			=	$request->input('email_ids');
-
-                if(!$title || !$subscription_no || !$frequency) {
-                    return response()->json([
-                        'status' => false,
-                        'Message' => "title, subscription_no, frequency are required "
-                    ] , 400);
+                        return response()->json([
+                            'status' => true,
+                            'data' => $data,
+                            'count' => count($data),
+                        ] , 200);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch periodicals',
+                            'error'   => $e->getMessage(),
+                            'line' => $e->getLine(),
+                        ], 500);
+                    }
                 }
+                /**
+                 * Create Periodical
+                 * POST /library/periodicals
+                 */
+                public function storePeriodical(Request $request) {
+                    try {
 
-                $data = DB::table('periodicals')->insert([
-                    'title' => $title,
-                    'subscription_no' => $subscription_no,
-                    'frequency' => $frequency,
-                    'email_ids' => $email_ids ?? "",
-                ]);
+                        $this->authenticateUser();
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Periodical Created',
-                    'data' => $data,
-                ], 200);
+                        $title 			    =	$request->input('title');
+                        $subscription_no    =	$request->input('subscription_no');
+                        $frequency          =	$request->input('frequency');
+                        $email_ids 			=	$request->input('email_ids');
 
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to store periodical, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * Update Periodical
-         * PUT /library/periodicals/{id}
-         */
-        public function updatePeriodical(Request $request, $id) {
-            try {
+                        if(!$title || !$subscription_no || !$frequency) {
+                            return response()->json([
+                                'status' => false,
+                                'Message' => "title, subscription_no, frequency are required "
+                            ] , 400);
+                        }
 
-                $this->authenticateUser();
+                        $data = DB::table('periodicals')->insert([
+                            'title' => $title,
+                            'subscription_no' => $subscription_no,
+                            'frequency' => $frequency,
+                            'email_ids' => $email_ids ?? "",
+                        ]);
 
-                $title           = $request->input('title');
-                $subscription_no = $request->input('subscription_no');
-                $frequency       = $request->input('frequency');
-                $email_ids       = $request->input('email_ids');
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Periodical Created',
+                            'data' => $data,
+                        ], 200);
 
-                if(!$title || !$subscription_no || !$frequency) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'title, subscription_no, frequency are required'
-                    ], 403);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to store periodical, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * Update Periodical
+                 * PUT /library/periodicals/{id}
+                 */
+                public function updatePeriodical(Request $request, $id) {
+                    try {
 
-                $updated = DB::table('periodicals')
-                    ->where('periodical_id', $id)
-                    ->update([
-                        'title' => $title,
-                        'subscription_no' => $subscription_no,
-                        'frequency' => $frequency,
-                        'email_ids' => $email_ids ?? ""
-                    ]);
+                        $this->authenticateUser();
 
-                if(!$updated) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'Periodical not found or no changes made'
-                    ], 404);
+                        $title           = $request->input('title');
+                        $subscription_no = $request->input('subscription_no');
+                        $frequency       = $request->input('frequency');
+                        $email_ids       = $request->input('email_ids');
+
+                        if(!$title || !$subscription_no || !$frequency) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'title, subscription_no, frequency are required'
+                            ], 403);
+                        }
+
+                        $updated = DB::table('periodicals')
+                            ->where('periodical_id', $id)
+                            ->update([
+                                'title' => $title,
+                                'subscription_no' => $subscription_no,
+                                'frequency' => $frequency,
+                                'email_ids' => $email_ids ?? ""
+                            ]);
+
+                        if(!$updated) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'Periodical not found or no changes made'
+                            ], 404);
+                        }
+
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Periodical Updated Successfully'
+                        ], 200);
+
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to update periodical, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * Delete Periodical
+                 * DELETE /library/periodicals/{id}
+                 */
+                public function deletePeriodical($id) {
+                    try {
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Periodical Updated Successfully'
-                ], 200);
+                        $this->authenticateUser();
 
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to update periodical, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * Delete Periodical
-         * DELETE /library/periodicals/{id}
-         */
-        public function deletePeriodical($id) {
-            try {
+                        $deleted = DB::table('periodicals')
+                            ->where('periodical_id', $id)
+                            ->delete();
 
-                $this->authenticateUser();
+                        if(!$deleted) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'Periodical not found'
+                            ], 404);
+                        }
 
-                $deleted = DB::table('periodicals')
-                    ->where('periodical_id', $id)
-                    ->delete();
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Periodical Deleted Successfully'
+                        ], 200);
 
-                if(!$deleted) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'Periodical not found'
-                    ], 404);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to delete periodical, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Periodicals - Tab - END  */
+            /** Subscription - Tab - START */
+                /**
+                 * GET /library/subscriptions
+                 */
+                public function subscriptionIndex(Request $request) 
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Periodical Deleted Successfully'
-                ], 200);
+                        $data = DB::table('subscription')
+                        ->leftJoin('periodicals' , 'periodicals.periodical_id' , '=' , 'subscription.periodical_id')
+                        ->get();
 
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to delete periodical, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-    /** Periodicals - Tab - END  */
-    /** Subscription - Tab - START */
-        /**
-         * GET /library/subscriptions
-         */
-        public function subscriptionIndex(Request $request) 
-        {
-            try {
-                $user = $this->authenticateUser();
-                $academic_year = JWTAuth::getPayload()->get('academic_year');
-
-                $data = DB::table('subscription')
-                ->leftJoin('periodicals' , 'periodicals.periodical_id' , '=' , 'subscription.periodical_id')
-                ->get();
-
-                return response()->json([
-                    'status' => true,
-                    'data' => $data,
-                    'count' => count($data),
-                ] , 200);
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch Subscription Details',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * POST /library/subscriptions
-         */
-        public function subscriptionCreate(Request $request) 
-        {
-            try {
-                $user = $this->authenticateUser();
-                $role = $user->role_id;
-
-                if($role != 'L' && $role != 'U') {
-                    return response()->json([
-                        'message' => 'You are not allowed to access this resource.'
-                    ], 401);
+                        return response()->json([
+                            'status' => true,
+                            'data' => $data,
+                            'count' => count($data),
+                        ] , 200);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch Subscription Details',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * POST /library/subscriptions
+                 */
+                public function subscriptionCreate(Request $request) 
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
 
-                $periodical_id      = $request->input('periodical_id');
-                $oldSubscriptions   = DB::table('subscription')->where('periodical_id' , $periodical_id)->get();
-                $from_date = date('Y-m-d', strtotime($request->from_date));
-                $to_date   = date('Y-m-d', strtotime($request->to_date));
-                $receiving_date     = $request->input('receiving_date');
-                $status             = 'Active';
+                        if($role != 'L' && $role != 'U') {
+                            return response()->json([
+                                'message' => 'You are not allowed to access this resource.'
+                            ], 401);
+                        }
 
-                if(!$periodical_id || !$from_date || !$to_date || !$receiving_date) {
-                    return response()->json([
-                        'status' => false,
-                        'Message' => "periodical_id, from_date, to_date, receiving_date are required"
-                    ] , 400);
+                        $periodical_id      = $request->input('periodical_id');
+                        $oldSubscriptions   = DB::table('subscription')->where('periodical_id' , $periodical_id)->get();
+                        $from_date = date('Y-m-d', strtotime($request->from_date));
+                        $to_date   = date('Y-m-d', strtotime($request->to_date));
+                        $receiving_date     = $request->input('receiving_date');
+                        $status             = 'Active';
+
+                        if(!$periodical_id || !$from_date || !$to_date || !$receiving_date) {
+                            return response()->json([
+                                'status' => false,
+                                'Message' => "periodical_id, from_date, to_date, receiving_date are required"
+                            ] , 400);
+                        }
+
+                        if(count($oldSubscriptions) > 0) {
+                            DB::table('subscription')->where('periodical_id' , $periodical_id)->update(['status' => 'Expired']);
+                        }
+
+                        $data = DB::table('subscription')->insert([
+                            'periodical_id' => $periodical_id,
+                            'from_date' => $from_date,
+                            'to_date' => $to_date,
+                            'status' => $status,
+                            'receiving_date' => $receiving_date,
+                        ]);
+
+                        return response()->json([
+                            'status' => true,
+                            'message' => "Subscription Created Successfully",
+                            'data' => $data,
+                        ] , 200);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to store subscription details, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * PUT /library/subscriptions/{subscription_id}
+                 */
+                public function subscriptionUpdate(Request $request, $subscription_id)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
 
-                if(count($oldSubscriptions) > 0) {
-                    DB::table('subscription')->where('periodical_id' , $periodical_id)->update(['status' => 'Expired']);
+                        if ($role != 'L' && $role != 'U') {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'You are not allowed to access this resource.'
+                            ], 401);
+                        }
+
+                        // Check subscription exists
+                        $subscription = DB::table('subscription')
+                            ->where('subscription_id', $subscription_id)
+                            ->first();
+
+                        if (!$subscription) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'Subscription not found'
+                            ], 404);
+                        }
+
+                        // Allowed editable fields ONLY
+                        $from_date       = $request->input('from_date') ? date('Y-m-d', strtotime($request->input('from_date'))) : $subscription->from_date;
+                        $to_date         = $request->input('to_date') ? date('Y-m-d', strtotime($request->input('to_date'))) : $subscription->to_date;
+                        $receiving_date  = $request->input('receiving_date') ?? $subscription->receiving_date;
+                        $status          = $request->input('status') ?? $subscription->status;
+
+                        $updated = DB::table('subscription')
+                            ->where('subscription_id', $subscription_id)
+                            ->update([
+                                'from_date'      => $from_date,
+                                'to_date'        => $to_date,
+                                'receiving_date' => $receiving_date,
+                                'status'         => $status,
+                            ]);
+
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Subscription Updated Successfully',
+                        ], 200);
+
+                    } catch (Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to update subscription details',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * DELETE /library/subscriptions/{subscription_id}
+                 */
+                public function subscriptionDelete($subscription_id)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
 
-                $data = DB::table('subscription')->insert([
-                    'periodical_id' => $periodical_id,
-                    'from_date' => $from_date,
-                    'to_date' => $to_date,
-                    'status' => $status,
-                    'receiving_date' => $receiving_date,
-                ]);
+                        if ($role != 'L' && $role != 'U') {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'You are not allowed to access this resource.'
+                            ], 401);
+                        }
 
-                return response()->json([
-                    'status' => true,
-                    'message' => "Subscription Created Successfully",
-                    'data' => $data,
-                ] , 200);
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to store subscription details, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * PUT /library/subscriptions/{subscription_id}
-         */
-        public function subscriptionUpdate(Request $request, $subscription_id)
-        {
-            try {
-                $user = $this->authenticateUser();
-                $role = $user->role_id;
+                        // 1️⃣ Check if volumes/issues exist with date_received != '0000-00-00'
+                        $issues = DB::table('subscription as a')
+                            ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
+                            ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
+                            ->where('a.subscription_id', $subscription_id)
+                            ->where('b.date_received', '!=', '0000-00-00')
+                            ->get();
 
-                if ($role != 'L' && $role != 'U') {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'You are not allowed to access this resource.'
-                    ], 401);
+                        if ($issues->count() > 0) {
+                            return response()->json([
+                                'status'  => false,
+                                'message' => 'Subscription Details cannot be deleted'
+                            ], 400);
+                        }
+
+                        // 2️⃣ Get subscription_vol_id
+                        $subscriptionVol = DB::table('subscription_volume')
+                            ->where('subscription_id', $subscription_id)
+                            ->first();
+
+                        if ($subscriptionVol) {
+
+                            // 3️⃣ Delete subscription_issues
+                            DB::table('subscription_issues')
+                                ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
+                                ->delete();
+
+                            // 4️⃣ Delete subscription_volume
+                            DB::table('subscription_volume')
+                                ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
+                                ->delete();
+                        }
+
+                        // 5️⃣ Delete subscription
+                        DB::table('subscription')
+                            ->where('subscription_id', $subscription_id)
+                            ->delete();
+
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Subscription Details deleted successfully'
+                        ], 200);
+
+                    } catch (Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to delete subscription',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * GET /library/subscriptions/{subscription_id}/volumes
+                 */
+                public function subscriptionVolumeIndex($subscription_id) {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
+                        $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-                // Check subscription exists
-                $subscription = DB::table('subscription')
-                    ->where('subscription_id', $subscription_id)
-                    ->first();
+                        if($role != 'L' && $role != 'U') {
+                            return response()->json([
+                                'message' => 'You are not allowed to access this resource.'
+                            ], 401);
+                        }
 
-                if (!$subscription) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'Subscription not found'
-                    ], 404);
+                        $data = DB::table('subscription_volume')->where('subscription_id' , $subscription_id)->get();
+
+                        return response()->json([
+                            'status' => true,
+                            'data' => $data,
+                            'count' => count($data),
+                        ] , 200);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch Subscription Volume Details',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * POST /library/subscriptions/{subscription_id}/volumes
+                 */
+                public function subscriptionVolumeStore(Request $request , $subscription_id)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
 
-                // Allowed editable fields ONLY
-                $from_date       = $request->input('from_date') ? date('Y-m-d', strtotime($request->input('from_date'))) : $subscription->from_date;
-                $to_date         = $request->input('to_date') ? date('Y-m-d', strtotime($request->input('to_date'))) : $subscription->to_date;
-                $receiving_date  = $request->input('receiving_date') ?? $subscription->receiving_date;
-                $status          = $request->input('status') ?? $subscription->status;
+                        if ($role !== 'L' && $role !== 'U') {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'You are not allowed to access this resource.'
+                            ], 401);
+                        }
 
-                $updated = DB::table('subscription')
-                    ->where('subscription_id', $subscription_id)
-                    ->update([
-                        'from_date'      => $from_date,
-                        'to_date'        => $to_date,
-                        'receiving_date' => $receiving_date,
-                        'status'         => $status,
-                    ]);
+                        // Inputs
+                        $subscription_id        = $subscription_id;
+                        $volume_start_date      = date('Y-m-d', strtotime($request->input('volume_start_date')));
+                        $subscription_to_date   = $request->input('subscription_to_date');
+                        $receiving_date         = $request->input('receiving_date');
+                        $frequency              = $request->input('frequency');
+                        $volume_lists           = $request->input('volume');
+                        $issue_lists            = $request->input('issue');
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Subscription Updated Successfully',
-                ], 200);
+                        if (
+                            !$subscription_id || !$volume_start_date || !$subscription_to_date ||
+                            !$receiving_date || !$frequency || !$volume_lists || !$issue_lists
+                        ) {
+                            return response()->json([ 
+                                'status' => false, 
+                                'Message' => "subscription_id, volume_start_date, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
+                            ] , 400);
+                        }
 
-            } catch (Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to update subscription details',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * DELETE /library/subscriptions/{subscription_id}
-         */
-        public function subscriptionDelete($subscription_id)
-        {
-            try {
-                $user = $this->authenticateUser();
-                $role = $user->role_id;
+                        $from_year  = date('Y', strtotime($volume_start_date));
+                        $from_month = date('m', strtotime($volume_start_date));
 
-                if ($role != 'L' && $role != 'U') {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'You are not allowed to access this resource.'
-                    ], 401);
-                }
+                        // Initial receive_by_date
+                        if ($frequency === 'Weekly') {
+                            $received_by_date = date(
+                                'Y-m-d',
+                                strtotime($receiving_date, strtotime($volume_start_date))
+                            );
+                        } else {
+                            $received_by_date = $from_year . '-' . $from_month . '-' . $receiving_date;
+                        }
 
-                // 1️⃣ Check if volumes/issues exist with date_received != '0000-00-00'
-                $issues = DB::table('subscription as a')
-                    ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
-                    ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
-                    ->where('a.subscription_id', $subscription_id)
-                    ->where('b.date_received', '!=', '0000-00-00')
-                    ->get();
+                        DB::beginTransaction();
 
-                if ($issues->count() > 0) {
-                    return response()->json([
-                        'status'  => false,
-                        'message' => 'Subscription Details cannot be deleted'
-                    ], 400);
-                }
+                        for ($i = 0; $i < count($volume_lists); $i++) {
 
-                // 2️⃣ Get subscription_vol_id
-                $subscriptionVol = DB::table('subscription_volume')
-                    ->where('subscription_id', $subscription_id)
-                    ->first();
+                            // Insert subscription_volume
+                            $subscriptionVolId = DB::table('subscription_volume')->insertGetId([
+                                'subscription_id'    => $subscription_id,
+                                'volume_start_date'  => $volume_start_date,
+                                'volume'             => $volume_lists[$i],
+                                'no_of_issues'       => $issue_lists[$i],
+                            ]);
 
-                if ($subscriptionVol) {
+                            $no_of_issue_count = $issue_lists[$i];
 
-                    // 3️⃣ Delete subscription_issues
-                    DB::table('subscription_issues')
-                        ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
-                        ->delete();
+                            for ($j = 1; $j <= $no_of_issue_count; $j++) {
 
-                    // 4️⃣ Delete subscription_volume
-                    DB::table('subscription_volume')
-                        ->where('subscription_vol_id', $subscriptionVol->subscription_vol_id)
-                        ->delete();
-                }
+                                if ($j != 1) {
 
-                // 5️⃣ Delete subscription
-                DB::table('subscription')
-                    ->where('subscription_id', $subscription_id)
-                    ->delete();
+                                    if ($frequency === 'Monthly') {
+                                        $received_by_date = date(
+                                            'Y-m-d',
+                                            strtotime($received_by_date . ' +1 month')
+                                        );
+                                    }
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Subscription Details deleted successfully'
-                ], 200);
+                                    if ($frequency === 'Bimonthly') {
+                                        $received_by_date = date(
+                                            'Y-m-d',
+                                            strtotime('+15 day', strtotime($received_by_date))
+                                        );
 
-            } catch (Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to delete subscription',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * GET /library/subscriptions/{subscription_id}/volumes
-         */
-        public function subscriptionVolumeIndex($subscription_id) {
-            try {
-                $user = $this->authenticateUser();
-                $role = $user->role_id;
-                $academic_year = JWTAuth::getPayload()->get('academic_year');
+                                        if ($j % 2 != 0) {
+                                            $month = date('m', strtotime($received_by_date));
+                                            $year  = date('Y', strtotime($received_by_date));
+                                            $received_by_date = $year . '-' . $month . '-' . $receiving_date;
+                                        }
+                                    }
 
-                if($role != 'L' && $role != 'U') {
-                    return response()->json([
-                        'message' => 'You are not allowed to access this resource.'
-                    ], 401);
-                }
-
-                $data = DB::table('subscription_volume')->where('subscription_id' , $subscription_id)->get();
-
-                return response()->json([
-                    'status' => true,
-                    'data' => $data,
-                    'count' => count($data),
-                ] , 200);
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch Subscription Volume Details',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * POST /library/subscriptions/{subscription_id}/volumes
-         */
-        public function subscriptionVolumeStore(Request $request , $subscription_id)
-        {
-            try {
-                $user = $this->authenticateUser();
-                $role = $user->role_id;
-
-                if ($role !== 'L' && $role !== 'U') {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'You are not allowed to access this resource.'
-                    ], 401);
-                }
-
-                // Inputs
-                $subscription_id        = $subscription_id;
-                $volume_start_date      = date('Y-m-d', strtotime($request->input('volume_start_date')));
-                $subscription_to_date   = $request->input('subscription_to_date');
-                $receiving_date         = $request->input('receiving_date');
-                $frequency              = $request->input('frequency');
-                $volume_lists           = $request->input('volume');
-                $issue_lists            = $request->input('issue');
-
-                if (
-                    !$subscription_id || !$volume_start_date || !$subscription_to_date ||
-                    !$receiving_date || !$frequency || !$volume_lists || !$issue_lists
-                ) {
-                    return response()->json([ 
-                        'status' => false, 
-                        'Message' => "subscription_id, volume_start_date, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
-                    ] , 400);
-                }
-
-                $from_year  = date('Y', strtotime($volume_start_date));
-                $from_month = date('m', strtotime($volume_start_date));
-
-                // Initial receive_by_date
-                if ($frequency === 'Weekly') {
-                    $received_by_date = date(
-                        'Y-m-d',
-                        strtotime($receiving_date, strtotime($volume_start_date))
-                    );
-                } else {
-                    $received_by_date = $from_year . '-' . $from_month . '-' . $receiving_date;
-                }
-
-                DB::beginTransaction();
-
-                for ($i = 0; $i < count($volume_lists); $i++) {
-
-                    // Insert subscription_volume
-                    $subscriptionVolId = DB::table('subscription_volume')->insertGetId([
-                        'subscription_id'    => $subscription_id,
-                        'volume_start_date'  => $volume_start_date,
-                        'volume'             => $volume_lists[$i],
-                        'no_of_issues'       => $issue_lists[$i],
-                    ]);
-
-                    $no_of_issue_count = $issue_lists[$i];
-
-                    for ($j = 1; $j <= $no_of_issue_count; $j++) {
-
-                        if ($j != 1) {
-
-                            if ($frequency === 'Monthly') {
-                                $received_by_date = date(
-                                    'Y-m-d',
-                                    strtotime($received_by_date . ' +1 month')
-                                );
-                            }
-
-                            if ($frequency === 'Bimonthly') {
-                                $received_by_date = date(
-                                    'Y-m-d',
-                                    strtotime('+15 day', strtotime($received_by_date))
-                                );
-
-                                if ($j % 2 != 0) {
-                                    $month = date('m', strtotime($received_by_date));
-                                    $year  = date('Y', strtotime($received_by_date));
-                                    $received_by_date = $year . '-' . $month . '-' . $receiving_date;
+                                    if ($frequency === 'Weekly') {
+                                        $received_by_date = date(
+                                            'Y-m-d',
+                                            strtotime('+7 day', strtotime($received_by_date))
+                                        );
+                                    }
                                 }
-                            }
 
-                            if ($frequency === 'Weekly') {
-                                $received_by_date = date(
-                                    'Y-m-d',
-                                    strtotime('+7 day', strtotime($received_by_date))
-                                );
+                                // Insert subscription_issues
+                                DB::table('subscription_issues')->insert([
+                                    'subscription_vol_id' => $subscriptionVolId,
+                                    'issue'               => $j,
+                                    'receive_by_date'     => $received_by_date,
+                                    'created_at'          => now(),
+                                    'updated_at'          => now(),
+                                ]);
                             }
                         }
 
-                        // Insert subscription_issues
-                        DB::table('subscription_issues')->insert([
-                            'subscription_vol_id' => $subscriptionVolId,
-                            'issue'               => $j,
-                            'receive_by_date'     => $received_by_date,
-                            'created_at'          => now(),
-                            'updated_at'          => now(),
-                        ]);
+                        DB::commit();
+
+                        return response()->json([
+                            'status' => true,
+                            'message' => 'Volume Created Successfully'
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to store Volume, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
                     }
                 }
-
-                DB::commit();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Volume Created Successfully'
-                ], 200);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to store Volume, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * DELETE /library/subscriptions/volumes/{subscription_vol_id}
-         */
-        public function subscriptionVolumeDelete(Request $request , $subscription_vol_id) {
-            try {
-                $user = $this->authenticateUser();
-                DB::table('subscription_volume')->where('subscription_vol_id' , $subscription_vol_id)->delete();
-                DB::table('subscription_issues')->where('subscription_vol_id' , $subscription_vol_id)->delete();
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Volume deleted.'
-                ], 200);
-            } catch(Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to delete volume',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-    /** Subscription - Tab - END  */
-    /** Change Periodical Status - START */
-        /**
-         * GET  /library/get_volumes_by_periodical_id/{id}
-         */
-        public function getVolumesByPeriodicalId($id)
-        {
-            try {
-                $user = $this->authenticateUser();
-
-                $volumes = DB::table('subscription_volume as sv')
-                    ->join('subscription as s', 'sv.subscription_id', '=', 's.subscription_id')
-                    ->join('periodicals as p', 's.periodical_id', '=', 'p.periodical_id')
-                    ->where('s.periodical_id', $id)
-                    ->select(
-                        '*'
-                    )
-                    ->get();
-
-                return response()->json([
-                    'status' => true,
-                    'data'   => $volumes
-                ], 200);
-
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch Volumes for pid: ' . $id,
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * GET  /library/get_volumes_issues/{subscription_vol_id}
-         */
-        public function getVolumesIssues($subscription_vol_id) {
-            try {
-                $user = $this->authenticateUser();
-
-                $issues = DB::table('subscription_issues')
-                    ->where('subscription_vol_id', $subscription_vol_id)
-                    ->get();
-
-                $status = DB::table('subscription as a')
-                    ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
-                    ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
-                    ->where('c.subscription_vol_id', $subscription_vol_id)
-                    ->value('a.status');
-
-                return response()->json([
-                    'status' => true,
-                    'data'   => $issues,
-                    'subscription_status' => $status,
-                ], 200);
-
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch Issues for subscription_vol_id: ' . $subscription_vol_id,
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-        /**
-         * POST /library/update_periodical_status/{subscription_vol_id}
-         */
-        public function updatePeriodicalStatus(Request $request, $subscription_vol_id)
-        {
-            try {
-                $user = $this->authenticateUser();
-
-                $issues = $request->input('issue', []);
-                $dateReceived = $request->input('date_received', []);
-                $receiveBy = $request->input('receive_by_date', []);
-
-                if(!$issues || !$dateReceived || !$receiveBy) {
-                    return response()->json([
-                        'message' => 'issues, date_received, receive_by_date is required',
-                    ], 403);
-                }
-
-                foreach ($issues as $i => $issue) {
-
-                    if (!$issue) {
-                        continue;
+                /**
+                 * DELETE /library/subscriptions/volumes/{subscription_vol_id}
+                 */
+                public function subscriptionVolumeDelete(Request $request , $subscription_vol_id) {
+                    try {
+                        $user = $this->authenticateUser();
+                        DB::table('subscription_volume')->where('subscription_vol_id' , $subscription_vol_id)->delete();
+                        DB::table('subscription_issues')->where('subscription_vol_id' , $subscription_vol_id)->delete();
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Volume deleted.'
+                        ], 200);
+                    } catch(Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to delete volume',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
                     }
+                }
+            /** Subscription - Tab - END  */
+            /** Change Periodical Status - START */
+                /**
+                 * GET  /library/get_volumes_by_periodical_id/{id}
+                 */
+                public function getVolumesByPeriodicalId($id)
+                {
+                    try {
+                        $user = $this->authenticateUser();
 
-                    $data = [
-                        'receive_by_date' => !empty($receiveBy[$i])
-                            ? date('Y-m-d', strtotime($receiveBy[$i]))
-                            : null,
-                    ];
+                        $volumes = DB::table('subscription_volume as sv')
+                            ->join('subscription as s', 'sv.subscription_id', '=', 's.subscription_id')
+                            ->join('periodicals as p', 's.periodical_id', '=', 'p.periodical_id')
+                            ->where('s.periodical_id', $id)
+                            ->select(
+                                '*'
+                            )
+                            ->get();
 
-                    if (!empty($dateReceived[$i])) {
-                        $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
-                        $data['status'] = 'Received';
-                    } else {
-                        $data['date_received'] = null;
-                        $data['status'] = null;
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $volumes
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch Volumes for pid: ' . $id,
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
                     }
-
-                    DB::table('subscription_issues')
-                        ->where('subscription_vol_id', $subscription_vol_id)
-                        ->where('issue', $issue)
-                        ->update($data);
                 }
+                /**
+                 * GET  /library/get_volumes_issues/{subscription_vol_id}
+                 */
+                public function getVolumesIssues($subscription_vol_id) {
+                    try {
+                        $user = $this->authenticateUser();
 
-                return response()->json([
-                    'status'  => true,
-                    'message' => 'Issue Status Changed'
-                ], 200);
+                        $issues = DB::table('subscription_issues')
+                            ->where('subscription_vol_id', $subscription_vol_id)
+                            ->get();
 
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to save, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-    /** Change Periodical Status - END */
-    /** Periodical Not Received Report - START */
-        /**
-         * /library/periodical_not_received_report
-         */
-        public function periodicalNotReceivedReport($periodical_id = null)
-        {
-            try {
-                $user = $this->authenticateUser();
-                $role_id = $user->role_id;
+                        $status = DB::table('subscription as a')
+                            ->join('subscription_volume as c', 'a.subscription_id', '=', 'c.subscription_id')
+                            ->join('subscription_issues as b', 'c.subscription_vol_id', '=', 'b.subscription_vol_id')
+                            ->where('c.subscription_vol_id', $subscription_vol_id)
+                            ->value('a.status');
 
-                if ($role_id !== "L") {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'You are not allowed to access this resource',
-                    ], 401);
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $issues,
+                            'subscription_status' => $status,
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch Issues for subscription_vol_id: ' . $subscription_vol_id,
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+                /**
+                 * POST /library/update_periodical_status/{subscription_vol_id}
+                 */
+                public function updatePeriodicalStatus(Request $request, $subscription_vol_id)
+                {
+                    try {
+                        $user = $this->authenticateUser();
 
-                $query = DB::table('periodicals as a')
-                    ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
-                    ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
-                    ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
-                    ->where('b.status', 'Active')
-                    ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
-                    ->where('d.status', '!=', 'Received');
+                        $issues = $request->input('issue', []);
+                        $dateReceived = $request->input('date_received', []);
+                        $receiveBy = $request->input('receive_by_date', []);
 
-                // apply condition only if periodical_id is passed
-                if (!empty($periodical_id)) {
-                    $query->where('a.periodical_id', $periodical_id);
+                        if(!$issues || !$dateReceived || !$receiveBy) {
+                            return response()->json([
+                                'message' => 'issues, date_received, receive_by_date is required',
+                            ], 403);
+                        }
+
+                        foreach ($issues as $i => $issue) {
+
+                            if (!$issue) {
+                                continue;
+                            }
+
+                            $data = [
+                                'receive_by_date' => !empty($receiveBy[$i])
+                                    ? date('Y-m-d', strtotime($receiveBy[$i]))
+                                    : null,
+                            ];
+
+                            if (!empty($dateReceived[$i])) {
+                                $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
+                                $data['status'] = 'Received';
+                            } else {
+                                $data['date_received'] = null;
+                                $data['status'] = null;
+                            }
+
+                            DB::table('subscription_issues')
+                                ->where('subscription_vol_id', $subscription_vol_id)
+                                ->where('issue', $issue)
+                                ->update($data);
+                        }
+
+                        return response()->json([
+                            'status'  => true,
+                            'message' => 'Issue Status Changed'
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to save, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Change Periodical Status - END */
+            /** Periodical Not Received Report - START */
+                /**
+                 * /library/periodical_not_received_report
+                 */
+                public function periodicalNotReceivedReport($periodical_id = null)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role_id = $user->role_id;
 
-                $data = $query
-                    ->select('a.*', 'b.*', 'c.*', 'd.*')
-                    ->get();
+                        if ($role_id !== "L") {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'You are not allowed to access this resource',
+                            ], 401);
+                        }
 
-                return response()->json([
-                    'status' => true,
-                    'data'   => $data,
-                    'count' => count($data),
-                ], 200);
+                        $query = DB::table('periodicals as a')
+                            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+                            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+                            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+                            ->where('b.status', 'Active')
+                            ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
+                            ->where('d.status', '!=', 'Received');
 
-            } catch (\Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-    /** Periodical Not Received Report - END */
-    /** Periodical Report - START */
-        /**
-         * GET /library/periodicals_report
-         */
-        public function periodicalsReport(Request $request) {
-            try {
-                $user = $this->authenticateUser();
-                $role_id = $user->role_id ?? null;
+                        // apply condition only if periodical_id is passed
+                        if (!empty($periodical_id)) {
+                            $query->where('a.periodical_id', $periodical_id);
+                        }
 
-                if ($role_id !== "L") {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'You are not allowed to access this resource',
-                    ], 401);
+                        $data = $query
+                            ->select('a.*', 'b.*', 'c.*', 'd.*')
+                            ->get();
+
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $data,
+                            'count' => count($data),
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Periodical Not Received Report - END */
+            /** Periodical Report - START */
+                /**
+                 * GET /library/periodicals_report
+                 */
+                public function periodicalsReport(Request $request) {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role_id = $user->role_id ?? null;
 
-                $periodical_id        = $request->input('periodical_id');
-                $subscription_vol_id  = $request->input('subscription_vol_id');
-                $subscription_issue_id = $request->input('subscription_issue_id');
-                $received_date        = $request->input('received_date');
+                        if ($role_id !== "L") {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'You are not allowed to access this resource',
+                            ], 401);
+                        }
 
-                $query = DB::table('subscription_issues as a')
-                    ->select(
-                        'a.issue',
-                        'a.receive_by_date',
-                        'a.date_received',
-                        'b.volume',
-                        'd.title',
-                        'd.subscription_no'
-                    )
-                    ->join('subscription_volume as b', 'a.subscription_vol_id', '=', 'b.subscription_vol_id')
-                    ->join('subscription as c', 'c.subscription_id', '=', 'b.subscription_id')
-                    ->join('periodicals as d', 'c.periodical_id', '=', 'd.periodical_id')
-                    ->where('a.status', 'Received');
+                        $periodical_id        = $request->input('periodical_id');
+                        $subscription_vol_id  = $request->input('subscription_vol_id');
+                        $subscription_issue_id = $request->input('subscription_issue_id');
+                        $received_date        = $request->input('received_date');
 
-                if (!empty($periodical_id)) {
-                    $query->where('d.periodical_id', $periodical_id);
+                        $query = DB::table('subscription_issues as a')
+                            ->select(
+                                'a.issue',
+                                'a.receive_by_date',
+                                'a.date_received',
+                                'b.volume',
+                                'd.title',
+                                'd.subscription_no'
+                            )
+                            ->join('subscription_volume as b', 'a.subscription_vol_id', '=', 'b.subscription_vol_id')
+                            ->join('subscription as c', 'c.subscription_id', '=', 'b.subscription_id')
+                            ->join('periodicals as d', 'c.periodical_id', '=', 'd.periodical_id')
+                            ->where('a.status', 'Received');
+
+                        if (!empty($periodical_id)) {
+                            $query->where('d.periodical_id', $periodical_id);
+                        }
+
+                        if (!empty($subscription_vol_id)) {
+                            $query->where('b.subscription_vol_id', $subscription_vol_id);
+                        }
+
+                        if (!empty($received_date)) {
+                            $query->where('a.date_received', $received_date);
+                        }
+
+                        if (!empty($subscription_issue_id)) {
+                            $query->where('a.subscription_issue_id', $subscription_issue_id);
+                        }
+
+                        $data = $query->get();
+
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $data,
+                            'count' => count($data),
+                        ], 200);
+
+                    } catch (Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch, Server Error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Periodical Report - END */
+        // ----------------------------------------------
 
-                if (!empty($subscription_vol_id)) {
-                    $query->where('b.subscription_vol_id', $subscription_vol_id);
+        // ============================
+        // Dashboard - Menu
+        // ============================
+        // Developer - Leo The Great - 2026-01-23
+        // ----------------------------------------------
+            /** Subscription Reminder Report  */
+                /**
+                 * GET /library/subscription_reminder
+                 */
+                public function subscriptionReminder(Request $request)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
+
+                        if ($role !== 'L') {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'Unauthorized access'
+                            ], 401);
+                        }
+
+                        $today = Carbon::today();
+
+                        $subscriptions = DB::table('subscription')
+                            ->leftJoin('periodicals' , 'periodicals.periodical_id' , '=' , 'subscription.periodical_id')
+                            ->where('status', 'Active')
+                            ->whereDate(DB::raw('DATE_SUB(to_date, INTERVAL 7 DAY)'), '<', $today)
+                            ->get();
+
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $subscriptions
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch reminder, Server error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Subscription Reminder Report */
+            /** Periodical Not Received Report */
+                /**
+                 * GET /library/dashboard/periodical_not_received_report
+                 */
+                public function dashboardPeriodicalNotReceivedReport(Request $request)
+                {
+                    try {
+                        $user = $this->authenticateUser();
+                        $role = $user->role_id;
 
-                if (!empty($received_date)) {
-                    $query->where('a.date_received', $received_date);
+                        if ($role !== 'L') {
+                            return response()->json([
+                                'status' => false,
+                                'message' => 'Unauthorized access'
+                            ], 401);
+                        }
+
+                        $periodical_id = $request->periodical_id; // optional
+
+                        $query = DB::table('periodicals as a')
+                            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+                            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+                            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+                            ->where('b.status', 'Active')
+                            ->whereDate('d.receive_by_date', '<', now()->toDateString())
+                            ->where('d.status', '!=', 'Received');
+
+                        if (!empty($periodical_id)) {
+                            $query->where('a.periodical_id', $periodical_id);
+                        }
+
+                        $data = $query->select(
+                                'a.*',
+                                'b.*',
+                                'c.*',
+                                'd.*'
+                            )->get();
+
+                        return response()->json([
+                            'status' => true,
+                            'data'   => $data
+                        ], 200);
+
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => 'Failed to fetch reminder, Server error',
+                            'error'   => config('app.debug') ? $e->getMessage() : null
+                        ], 500);
+                    }
                 }
+            /** Periodical Not Received Report */
+        // ----------------------------------------------
 
-                if (!empty($subscription_issue_id)) {
-                    $query->where('a.subscription_issue_id', $subscription_issue_id);
-                }
-
-                $data = $query->get();
-
-                return response()->json([
-                    'status' => true,
-                    'data'   => $data,
-                    'count' => count($data),
-                ], 200);
-
-            } catch (Exception $e) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Failed to fetch, Server Error',
-                    'error'   => config('app.debug') ? $e->getMessage() : null
-                ], 500);
-            }
-        }
-    /** Periodical Report - END */
+    // ------------------------------------
 }
