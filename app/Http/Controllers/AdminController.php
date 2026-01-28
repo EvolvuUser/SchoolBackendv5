@@ -20892,485 +20892,469 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $currentDate = Carbon::now()->toDateString();
             $response = [];
 
-            // 1. student 
-            $totalStudent = Student::where('IsDelete', 'N')
+            // 1. student
+            $totalStudent = DB::table('student')
+                ->where('IsDelete', 'N')
                 ->where('academic_yr', $academicYr)
-                ->count();
-            $presentStudent = Attendence::where('only_date', $currentDate)
+                ->select(DB::raw('COUNT(*) as total'))
+                ->value('total');
+
+            $presentStudent = DB::table('attendance')
+                ->where('only_date', $currentDate)
                 ->where('attendance_status', '0')
                 ->where('academic_yr', $academicYr)
-                ->count();
+                ->select(DB::raw('COUNT(*) as present'))
+                ->value('present');
 
             $response['student'] = [
                 'present' => $presentStudent,
-                'total' => $totalStudent,
+                'total'   => $totalStudent,
             ];
 
             // 2. staff 
-            // if($short_code == 'HSCS') {
-            //     $teachingStaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT t.teacher_id
-            //             FROM teacher t
-            //             JOIN user_master u
-            //                 ON t.teacher_id = u.reg_id
-            //             LEFT JOIN teacher_category tc
-            //                 ON t.tc_id = tc.tc_id
-            //             WHERE t.isDelete = 'N'
-            //             AND tc.teaching = 'Y'
-            //         ")
-            //     );
+            if($short_code == 'HSCS') {
+                $teachingStaff = DB::table('teacher as t')
+                    ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
+                    ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'Y')
+                    ->distinct('t.teacher_id')
+                    ->count(DB::raw('t.teacher_id'));
 
-            //     $attendanceteachingstaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t,
-            //                 user_master u,
-            //                 teacher_category tc
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.isDelete = 'N'
-            //             AND tc.teaching = 'Y'
-            //             AND t.tc_id = tc.tc_id
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            //         ")
-            //     );
+                $attendanceteachingstaff = DB::table('teacher_attendance as ta')
+                    ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
+                    ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'Y')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->distinct('ta.employee_id')
+                    ->count(DB::raw('ta.employee_id'));
 
-            //     $non_teachingStaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT t.teacher_id
-            //             FROM teacher t
-            //             JOIN user_master u
-            //                 ON t.teacher_id = u.reg_id
-            //             LEFT JOIN teacher_category tc
-            //                 ON t.tc_id = tc.tc_id
-            //             WHERE t.isDelete = 'N'
-            //             AND tc.teaching = 'N'
 
-            //             UNION
+                $nonTeachingQuery1 = DB::table('teacher as t')
+                    ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'N')
+                    ->select(DB::raw('t.teacher_id'));
 
-            //             SELECT DISTINCT c.teacher_id
-            //             FROM teacher c
-            //             LEFT JOIN teacher_category tc
-            //                 ON c.tc_id = tc.tc_id
-            //             WHERE c.designation = 'Caretaker'
-            //             AND c.isDelete = 'N'
-            //             AND tc.teaching = 'N'
+                $nonTeachingQuery2 = DB::table('teacher as c')
+                    ->leftJoin('teacher_category as tc', 'c.tc_id', '=', 'tc.tc_id')
+                    ->where('c.isDelete', 'N')
+                    ->where('c.designation', 'Caretaker')
+                    ->where('tc.teaching', 'N')
+                    ->select(DB::raw('c.teacher_id'));
 
-            //             ORDER BY teacher_id ASC
-            //         ")
-            //     );
+                $non_teachingStaff = $nonTeachingQuery1
+                    ->union($nonTeachingQuery2)
+                    ->distinct()
+                    ->count();
 
-            //     $attendancenonteachingstaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t,
-            //                 user_master u,
-            //                 teacher_category tc
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.teacher_id = u.reg_id
-            //             AND t.tc_id = tc.tc_id
-            //             AND t.isDelete = 'N'
-            //             AND tc.teaching = 'N'
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
 
-            //             UNION
+                $attendanceNonTeaching1 = DB::table('teacher_attendance as ta')
+                    ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
+                    ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'N')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->select(DB::raw('ta.employee_id'));
 
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.isDelete = 'N'
-            //             AND t.designation = 'Caretaker'
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            //         ")
-            //     );
+                $attendanceNonTeaching2 = DB::table('teacher_attendance as ta')
+                    ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
+                    ->where('t.isDelete', 'N')
+                    ->where('t.designation', 'Caretaker')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->select(DB::raw('ta.employee_id'));
 
-            //     $response['staff'] = [
-            //         'teachingStaff'              => $teachingStaff,
-            //         'non_teachingStaff'          => $non_teachingStaff,
-            //         'attendancenonteachingstaff' => $attendancenonteachingstaff,
-            //         'attendanceteachingstaff'    => $attendanceteachingstaff
-            //     ];
-            // } else if('SACS') {
-            //     $teachingStaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT t.teacher_id
-            //             FROM teacher t
-            //             JOIN user_master u
-            //                 ON t.teacher_id = u.reg_id
-            //             LEFT JOIN teacher_category tc
-            //                 ON t.tc_id = tc.tc_id
-            //             WHERE t.isDelete = 'N'
-            //             AND tc.teaching = 'Y'
-            //         ")
-            //     );
+                $attendancenonteachingstaff = $attendanceNonTeaching1
+                    ->union($attendanceNonTeaching2)
+                    ->distinct()
+                    ->count();
 
-            //     $attendanceteachingstaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t,
-            //                 user_master u,
-            //                 teacher_category tc
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.isDelete = 'N'
-            //             AND tc.teaching = 'Y'
-            //             AND t.tc_id = tc.tc_id
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            //         ")
-            //     );
+                $response['staff'] = [
+                    'teachingStaff'              => $teachingStaff,
+                    'non_teachingStaff'          => $non_teachingStaff,
+                    'attendancenonteachingstaff' => $attendancenonteachingstaff,
+                    'attendanceteachingstaff'    => $attendanceteachingstaff,
+                ];
+            } else if('SACS') {
+                $teachingStaff = DB::table('teacher as t')
+                    ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
+                    ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'Y')
+                    ->distinct()
+                    ->count(DB::raw('t.teacher_id'));
 
-            //     $non_teachingStaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT t.teacher_id
-            //             FROM teacher t
-            //             JOIN user_master u
-            //                 ON t.teacher_id = u.reg_id
-            //             LEFT JOIN teacher_category tc
-            //                 ON t.tc_id = tc.tc_id
-            //             WHERE t.isDelete = 'N'
-            //             AND tc.teaching = 'N'
 
-            //             UNION
+                $attendanceteachingstaff = DB::table('teacher_attendance as ta')
+                    ->join(
+                        'teacher as t',
+                        DB::raw('ta.employee_id'),
+                        '=',
+                        DB::raw('CAST(t.employee_id AS UNSIGNED)')
+                    )
+                    ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'Y')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->distinct()
+                    ->count(DB::raw('ta.employee_id'));
 
-            //             SELECT DISTINCT c.teacher_id
-            //             FROM teacher c
-            //             LEFT JOIN teacher_category tc
-            //                 ON c.tc_id = tc.tc_id
-            //             WHERE c.designation = 'Caretaker'
-            //             AND c.isDelete = 'N'
-            //             AND tc.teaching = 'N'
+                $nonTeachingTeachers = DB::table('teacher as t')
+                    ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
+                    ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'N')
+                    ->select(DB::raw('t.teacher_id'));
 
-            //             ORDER BY teacher_id ASC
-            //         ")
-            //     );
+                $nonTeachingCaretakers = DB::table('teacher as c')
+                    ->leftJoin('teacher_category as tc', 'c.tc_id', '=', 'tc.tc_id')
+                    ->where('c.isDelete', 'N')
+                    ->where('c.designation', 'Caretaker')
+                    ->where('tc.teaching', 'N')
+                    ->select(DB::raw('c.teacher_id'));
 
-            //     $attendancenonteachingstaff = count(
-            //         DB::select("
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t,
-            //                 user_master u,
-            //                 teacher_category tc
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.teacher_id = u.reg_id
-            //             AND t.tc_id = tc.tc_id
-            //             AND t.isDelete = 'N'
-            //             AND tc.teaching = 'N'
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
+                $non_teachingStaff = $nonTeachingTeachers
+                    ->union($nonTeachingCaretakers)
+                    ->distinct()
+                    ->count();
 
-            //             UNION
 
-            //             SELECT DISTINCT ta.employee_id
-            //             FROM teacher_attendance ta,
-            //                 teacher t
-            //             WHERE ta.employee_id = CAST(t.employee_id AS UNSIGNED)
-            //             AND t.isDelete = 'N'
-            //             AND t.designation = 'Caretaker'
-            //             AND DATE_FORMAT(punch_time, '%y-%m-%d') = CURDATE()
-            //         ")
-            //     );
+                $attendanceNonTeachingTeachers = DB::table('teacher_attendance as ta')
+                    ->join(
+                        'teacher as t',
+                        DB::raw('ta.employee_id'),
+                        '=',
+                        DB::raw('CAST(t.employee_id AS UNSIGNED)')
+                    )
+                    ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
+                    ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
+                    ->where('t.isDelete', 'N')
+                    ->where('tc.teaching', 'N')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->select(DB::raw('ta.employee_id'));
 
-            //     $response['staff'] = [
-            //         'teachingStaff'              => $teachingStaff,
-            //         'non_teachingStaff'          => $non_teachingStaff,
-            //         'attendancenonteachingstaff' => $attendancenonteachingstaff,
-            //         'attendanceteachingstaff'    => $attendanceteachingstaff
-            //     ];
-            // }
+                $attendanceCaretakers = DB::table('teacher_attendance as ta')
+                    ->join(
+                        'teacher as t',
+                        DB::raw('ta.employee_id'),
+                        '=',
+                        DB::raw('CAST(t.employee_id AS UNSIGNED)')
+                    )
+                    ->where('t.isDelete', 'N')
+                    ->where('t.designation', 'Caretaker')
+                    ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
+                    ->select(DB::raw('ta.employee_id'));
+
+                $attendancenonteachingstaff = $attendanceNonTeachingTeachers
+                    ->union($attendanceCaretakers)
+                    ->distinct()
+                    ->count();
+
+                $response['staff'] = [
+                    'teachingStaff'              => $teachingStaff,
+                    'non_teachingStaff'          => $non_teachingStaff,
+                    'attendancenonteachingstaff' => $attendancenonteachingstaff,
+                    'attendanceteachingstaff'    => $attendanceteachingstaff,
+                ];
+            }
 
             // 3. staff birthday 
             $currentDate = Carbon::now();
-            $teachercount = Teacher::where('IsDelete', 'N')
-                ->whereMonth('birthday', $currentDate->month)
-                ->whereDay('birthday', $currentDate->day)
-                ->count();
-            $studentcount = Student::where('IsDelete', 'N')
-                ->whereMonth('dob', $currentDate->month)
-                ->whereDay('dob', $currentDate->day)
+
+            // Teacher birthday count
+            $teachercount = DB::table('teacher')
+                ->where('IsDelete', 'N')
+                ->whereMonth(DB::raw('birthday'), $currentDate->month)
+                ->whereDay(DB::raw('birthday'), $currentDate->day)
+                ->select(DB::raw('COUNT(*) as cnt'))
+                ->value('cnt');
+
+            // Student birthday count
+            $studentcount = DB::table('student')
+                ->where('IsDelete', 'N')
                 ->where('academic_yr', $academicYr)
-                ->count();
+                ->whereMonth(DB::raw('dob'), $currentDate->month)
+                ->whereDay(DB::raw('dob'), $currentDate->day)
+                ->select(DB::raw('COUNT(*) as cnt'))
+                ->value('cnt');
+
             $teacherStudentBdayCount = $teachercount + $studentcount;
 
             $response['staff_student_bday_count'] = [
                 'count' => $teacherStudentBdayCount,
             ];
 
-            // // 4. feeCollection
-            // DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
+            // 4. feeCollection
+            DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
 
-            // $sql = "
-            //     SELECT SUM(installment_fees - concession - paid_amount) AS pending_fee FROM
-            //     (SELECT s.student_id, s.installment, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount FROM
-            //     view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE
-            //     s.academic_yr = '$academicYr' and s.installment<>4 AND due_date < CURDATE() AND s.student_installment NOT IN
-            //     (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '$academicYr') GROUP BY s.student_id, s.installment
-            //     UNION SELECT f.student_id AS student_id, b.installment AS installment, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession,
-            //     SUM(f.fees_paid) AS paid_amount FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id
-            //     AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment
-            //     WHERE b.installment<>4 and f.academic_yr = '$academicYr' GROUP BY f.installment, c.installment  HAVING
-            //     (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)) as z
-            // ";
+            $sql = "
+                SELECT SUM(installment_fees - concession - paid_amount) AS pending_fee FROM
+                (SELECT s.student_id, s.installment, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount FROM
+                view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE
+                s.academic_yr = '$academicYr' and s.installment<>4 AND due_date < CURDATE() AND s.student_installment NOT IN
+                (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '$academicYr') GROUP BY s.student_id, s.installment
+                UNION SELECT f.student_id AS student_id, b.installment AS installment, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession,
+                SUM(f.fees_paid) AS paid_amount FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id
+                AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment
+                WHERE b.installment<>4 and f.academic_yr = '$academicYr' GROUP BY f.installment, c.installment  HAVING
+                (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)) as z
+            ";
 
-            // $results = DB::select($sql);
+            $results = DB::select($sql);
 
-            // $pendingFee = $results[0]->pending_fee ?? 0;
+            $pendingFee = $results[0]->pending_fee ?? 0;
 
-            // $collectedfees = DB::select(
-            //     "SELECT 'Nursery' AS account, 
-            //     IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-            //     SUM(d.amount) AS amount 
-            //         FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-            //         WHERE a.student_id = b.student_id 
-            //         AND b.class_id = c.class_id 
-            //         AND a.fees_payment_id = d.fees_payment_id 
-            //         AND a.isCancel = 'N' 
-            //         AND a.academic_yr = '$academicYr' 
-            //         AND c.name = 'Nursery' 
-            //         GROUP BY d.installment 
+            $collectedfees = DB::select(
+                "SELECT 'Nursery' AS account, 
+                IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                SUM(d.amount) AS amount 
+                    FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+                    WHERE a.student_id = b.student_id 
+                    AND b.class_id = c.class_id 
+                    AND a.fees_payment_id = d.fees_payment_id 
+                    AND a.isCancel = 'N' 
+                    AND a.academic_yr = '$academicYr' 
+                    AND c.name = 'Nursery' 
+                    GROUP BY d.installment 
 
-            //         UNION
+                    UNION
 
-            //         SELECT 'KG' AS account, 
-            //             IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-            //             SUM(d.amount) AS amount 
-            //                 FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-            //                 WHERE a.student_id = b.student_id 
-            //                 AND b.class_id = c.class_id 
-            //                 AND a.fees_payment_id = d.fees_payment_id 
-            //                 AND a.isCancel = 'N' 
-            //                 AND a.academic_yr = '$academicYr' 
-            //                 AND c.name IN ('LKG','UKG') 
-            //                 GROUP BY d.installment 
+                    SELECT 'KG' AS account, 
+                        IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                        SUM(d.amount) AS amount 
+                            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+                            WHERE a.student_id = b.student_id 
+                            AND b.class_id = c.class_id 
+                            AND a.fees_payment_id = d.fees_payment_id 
+                            AND a.isCancel = 'N' 
+                            AND a.academic_yr = '$academicYr' 
+                            AND c.name IN ('LKG','UKG') 
+                            GROUP BY d.installment 
 
-            //                 UNION
+                            UNION
 
-            //                 SELECT 'School' AS account, 
-            //                     IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
-            //                     SUM(d.amount) AS amount 
-            //                 FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
-            //                 WHERE a.student_id = b.student_id 
-            //                 AND b.class_id = c.class_id 
-            //                 AND a.fees_payment_id = d.fees_payment_id 
-            //                 AND a.isCancel = 'N' 
-            //                 AND a.academic_yr = '$academicYr' 
-            //                 AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
-            //                 GROUP BY d.installment"
-            // );
-            // $totalAmount = number_format(collect($collectedfees)->sum('amount'), 2, '.', '');
+                            SELECT 'School' AS account, 
+                                IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment, 
+                                SUM(d.amount) AS amount 
+                            FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c 
+                            WHERE a.student_id = b.student_id 
+                            AND b.class_id = c.class_id 
+                            AND a.fees_payment_id = d.fees_payment_id 
+                            AND a.isCancel = 'N' 
+                            AND a.academic_yr = '$academicYr' 
+                            AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12') 
+                            GROUP BY d.installment"
+            );
+            $totalAmount = number_format(collect($collectedfees)->sum('amount'), 2, '.', '');
 
-            // $response['fees_collection'] = [
-            //     'Collected Fees' => $totalAmount,
-            //     'Pending Fees' => $pendingFee
-            // ];
+            $response['fees_collection'] = [
+                'Collected Fees' => $totalAmount,
+                'Pending Fees' => $pendingFee
+            ];
 
             // // 5. approve leave
-            // $statuses = ['A', 'H'];
+            $statuses = ['A', 'H'];
 
-            // $leaveApplications = DB::table('leave_application')
-            //     ->whereIn('status', $statuses)
-            //     ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
-            //     ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-            //     ->orderBy('leave_app_id', 'DESC')
-            //     ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
-            //     ->where('leave_application.academic_yr', $academicYr)
-            //     ->get()
-            //     ->toArray();
+            $leaveApplications = DB::table('leave_application')
+                ->whereIn('status', $statuses)
+                ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
+                ->orderBy('leave_app_id', 'DESC')
+                ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
+                ->where('leave_application.academic_yr', $academicYr)
+                ->get()
+                ->toArray();
 
-            // $leaveapplication = count($leaveApplications);
+            $leaveapplication = count($leaveApplications);
 
-            // $response['approve_leave'] = [
-            //     'count' => $leaveapplication,
-            // ];
+            $response['approve_leave'] = [
+                'count' => $leaveapplication,
+            ];
 
             // // 6. AttendanceNotMarkedCount
-            // $date = $request->query('date', now()->toDateString());
-            // $classes = DB::table('class')
-            //     ->select('class_id')
-            //     ->where('academic_yr', $academicYr)
-            //     ->get();
+            $date = $request->query('date', now()->toDateString());
 
-            // $sectionsByClass = DB::table('section')
-            //     ->select('section_id', 'class_id')
-            //     ->get()
-            //     ->groupBy('class_id');
+            $result = DB::selectOne("
+                SELECT
+                    COUNT(cs.class_id) AS total,
+                    SUM(
+                        CASE
+                            WHEN a.class_id IS NULL THEN 1
+                            ELSE 0
+                        END
+                    ) AS not_marked
+                FROM class c
+                JOIN section cs ON cs.class_id = c.class_id
+                LEFT JOIN (
+                    SELECT DISTINCT class_id, section_id
+                    FROM attendance
+                    WHERE only_date = ?
+                ) a
+                    ON a.class_id = c.class_id
+                    AND a.section_id = cs.section_id
+                WHERE c.academic_yr = ?
+            ", [$date, $academicYr]);
 
-            // $notMarkedCount = 0;
-            // $totalClasses = 0;
-            // foreach ($classes as $class) {
-            //     foreach ($sectionsByClass[$class->class_id] ?? [] as $section) {
-            //         $exists = DB::table('attendance')
-            //             ->where('class_id', $class->class_id)
-            //             ->where('section_id', $section->section_id)
-            //             ->whereDate('only_date', $date)
-            //             ->exists();
-            //         if (!$exists) {
-            //             $notMarkedCount++;
-            //         }
-            //         $totalClasses++;
-            //     }
-            // }
+            $response['attendanceNotMarkedCount'] = [
+                'attendanceNotMarkedCount' => $result->not_marked,
+                'totalClassesCount'        => $result->total,
+            ];
 
-            // $response['attendanceNotMarkedCount'] = [
-            //     'attendanceNotMarkedCount' => $notMarkedCount,
-            //     'totalClassesCount' => $totalClasses,
-            // ];
 
             // // 7. lesson plan summary 
-            // $nextMonday = now()->next('Monday')->format('d-m-Y');
-            // $totalNumberOfTeachers = DB::table('subject as s')
-            //     ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('tc.teaching', 'Y')
-            //     ->where('t.isDelete', 'N')
-            //     ->where('s.academic_yr', $academicYr)
-            //     ->whereNotIn('s.sm_id', function ($query) {
-            //         $query->select('sm_id')
-            //             ->from('subjects_excluded_from_curriculum');
-            //     })
-            //     ->distinct('s.teacher_id')
-            //     ->count('s.teacher_id');
+            $nextMonday = now()->next('Monday')->format('d-m-Y');
+            $totalNumberOfTeachers = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->distinct('s.teacher_id')
+                ->count('s.teacher_id');
 
-            // $lessonPlanSubmitted = DB::table('subject as s')
-            //     ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            //     ->join('class as c', 's.class_id', '=', 'c.class_id')
-            //     ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            //     ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('tc.teaching', 'Y')
-            //     ->where('t.isDelete', 'N')
-            //     ->where('s.academic_yr', $academicYr)
-            //     ->whereIn(
-            //         DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-            //         function ($query) use ($nextMonday) {
-            //             $query->select(
-            //                 DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-            //             )
-            //             ->from('lesson_plan')
-            //             ->whereRaw(
-            //                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-            //                 [$nextMonday]
-            //             );
-            //         }
-            //     )
-            //     ->whereNotIn('s.sm_id', function ($query) {
-            //         $query->select('sm_id')
-            //             ->from('subjects_excluded_from_curriculum');
-            //     })
-            //     ->groupBy('s.teacher_id')
-            //     ->get()
-            //     ->count();
+            $lessonPlanSubmitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
-            // $lessonPlanNotSubmitted = DB::table('subject as s')
-            //     ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            //     ->join('class as c', 's.class_id', '=', 'c.class_id')
-            //     ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            //     ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('tc.teaching', 'Y')
-            //     ->where('t.isDelete', 'N')
-            //     ->where('s.academic_yr', $academicYr)
-            //     ->whereNotIn(
-            //         DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-            //         function ($query) use ($nextMonday) {
-            //             $query->select(
-            //                 DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-            //             )
-            //             ->from('lesson_plan')
-            //             ->whereRaw(
-            //                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-            //                 [$nextMonday]
-            //             );
-            //         }
-            //     )
-            //     ->whereNotIn('s.sm_id', function ($query) {
-            //         $query->select('sm_id')
-            //             ->from('subjects_excluded_from_curriculum');
-            //     })
-            //     ->groupBy('s.teacher_id')
-            //     ->get()
-            //     ->count();
+            $lessonPlanNotSubmitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereNotIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
-            // $pendingForApproval = DB::table('subject as s')
-            //     ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            //     ->join('class as c', 's.class_id', '=', 'c.class_id')
-            //     ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            //     ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            //     ->where('t.isDelete', 'N')
-            //     ->where('s.academic_yr', $academic_year)
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('tc.teaching', 'Y')
-            //     ->whereIn(
-            //         DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-            //         function ($query) use ($nextMonday) {
-            //             $query->select(
-            //                 DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-            //             )
-            //             ->from('lesson_plan')
-            //             ->where('approve', '!=', 'Y')
-            //             ->whereRaw(
-            //                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-            //                 [$nextMonday]
-            //             );
-            //         }
-            //     )
-            //     ->whereNotIn('s.sm_id', function ($query) {
-            //         $query->select('sm_id')
-            //             ->from('subjects_excluded_from_curriculum');
-            //     })
-            //     ->groupBy('s.teacher_id')
-            //     ->get()
-            //     ->count();
+            $pendingForApproval = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('tc.teaching', 'Y')
+                ->whereIn(
+                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
+                    function ($query) use ($nextMonday) {
+                        $query->select(
+                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
+                        )
+                        ->from('lesson_plan')
+                        ->where('approve', '!=', 'Y')
+                        ->whereRaw(
+                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                            [$nextMonday]
+                        );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
+                    $query->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
-            // $response['lesson_plan_summary'] = [
-            //     'totalNumberOfTeachers' => $totalNumberOfTeachers,
-            //     'lessonPlanSubmitted' => $lessonPlanSubmitted,
-            //     'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
-            //     'pendingForApproval' => $pendingForApproval,
-            //     'nextMonday' => $nextMonday
-            // ];
+            $response['lesson_plan_summary'] = [
+                'totalNumberOfTeachers' => $totalNumberOfTeachers,
+                'lessonPlanSubmitted' => $lessonPlanSubmitted,
+                'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
+                'pendingForApproval' => $pendingForApproval,
+                'nextMonday' => $nextMonday
+            ];
 
-            // // 8. attendanceSummaryByCategory
-            // $date = $request->input('date', now()->toDateString());
-            // $totalByCategory = DB::table('teacher as t')
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('t.isDelete', 'N')
-            //     ->groupBy('tc.name')
-            //     ->select(
-            //         'tc.name as category',
-            //         DB::raw('COUNT(t.teacher_id) as total')
-            //     )
-            //     ->pluck('total', 'category');
+            // 8. attendanceSummaryByCategory
+            $date = $request->input('date', now()->toDateString());
+            $totalByCategory = DB::table('teacher as t')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->groupBy('tc.name')
+                ->select(
+                    'tc.name as category',
+                    DB::raw('COUNT(t.teacher_id) as total')
+                )
+                ->pluck('total', 'category');
 
-            // $presentByCategory = DB::table('teacher_attendance as ta')
-            //     ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
-            //     ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            //     ->where('t.isDelete', 'N')
-            //     ->whereDate('ta.punch_time', $date)
-            //     ->groupBy('tc.name')
-            //     ->select(
-            //         'tc.name as category',
-            //         DB::raw('COUNT(DISTINCT t.teacher_id) as present')
-            //     )
-            //     ->pluck('present', 'category');
+            $presentByCategory = DB::table('teacher_attendance as ta')
+                ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
+                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->whereDate('ta.punch_time', $date)
+                ->groupBy('tc.name')
+                ->select(
+                    'tc.name as category',
+                    DB::raw('COUNT(DISTINCT t.teacher_id) as present')
+                )
+                ->pluck('present', 'category');
 
-            // $finalData = [];
+            $finalData = [];
 
-            // foreach ($totalByCategory as $category => $total) {
-            //     $present = $presentByCategory[$category] ?? 0;
+            foreach ($totalByCategory as $category => $total) {
+                $present = $presentByCategory[$category] ?? 0;
 
-            //     $finalData[$category] = [
-            //         'total'   => $total,
-            //         'present' => $present,
-            //         'absent'  => $total - $present
-            //     ];
-            // }
+                $finalData[$category] = [
+                    'total'   => $total,
+                    'present' => $present,
+                    'absent'  => $total - $present
+                ];
+            }
 
-            // $response['attendanceSummaryByCategory'] = [
-            //     'data' => $finalData,
-            // ];
+            $response['attendanceSummaryByCategory'] = [
+                'data' => $finalData,
+            ];
 
             return response()->json([
                 'data' => $response,
