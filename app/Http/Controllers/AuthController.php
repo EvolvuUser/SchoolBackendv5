@@ -319,6 +319,7 @@ class AuthController extends Controller
     // Edited By Manish Kumar Sharma 25-04-2025
     public function editUser(Request $request)
     {
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
@@ -329,10 +330,15 @@ class AuthController extends Controller
                 ? $codeigniter_app_url . 'uploads/teacher_image/' . $teacher->teacher_image_name
                 : null;
         }
+        $specialRoles = DB::table('department_special_role')
+            ->where('teacher_id', JWTAuth::getPayload()->get('reg_id'))
+            ->where('academic_yr', $academicYear)
+            ->pluck('role');
 
         if ($teacher) {
             return response()->json([
                 'user' => $user,
+                'special_roles' => $specialRoles,
             ]);
         } else {
             return response()->json([
