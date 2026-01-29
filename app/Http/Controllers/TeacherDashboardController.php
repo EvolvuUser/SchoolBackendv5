@@ -994,7 +994,7 @@ class TeacherDashboardController extends Controller
 
         /** Substitution Count */
         $substituteCount = DB::table('class_teacher_substitute')
-            ->where('start_date' , $today)
+            ->where('end_date' , '>=', $today)
             ->where('academic_yr', $customClaims)
             ->where('teacher_id' , $teacher_id)
             ->count();

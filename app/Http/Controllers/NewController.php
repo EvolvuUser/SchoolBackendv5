@@ -4564,7 +4564,10 @@ class NewController extends Controller
             if($role_id == 'T') {
                 $today = Carbon::today()->toDateString(); // yyyy-mm-dd
                 foreach ($substituteTeacherList as $substituteTeacher) {
-                    if($substituteTeacher->teacher_id == $reg_id && $substituteTeacher->start_date == $today) {
+                    if (
+                        $substituteTeacher->teacher_id == $reg_id &&
+                        Carbon::parse($substituteTeacher->end_date)->gte($today)
+                    ) {
                         $response[] = $substituteTeacher;
                     }
                 }
