@@ -92,7 +92,11 @@
             // Route::get('/pending_collected_fee_data_list', [AdminController::class, 'pendingCollectedFeeDatalist']);
             Route::get('/collected_fee_list', [AdminController::class, 'collectedFeeList']);
 
-            Route::get('/principal/dashboard/summary' , [AdminController::class , 'dashboardSummary']);
+            /** DASHBOARD APIS */
+            // -----------------------
+                Route::get('/principal/dashboard/summary' , [AdminController::class , 'principalDashboardSummary']);
+                Route::get('/admin/dashboard/summary' , [AdminController::class , 'adminDashboardSummary']);
+            // -----------------------
 
             // Teacher dashboard API's
             Route::get('/teachers/{teacher_id}/dashboard/summary', [TeacherDashboardController::class, 'dashboardSummary']);
