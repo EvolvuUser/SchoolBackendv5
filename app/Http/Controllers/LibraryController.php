@@ -2259,7 +2259,7 @@ class LibraryController extends Controller
             $remark_type = 'Remark';
             $kvalue = $request->input('kvalue');
 
-            for($i = 0; $i < $kvalue; $i++) {
+            for($i = 1; $i < $kvalue; $i++) {
                 $student_id = $request->input('checkbox'.$i);
                 if(isset($student_id)) {
                     $class_id =  $request->input('class_id'.$i);
