@@ -21888,6 +21888,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function adminDashboardSummary(Request $request) {
         try {
             $user = $this->authenticateUser();
+            $role_id = $user->role_id;
             $short_code = JWTAuth::getPayload()->get('short_code');
             $academicYr = JWTAuth::getPayload()->get('academic_year');
             $currentDate = Carbon::now()->toDateString();
@@ -22161,138 +22162,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'Pending Fees' => $pendingFee
             ];
 
-            // 5. approve leave
-            $statuses = ['A', 'H'];
-
-            $leaveApplications = DB::table('leave_application')
-                ->whereIn('status', $statuses)
-                ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
-                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-                ->orderBy('leave_app_id', 'DESC')
-                ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
-                ->where('leave_application.academic_yr', $academicYr)
-                ->get()
-                ->toArray();
-
-            $leaveapplication = count($leaveApplications);
-
-            $response['approve_leave'] = [
-                'count' => $leaveapplication,
-            ];
-
-            // 7. lesson plan summary 
-            $nextMonday = now()->next('Monday')->format('d-m-Y');
-            $totalNumberOfTeachers = DB::table('subject as s')
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
-                ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academicYr)
-                ->whereNotIn('s.sm_id', function ($query) {
-                    $query->select('sm_id')
-                        ->from('subjects_excluded_from_curriculum');
-                })
-                ->distinct('s.teacher_id')
-                ->count('s.teacher_id');
-
-            $lessonPlanSubmitted = DB::table('subject as s')
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('class as c', 's.class_id', '=', 'c.class_id')
-                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
-                ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academicYr)
-                ->whereIn(
-                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-                    function ($query) use ($nextMonday) {
-                        $query->select(
-                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-                        )
-                        ->from('lesson_plan')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                    }
-                )
-                ->whereNotIn('s.sm_id', function ($query) {
-                    $query->select('sm_id')
-                        ->from('subjects_excluded_from_curriculum');
-                })
-                ->groupBy('s.teacher_id')
-                ->get()
-                ->count();
-
-            $lessonPlanNotSubmitted = DB::table('subject as s')
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('class as c', 's.class_id', '=', 'c.class_id')
-                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
-                ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academicYr)
-                ->whereNotIn(
-                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-                    function ($query) use ($nextMonday) {
-                        $query->select(
-                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-                        )
-                        ->from('lesson_plan')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                    }
-                )
-                ->whereNotIn('s.sm_id', function ($query) {
-                    $query->select('sm_id')
-                        ->from('subjects_excluded_from_curriculum');
-                })
-                ->groupBy('s.teacher_id')
-                ->get()
-                ->count();
-
-            $pendingForApproval = DB::table('subject as s')
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('class as c', 's.class_id', '=', 'c.class_id')
-                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academicYr)
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
-                ->whereIn(
-                    DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-                    function ($query) use ($nextMonday) {
-                        $query->select(
-                            DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-                        )
-                        ->from('lesson_plan')
-                        ->where('approve', '!=', 'Y')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                    }
-                )
-                ->whereNotIn('s.sm_id', function ($query) {
-                    $query->select('sm_id')
-                        ->from('subjects_excluded_from_curriculum');
-                })
-                ->groupBy('s.teacher_id')
-                ->get()
-                ->count();
-
-            $response['lesson_plan_summary'] = [
-                'totalNumberOfTeachers' => $totalNumberOfTeachers,
-                'lessonPlanSubmitted' => $lessonPlanSubmitted,
-                'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
-                'pendingForApproval' => $pendingForApproval,
-                'nextMonday' => $nextMonday
-            ];
+            $response['ticket_count']           = $this->ticketCountCard($academicYr , $role_id);
+            $response['birthday_count']           = $this->birthDayCountCard($academicYr , $role_id);
 
             return response()->json([
                 'data' => $response,
