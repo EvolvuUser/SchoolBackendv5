@@ -4529,7 +4529,11 @@ class NewController extends Controller
     {
         try {
             $user = $this->authenticateUser();
+            $role_id = $user->role_id;
+            $reg_id = $user->reg_id;
+
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+
             $substituteTeacherList = DB::table('class_teacher_substitute')
                 ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
                 ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')
@@ -4540,6 +4544,7 @@ class NewController extends Controller
                     'sub_teacher.name as substitute_teacher_name'
                 )
                 ->get();
+
             foreach ($substituteTeacherList as $substituteTeacher) {
                 $class = DB::table('class_teachers')
                     ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
@@ -4553,9 +4558,20 @@ class NewController extends Controller
                 $substituteTeacher->section_id = $class->section_id ?? null;
                 $substituteTeacher->sectionname = $class->sectionname ?? null;
             }
+
+            $response = [];
+
+            if($role_id == 'T') {
+                foreach ($substituteTeacherList as $substituteTeacher) {
+                    if($substituteTeacher->teacher_id == $reg_id) {
+                        $response[] = $substituteTeacher;
+                    }
+                }
+            }
+
             return response()->json([
                 'status' => 200,
-                'data' => $substituteTeacherList,
+                'data' => $role_id == 'T' ? $response : $substituteTeacherList,
                 'message' => 'Substitute class teachers list!',
                 'success' => true
             ]);
