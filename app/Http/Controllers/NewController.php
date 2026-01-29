@@ -4567,6 +4567,7 @@ class NewController extends Controller
                     if (
                         $substituteTeacher->teacher_id == $reg_id &&
                         Carbon::parse($substituteTeacher->end_date)->gte($today)
+                        && Carbon::parse($substituteTeacher->start_date)->lte($today)
                     ) {
                         $response[] = $substituteTeacher;
                     }
