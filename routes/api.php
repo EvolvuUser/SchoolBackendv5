@@ -2,6 +2,7 @@
 
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
+    use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\AuthController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
@@ -26,7 +27,7 @@
         Route::post('register', [AuthController::class, 'register']);
 
         // Protected routes
-        Route::middleware(['jwt.auth'])->group(function () {
+        Route::middleware(['jwt.auth' , 'impersonation.readonly'])->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
@@ -1411,7 +1412,25 @@
 
             // Used in teacher app for the dashboard Dev Name - Manish Kumar Sharma 21-01-2026
             Route::get('get_teachermobiledashboard', [TeacherDashboardController::class, 'getTeacherMobileDashboard']);
+
+            // Testing
+            Route::get('/testPayload' , function(Request $request) {
+                $payload = JWTAuth::getPayload();
+                dd($payload->toJson());
+            });
+
         });
+
+        // Impersonate
+        // ########################
+        // Impersonate Module
+        // ######################## 
+        // ---------------------------------
+            Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
+                Route::post('/impersonate' , [ImpersonateController::class , 'impersonate']);   // start
+                Route::post('/impersonate/exit' , [ImpersonateController::class , 'exitImpersonation']);   // exit
+            });
+        // ---------------------------------
     });
 
     Route::post('sendnotification', [SubstituteTeacher::class, 'sendNotification']);
