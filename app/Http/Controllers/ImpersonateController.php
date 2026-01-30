@@ -131,4 +131,43 @@ class ImpersonateController extends Controller
         ]);
     }
 
+    private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
+
+    // public function teachersListing() {
+    //     try {
+    //         $user = $this->authenticateUser();
+
+    //         // get all the teachers 
+    //         $teachers = DB::table('user_master')
+    //         ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
+    //         ->select(
+    //             'user_master.user_id' , 
+    //             'user_master.reg_id' , 
+    //             'user_master.role_id',
+    //             'teacher.name',
+    //         )
+    //         ->where('user_master.role_id' , 'T')->where('user_master.isDelete' , 'N')->get();
+
+    //         return response()->json([
+    //             'data' => $teachers,
+    //             'count' => count($teachers),
+    //         ] , 200);
+
+    //     } catch(Exception $err) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => "Something went wrong",
+    //             'error' => $err->getMessage(),
+    //             'line' => $err->getLine(),
+    //         ] , 500);
+    //     }
+    // }
+
 }

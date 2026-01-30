@@ -1429,6 +1429,8 @@
             Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
                 Route::post('/impersonate' , [ImpersonateController::class , 'impersonate']);   // start
                 Route::post('/impersonate/exit' , [ImpersonateController::class , 'exitImpersonation']);   // exit
+
+                Route::get('/impersonate/teachers' , [ImpersonateController::class , 'teachersListing']);
             });
         // ---------------------------------
     });
