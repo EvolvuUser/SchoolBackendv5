@@ -2761,7 +2761,7 @@ class LibraryController extends Controller
                         ) {
                             return response()->json([ 
                                 'status' => false, 
-                                'Message' => "subscription_id, volume_start_dates, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
+                                'Message' => "subscription_id, volume_start_dates, subscription_to_date, receiving_date, frequency, volume, issue are required" 
                             ] , 400);
                         }
 

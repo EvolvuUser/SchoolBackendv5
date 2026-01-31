@@ -43,7 +43,13 @@ Out-File output.json -Encoding utf8
 // super admin will impersonate user
 -------------------------------------------------------------------
 
-
+$token = Get-Content token.txt -Raw
+curl.exe `
+-H "Authorization: Bearer $token" `
+http://localhost:8000/api/impersonate |
+ConvertFrom-Json |
+ConvertTo-Json -Depth 2 |
+Out-File output.json -Encoding utf8
 
 -------------------------------------------------------------------
 -------------------------------------------------------------------
