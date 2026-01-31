@@ -2747,7 +2747,8 @@ class LibraryController extends Controller
 
                         // Inputs
                         $subscription_id        = $subscription_id;
-                        $volume_start_date      = date('Y-m-d', strtotime($request->input('volume_start_date')));
+                        $volume_start_dates      = $request->input('volume_start_dates');
+
                         $subscription_to_date   = $request->input('subscription_to_date');
                         $receiving_date         = $request->input('receiving_date');
                         $frequency              = $request->input('frequency');
@@ -2755,31 +2756,33 @@ class LibraryController extends Controller
                         $issue_lists            = $request->input('issue');
 
                         if (
-                            !$subscription_id || !$volume_start_date || !$subscription_to_date ||
+                            !$subscription_id || !$volume_start_dates || !$subscription_to_date ||
                             !$receiving_date || !$frequency || !$volume_lists || !$issue_lists
                         ) {
                             return response()->json([ 
                                 'status' => false, 
-                                'Message' => "subscription_id, volume_start_date, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
+                                'Message' => "subscription_id, volume_start_dates, subscription_to_date, receiving_date, frequency, volume_lists, issue_lists are required" 
                             ] , 400);
-                        }
-
-                        $from_year  = date('Y', strtotime($volume_start_date));
-                        $from_month = date('m', strtotime($volume_start_date));
-
-                        // Initial receive_by_date
-                        if ($frequency === 'Weekly') {
-                            $received_by_date = date(
-                                'Y-m-d',
-                                strtotime($receiving_date, strtotime($volume_start_date))
-                            );
-                        } else {
-                            $received_by_date = $from_year . '-' . $from_month . '-' . $receiving_date;
                         }
 
                         DB::beginTransaction();
 
                         for ($i = 0; $i < count($volume_lists); $i++) {
+
+                            $volume_start_date = date('Y-m-d', strtotime($volume_start_dates[$i]));
+
+                            $from_year  = date('Y', strtotime($volume_start_date));
+                            $from_month = date('m', strtotime($volume_start_date));
+
+                            // Initial receive_by_date
+                            if ($frequency === 'Weekly') {
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($receiving_date, strtotime($volume_start_date))
+                                );
+                            } else {
+                                $received_by_date = $from_year . '-' . $from_month . '-' . $receiving_date;
+                            }
 
                             // Insert subscription_volume
                             $subscriptionVolId = DB::table('subscription_volume')->insertGetId([

@@ -135,6 +135,19 @@ class ImpersonateController extends Controller
             ], 400);
         }
 
+        $sessionId = $payload->get('isid');
+
+        if(!$sessionId) {
+            return response()->json(['message' => "Invalid Payload, Cannot Exit"],404);
+        }
+
+        DB::table('impersonation_sessions')->where('id', $sessionId)
+        ->update([
+            'ended_at' => now(),
+            'exit_reason' => 'manual'
+        ]);
+
+
         return response()->json([
             'success' => true,
             'message' => 'Impersonation ended'
