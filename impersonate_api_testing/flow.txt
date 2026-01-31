@@ -1,0 +1,52 @@
+
+///////////////
+// BEFORE IMPERSONATION 
+
+-------------------------------------------------------------------
+// Super admin will login 
+-------------------------------------------------------------------
+
+curl.exe `
+-X POST http://localhost:8000/api/login `
+-H "Content-Type: application/json" `
+-d "@superAdminLogin.json" |
+ConvertFrom-Json |
+ConvertTo-Json -Depth 5 |
+Out-File output.json -Encoding utf8
+
+-------------------------------------------------------------------
+-------------------------------------------------------------------
+
+-------------------------------------------------------------------
+// super admin will call the listing api
+-------------------------------------------------------------------
+
+$token = Get-Content token.txt -Raw
+curl.exe `
+-H "Authorization: Bearer $token" `
+http://localhost:8000/api/impersonate/get_roles |
+ConvertFrom-Json |
+ConvertTo-Json -Depth 2 |
+Out-File output.json -Encoding utf8
+
+curl.exe `
+-H "Authorization: Bearer $token" `
+http://localhost:8000/api/impersonate/get_users?role_id=T |
+ConvertFrom-Json |
+ConvertTo-Json -Depth 2 |
+Out-File output.json -Encoding utf8
+
+-------------------------------------------------------------------
+-------------------------------------------------------------------
+
+
+// super admin will impersonate user
+
+///////////////
+// AFTER IMPERSONATION 
+
+// super admin will call get api'super
+
+// super admin will call post api's 
+
+// super admin will exit impersonate 
