@@ -2831,8 +2831,6 @@ class LibraryController extends Controller
                                     'subscription_vol_id' => $subscriptionVolId,
                                     'issue'               => $j,
                                     'receive_by_date'     => $received_by_date,
-                                    'created_at'          => now(),
-                                    'updated_at'          => now(),
                                 ]);
                             }
                         }
