@@ -19741,7 +19741,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         // dd($role_id);
         // Get next Monday (or accept from request if you want later)
-        $nextMonday = now()->next('Monday')->format('Y-m-d');
+        $nextMonday = now()->next('Monday')->format('d-m-Y');
 
         if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
             $notCreatedCount = DB::table('subject as s')
@@ -19911,7 +19911,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         // dd($role_id);
         // Get next Monday (or accept from request if you want later)
-        $nextMonday = now()->next('Monday')->format('Y-m-d');
+        $nextMonday = now()->next('Monday')->format('d-m-Y');
 
         if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
             $notCreatedList = DB::table('subject as s')
