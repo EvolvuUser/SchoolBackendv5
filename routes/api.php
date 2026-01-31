@@ -1430,7 +1430,9 @@
                 Route::post('/impersonate' , [ImpersonateController::class , 'impersonate']);   // start
                 Route::post('/impersonate/exit' , [ImpersonateController::class , 'exitImpersonation']);   // exit
 
-                Route::get('/impersonate/teachers' , [ImpersonateController::class , 'teachersListing']);
+                // Apis for listing
+                Route::get('/impersonate/get_roles' , [ImpersonateController::class , 'getRoles']);
+                Route::get('/impersonate/get_users' , [ImpersonateController::class , 'getUsers']);
             });
         // ---------------------------------
     });
