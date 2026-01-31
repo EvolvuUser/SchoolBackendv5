@@ -1,0 +1,2 @@
+
+    {"success":false,"error_code":"IMPERSONATION_READ_ONLY","message":"Write actions are disabled during impersonation"}

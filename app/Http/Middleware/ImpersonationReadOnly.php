@@ -18,13 +18,14 @@ class ImpersonationReadOnly
     public function handle(Request $request, Closure $next): Response
     {
         $payload = JWTAuth::parseToken()->getPayload();
+        // return response()->json($payload->toArray(), 200, [], JSON_PRETTY_PRINT);
 
         // Only restrict when impersonating
         if ($payload->get('impersonation') === true) {
 
             // Write to impersonation_route_logs 
             DB::table('impersonation_route_logs')->insert([
-                'impersonation_session_id' => $payload->get('impersonation_session_id'),
+                'impersonation_session_id' => $payload->get('isid'),
                 'method' => $request->method(),
                 'route' => $request->path(),
             ]);
@@ -34,7 +35,7 @@ class ImpersonationReadOnly
                 // write to impersonation_blocked_actions
 
                 DB::table('impersonation_blocked_actions')->insert([
-                    'impersonation_session_id' => $payload->get('impersonation_session_id'),
+                    'impersonation_session_id' => $payload->get('isid'),
                     'method' => $request->method(),
                     'route' => $request->path(),
                     'reason' => 'WRITE_BLOCKED'

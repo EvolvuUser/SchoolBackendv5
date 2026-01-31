@@ -3,7 +3,7 @@
 // BEFORE IMPERSONATION 
 
 -------------------------------------------------------------------
-// Super admin will login 
+// Super admin will login WORKING
 -------------------------------------------------------------------
 
 curl.exe `
@@ -18,7 +18,7 @@ Out-File output.json -Encoding utf8
 -------------------------------------------------------------------
 
 -------------------------------------------------------------------
-// super admin will call the listing api
+// super admin will call the listing api WORKING
 -------------------------------------------------------------------
 
 $token = Get-Content token.txt -Raw
@@ -40,15 +40,18 @@ Out-File output.json -Encoding utf8
 -------------------------------------------------------------------
 
 -------------------------------------------------------------------
-// super admin will impersonate user
+// super admin will impersonate user WORKING
 -------------------------------------------------------------------
 
 $token = Get-Content token.txt -Raw
+
 curl.exe `
+-X POST http://127.0.0.1:8000/api/impersonate `
 -H "Authorization: Bearer $token" `
-http://localhost:8000/api/impersonate |
+-H "Content-Type: application/json" `
+-d "@impersonateUser.json" |
 ConvertFrom-Json |
-ConvertTo-Json -Depth 2 |
+ConvertTo-Json -Depth 5 |
 Out-File output.json -Encoding utf8
 
 -------------------------------------------------------------------
@@ -57,8 +60,44 @@ Out-File output.json -Encoding utf8
 ///////////////
 // AFTER IMPERSONATION 
 
+-------------------------------------------------------------------
 // super admin will call get api'super
+-------------------------------------------------------------------
 
+$token2 = Get-Content token2.txt -Raw
+
+curl.exe `
+-H "Authorization: Bearer $token2" `
+http://127.0.0.1:8000/api/get_ticketlist |
+ConvertFrom-Json |
+ConvertTo-Json -Depth 1 |
+Out-File output.json -Encoding utf8
+
+curl.exe `
+-H "Authorization: Bearer $token2" `
+http://127.0.0.1:8000/api/get_ticketlist -o output.txt
+
+-------------------------------------------------------------------
+-------------------------------------------------------------------
+
+-------------------------------------------------------------------
 // super admin will call post api's 
+-------------------------------------------------------------------
 
+save_savenpublishchapters
+
+curl.exe `
+-X POST http://127.0.0.1:8000/api/save_savenpublishchapters `
+-H "Authorization: Bearer $token2" `
+-H "Content-Type: application/json" `
+-d "@save_savenpublishchapters.json" -o output.txt
+
+-------------------------------------------------------------------
+-------------------------------------------------------------------
+
+-------------------------------------------------------------------
 // super admin will exit impersonate 
+-------------------------------------------------------------------
+
+-------------------------------------------------------------------
+-------------------------------------------------------------------
