@@ -502,11 +502,11 @@ class TeacherDashboardController extends Controller
                 ->first();
 
             // -------- CALCULATION --------
-            $totalMarksSum =  $student_marks->total_marks_sum ?? 0;
-            $totalMarksTotal =  $student_marks->total_highest ?? 0;
-            $studentCount =  $student_marks->student_count ?? 0;
+            $totalMarksSum = $student_marks->total_marks_sum ?? 0;
+            $totalMarksTotal = $student_marks->total_highest ?? 0;
+            $studentCount = $student_marks->student_count ?? 0;
 
-            if(!$totalMarksSum && !$totalMarksTotal) {
+            if (!$totalMarksSum && !$totalMarksTotal) {
                 // -------- FINAL PUSH --------
                 $classSectionSubjects[] = [
                     'class_id' => $class_id,
@@ -515,7 +515,7 @@ class TeacherDashboardController extends Controller
                     'subject_id' => $row->subject_id,
                     'academic_yr' => $academic_yr,
                     'studentCount' => null,
-                    'average_percentage' => null, 
+                    'average_percentage' => null,
                     'totalMarksStudentGot' => null,
                     'outOfTotalMarks' => null,
                 ];
@@ -997,7 +997,7 @@ class TeacherDashboardController extends Controller
             ->whereDate('start_date', '<=', Carbon::today())
             ->whereDate('end_date', '>=', Carbon::today())
             ->where('academic_yr', $customClaims)
-            ->where('teacher_id' , $teacher_id)
+            ->where('teacher_id', $teacher_id)
             ->count();
 
         return response()->json([
@@ -1249,7 +1249,7 @@ class TeacherDashboardController extends Controller
     public function getTeacherMobileDashboard(Request $request)
     {
         $user = $this->authenticateUser();
-        $nextMonday = now()->next('Monday')->format('Y-m-d');
+        $nextMonday = now()->next('Monday')->format('d-m-Y');
         /** STUDENT CARDS */
         // get classes data
         $customClaims = JWTAuth::getPayload()->get('academic_year');
