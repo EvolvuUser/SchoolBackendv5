@@ -21867,8 +21867,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $response['staff']                    = $this->staffCard($short_code);
                 $response['staff_student_bday_count'] = $this->birthdayCard($academicYr);
                 $response['fees_collection']           = $this->feesCard($academicYr);
-                $response['ticket_count']           = $this->ticketCountCard($academicYr , $role_id);
-                $response['birthday_count']           = $this->birthDayCountCard($academicYr , $role_id);
+                $response['approve_leave']             = $this->approveLeaveCard($academicYr);
+                $response['lesson_plan_summary']       = $this->lessonPlanCard($academicYr);
             }
 
             return response()->json([

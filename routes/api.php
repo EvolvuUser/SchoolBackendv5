@@ -1425,7 +1425,14 @@
         // ########################
         // Impersonate Module
         // ######################## 
-        // ---------------------------------
+        // ------------------------- Tables Used
+            /*
+                impersonation_sessions - To store start , end. 
+                impersonation_route_logs - To store GET routes accessed. 
+                impersonation_blocked_actions - To store Transactions access routes. 
+            */
+        // -------------------------
+        // --------------------------------- Routes
             Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
                 Route::post('/impersonate' , [ImpersonateController::class , 'impersonate']);   // start
                 Route::post('/impersonate/exit' , [ImpersonateController::class , 'exitImpersonation']);   // exit

@@ -32,6 +32,7 @@ class ImpersonateController extends Controller
             $payload = JWTAuth::getPayload();
             $superAdmin = auth()->user();
             $shortName = $payload->get('short_name');
+            $super_admin_id = $payload->get('reg_id');
 
             // 1️⃣ Only Super Admin (U)
             if ($payload->get('role_id') !== 'U') {
@@ -69,6 +70,15 @@ class ImpersonateController extends Controller
             $settings = DB::table('school_settings')->where('is_active', 'Y')->first();
             $settings_new = Setting::where('active', 'Y')->first();
 
+            $impersonation_session_id = DB::table('impersonation_sessions')->insertGetId([
+                'super_admin_id' => $super_admin_id,
+                'impersonated_user_id' => $user->reg_id,
+                'impersonated_role' => $user->role_id,
+                'started_at' => now(),
+                'start_ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
             // 6️⃣ Build claims (MATCH login payload)
             $customClaims = [
                 'role_id' => $user->role_id,
@@ -83,6 +93,7 @@ class ImpersonateController extends Controller
                 'impersonation' => true,
                 'impersonated_by' => $payload->get('reg_id'),
                 'impersonator_role' => $payload->get('role_id'),
+                'isid' => $impersonation_session_id,
             ];
 
             // 7️⃣ Generate token
