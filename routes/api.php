@@ -2,11 +2,11 @@
 
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
-    use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\AuthController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\HscController;
+    use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
     use App\Http\Controllers\LoginController;
     use App\Http\Controllers\NewController;
@@ -27,7 +27,7 @@
         Route::post('register', [AuthController::class, 'register']);
 
         // Protected routes
-        Route::middleware(['jwt.auth' , 'impersonation.readonly'])->group(function () {
+        Route::middleware(['jwt.auth', 'impersonation.readonly'])->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
@@ -95,8 +95,8 @@
 
             /** DASHBOARD APIS */
             // -----------------------
-                Route::get('/principal/dashboard/summary' , [AdminController::class , 'principalDashboardSummary']);
-                Route::get('/admin/dashboard/summary' , [AdminController::class , 'adminDashboardSummary']);
+            Route::get('/principal/dashboard/summary', [AdminController::class, 'principalDashboardSummary']);
+            Route::get('/admin/dashboard/summary', [AdminController::class, 'adminDashboardSummary']);
             // -----------------------
 
             // Teacher dashboard API's
@@ -1264,56 +1264,55 @@
             Route::delete('/delete_stationery_req/{id}', [AssessmentController::class, 'deleteStationeryReq']);
 
             // Library Module - Send Reminder Remark
-            Route::get('/library/reminder/search' , [LibraryController::class , 'searchReminderRemark']);
-            Route::post('/library/reminder/send' , [LibraryController::class , 'sendReminderRemark']);
-
+            Route::get('/library/reminder/search', [LibraryController::class, 'searchReminderRemark']);
+            Route::post('/library/reminder/send', [LibraryController::class, 'sendReminderRemark']);
 
             // ##############################
-            // Library Module 
+            // Library Module
             // ##############################
             // ------------------------------------
 
-                // ============================
-                // Dashboard - Menu
-                // ============================
-                /** #START */
-                    Route::get('/library/dashboard/subscription_reminder' , [LibraryController::class , 'subscriptionReminder']);
-                    Route::get('/library/dashboard/periodical_not_received_report' , [LibraryController::class , 'dashboardPeriodicalNotReceivedReport']);
-                /** #END  */
+            // ============================
+            // Dashboard - Menu
+            // ============================
+            /** #START */
+            Route::get('/library/dashboard/subscription_reminder', [LibraryController::class, 'subscriptionReminder']);
+            Route::get('/library/dashboard/periodical_not_received_report', [LibraryController::class, 'dashboardPeriodicalNotReceivedReport']);
+            /** #END */
 
-                // ============================
-                // Periodicals - Menu
-                // ============================
-                /** Tabs - START */
-                    //// Periodicals - Tab - START
-                        Route::get('/library/periodicals' , [LibraryController::class , 'periodicalsIndex']);       // Listing
-                        Route::post('/library/periodicals' , [LibraryController::class , 'storePeriodical']);       // Create
-                        Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);    // Update
-                        Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']); // Delete
-                    //// Periodicals - Tab - END                
-                    //// Subscription - Tab - START
-                        Route::get('/library/subscriptions' , [LibraryController::class , 'subscriptionIndex']);                        // Listing
-                        Route::post('/library/subscriptions' , [LibraryController::class , 'subscriptionCreate']);                      // Create
-                        Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']);       // Edit
-                        Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);    // Delete
+            // ============================
+            // Periodicals - Menu
+            // ============================
+            /** Tabs - START */
+            // // Periodicals - Tab - START
+            Route::get('/library/periodicals', [LibraryController::class, 'periodicalsIndex']);  // Listing
+            Route::post('/library/periodicals', [LibraryController::class, 'storePeriodical']);  // Create
+            Route::put('/library/periodicals/{id}', [LibraryController::class, 'updatePeriodical']);  // Update
+            Route::delete('/library/periodicals/{id}', [LibraryController::class, 'deletePeriodical']);  // Delete
+            // // Periodicals - Tab - END
+            // // Subscription - Tab - START
+            Route::get('/library/subscriptions', [LibraryController::class, 'subscriptionIndex']);  // Listing
+            Route::post('/library/subscriptions', [LibraryController::class, 'subscriptionCreate']);  // Create
+            Route::put('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionUpdate']);  // Edit
+            Route::delete('/library/subscriptions/{subscription_id}', [LibraryController::class, 'subscriptionDelete']);  // Delete
 
-                        Route::get('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeIndex']);
-                        Route::post('/library/subscriptions/{subscription_id}/volumes' , [LibraryController::class, 'subscriptionVolumeStore']);
-                        Route::delete('/library/subscriptions/volumes/{subscription_vol_id}' , [LibraryController::class, 'subscriptionVolumeDelete']);
-                    //// Subscription - Tab - END
-                    //// Change Periodical Status - Tab - START 
-                        Route::get('/library/get_volumes_by_periodical_id/{id}' , [LibraryController::class, 'getVolumesByPeriodicalId']);
-                        Route::get('/library/get_volumes_issues/{subscription_vol_id}' , [LibraryController::class, 'getVolumesIssues']);
-                        Route::post('/library/update_periodical_status/{subscription_vol_id}' , [LibraryController::class, 'updatePeriodicalStatus']);
-                    //// Change Periodical Status - Tab - END 
-                    //// Periodical Not Received Report - Tab - START
-                        Route::get('/library/periodical_not_received_report/{periodical_id}' , [LibraryController::class , 'periodicalNotReceivedReport']);
-                        Route::get('/library/periodical_not_received_report' , [LibraryController::class , 'periodicalNotReceivedReport']);
-                    //// Periodical Not Received Report - Tab - END
-                    //// Periodical Report - Tab - START
-                        Route::get('/library/periodicals_report' , [LibraryController::class , 'periodicalsReport']);
-                    //// Periodical Report - Tab - END
-                /** Tabs - END */
+            Route::get('/library/subscriptions/{subscription_id}/volumes', [LibraryController::class, 'subscriptionVolumeIndex']);
+            Route::post('/library/subscriptions/{subscription_id}/volumes', [LibraryController::class, 'subscriptionVolumeStore']);
+            Route::delete('/library/subscriptions/volumes/{subscription_vol_id}', [LibraryController::class, 'subscriptionVolumeDelete']);
+            // // Subscription - Tab - END
+            // // Change Periodical Status - Tab - START
+            Route::get('/library/get_volumes_by_periodical_id/{id}', [LibraryController::class, 'getVolumesByPeriodicalId']);
+            Route::get('/library/get_volumes_issues/{subscription_vol_id}', [LibraryController::class, 'getVolumesIssues']);
+            Route::post('/library/update_periodical_status/{subscription_vol_id}', [LibraryController::class, 'updatePeriodicalStatus']);
+            // // Change Periodical Status - Tab - END
+            // // Periodical Not Received Report - Tab - START
+            Route::get('/library/periodical_not_received_report/{periodical_id}', [LibraryController::class, 'periodicalNotReceivedReport']);
+            Route::get('/library/periodical_not_received_report', [LibraryController::class, 'periodicalNotReceivedReport']);
+            // // Periodical Not Received Report - Tab - END
+            // // Periodical Report - Tab - START
+            Route::get('/library/periodicals_report', [LibraryController::class, 'periodicalsReport']);
+            // // Periodical Report - Tab - END
+            /** Tabs - END */
 
             // ------------------------------------
 
@@ -1370,8 +1369,8 @@
             Route::post('/library/return_book', [LibraryController::class, 'returnBook']);
             Route::post('/library/reissue_book', [LibraryController::class, 'reissueBook']);
             Route::get('/library/issue_book_details', [LibraryController::class, 'returnBookDetails']);
-            Route::post('/library/return_book' , [LibraryController::class, 'returnBook']);
-            Route::post('/library/reissue_book' , [LibraryController::class , 'reissueBook']);
+            Route::post('/library/return_book', [LibraryController::class, 'returnBook']);
+            Route::post('/library/reissue_book', [LibraryController::class, 'reissueBook']);
 
             Route::post('library/book_return_reissue', [LibraryController::class, 'returnOrReissue']);
             Route::get('issue/member_on_accession/{copy_id}', [LibraryController::class, 'getMemberOnAccession']);
@@ -1413,34 +1412,37 @@
             // Used in teacher app for the dashboard Dev Name - Manish Kumar Sharma 21-01-2026
             Route::get('get_teachermobiledashboard', [TeacherDashboardController::class, 'getTeacherMobileDashboard']);
 
+            // API for sending whatsapp messsages to teacher Dev Name - Manish Kumar Sharma 02-02-2026
+            Route::post('send_messagesforteacher', [AdminController::class, 'sendMessagesForTeacher']);
+
             // Testing
-            Route::get('/testPayload' , function(Request $request) {
+            Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
                 dd($payload->toJson());
             });
-
         });
 
         // Impersonate
         // ########################
         // Impersonate Module
-        // ######################## 
+        // ########################
         // ------------------------- Tables Used
-            /*
-                impersonation_sessions - To store start , end. 
-                impersonation_route_logs - To store GET routes accessed. 
-                impersonation_blocked_actions - To store Transactions access routes. 
-            */
+
+        /*
+         * impersonation_sessions - To store start , end.
+         * impersonation_route_logs - To store GET routes accessed.
+         * impersonation_blocked_actions - To store Transactions access routes.
+         */
         // -------------------------
         // --------------------------------- Routes
-            Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
-                Route::post('/impersonate' , [ImpersonateController::class , 'impersonate']);   // start
-                Route::post('/impersonate/exit' , [ImpersonateController::class , 'exitImpersonation']);   // exit
+        Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
+            Route::post('/impersonate', [ImpersonateController::class, 'impersonate']);  // start
+            Route::post('/impersonate/exit', [ImpersonateController::class, 'exitImpersonation']);  // exit
 
-                // Apis for listing
-                Route::get('/impersonate/get_roles' , [ImpersonateController::class , 'getRoles']);
-                Route::get('/impersonate/get_users' , [ImpersonateController::class , 'getUsers']);
-            });
+            // Apis for listing
+            Route::get('/impersonate/get_roles', [ImpersonateController::class, 'getRoles']);
+            Route::get('/impersonate/get_users', [ImpersonateController::class, 'getUsers']);
+        });
         // ---------------------------------
     });
 
