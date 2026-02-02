@@ -61,7 +61,6 @@ class StudentController extends Controller
             ->where('attendance.only_date', $only_date)
             ->where('student.isDelete', 'N')
             // ->where('attendance.teacher_id', $teacher_id)
-            
             ->select(
                 'attendance.teacher_id',
                 'student.first_name',
@@ -97,15 +96,17 @@ class StudentController extends Controller
 
         if ($class_id && $section_id) {
             // Specific class & section passed
-            $absentstudents->where('attendance.class_id', $class_id)
-                        ->where('attendance.section_id', $section_id);
+            $absentstudents
+                ->where('attendance.class_id', $class_id)
+                ->where('attendance.section_id', $section_id);
         } else {
             // Apply teacher's class–section pairs
             $absentstudents->where(function ($query) use ($classes) {
                 foreach ($classes as $cls) {
                     $query->orWhere(function ($q) use ($cls) {
-                        $q->where('attendance.class_id', $cls->class_id)
-                        ->where('attendance.section_id', $cls->section_id);
+                        $q
+                            ->where('attendance.class_id', $cls->class_id)
+                            ->where('attendance.section_id', $cls->section_id);
                     });
                 }
             });
@@ -1163,6 +1164,19 @@ class StudentController extends Controller
         $threshold = $request->input('threshold');
         $startDate = $settingsData['academic_yr_from'];
         $endDate = $request->input('end_date');
+        $today = now()->toDateString();
+
+        $rwdToday = DB::table('redington_webhook_details')
+            ->select(
+                'stu_teacher_id',
+                DB::raw('MAX(webhook_id) as webhook_id')
+            )
+            ->where('message_type', 'student_attendance_shortage')
+            ->whereBetween('created_at', [
+                $today . ' 00:00:00',
+                $today . ' 23:59:59'
+            ])
+            ->groupBy('stu_teacher_id');
         $classIds = DB::table('class')
             ->where('department_id', $department_id)
             ->pluck('class_id');
@@ -1175,6 +1189,13 @@ class StudentController extends Controller
             ->join('student', 'student.student_id', '=', 'attendance.student_id')
             ->join('class', 'class.class_id', '=', 'attendance.class_id')
             ->join('section', 'section.section_id', '=', 'attendance.section_id')
+            ->leftJoinSub($rwdToday, 'rwd_today', function ($join) {
+                $join->on('rwd_today.stu_teacher_id', '=', 'student.student_id');
+            })
+            /* join actual row for status */
+            ->leftJoin('redington_webhook_details as rwd_latest', function ($join) {
+                $join->on('rwd_latest.webhook_id', '=', 'rwd_today.webhook_id');
+            })
             ->whereBetween('attendance.only_date', [$startDate, $endDate])
             ->where('student.isDelete', 'N')
             ->whereIn('attendance.class_id', $classIds)
@@ -1190,7 +1211,9 @@ class StudentController extends Controller
                 'section.section_id',
                 DB::raw('SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) as present_days'),
                 DB::raw('COUNT(attendance.attendance_id) as total_days'),
-                DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage')
+                DB::raw('ROUND((SUM(CASE WHEN attendance.attendance_status = "0" THEN 1 ELSE 0 END) / COUNT(attendance.attendance_id) * 100), 2) as attendance_percentage'),
+                DB::raw('COALESCE(rwd_latest.sms_sent, "") as sms_sent'),
+                DB::raw('COALESCE(rwd_latest.status, "") as whatsapp_status')
             )
             ->groupBy(
                 'student.student_id',
