@@ -718,53 +718,69 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M' || $user->role_id == 'T') {
-                $remarkslist = DB::select("SELECT 
-                        Z.*,
-                        COUNT(CASE 
-                            WHEN rwd.sms_sent = 'N' 
-                            THEN 1 END) AS failed_sms_count
-                    FROM (
-                        SELECT  
-                            tr.*, 
-                            teacher.name, 
-                            0 AS read_status
-                        FROM teachers_remark tr
-                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
-                        WHERE tr.academic_yr = '" . $customClaims . "'
-                          AND tr.t_remark_id NOT IN (SELECT t_remark_id FROM tremarks_read_log)
-                    
-                        UNION 
-                    
-                        SELECT  
-                            tr.*, 
-                            teacher.name, 
-                            1 AS read_status
-                        FROM teachers_remark tr
-                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
-                        WHERE tr.academic_yr = '" . $customClaims . "'
-                          AND tr.t_remark_id IN (SELECT t_remark_id FROM tremarks_read_log)
-                    ) AS Z
-                    LEFT JOIN redington_webhook_details rwd 
-                        ON rwd.notice_id = Z.t_remark_id
-                    GROUP BY Z.t_remark_id
-                    ORDER BY Z.t_remark_id DESC;");
 
-                // dd($remarkslist);
-                return response()->json([
-                    'status' => 200,
-                    'date' => $remarkslist,
-                    'message' => 'Remark and observation list.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $remarkslist = DB::select("SELECT 
+    Z.*,
+
+    /* latest whatsapp/sms status */
+    COALESCE(rwd_latest.sms_sent, 'N') AS sms_sent,
+    COALESCE(rwd_latest.status, '') AS whatsapp_status,
+
+    /* failed sms count */
+    COUNT(
+        CASE 
+            WHEN rwd_all.sms_sent = 'N' THEN 1 
+        END
+    ) AS failed_sms_count
+
+FROM (
+    SELECT  
+        tr.*, 
+        teacher.name, 
+        0 AS read_status
+    FROM teachers_remark tr
+    JOIN teacher ON teacher.teacher_id = tr.teachers_id
+    WHERE tr.academic_yr = '" . $customClaims . "'
+      AND tr.t_remark_id NOT IN (
+          SELECT t_remark_id FROM tremarks_read_log
+      )
+
+    UNION ALL
+
+    SELECT  
+        tr.*, 
+        teacher.name, 
+        1 AS read_status
+    FROM teachers_remark tr
+    JOIN teacher ON teacher.teacher_id = tr.teachers_id
+    WHERE tr.academic_yr = '" . $customClaims . "'
+      AND tr.t_remark_id IN (
+          SELECT t_remark_id FROM tremarks_read_log
+      )
+) AS Z
+
+/* join ALL rows only for counting */
+LEFT JOIN redington_webhook_details rwd_all
+    ON rwd_all.notice_id = Z.t_remark_id
+
+/* join ONLY latest row for status */
+LEFT JOIN redington_webhook_details rwd_latest
+    ON rwd_latest.webhook_id = (
+        SELECT MAX(rwd2.webhook_id)
+        FROM redington_webhook_details rwd2
+        WHERE rwd2.notice_id = Z.t_remark_id
+    )
+
+GROUP BY Z.t_remark_id
+ORDER BY Z.t_remark_id DESC;");
+
+            // dd($remarkslist);
+            return response()->json([
+                'status' => 200,
+                'date' => $remarkslist,
+                'message' => 'Remark and observation list.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -4561,13 +4577,13 @@ class NewController extends Controller
 
             $response = [];
 
-            if($role_id == 'T') {
-                $today = Carbon::today()->toDateString(); // yyyy-mm-dd
+            if ($role_id == 'T') {
+                $today = Carbon::today()->toDateString();  // yyyy-mm-dd
                 foreach ($substituteTeacherList as $substituteTeacher) {
                     if (
                         $substituteTeacher->teacher_id == $reg_id &&
-                        Carbon::parse($substituteTeacher->end_date)->gte($today)
-                        && Carbon::parse($substituteTeacher->start_date)->lte($today)
+                        Carbon::parse($substituteTeacher->end_date)->gte($today) &&
+                        Carbon::parse($substituteTeacher->start_date)->lte($today)
                     ) {
                         $response[] = $substituteTeacher;
                     }
