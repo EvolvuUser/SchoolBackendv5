@@ -20455,6 +20455,17 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->leftJoin('teacher', 'teacher.teacher_id', '=', 'class_teachers.teacher_id')
                 ->leftJoin('class', 'class.class_id', '=', 'class_teachers.class_id')
                 ->leftJoin('section', 'section.section_id', '=', 'class_teachers.section_id')
+                ->leftJoin('redington_webhook_details as rwd', function ($join) use ($date) {
+                    $join
+                        ->on('rwd.stu_teacher_id', '=', 'teacher.teacher_id')
+                        ->whereRaw('rwd.webhook_id = (
+                            SELECT MAX(webhook_id)
+                            FROM redington_webhook_details
+                            WHERE stu_teacher_id = teacher.teacher_id
+                            AND message_type = ?
+                            AND DATE(created_at) = ?
+                        )', ['attendance_not_marked', $date]);
+                })
                 ->where('class_teachers.class_id', $class_id)
                 ->where('class_teachers.section_id', $section_id)
                 ->select(
@@ -20463,6 +20474,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'teacher.employee_id',
                     'class.name as class_name',
                     'section.name as section_name',
+                    DB::raw("COALESCE(rwd.sms_sent, '') as sms_sent"),
+                    DB::raw("COALESCE(rwd.status, '') as whatsapp_status")
                 )
                 ->first();
 
