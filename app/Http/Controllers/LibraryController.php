@@ -2959,17 +2959,19 @@ class LibraryController extends Controller
                                 continue;
                             }
 
-                            $data = [
-                                'receive_by_date' => !empty($receiveBy[$i])
-                                    ? date('Y-m-d', strtotime($receiveBy[$i]))
-                                    : null,
-                            ];
+                            // $data = [
+                            //     'receive_by_date' => !empty($receiveBy[$i])
+                            //         ? date('Y-m-d', strtotime($receiveBy[$i]))
+                            //         : '',
+                            // ];
 
                             if (!empty($dateReceived[$i])) {
                                 $data['date_received'] = date('Y-m-d', strtotime($dateReceived[$i]));
+                                $data['receive_by_date'] =  date('Y-m-d', strtotime($receiveBy[$i]));
                                 $data['status'] = 'Received';
                             } else {
                                 $data['date_received'] = null;
+                                $data['receive_by_date'] =  date('Y-m-d', strtotime($receiveBy[$i]));
                                 $data['status'] = null;
                             }
 
