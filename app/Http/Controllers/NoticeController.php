@@ -2781,7 +2781,9 @@ class NoticeController extends Controller
                                                     ELSE department.name 
                                                 END as dept_name"),
                         DB::raw('GROUP_CONCAT(DISTINCT teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names'),
-                        DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count')
+                        DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count'),
+                        DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                        DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status'),
                     )
                     ->join('teacher', 'staff_notice.created_by', '=', 'teacher.teacher_id')
                     ->leftJoin('teacher as teachernames', function ($join) {
