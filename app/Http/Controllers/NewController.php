@@ -3615,7 +3615,9 @@ ORDER BY Z.t_remark_id DESC;");
                     DB::raw('CONCAT(UPPER(LEFT(student.last_name, 1)), LOWER(SUBSTRING(student.last_name, 2))) as last_name'),
                     'subject_master.name as subjectname',
                     DB::raw('(CASE WHEN remark.remark_id IN (SELECT remark_id FROM remarks_read_log) THEN 1 ELSE 0 END) as read_status'),
-                    DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count')
+                    DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count'),
+                    DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                    DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status'),
                 )
                 ->groupBy('remark.remark_id')
                 ->orderBy('remark.remark_id', 'DESC')
