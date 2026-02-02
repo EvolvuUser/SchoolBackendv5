@@ -17,11 +17,22 @@ use App\Models\Setting;
 
 class ImpersonateController extends Controller
 {
+    private function authenticateUser()
+    {
+        try {
+            return JWTAuth::parseToken()->authenticate();
+        } catch (JWTException $e) {
+            return null;
+        }
+    }
+
     public function impersonate(Request $request)
     {
         try {
             $payload = JWTAuth::getPayload();
             $superAdmin = auth()->user();
+            $shortName = $payload->get('short_name');
+            $super_admin_id = $payload->get('reg_id');
 
             // 1️⃣ Only Super Admin (U)
             if ($payload->get('role_id') !== 'U') {
@@ -41,22 +52,11 @@ class ImpersonateController extends Controller
 
             $request->validate([
                 'user_id' => 'required',
-                'short_name' => 'required',
             ]);
-
-            // 3️⃣ Switch DB (SAME as login)
-            $shortName = $request->short_name;
-            if (!array_key_exists($shortName, config('database.connections'))) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid school'
-                ], 400);
-            }
-
-            config(['database.default' => $shortName]);
 
             // 4️⃣ Load target user
             $user = UserMaster::where('user_id', $request->user_id)->first();
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -69,6 +69,15 @@ class ImpersonateController extends Controller
             $schoolName = Setting::where('active', 'Y')->first()->institute_name;
             $settings = DB::table('school_settings')->where('is_active', 'Y')->first();
             $settings_new = Setting::where('active', 'Y')->first();
+
+            $impersonation_session_id = DB::table('impersonation_sessions')->insertGetId([
+                'super_admin_id' => $super_admin_id,
+                'impersonated_user_id' => $user->reg_id,
+                'impersonated_role' => $user->role_id,
+                'started_at' => now(),
+                'start_ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
 
             // 6️⃣ Build claims (MATCH login payload)
             $customClaims = [
@@ -84,6 +93,7 @@ class ImpersonateController extends Controller
                 'impersonation' => true,
                 'impersonated_by' => $payload->get('reg_id'),
                 'impersonator_role' => $payload->get('role_id'),
+                'isid' => $impersonation_session_id,
             ];
 
             // 7️⃣ Generate token
@@ -125,49 +135,87 @@ class ImpersonateController extends Controller
             ], 400);
         }
 
+        $sessionId = $payload->get('isid');
+
+        if(!$sessionId) {
+            return response()->json(['message' => "Invalid Payload, Cannot Exit"],404);
+        }
+
+        DB::table('impersonation_sessions')->where('id', $sessionId)
+        ->update([
+            'ended_at' => now(),
+            'exit_reason' => 'manual'
+        ]);
+
+
         return response()->json([
             'success' => true,
             'message' => 'Impersonation ended'
         ]);
     }
 
-    private function authenticateUser()
-    {
+    public function getRoles() {
         try {
-            return JWTAuth::parseToken()->authenticate();
-        } catch (JWTException $e) {
-            return null;
+            $user = $this->authenticateUser();
+
+            // get all the teachers 
+            $data = DB::table('user_master')
+            ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
+            ->select(
+                'user_master.role_id',
+            )
+            ->distinct()
+            ->where('user_master.isDelete' , 'N')->get();
+
+            return response()->json([
+                'data' => $data,
+                'count' => count($data),
+            ] , 200);
+
+        } catch(Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => "Something went wrong",
+                'error' => $err->getMessage(),
+                'line' => $err->getLine(),
+            ] , 500);
         }
     }
 
-    // public function teachersListing() {
-    //     try {
-    //         $user = $this->authenticateUser();
+    public function getUsers(Request $request) {
+        try {
+            $user = $this->authenticateUser();
+            $role_id = $request->query('role_id');
 
-    //         // get all the teachers 
-    //         $teachers = DB::table('user_master')
-    //         ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
-    //         ->select(
-    //             'user_master.user_id' , 
-    //             'user_master.reg_id' , 
-    //             'user_master.role_id',
-    //             'teacher.name',
-    //         )
-    //         ->where('user_master.role_id' , 'T')->where('user_master.isDelete' , 'N')->get();
+            // get all the teachers 
+            $data = DB::table('user_master')
+            // ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
+            ->select(
+                'user_master.user_id' , 
+                'user_master.reg_id' , 
+                'user_master.role_id',
+                'user_master.name',
+            )->where('user_master.isDelete' , 'N');
 
-    //         return response()->json([
-    //             'data' => $teachers,
-    //             'count' => count($teachers),
-    //         ] , 200);
+            if($role_id) {
+                $data->where('user_master.role_id' , $role_id);
+            }
 
-    //     } catch(Exception $err) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => "Something went wrong",
-    //             'error' => $err->getMessage(),
-    //             'line' => $err->getLine(),
-    //         ] , 500);
-    //     }
-    // }
+            $data = $data->get();
+
+            return response()->json([
+                'data' => $data,
+                'count' => count($data),
+            ] , 200);
+
+        } catch(Exception $err) {
+            return response()->json([
+                'status' => false,
+                'message' => "Something went wrong",
+                'error' => $err->getMessage(),
+                'line' => $err->getLine(),
+            ] , 500);
+        }
+    }
 
 }

@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\DB;
 
 class ImpersonationReadOnly
 {
@@ -17,12 +18,29 @@ class ImpersonationReadOnly
     public function handle(Request $request, Closure $next): Response
     {
         $payload = JWTAuth::parseToken()->getPayload();
+        // return response()->json($payload->toArray(), 200, [], JSON_PRETTY_PRINT);
 
         // Only restrict when impersonating
         if ($payload->get('impersonation') === true) {
 
+            // Write to impersonation_route_logs 
+            DB::table('impersonation_route_logs')->insert([
+                'impersonation_session_id' => $payload->get('isid'),
+                'method' => $request->method(),
+                'route' => $request->path(),
+            ]);
+
             // Block write methods
             if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'])) {
+                // write to impersonation_blocked_actions
+
+                DB::table('impersonation_blocked_actions')->insert([
+                    'impersonation_session_id' => $payload->get('isid'),
+                    'method' => $request->method(),
+                    'route' => $request->path(),
+                    'reason' => 'WRITE_BLOCKED'
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'error_code' => 'IMPERSONATION_READ_ONLY',
