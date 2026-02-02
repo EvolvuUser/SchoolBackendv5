@@ -16385,7 +16385,9 @@ class AdminController extends Controller
                                                 WHEN SUM(CASE WHEN redington_webhook_details.sms_sent = 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y'
                                                 ELSE 'N'
                                             END as sms_sent_status
-                                        ")
+                                        "),
+                        DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                        DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status')
                     )
                     ->groupBy(
                         'student.student_id',
