@@ -25,27 +25,18 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classes = DB::table('new_admission_class as n')
-                    ->join('class', 'n.class_id', '=', 'class.class_id')
-                    ->where('n.academic_yr', $customClaims)
-                    ->select('n.*', 'class.name')
-                    ->get();
+            $classes = DB::table('new_admission_class as n')
+                ->join('class', 'n.class_id', '=', 'class.class_id')
+                ->where('n.academic_yr', $customClaims)
+                ->select('n.*', 'class.name')
+                ->get();
 
-                return response([
-                    'status' => 200,
-                    'data' => $classes,
-                    'message' => 'Classes for New Admission',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Class of New Admission.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response([
+                'status' => 200,
+                'data' => $classes,
+                'message' => 'Classes for New Admission',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -69,266 +60,105 @@ class ReportController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             $shortname = JWTAuth::getPayload()->get('short_name');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');  // Get class_id from request
-                $status = $request->input('status');  // Get status from request
-                if ($shortname == 'SACS') {
-                    $admissionreport = DB::table('online_admission_form')
-                        ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
-                        ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                        ->select(
-                            'online_admission_form.*',
-                            'online_admfee.form_id',
-                            'online_admfee.status',
-                            'online_admfee.payment_date',
-                            'online_admfee.OrderId',
-                            'class.name as classname',
-                            'online_admfee.Trnx_ref_no'
-                        )
-                        ->where('online_admission_form.academic_yr', $customClaims)
-                        ->where('online_admfee.status', 'S')
-                        ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+            $class_id = $request->input('class_id');  // Get class_id from request
+            $status = $request->input('status');  // Get status from request
+            if ($shortname == 'SACS') {
+                $admissionreport = DB::table('online_admission_form')
+                    ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                    ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                    ->select(
+                        'online_admission_form.*',
+                        'online_admfee.form_id',
+                        'online_admfee.status',
+                        'online_admfee.payment_date',
+                        'online_admfee.OrderId',
+                        'class.name as classname',
+                        'online_admfee.Trnx_ref_no'
+                    )
+                    ->where('online_admission_form.academic_yr', $customClaims)
+                    ->where('online_admfee.status', 'S')
+                    ->orderBy('online_admission_form.adm_form_pk', 'ASC');
 
-                    // Apply filters
-                    if ($class_id) {
-                        $admissionreport->where('online_admission_form.class_id', $class_id);
-                    }
-                    if ($status) {
-                        $admissionreport->where('online_admission_form.admission_form_status', $status);
-                    }
-
-                    // Fetch data
-                    $admissionreport = $admissionreport->get()->map(function ($row) {
-                        $row->form_id = $row->form_id . ' (' . $row->adm_form_pk . ')';
-                        if ($row->sibling == 'Y') {
-                            if ($row->sibling_class_id != '0') {
-                                $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
-                                $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
-
-                                $class_name = DB::table('class')
-                                    ->where('class_id', $class_id)
-                                    ->value('name');
-                                $section_name = DB::table('section')
-                                    ->where('section_id', $section_id)
-                                    ->value('name');
-
-                                $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
-                            } else {
-                                $row->sibling_student_info = $row->sibling_student_id . '()';
-                            }
-                        } else {
-                            $row->sibling_student_info = 'No';
-                        }
-
-                        // ✅ Fetch Academic Details
-                        $academicDetails = DB::table('admission_academic_detail as aad')
-                            ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
-                            ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
-                            ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
-                            ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
-                            ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
-                            ->where('aad.form_id', $row->form_id)
-                            ->select(
-                                'grp.sub_group_name',
-                                'grpd.sm_hsc_id',
-                                'shsm.name as subject_name',
-                                'shsm.subject_type',
-                                'stream.stream_name',
-                                'shs_op.name as optional_sub_name',
-                                'aad.9-marks as nine_marks',
-                                'aad.10-preboard as ten_preboard',
-                                'aad.10-final as ten_final'
-                            )
-                            ->get();
-
-                        // Build academic info summary
-                        if ($academicDetails->count() > 0) {
-                            $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
-                            $academicInfo = [
-                                'stream_name' => $academicDetails[0]->stream_name,
-                                'sub_group_name' => $academicDetails[0]->sub_group_name,
-                                'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
-                                '9marks' => $academicDetails[0]->nine_marks ?? null,
-                                '10preboard' => $academicDetails[0]->ten_preboard ?? null,
-                                '10final' => $academicDetails[0]->ten_final ?? null,
-                            ];
-                        } else {
-                            $academicInfo = [];
-                        }
-
-                        // Attach to main result
-                        $row->academic_details = $academicInfo;
-
-                        return $row;
-                    });
-
-                    return response([
-                        'status' => 200,
-                        'data' => $admissionreport,
-                        'message' => 'New Admission Report',
-                        'success' => true
-                    ]);
-                } elseif ($shortname == 'HSCS') {
-                    $admissionreport = DB::table('online_admission_form')
-                        ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
-                        ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                        ->select('online_admission_form.*',
-                            'online_admfee.form_id',
-                            'online_admfee.status',
-                            'online_admfee.payment_date',
-                            'online_admfee.OrderId',
-                            'class.name as classname',
-                            'online_admfee.Trnx_ref_no')
-                        ->where('online_admission_form.academic_yr', $customClaims)
-                        ->where('online_admfee.status', 'S')
-                        ->orderBy('online_admission_form.adm_form_pk', 'ASC');
-
-                    // Apply filters for class_id and status if they are provided
-                    if ($class_id) {
-                        $admissionreport->where('online_admission_form.class_id', $class_id);
-                    }
-
-                    if ($status) {
-                        $admissionreport->where('online_admission_form.admission_form_status', $status);
-                    }
-
-                    // Get results and map sibling info
-                    $admissionreport = $admissionreport->get()->map(function ($row) {
-                        if ($row->sibling == 'Y') {
-                            if ($row->sibling_class_id != '0') {
-                                $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
-                                $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
-                                // dd($section_id);
-                                $class_name = DB::table('class')
-                                    ->where('class_id', $class_id)
-                                    ->select('name')
-                                    ->first();
-                                // dd($class_name);
-
-                                $section_name = DB::table('section')
-                                    ->where('section_id', $section_id)
-                                    ->select('name')
-                                    ->first();
-                                //  dd($section_name);
-                                // Set sibling student info
-                                $class = $class_name->name ?? 'N/A';
-                                $section = $section_name->name ?? 'N/A';
-
-                                $row->sibling_student_info = $row->sibling_student_id . " ({$class} {$section})";
-                            } else {
-                                $row->sibling_student_info = $row->sibling_student_id . '()';
-                            }
-                            // $row->sibling_student_info = $row->sibling_student_id."()";
-                        } else {
-                            $row->sibling_student_info = 'No';
-                        }
-
-                        return $row;
-                    });
-
-                    return response([
-                        'status' => 200,
-                        'data' => $admissionreport,
-                        'message' => 'New Admission Report',
-                        'success' => true
-                    ]);
-                } else {
-                    $admissionreport = DB::table('online_admission_form')
-                        ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
-                        ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                        ->select(
-                            'online_admission_form.*',
-                            'online_admfee.form_id',
-                            'online_admfee.status',
-                            'online_admfee.payment_date',
-                            'online_admfee.OrderId',
-                            'class.name as classname',
-                            'online_admfee.Trnx_ref_no'
-                        )
-                        ->where('online_admission_form.academic_yr', $customClaims)
-                        ->where('online_admfee.status', 'S')
-                        ->orderBy('online_admission_form.adm_form_pk', 'ASC');
-
-                    // Apply filters
-                    if ($class_id) {
-                        $admissionreport->where('online_admission_form.class_id', $class_id);
-                    }
-                    if ($status) {
-                        $admissionreport->where('online_admission_form.admission_form_status', $status);
-                    }
-
-                    // Fetch data
-                    $admissionreport = $admissionreport->get()->map(function ($row) {
-                        // ✅ Handle sibling info
-                        if ($row->sibling == 'Y') {
-                            if ($row->sibling_class_id != '0') {
-                                $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
-                                $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
-
-                                $class_name = DB::table('class')
-                                    ->where('class_id', $class_id)
-                                    ->value('name');
-                                $section_name = DB::table('section')
-                                    ->where('section_id', $section_id)
-                                    ->value('name');
-
-                                $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
-                            } else {
-                                $row->sibling_student_info = $row->sibling_student_id . '()';
-                            }
-                        } else {
-                            $row->sibling_student_info = 'No';
-                        }
-
-                        // ✅ Fetch Academic Details
-                        $academicDetails = DB::table('admission_academic_detail as aad')
-                            ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
-                            ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
-                            ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
-                            ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
-                            ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
-                            ->where('aad.form_id', $row->form_id)
-                            ->select(
-                                'grp.sub_group_name',
-                                'grpd.sm_hsc_id',
-                                'shsm.name as subject_name',
-                                'shsm.subject_type',
-                                'stream.stream_name',
-                                'shs_op.name as optional_sub_name',
-                                'aad.9-marks as nine_marks',
-                                'aad.10-preboard as ten_preboard',
-                                'aad.10-final as ten_final'
-                            )
-                            ->get();
-
-                        // Build academic info summary
-                        if ($academicDetails->count() > 0) {
-                            $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
-                            $academicInfo = [
-                                'stream_name' => $academicDetails[0]->stream_name,
-                                'sub_group_name' => $academicDetails[0]->sub_group_name,
-                                'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
-                                '9marks' => $academicDetails[0]->nine_marks ?? null,
-                                '10preboard' => $academicDetails[0]->ten_preboard ?? null,
-                                '10final' => $academicDetails[0]->ten_final ?? null,
-                            ];
-                        } else {
-                            $academicInfo = [];
-                        }
-
-                        // Attach to main result
-                        $row->academic_details = $academicInfo;
-
-                        return $row;
-                    });
-
-                    return response([
-                        'status' => 200,
-                        'data' => $admissionreport,
-                        'message' => 'New Admission Report',
-                        'success' => true
-                    ]);
+                // Apply filters
+                if ($class_id) {
+                    $admissionreport->where('online_admission_form.class_id', $class_id);
                 }
+                if ($status) {
+                    $admissionreport->where('online_admission_form.admission_form_status', $status);
+                }
+
+                // Fetch data
+                $admissionreport = $admissionreport->get()->map(function ($row) {
+                    $row->form_id = $row->form_id . ' (' . $row->adm_form_pk . ')';
+                    if ($row->sibling == 'Y') {
+                        if ($row->sibling_class_id != '0') {
+                            $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                            $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+
+                            $class_name = DB::table('class')
+                                ->where('class_id', $class_id)
+                                ->value('name');
+                            $section_name = DB::table('section')
+                                ->where('section_id', $section_id)
+                                ->value('name');
+
+                            $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
+                        } else {
+                            $row->sibling_student_info = $row->sibling_student_id . '()';
+                        }
+                    } else {
+                        $row->sibling_student_info = 'No';
+                    }
+
+                    // ✅ Fetch Academic Details
+                    $academicDetails = DB::table('admission_academic_detail as aad')
+                        ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->where('aad.form_id', $row->form_id)
+                        ->select(
+                            'grp.sub_group_name',
+                            'grpd.sm_hsc_id',
+                            'shsm.name as subject_name',
+                            'shsm.subject_type',
+                            'stream.stream_name',
+                            'shs_op.name as optional_sub_name',
+                            'aad.9-marks as nine_marks',
+                            'aad.10-preboard as ten_preboard',
+                            'aad.10-final as ten_final'
+                        )
+                        ->get();
+
+                    // Build academic info summary
+                    if ($academicDetails->count() > 0) {
+                        $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
+                        $academicInfo = [
+                            'stream_name' => $academicDetails[0]->stream_name,
+                            'sub_group_name' => $academicDetails[0]->sub_group_name,
+                            'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
+                            '9marks' => $academicDetails[0]->nine_marks ?? null,
+                            '10preboard' => $academicDetails[0]->ten_preboard ?? null,
+                            '10final' => $academicDetails[0]->ten_final ?? null,
+                        ];
+                    } else {
+                        $academicInfo = [];
+                    }
+
+                    // Attach to main result
+                    $row->academic_details = $academicInfo;
+
+                    return $row;
+                });
+
+                return response([
+                    'status' => 200,
+                    'data' => $admissionreport,
+                    'message' => 'New Admission Report',
+                    'success' => true
+                ]);
+            } elseif ($shortname == 'HSCS') {
                 $admissionreport = DB::table('online_admission_form')
                     ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
                     ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
@@ -393,13 +223,165 @@ class ReportController extends Controller
                     'success' => true
                 ]);
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the New Admission Report',
-                    'data' => $user->role_id,
-                    'success' => false
+                $admissionreport = DB::table('online_admission_form')
+                    ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                    ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                    ->select(
+                        'online_admission_form.*',
+                        'online_admfee.form_id',
+                        'online_admfee.status',
+                        'online_admfee.payment_date',
+                        'online_admfee.OrderId',
+                        'class.name as classname',
+                        'online_admfee.Trnx_ref_no'
+                    )
+                    ->where('online_admission_form.academic_yr', $customClaims)
+                    ->where('online_admfee.status', 'S')
+                    ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+
+                // Apply filters
+                if ($class_id) {
+                    $admissionreport->where('online_admission_form.class_id', $class_id);
+                }
+                if ($status) {
+                    $admissionreport->where('online_admission_form.admission_form_status', $status);
+                }
+
+                // Fetch data
+                $admissionreport = $admissionreport->get()->map(function ($row) {
+                    // ✅ Handle sibling info
+                    if ($row->sibling == 'Y') {
+                        if ($row->sibling_class_id != '0') {
+                            $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                            $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+
+                            $class_name = DB::table('class')
+                                ->where('class_id', $class_id)
+                                ->value('name');
+                            $section_name = DB::table('section')
+                                ->where('section_id', $section_id)
+                                ->value('name');
+
+                            $row->sibling_student_info = $row->sibling_student_id . " ({$class_name} {$section_name})";
+                        } else {
+                            $row->sibling_student_info = $row->sibling_student_id . '()';
+                        }
+                    } else {
+                        $row->sibling_student_info = 'No';
+                    }
+
+                    // ✅ Fetch Academic Details
+                    $academicDetails = DB::table('admission_academic_detail as aad')
+                        ->join('subject_group as grp', 'aad.sub_group_id', '=', 'grp.sub_group_id')
+                        ->join('subject_group_details as grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                        ->join('subject_master as shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                        ->join('subject_master as shs_op', 'aad.opt_subject_id', '=', 'shs_op.sm_id')
+                        ->join('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                        ->where('aad.form_id', $row->form_id)
+                        ->select(
+                            'grp.sub_group_name',
+                            'grpd.sm_hsc_id',
+                            'shsm.name as subject_name',
+                            'shsm.subject_type',
+                            'stream.stream_name',
+                            'shs_op.name as optional_sub_name',
+                            'aad.9-marks as nine_marks',
+                            'aad.10-preboard as ten_preboard',
+                            'aad.10-final as ten_final'
+                        )
+                        ->get();
+
+                    // Build academic info summary
+                    if ($academicDetails->count() > 0) {
+                        $selectedSubjects = $academicDetails->pluck('subject_name')->implode(', ');
+                        $academicInfo = [
+                            'stream_name' => $academicDetails[0]->stream_name,
+                            'sub_group_name' => $academicDetails[0]->sub_group_name,
+                            'selected_subjects' => $selectedSubjects . ', ' . $academicDetails[0]->optional_sub_name,
+                            '9marks' => $academicDetails[0]->nine_marks ?? null,
+                            '10preboard' => $academicDetails[0]->ten_preboard ?? null,
+                            '10final' => $academicDetails[0]->ten_final ?? null,
+                        ];
+                    } else {
+                        $academicInfo = [];
+                    }
+
+                    // Attach to main result
+                    $row->academic_details = $academicInfo;
+
+                    return $row;
+                });
+
+                return response([
+                    'status' => 200,
+                    'data' => $admissionreport,
+                    'message' => 'New Admission Report',
+                    'success' => true
                 ]);
             }
+            $admissionreport = DB::table('online_admission_form')
+                ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
+                ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                ->select('online_admission_form.*',
+                    'online_admfee.form_id',
+                    'online_admfee.status',
+                    'online_admfee.payment_date',
+                    'online_admfee.OrderId',
+                    'class.name as classname',
+                    'online_admfee.Trnx_ref_no')
+                ->where('online_admission_form.academic_yr', $customClaims)
+                ->where('online_admfee.status', 'S')
+                ->orderBy('online_admission_form.adm_form_pk', 'ASC');
+
+            // Apply filters for class_id and status if they are provided
+            if ($class_id) {
+                $admissionreport->where('online_admission_form.class_id', $class_id);
+            }
+
+            if ($status) {
+                $admissionreport->where('online_admission_form.admission_form_status', $status);
+            }
+
+            // Get results and map sibling info
+            $admissionreport = $admissionreport->get()->map(function ($row) {
+                if ($row->sibling == 'Y') {
+                    if ($row->sibling_class_id != '0') {
+                        $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
+                        $section_id = substr($row->sibling_class_id, strpos($row->sibling_class_id, '^') + 1);
+                        // dd($section_id);
+                        $class_name = DB::table('class')
+                            ->where('class_id', $class_id)
+                            ->select('name')
+                            ->first();
+                        // dd($class_name);
+
+                        $section_name = DB::table('section')
+                            ->where('section_id', $section_id)
+                            ->select('name')
+                            ->first();
+                        //  dd($section_name);
+                        // Set sibling student info
+                        $class = $class_name->name ?? 'N/A';
+                        $section = $section_name->name ?? 'N/A';
+
+                        $row->sibling_student_info = $row->sibling_student_id . " ({$class} {$section})";
+                    } else {
+                        $row->sibling_student_info = $row->sibling_student_id . '()';
+                    }
+                    // $row->sibling_student_info = $row->sibling_student_id."()";
+                } else {
+                    $row->sibling_student_info = 'No';
+                }
+
+                return $row;
+            });
+
+            return response([
+                'status' => 200,
+                'data' => $admissionreport,
+                'message' => 'New Admission Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -463,62 +445,53 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $staff_id = $request->input('staff_id');
-                $from_date = $request->input('from_date');
-                $to_date = $request->input('to_date');
+            $staff_id = $request->input('staff_id');
+            $from_date = $request->input('from_date');
+            $to_date = $request->input('to_date');
 
-                $query = DB::table('leave_application')
-                    ->join('teacher as staff', 'leave_application.staff_id', '=', 'staff.teacher_id')  // Alias for staff
-                    ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-                    ->leftJoin('teacher as approver', 'approver.teacher_id', '=', 'leave_application.approved_by')  // LEFT JOIN for approver
-                    ->select(
-                        'leave_application.leave_app_id',
-                        'leave_application.leave_type_id as leave_type_id',
-                        'staff.name as StaffName',
-                        'staff.phone',
-                        'leave_application.status as status',
-                        'leave_application.leave_end_date',
-                        'leave_application.leave_start_date',
-                        'leave_application.no_of_days',
-                        'leave_application.approved_by as approved_by',
-                        'leave_type_master.name as LeaveType',
-                        'approver.name as ApprovedBy'
-                    )
-                    ->where('leave_application.academic_yr', $customClaims);
+            $query = DB::table('leave_application')
+                ->join('teacher as staff', 'leave_application.staff_id', '=', 'staff.teacher_id')  // Alias for staff
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
+                ->leftJoin('teacher as approver', 'approver.teacher_id', '=', 'leave_application.approved_by')  // LEFT JOIN for approver
+                ->select(
+                    'leave_application.leave_app_id',
+                    'leave_application.leave_type_id as leave_type_id',
+                    'staff.name as StaffName',
+                    'staff.phone',
+                    'leave_application.status as status',
+                    'leave_application.leave_end_date',
+                    'leave_application.leave_start_date',
+                    'leave_application.no_of_days',
+                    'leave_application.approved_by as approved_by',
+                    'leave_type_master.name as LeaveType',
+                    'approver.name as ApprovedBy'
+                )
+                ->where('leave_application.academic_yr', $customClaims);
 
-                // Add the 'from_date' filter if provided
-                if ($from_date) {
-                    $query->where('leave_application.leave_start_date', '>=', Carbon::createFromFormat('Y-m-d', $from_date)->format('Y-m-d'));
-                }
-
-                // Add the 'to_date' filter if provided
-                if ($to_date) {
-                    $query->where('leave_application.leave_start_date', '<=', Carbon::createFromFormat('Y-m-d', $to_date)->format('Y-m-d'));
-                }
-
-                // Add the 'staff_id' filter if provided
-                if ($staff_id) {
-                    $query->where('leave_application.staff_id', $staff_id);
-                }
-
-                // Execute the query and get the results
-                $leaveApplications = $query->get();
-                // dd($leaveApplications);
-                return response([
-                    'status' => 200,
-                    'data' => $leaveApplications,
-                    'message' => 'Consolidated Leave Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Consolidated Leave Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            // Add the 'from_date' filter if provided
+            if ($from_date) {
+                $query->where('leave_application.leave_start_date', '>=', Carbon::createFromFormat('Y-m-d', $from_date)->format('Y-m-d'));
             }
+
+            // Add the 'to_date' filter if provided
+            if ($to_date) {
+                $query->where('leave_application.leave_start_date', '<=', Carbon::createFromFormat('Y-m-d', $to_date)->format('Y-m-d'));
+            }
+
+            // Add the 'staff_id' filter if provided
+            if ($staff_id) {
+                $query->where('leave_application.staff_id', $staff_id);
+            }
+
+            // Execute the query and get the results
+            $leaveApplications = $query->get();
+            // dd($leaveApplications);
+            return response([
+                'status' => 200,
+                'data' => $leaveApplications,
+                'message' => 'Consolidated Leave Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -530,129 +503,118 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd("Hello");
-                // dd($customClaims);
-                $section_id = $request->input('section_id');
-                $studentdetails = DB::table('student as a')
-                    ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
-                    ->join('class as c', 'c.class_id', '=', 'a.class_id')
-                    ->join('section as d', 'd.section_id', '=', 'a.section_id')
-                    ->where('a.isDelete', 'N')  // Condition for 'isDelete'
-                    ->where('a.section_id', $section_id)  // Condition for section_id
-                    ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
-                    ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
-                    ->select('a.*', 'b.*', 'c.name as classname', 'd.name as sectionname')  // Select all columns from both student (a) and parent (b)
-                    ->get();
-                $mappedStudentDetails = [];
-                foreach ($studentdetails as $studentdetail) {
-                    // dd($studentdetail);
-                    $acd_yr_from = substr($customClaims, 0, 4) - 1;
-                    $acd_yr_to = substr($customClaims, 5, 4) - 1;
-                    $prev_acd_yr = $acd_yr_from . '-' . $acd_yr_to;
-                    $prev_yr_student_id = DB::table('student')
-                        ->select('student_id')
-                        ->where('academic_yr', $prev_acd_yr)
-                        ->where('parent_id', $studentdetail->parent_id)
-                        ->where('first_name', $studentdetail->first_name)
+            $section_id = $request->input('section_id');
+            $studentdetails = DB::table('student as a')
+                ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
+                ->join('class as c', 'c.class_id', '=', 'a.class_id')
+                ->join('section as d', 'd.section_id', '=', 'a.section_id')
+                ->where('a.isDelete', 'N')  // Condition for 'isDelete'
+                ->where('a.section_id', $section_id)  // Condition for section_id
+                ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
+                ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
+                ->select('a.*', 'b.*', 'c.name as classname', 'd.name as sectionname')  // Select all columns from both student (a) and parent (b)
+                ->get();
+            $mappedStudentDetails = [];
+            foreach ($studentdetails as $studentdetail) {
+                // dd($studentdetail);
+                $acd_yr_from = substr($customClaims, 0, 4) - 1;
+                $acd_yr_to = substr($customClaims, 5, 4) - 1;
+                $prev_acd_yr = $acd_yr_from . '-' . $acd_yr_to;
+                $prev_yr_student_id = DB::table('student')
+                    ->select('student_id')
+                    ->where('academic_yr', $prev_acd_yr)
+                    ->where('parent_id', $studentdetail->parent_id)
+                    ->where('first_name', $studentdetail->first_name)
+                    ->first();
+                //  dd($prev_yr_student_id);
+                if (!empty($prev_yr_student_id)) {
+                    $class = DB::table('student as s')
+                        ->join('class as c', 's.class_id', '=', 'c.class_id')
+                        ->where('s.student_id', $prev_yr_student_id->student_id)
                         ->first();
-                    //  dd($prev_yr_student_id);
-                    if (!empty($prev_yr_student_id)) {
-                        $class = DB::table('student as s')
-                            ->join('class as c', 's.class_id', '=', 'c.class_id')
-                            ->where('s.student_id', $prev_yr_student_id->student_id)
+                    //   dd($class);
+
+                    // Based on the class, create the respective query
+                    if ($class->name == '9') {
+                        $result = DB::table('student_marks as sm')
+                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                            ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                            ->where('sb.subject_type', '=', 'Scholastic')
+                            ->where('e.name', 'like', 'Final%')
+                            ->where('sm.publish', '=', 'Y')
+                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                            ->groupBy('sm.student_id')
+                            ->first();  // Using first() to get the single result
+                    } elseif ($class->name == '11') {
+                        $result = DB::table('student_marks as sm')
+                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                            ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                            ->where('e.name', 'like', 'Final%')
+                            ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
+                            ->where('sm.publish', '=', 'Y')
+                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                            ->groupBy('sm.student_id')
                             ->first();
-                        //   dd($class);
-
-                        // Based on the class, create the respective query
-                        if ($class->name == '9') {
-                            $result = DB::table('student_marks as sm')
-                                ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                                ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-                                ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                                ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                                ->where('sb.subject_type', '=', 'Scholastic')
-                                ->where('e.name', 'like', 'Final%')
-                                ->where('sm.publish', '=', 'Y')
-                                ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                                ->groupBy('sm.student_id')
-                                ->first();  // Using first() to get the single result
-                        } elseif ($class->name == '11') {
-                            $result = DB::table('student_marks as sm')
-                                ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                                ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-                                ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                                ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                                ->where('e.name', 'like', 'Final%')
-                                ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
-                                ->where('sm.publish', '=', 'Y')
-                                ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                                ->groupBy('sm.student_id')
-                                ->first();
-                        } elseif ($class->name == '12') {
-                            $result = DB::table('student_marks as sm')
-                                ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                                ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                                ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                                ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
-                                ->where('sm.publish', '=', 'Y')
-                                ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                                ->groupBy('sm.student_id')
-                                ->first();
-                        } else {
-                            $result = DB::table('student_marks as sm')
-                                ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                                ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                                ->where('sb.subject_type', '=', 'Scholastic')
-                                ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                                ->where('sm.publish', '=', 'Y')
-                                ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                                ->groupBy('sm.student_id')
-                                ->first();
-                        }
-                        $studentdetail->total_percent = $result ? $result->total_percent : null;
-                        $attendanceresult = DB::table('attendance')
-                            ->select(
-                                DB::raw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days'),
-                                DB::raw('COUNT(*) as total_working_days')
-                            )
-                            ->where('student_id', $prev_yr_student_id->student_id)
-                            ->where('academic_yr', $prev_acd_yr)
+                    } elseif ($class->name == '12') {
+                        $result = DB::table('student_marks as sm')
+                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                            ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
+                            ->where('sm.publish', '=', 'Y')
+                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                            ->groupBy('sm.student_id')
                             ->first();
-
-                        $total_attendance = '';
-
-                        if ($attendanceresult) {
-                            $total_present_days = $attendanceresult->total_present_days;
-                            $total_working_days = $attendanceresult->total_working_days;
-
-                            if (!is_null($total_present_days) && $total_present_days !== '') {
-                                $total_attendance = $total_present_days . '/' . $total_working_days;
-                            }
-                        }
-                        $studentdetail->total_attendance = $total_attendance;
                     } else {
-                        $studentdetail->total_attendance = null;
-                        $studentdetail->total_percent = null;
+                        $result = DB::table('student_marks as sm')
+                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
+                            ->where('sb.subject_type', '=', 'Scholastic')
+                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
+                            ->where('sm.publish', '=', 'Y')
+                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
+                            ->groupBy('sm.student_id')
+                            ->first();
                     }
+                    $studentdetail->total_percent = $result ? $result->total_percent : null;
+                    $attendanceresult = DB::table('attendance')
+                        ->select(
+                            DB::raw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days'),
+                            DB::raw('COUNT(*) as total_working_days')
+                        )
+                        ->where('student_id', $prev_yr_student_id->student_id)
+                        ->where('academic_yr', $prev_acd_yr)
+                        ->first();
 
-                    $mappedStudentDetails[] = $studentdetail;
+                    $total_attendance = '';
+
+                    if ($attendanceresult) {
+                        $total_present_days = $attendanceresult->total_present_days;
+                        $total_working_days = $attendanceresult->total_working_days;
+
+                        if (!is_null($total_present_days) && $total_present_days !== '') {
+                            $total_attendance = $total_present_days . '/' . $total_working_days;
+                        }
+                    }
+                    $studentdetail->total_attendance = $total_attendance;
+                } else {
+                    $studentdetail->total_attendance = null;
+                    $studentdetail->total_percent = null;
                 }
 
-                return response([
-                    'status' => 200,
-                    'data' => $mappedStudentDetails,
-                    'message' => 'Student Details Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Student List Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $mappedStudentDetails[] = $studentdetail;
             }
+
+            return response([
+                'status' => 200,
+                'data' => $mappedStudentDetails,
+                'message' => 'Student Details Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -665,25 +627,15 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd($customClaims);
-                $section_id = $request->input('section_id');
-                $studentparent = get_parent_student_data_by_class($section_id, $customClaims);
+            $section_id = $request->input('section_id');
+            $studentparent = get_parent_student_data_by_class($section_id, $customClaims);
 
-                return response([
-                    'status' => 200,
-                    'data' => $studentparent,
-                    'message' => 'Contact Details Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Contact Details Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response([
+                'status' => 200,
+                'data' => $studentparent,
+                'message' => 'Contact Details Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -696,50 +648,41 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $date = $request->input('date');
-                $staff_id = $request->input('staff_id');
-                $section_id = $request->input('section_id');
-                $student_id = $request->input('student_id');
-                $studentremarks = DB::table('remark')
-                    ->leftjoin('student', 'student.student_id', '=', 'remark.student_id')
-                    ->leftjoin('class', 'remark.class_id', '=', 'class.class_id')
-                    ->leftjoin('section', 'remark.section_id', '=', 'section.section_id')
-                    ->leftjoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
-                    ->leftjoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
-                    ->select('class.name as classname', 'section.name as sectionname', 'remark.remark_date', 'remark.remark_type', 'student.first_name', 'student.mid_name', 'student.last_name', 'teacher.name as teachername', 'subject_master.name as subjectname', 'remark.remark_subject', 'remark.remark_desc', 'remark.academic_yr')
-                    ->orderBy('remark.remark_date');
+            $date = $request->input('date');
+            $staff_id = $request->input('staff_id');
+            $section_id = $request->input('section_id');
+            $student_id = $request->input('student_id');
+            $studentremarks = DB::table('remark')
+                ->leftjoin('student', 'student.student_id', '=', 'remark.student_id')
+                ->leftjoin('class', 'remark.class_id', '=', 'class.class_id')
+                ->leftjoin('section', 'remark.section_id', '=', 'section.section_id')
+                ->leftjoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
+                ->leftjoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
+                ->select('class.name as classname', 'section.name as sectionname', 'remark.remark_date', 'remark.remark_type', 'student.first_name', 'student.mid_name', 'student.last_name', 'teacher.name as teachername', 'subject_master.name as subjectname', 'remark.remark_subject', 'remark.remark_desc', 'remark.academic_yr')
+                ->orderBy('remark.remark_date');
 
-                if ($date != '') {
-                    $studentremarks->whereDate('remark.remark_date', '=', $date);
-                }
-
-                if ($staff_id != '') {
-                    $studentremarks->where('remark.teacher_id', '=', $staff_id);
-                }
-                if ($section_id != '') {
-                    $studentremarks->where('remark.section_id', '=', $section_id);
-                }
-                if ($student_id != '') {
-                    $studentremarks->where('remark.student_id', '=', $student_id);
-                }
-
-                $results = $studentremarks->get();
-
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Student Remarks Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Student Remarks Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($date != '') {
+                $studentremarks->whereDate('remark.remark_date', '=', $date);
             }
+
+            if ($staff_id != '') {
+                $studentremarks->where('remark.teacher_id', '=', $staff_id);
+            }
+            if ($section_id != '') {
+                $studentremarks->where('remark.section_id', '=', $section_id);
+            }
+            if ($student_id != '') {
+                $studentremarks->where('remark.student_id', '=', $student_id);
+            }
+
+            $results = $studentremarks->get();
+
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Student Remarks Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -752,34 +695,25 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $studentcategorywise = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->select('student.class_id', 'category', DB::raw('COUNT(*) as counts'), 'class.name')
-                    ->where('student.academic_yr', '=', $customClaims)
-                    ->where('student.isDelete', '=', 'N')
-                    ->groupBy('student.class_id', 'category');
+            $class_id = $request->input('class_id');
+            $studentcategorywise = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->select('student.class_id', 'category', DB::raw('COUNT(*) as counts'), 'class.name')
+                ->where('student.academic_yr', '=', $customClaims)
+                ->where('student.isDelete', '=', 'N')
+                ->groupBy('student.class_id', 'category');
 
-                if ($class_id != '') {
-                    $studentcategorywise->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $studentcategorywise->get();
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Student Category Wise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Category Wise Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($class_id != '') {
+                $studentcategorywise->where('student.class_id', '=', $class_id);
             }
+
+            $results = $studentcategorywise->get();
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Student Category Wise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -792,33 +726,24 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $studentreligionwise = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->select('class.name', DB::raw('COUNT(*) as counts'), 'student.religion')
-                    ->where('student.academic_yr', '=', $customClaims)
-                    ->where('student.isDelete', '=', 'N')
-                    ->groupBy('student.class_id', 'student.religion');
-                if ($class_id != '') {
-                    $studentreligionwise->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $studentreligionwise->get();
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Student Religion Wise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Religion Wise Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $class_id = $request->input('class_id');
+            $studentreligionwise = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->select('class.name', DB::raw('COUNT(*) as counts'), 'student.religion')
+                ->where('student.academic_yr', '=', $customClaims)
+                ->where('student.isDelete', '=', 'N')
+                ->groupBy('student.class_id', 'student.religion');
+            if ($class_id != '') {
+                $studentreligionwise->where('student.class_id', '=', $class_id);
             }
+
+            $results = $studentreligionwise->get();
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Student Religion Wise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -831,43 +756,34 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $studentgenderwise = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->select('student.class_id', 'student.gender', DB::raw('COUNT(*) as counts'), 'class.name')
-                    ->where('student.isDelete', '=', 'N')
-                    ->where('student.academic_yr', '=', $customClaims)
-                    ->whereIn('student.gender', ['M', 'F'])
-                    ->groupBy('student.class_id', 'student.gender');
+            $class_id = $request->input('class_id');
+            $studentgenderwise = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->select('student.class_id', 'student.gender', DB::raw('COUNT(*) as counts'), 'class.name')
+                ->where('student.isDelete', '=', 'N')
+                ->where('student.academic_yr', '=', $customClaims)
+                ->whereIn('student.gender', ['M', 'F'])
+                ->groupBy('student.class_id', 'student.gender');
 
-                if ($class_id != '') {
-                    $studentgenderwise->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $studentgenderwise->get();
-                $totalcount = DB::table('student')
-                    ->selectRaw("sum(case when gender = 'M' then 1 else 0 end) as male")
-                    ->selectRaw("sum(case when gender = 'F' then 1 else 0 end) as female")
-                    ->where('isDelete', 'N')
-                    ->where('academic_yr', $customClaims)
-                    ->first();
-
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'MaleFemale' => $totalcount,
-                    'message' => 'Student Religion Wise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Gender Wise Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($class_id != '') {
+                $studentgenderwise->where('student.class_id', '=', $class_id);
             }
+
+            $results = $studentgenderwise->get();
+            $totalcount = DB::table('student')
+                ->selectRaw("sum(case when gender = 'M' then 1 else 0 end) as male")
+                ->selectRaw("sum(case when gender = 'F' then 1 else 0 end) as female")
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $customClaims)
+                ->first();
+
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'MaleFemale' => $totalcount,
+                'message' => 'Student Religion Wise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -880,35 +796,26 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $studentreligionwisegenderwise = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->select('student.class_id', 'student.gender', 'student.religion', DB::raw('COUNT(*) as counts'), 'class.name')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.academic_yr', $customClaims)
-                    ->whereIn('student.gender', ['M', 'F'])
-                    ->groupBy('student.class_id', 'student.gender', 'student.religion');
+            $class_id = $request->input('class_id');
+            $studentreligionwisegenderwise = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->select('student.class_id', 'student.gender', 'student.religion', DB::raw('COUNT(*) as counts'), 'class.name')
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $customClaims)
+                ->whereIn('student.gender', ['M', 'F'])
+                ->groupBy('student.class_id', 'student.gender', 'student.religion');
 
-                if ($class_id != '') {
-                    $studentreligionwisegenderwise->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $studentreligionwisegenderwise->get();
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Student Religion Gender Wise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Gender Religion Wise Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($class_id != '') {
+                $studentreligionwisegenderwise->where('student.class_id', '=', $class_id);
             }
+
+            $results = $studentreligionwisegenderwise->get();
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Student Religion Gender Wise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -921,35 +828,26 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $studentcategorywisegenderwise = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->select('student.class_id', 'student.gender', 'student.category', DB::raw('COUNT(*) as counts'), 'class.name')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.academic_yr', $customClaims)
-                    ->whereIn('student.gender', ['M', 'F'])
-                    ->groupBy('student.class_id', 'student.gender', 'student.category');
+            $class_id = $request->input('class_id');
+            $studentcategorywisegenderwise = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->select('student.class_id', 'student.gender', 'student.category', DB::raw('COUNT(*) as counts'), 'class.name')
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $customClaims)
+                ->whereIn('student.gender', ['M', 'F'])
+                ->groupBy('student.class_id', 'student.gender', 'student.category');
 
-                if ($class_id != '') {
-                    $studentcategorywisegenderwise->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $studentcategorywisegenderwise->get();
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Student Category Gender Wise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Gender Category Wise Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($class_id != '') {
+                $studentcategorywisegenderwise->where('student.class_id', '=', $class_id);
             }
+
+            $results = $studentcategorywisegenderwise->get();
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Student Category Gender Wise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -963,77 +861,68 @@ class ReportController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             $shortname = JWTAuth::getPayload()->get('short_name');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                if ($shortname == 'SACS') {
-                    $newstudentreport = DB::table('student')
-                        ->join('class', 'student.class_id', '=', 'class.class_id')
-                        ->join('section', 'student.section_id', '=', 'section.section_id')
-                        ->where('student.IsNew', 'Y')
-                        ->where('student.isDelete', 'N')
-                        ->where('student.academic_yr', $customClaims)
-                        ->orderBy('student.admission_date')
-                        ->orderBy('student.reg_no')
-                        ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
-                    if ($class_id != '') {
-                        $newstudentreport->where('student.class_id', '=', $class_id);
-                    }
-
-                    $results = $newstudentreport->get();
-                    return response([
-                        'status' => 200,
-                        'data' => $results,
-                        'message' => 'New Student Report',
-                        'success' => true
-                    ]);
-                } elseif ($shortname == 'HSCS') {
-                    $newstudentreport = DB::table('student')
-                        ->join('class', 'student.class_id', '=', 'class.class_id')
-                        ->join('section', 'student.section_id', '=', 'section.section_id')
-                        ->where('student.IsNew', 'Y')
-                        ->where('student.academic_yr', $customClaims)
-                        ->orderBy('student.admission_date')
-                        ->orderBy('student.reg_no')
-                        ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
-                    if ($class_id != '') {
-                        $newstudentreport->where('student.class_id', '=', $class_id);
-                    }
-
-                    $results = $newstudentreport->get();
-                    return response([
-                        'status' => 200,
-                        'data' => $results,
-                        'message' => 'New Student Report',
-                        'success' => true
-                    ]);
-                } else {
-                    $newstudentreport = DB::table('student')
-                        ->join('class', 'student.class_id', '=', 'class.class_id')
-                        ->join('section', 'student.section_id', '=', 'section.section_id')
-                        ->where('student.IsNew', 'Y')
-                        ->where('student.isDelete', 'N')
-                        ->where('student.academic_yr', $customClaims)
-                        ->orderBy('student.admission_date')
-                        ->orderBy('student.reg_no')
-                        ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
-                    if ($class_id != '') {
-                        $newstudentreport->where('student.class_id', '=', $class_id);
-                    }
-
-                    $results = $newstudentreport->get();
-                    return response([
-                        'status' => 200,
-                        'data' => $results,
-                        'message' => 'New Student Report',
-                        'success' => true
-                    ]);
+            $class_id = $request->input('class_id');
+            if ($shortname == 'SACS') {
+                $newstudentreport = DB::table('student')
+                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                    ->join('section', 'student.section_id', '=', 'section.section_id')
+                    ->where('student.IsNew', 'Y')
+                    ->where('student.isDelete', 'N')
+                    ->where('student.academic_yr', $customClaims)
+                    ->orderBy('student.admission_date')
+                    ->orderBy('student.reg_no')
+                    ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+                if ($class_id != '') {
+                    $newstudentreport->where('student.class_id', '=', $class_id);
                 }
+
+                $results = $newstudentreport->get();
+                return response([
+                    'status' => 200,
+                    'data' => $results,
+                    'message' => 'New Student Report',
+                    'success' => true
+                ]);
+            } elseif ($shortname == 'HSCS') {
+                $newstudentreport = DB::table('student')
+                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                    ->join('section', 'student.section_id', '=', 'section.section_id')
+                    ->where('student.IsNew', 'Y')
+                    ->where('student.academic_yr', $customClaims)
+                    ->orderBy('student.admission_date')
+                    ->orderBy('student.reg_no')
+                    ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+                if ($class_id != '') {
+                    $newstudentreport->where('student.class_id', '=', $class_id);
+                }
+
+                $results = $newstudentreport->get();
+                return response([
+                    'status' => 200,
+                    'data' => $results,
+                    'message' => 'New Student Report',
+                    'success' => true
+                ]);
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the New Student Report',
-                    'data' => $user->role_id,
-                    'success' => false
+                $newstudentreport = DB::table('student')
+                    ->join('class', 'student.class_id', '=', 'class.class_id')
+                    ->join('section', 'student.section_id', '=', 'section.section_id')
+                    ->where('student.IsNew', 'Y')
+                    ->where('student.isDelete', 'N')
+                    ->where('student.academic_yr', $customClaims)
+                    ->orderBy('student.admission_date')
+                    ->orderBy('student.reg_no')
+                    ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+                if ($class_id != '') {
+                    $newstudentreport->where('student.class_id', '=', $class_id);
+                }
+
+                $results = $newstudentreport->get();
+                return response([
+                    'status' => 200,
+                    'data' => $results,
+                    'message' => 'New Student Report',
+                    'success' => true
                 ]);
             }
         } catch (Exception $e) {
@@ -1048,34 +937,25 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $leftstudents = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->where('student.IsDelete', 'Y')
-                    ->where('student.academic_yr', $customClaims)
-                    ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
+            $class_id = $request->input('class_id');
+            $leftstudents = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->where('student.IsDelete', 'Y')
+                ->where('student.academic_yr', $customClaims)
+                ->select('class.name as class_name', 'section.name as sec_name', 'student.*');
 
-                if ($class_id != '') {
-                    $leftstudents->where('student.class_id', '=', $class_id);
-                }
-
-                $results = $leftstudents->get();
-                return response([
-                    'status' => 200,
-                    'data' => $results,
-                    'message' => 'Left Students Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Left Students Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($class_id != '') {
+                $leftstudents->where('student.class_id', '=', $class_id);
             }
+
+            $results = $leftstudents->get();
+            return response([
+                'status' => 200,
+                'data' => $results,
+                'message' => 'Left Students Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1088,89 +968,80 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
-                $getsubjecthsc = DB::table('student AS stud')
-                    ->leftJoin('subjects_higher_secondary_studentwise AS shs', 'shs.student_id', '=', 'stud.student_id')
-                    ->leftJoin('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
-                    ->leftJoin('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
-                    ->leftJoin('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
-                    ->leftJoin('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
-                    ->leftJoin('stream', 'grp.stream_id', '=', 'stream.stream_id')
-                    ->where('stud.class_id', '=', $class_id)
-                    ->where('stud.section_id', '=', $section_id)
-                    ->where('stud.academic_yr', '=', $customClaims)
-                    ->select(
-                        'stud.roll_no',
-                        'stud.first_name',
-                        'stud.mid_name',
-                        'stud.last_name',
-                        'stud.student_id',
-                        'shsm.name as subject_name',
-                        'shsm.subject_type',
-                        'stream.stream_name',
-                        'shs_op.name as optional_sub_name'
-                    )
-                    ->orderBy('stud.student_id')
-                    ->get()
-                    ->groupBy('student_id');  // Grouping by student_id
-                // dd($getsubjecthsc);
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            $getsubjecthsc = DB::table('student AS stud')
+                ->leftJoin('subjects_higher_secondary_studentwise AS shs', 'shs.student_id', '=', 'stud.student_id')
+                ->leftJoin('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+                ->leftJoin('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+                ->leftJoin('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+                ->leftJoin('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+                ->leftJoin('stream', 'grp.stream_id', '=', 'stream.stream_id')
+                ->where('stud.class_id', '=', $class_id)
+                ->where('stud.section_id', '=', $section_id)
+                ->where('stud.academic_yr', '=', $customClaims)
+                ->select(
+                    'stud.roll_no',
+                    'stud.first_name',
+                    'stud.mid_name',
+                    'stud.last_name',
+                    'stud.student_id',
+                    'shsm.name as subject_name',
+                    'shsm.subject_type',
+                    'stream.stream_name',
+                    'shs_op.name as optional_sub_name'
+                )
+                ->orderBy('stud.student_id')
+                ->get()
+                ->groupBy('student_id');  // Grouping by student_id
+            // dd($getsubjecthsc);
 
-                $formattedSubjects = [];
+            $formattedSubjects = [];
 
-                foreach ($getsubjecthsc as $student_id => $subjects) {
-                    $allSubjects = [];
-                    $optionalSubjectNames = [];  // This will store optional subjects
-                    $studentDetails = [
-                        'student_id' => $student_id,
-                        'first_name' => $subjects[0]->first_name,  // Take the first entry's first_name
-                        'mid_name' => $subjects[0]->mid_name,  // Take the first entry's mid_name
-                        'last_name' => $subjects[0]->last_name,  // Take the first entry's last_name
-                        'roll_no' => $subjects[0]->roll_no,  // Take the first entry's roll_no
-                        'stream_name' => $subjects[0]->stream_name,  // Take the first entry's stream_name
+            foreach ($getsubjecthsc as $student_id => $subjects) {
+                $allSubjects = [];
+                $optionalSubjectNames = [];  // This will store optional subjects
+                $studentDetails = [
+                    'student_id' => $student_id,
+                    'first_name' => $subjects[0]->first_name,  // Take the first entry's first_name
+                    'mid_name' => $subjects[0]->mid_name,  // Take the first entry's mid_name
+                    'last_name' => $subjects[0]->last_name,  // Take the first entry's last_name
+                    'roll_no' => $subjects[0]->roll_no,  // Take the first entry's roll_no
+                    'stream_name' => $subjects[0]->stream_name,  // Take the first entry's stream_name
+                ];
+
+                // Loop through each subject for the current student
+                foreach ($subjects as $subject) {
+                    // Add regular subject to the allSubjects array
+                    $allSubjects[] = [
+                        'subject_name' => $subject->subject_name
                     ];
 
-                    // Loop through each subject for the current student
-                    foreach ($subjects as $subject) {
-                        // Add regular subject to the allSubjects array
-                        $allSubjects[] = [
-                            'subject_name' => $subject->subject_name
-                        ];
-
-                        // Add optional subject only once if it exists
-                        if (!empty($subject->optional_sub_name) && !in_array($subject->optional_sub_name, $optionalSubjectNames)) {
-                            $optionalSubjectNames[] = $subject->optional_sub_name;  // Add the optional subject only if it is not already in the list
-                        }
+                    // Add optional subject only once if it exists
+                    if (!empty($subject->optional_sub_name) && !in_array($subject->optional_sub_name, $optionalSubjectNames)) {
+                        $optionalSubjectNames[] = $subject->optional_sub_name;  // Add the optional subject only if it is not already in the list
                     }
-
-                    // Merge optional subjects into the allSubjects array
-                    foreach ($optionalSubjectNames as $optionalSubject) {
-                        $allSubjects[] = [
-                            'subject_name' => $optionalSubject
-                        ];
-                    }
-
-                    // Add the formatted data for each student
-                    $formattedSubjects[] = array_merge($studentDetails, [
-                        'subjects' => $allSubjects
-                    ]);
                 }
 
-                return response([
-                    'status' => 200,
-                    'data' => $formattedSubjects,
-                    'message' => 'Subject HSC Studentwise Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Subject HSC Studentwise Report',
-                    'data' => $user->role_id,
-                    'success' => false
+                // Merge optional subjects into the allSubjects array
+                foreach ($optionalSubjectNames as $optionalSubject) {
+                    $allSubjects[] = [
+                        'subject_name' => $optionalSubject
+                    ];
+                }
+
+                // Add the formatted data for each student
+                $formattedSubjects[] = array_merge($studentDetails, [
+                    'subjects' => $allSubjects
                 ]);
             }
+
+            return response([
+                'status' => 200,
+                'data' => $formattedSubjects,
+                'message' => 'Subject HSC Studentwise Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1183,22 +1054,13 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $query = DB::select(" SELECT * FROM teacher WHERE designation != 'Caretaker' AND IsDelete = 'N' ");
-                return response([
-                    'status' => 200,
-                    'data' => $query,
-                    'message' => 'Staff Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Staff Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $query = DB::select(" SELECT * FROM teacher WHERE designation != 'Caretaker' AND IsDelete = 'N' ");
+            return response([
+                'status' => 200,
+                'data' => $query,
+                'message' => 'Staff Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1211,111 +1073,102 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $month = $request->input('month');
-                $workingDaysQuery = DB::table('attendance as a')
-                    ->select(DB::raw('count(*) as workingdays_count'))
-                    ->where('a.section_id', $section_id)
-                    ->whereRaw('MONTHNAME(a.only_date) = ?', [$month])
-                    ->where('a.academic_yr', $customClaims)
-                    ->groupBy('a.student_id');
+            $section_id = $request->input('section_id');
+            $month = $request->input('month');
+            $workingDaysQuery = DB::table('attendance as a')
+                ->select(DB::raw('count(*) as workingdays_count'))
+                ->where('a.section_id', $section_id)
+                ->whereRaw('MONTHNAME(a.only_date) = ?', [$month])
+                ->where('a.academic_yr', $customClaims)
+                ->groupBy('a.student_id');
 
-                $maxWorkingDaysQuery = DB::table(DB::raw("({$workingDaysQuery->toSql()}) as working_days"))
-                    ->mergeBindings($workingDaysQuery)
-                    ->select(DB::raw('max(workingdays_count) as total_working_days'));
+            $maxWorkingDaysQuery = DB::table(DB::raw("({$workingDaysQuery->toSql()}) as working_days"))
+                ->mergeBindings($workingDaysQuery)
+                ->select(DB::raw('max(workingdays_count) as total_working_days'));
 
-                $studentsAttendance = DB::table('attendance as a')
-                    ->select(
-                        'a.student_id',
-                        DB::raw('SUM(IF(a.attendance_status = 0, 1, 0)) as present_count'),
-                        'b.first_name',
-                        'b.mid_name',
-                        'b.last_name',
-                        'b.roll_no',
-                        'b.isDelete',
-                        DB::raw("({$maxWorkingDaysQuery->toSql()}) as total_working_days")
-                    )
-                    ->join('student as b', 'a.student_id', '=', 'b.student_id')
-                    ->where('a.section_id', $section_id)
-                    ->whereRaw('MONTHNAME(a.only_date) = ?', [$month])
-                    ->where('a.academic_yr', $customClaims)
-                    ->groupBy('a.student_id')
-                    ->orderBy('b.roll_no', 'ASC')
-                    ->orderBy('b.reg_no', 'ASC')
-                    ->mergeBindings($maxWorkingDaysQuery)
-                    ->get();
+            $studentsAttendance = DB::table('attendance as a')
+                ->select(
+                    'a.student_id',
+                    DB::raw('SUM(IF(a.attendance_status = 0, 1, 0)) as present_count'),
+                    'b.first_name',
+                    'b.mid_name',
+                    'b.last_name',
+                    'b.roll_no',
+                    'b.isDelete',
+                    DB::raw("({$maxWorkingDaysQuery->toSql()}) as total_working_days")
+                )
+                ->join('student as b', 'a.student_id', '=', 'b.student_id')
+                ->where('a.section_id', $section_id)
+                ->whereRaw('MONTHNAME(a.only_date) = ?', [$month])
+                ->where('a.academic_yr', $customClaims)
+                ->groupBy('a.student_id')
+                ->orderBy('b.roll_no', 'ASC')
+                ->orderBy('b.reg_no', 'ASC')
+                ->mergeBindings($maxWorkingDaysQuery)
+                ->get();
 
-                $res = DB::table('settings')
-                    ->where('active', 'Y')
-                    ->first();
-                $month_number = date('n', strtotime($month));
-                $yr_from = date('Y', strtotime($res->academic_yr_from));
-                $yr_to = date('Y', strtotime($res->academic_yr_to));
-                if ($month_number >= 4 && $month_number <= 12) {
-                    $date_to = date('Y-m-d', mktime(0, 0, 0, $month_number + 1, 0, $yr_from));
-                } else {
-                    $date_to = date('Y-m-d', mktime(0, 0, 0, $month_number + 1, 0, $yr_to));
-                }
-
-                $totalPresentCount = $studentsAttendance->sum('present_count');
-                $totalWorkingDays = $studentsAttendance->sum('total_working_days');
-                $totalDays = $totalPresentCount + $totalWorkingDays;
-
-                $totalAttendanceResults = [];
-                $totalAttendanceSum = 0;
-                $grandtotalWorkingDays = 0;
-                $studentData = [];
-
-                foreach ($studentsAttendance as $studentsAttendances) {
-                    $total_attendance = DB::table('attendance')
-                        ->selectRaw('sum(case when attendance_status = 0 then 1 else 0 end) as total_present_days')
-                        ->where('student_id', $studentsAttendances->student_id)
-                        ->whereBetween('only_date', [$res->academic_yr_from, $date_to])
-                        ->where('academic_yr', $customClaims)
-                        ->value('total_present_days');
-                    $totalAttendanceSum += $total_attendance;
-
-                    $grand_total_working_days = DB::table('attendance')
-                        ->where('student_id', $studentsAttendances->student_id)
-                        ->whereBetween('only_date', [$res->academic_yr_from, $date_to])
-                        ->where('academic_yr', $customClaims)
-                        ->count();
-                    $grandtotalWorkingDays += $grand_total_working_days;
-                    $studentData[] = [
-                        'student_id' => $studentsAttendances->student_id,
-                        'roll_no' => $studentsAttendances->roll_no,
-                        'first_name' => $studentsAttendances->first_name,
-                        'mid_name' => $studentsAttendances->mid_name,
-                        'last_name' => $studentsAttendances->last_name,
-                        'present_count' => $studentsAttendances->present_count,
-                        'working_days' => $studentsAttendances->total_working_days,
-                        'total_attendance' => $total_attendance,
-                        'total_attendance_till_a_month' => $grand_total_working_days
-                    ];
-                }
-                $data = [
-                    'total_present_count' => $totalPresentCount,
-                    'total_working_days' => $totalWorkingDays,
-                    'total_attendance' => $totalAttendanceSum,
-                    'grand_total_working_days' => $grandtotalWorkingDays,
-                    'students' => $studentData,
-                ];
-
-                return response([
-                    'status' => 200,
-                    'data' => $data,
-                    'message' => 'Monthly Attendance Report ',
-                    'success' => true
-                ]);
+            $res = DB::table('settings')
+                ->where('active', 'Y')
+                ->first();
+            $month_number = date('n', strtotime($month));
+            $yr_from = date('Y', strtotime($res->academic_yr_from));
+            $yr_to = date('Y', strtotime($res->academic_yr_to));
+            if ($month_number >= 4 && $month_number <= 12) {
+                $date_to = date('Y-m-d', mktime(0, 0, 0, $month_number + 1, 0, $yr_from));
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Monthly Attendance Record Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $date_to = date('Y-m-d', mktime(0, 0, 0, $month_number + 1, 0, $yr_to));
             }
+
+            $totalPresentCount = $studentsAttendance->sum('present_count');
+            $totalWorkingDays = $studentsAttendance->sum('total_working_days');
+            $totalDays = $totalPresentCount + $totalWorkingDays;
+
+            $totalAttendanceResults = [];
+            $totalAttendanceSum = 0;
+            $grandtotalWorkingDays = 0;
+            $studentData = [];
+
+            foreach ($studentsAttendance as $studentsAttendances) {
+                $total_attendance = DB::table('attendance')
+                    ->selectRaw('sum(case when attendance_status = 0 then 1 else 0 end) as total_present_days')
+                    ->where('student_id', $studentsAttendances->student_id)
+                    ->whereBetween('only_date', [$res->academic_yr_from, $date_to])
+                    ->where('academic_yr', $customClaims)
+                    ->value('total_present_days');
+                $totalAttendanceSum += $total_attendance;
+
+                $grand_total_working_days = DB::table('attendance')
+                    ->where('student_id', $studentsAttendances->student_id)
+                    ->whereBetween('only_date', [$res->academic_yr_from, $date_to])
+                    ->where('academic_yr', $customClaims)
+                    ->count();
+                $grandtotalWorkingDays += $grand_total_working_days;
+                $studentData[] = [
+                    'student_id' => $studentsAttendances->student_id,
+                    'roll_no' => $studentsAttendances->roll_no,
+                    'first_name' => $studentsAttendances->first_name,
+                    'mid_name' => $studentsAttendances->mid_name,
+                    'last_name' => $studentsAttendances->last_name,
+                    'present_count' => $studentsAttendances->present_count,
+                    'working_days' => $studentsAttendances->total_working_days,
+                    'total_attendance' => $total_attendance,
+                    'total_attendance_till_a_month' => $grand_total_working_days
+                ];
+            }
+            $data = [
+                'total_present_count' => $totalPresentCount,
+                'total_working_days' => $totalWorkingDays,
+                'total_attendance' => $totalAttendanceSum,
+                'grand_total_working_days' => $grandtotalWorkingDays,
+                'students' => $studentData,
+            ];
+
+            return response([
+                'status' => 200,
+                'data' => $data,
+                'message' => 'Monthly Attendance Report ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1328,48 +1181,39 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $searchFrom = $request->input('searchFrom');
-                $searchTo = $request->input('searchTo');
-                $reqData = [
-                    'searchFrom' => $searchFrom,
-                    'searchTo' => $searchTo
-                ];
+            $searchFrom = $request->input('searchFrom');
+            $searchTo = $request->input('searchTo');
+            $reqData = [
+                'searchFrom' => $searchFrom,
+                'searchTo' => $searchTo
+            ];
 
-                $query = DB::table('view_fees_payment_record')
-                    ->join('student', 'student.student_id', '=', 'view_fees_payment_record.student_id')
-                    ->select(
-                        'view_fees_payment_record.*',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        DB::raw("DATE_FORMAT(view_fees_payment_record.payment_date, '%d-%m-%Y') as date")
-                    );
+            $query = DB::table('view_fees_payment_record')
+                ->join('student', 'student.student_id', '=', 'view_fees_payment_record.student_id')
+                ->select(
+                    'view_fees_payment_record.*',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    DB::raw("DATE_FORMAT(view_fees_payment_record.payment_date, '%d-%m-%Y') as date")
+                );
 
-                if (isset($reqData)) {
-                    if ($reqData['searchFrom'] !== null && $reqData['searchTo'] !== null) {
-                        $query
-                            ->where('payment_date', '>=', $reqData['searchFrom'])
-                            ->where('payment_date', '<=', $reqData['searchTo']);
-                    }
+            if (isset($reqData)) {
+                if ($reqData['searchFrom'] !== null && $reqData['searchTo'] !== null) {
+                    $query
+                        ->where('payment_date', '>=', $reqData['searchFrom'])
+                        ->where('payment_date', '<=', $reqData['searchTo']);
                 }
-
-                $feepaymentrecord = $query->get();
-
-                return response([
-                    'status' => 200,
-                    'data' => $feepaymentrecord,
-                    'message' => 'Fee Payment Record Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Fee Payment Record Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+
+            $feepaymentrecord = $query->get();
+
+            return response([
+                'status' => 200,
+                'data' => $feepaymentrecord,
+                'message' => 'Fee Payment Record Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1382,58 +1226,49 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $account_type = $request->input('accounttype');
-                $from_date = $request->input('fromdate');
-                $to_date = $request->input('todate');
-                $student_id = $request->input('student_id');
-                $order_id = $request->input('order_id');
-                if ($student_id) {
-                    $parent_idd = DB::table('student')->where('student_id', $student_id)->select('parent_id')->first();
-                    $parent_id = $parent_idd->parent_id;
-                }
-
-                $query = DB::table('worldline_payment_details as w')
-                    ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'w.OrderId')
-                    ->select('w.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
-                    ->where('w.Status_code', 'S');
-
-                if (!empty($account_type)) {
-                    $query->where('w.Account_type', 'like', $account_type . '%');
-                }
-
-                if (!empty($from_date)) {
-                    $query->whereDate('w.Trnx_date', '>=', $from_date);
-                }
-
-                if (!empty($to_date)) {
-                    $query->whereDate('w.Trnx_date', '<=', $to_date);
-                }
-
-                if (!empty($parent_id) && $parent_id != 0) {
-                    $query->where('w.reg_id', '=', $parent_id);
-                }
-
-                if (!empty($order_id)) {
-                    $query->where('w.OrderId', '=', $order_id);
-                }
-
-                $query->groupBy('w.OrderId');
-                $worldinepayment = $query->get();
-                return response([
-                    'status' => 200,
-                    'data' => $worldinepayment,
-                    'message' => 'WorldLine Fee Payment Record Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the WorldLine Fee Payment Record Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $account_type = $request->input('accounttype');
+            $from_date = $request->input('fromdate');
+            $to_date = $request->input('todate');
+            $student_id = $request->input('student_id');
+            $order_id = $request->input('order_id');
+            if ($student_id) {
+                $parent_idd = DB::table('student')->where('student_id', $student_id)->select('parent_id')->first();
+                $parent_id = $parent_idd->parent_id;
             }
+
+            $query = DB::table('worldline_payment_details as w')
+                ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'w.OrderId')
+                ->select('w.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
+                ->where('w.Status_code', 'S');
+
+            if (!empty($account_type)) {
+                $query->where('w.Account_type', 'like', $account_type . '%');
+            }
+
+            if (!empty($from_date)) {
+                $query->whereDate('w.Trnx_date', '>=', $from_date);
+            }
+
+            if (!empty($to_date)) {
+                $query->whereDate('w.Trnx_date', '<=', $to_date);
+            }
+
+            if (!empty($parent_id) && $parent_id != 0) {
+                $query->where('w.reg_id', '=', $parent_id);
+            }
+
+            if (!empty($order_id)) {
+                $query->where('w.OrderId', '=', $order_id);
+            }
+
+            $query->groupBy('w.OrderId');
+            $worldinepayment = $query->get();
+            return response([
+                'status' => 200,
+                'data' => $worldinepayment,
+                'message' => 'WorldLine Fee Payment Record Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1446,60 +1281,51 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $account_type = $request->input('accounttype');
-                $from_date = $request->input('fromdate');
-                $to_date = $request->input('todate');
-                $student_id = $request->input('student_id');
-                $order_id = $request->input('order_id');
-                if ($student_id) {
-                    $parent_idd = DB::table('student')->where('student_id', $student_id)->select('parent_id')->first();
-                    $parent_id = $parent_idd->parent_id;
-                }
-
-                $query = DB::table('razorpay_payment_details as r')
-                    ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'r.OrderId')
-                    ->select('r.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
-                    ->where('r.Status', 'S');
-
-                if (!empty($account_type)) {
-                    $query->where('r.Account_type', 'like', $account_type . '%');
-                }
-
-                if (!empty($from_date)) {
-                    $query->whereDate('r.Trnx_date', '>=', $from_date);
-                }
-
-                if (!empty($to_date)) {
-                    $query->whereDate('r.Trnx_date', '<=', $to_date);
-                }
-
-                if (!empty($parent_id) && $parent_id != 0) {
-                    $query->where('r.reg_id', '=', $parent_id);
-                }
-
-                if (!empty($order_id)) {
-                    $query->where('r.OrderId', '=', $order_id);
-                }
-
-                $query->groupBy('r.OrderId');
-
-                $razorpaypayment = $query->get();
-
-                return response([
-                    'status' => 200,
-                    'data' => $razorpaypayment,
-                    'message' => 'Razorpay Fee Payment Record Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Razorpay Fee Payment Record Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $account_type = $request->input('accounttype');
+            $from_date = $request->input('fromdate');
+            $to_date = $request->input('todate');
+            $student_id = $request->input('student_id');
+            $order_id = $request->input('order_id');
+            if ($student_id) {
+                $parent_idd = DB::table('student')->where('student_id', $student_id)->select('parent_id')->first();
+                $parent_id = $parent_idd->parent_id;
             }
+
+            $query = DB::table('razorpay_payment_details as r')
+                ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'r.OrderId')
+                ->select('r.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
+                ->where('r.Status', 'S');
+
+            if (!empty($account_type)) {
+                $query->where('r.Account_type', 'like', $account_type . '%');
+            }
+
+            if (!empty($from_date)) {
+                $query->whereDate('r.Trnx_date', '>=', $from_date);
+            }
+
+            if (!empty($to_date)) {
+                $query->whereDate('r.Trnx_date', '<=', $to_date);
+            }
+
+            if (!empty($parent_id) && $parent_id != 0) {
+                $query->where('r.reg_id', '=', $parent_id);
+            }
+
+            if (!empty($order_id)) {
+                $query->where('r.OrderId', '=', $order_id);
+            }
+
+            $query->groupBy('r.OrderId');
+
+            $razorpaypayment = $query->get();
+
+            return response([
+                'status' => 200,
+                'data' => $razorpaypayment,
+                'message' => 'Razorpay Fee Payment Record Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1512,51 +1338,42 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $result = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->leftJoin('confirmation_idcard', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.section_id', $section_id)
-                    ->whereNull('confirmation_idcard.confirm')
-                    ->orderBy('student.roll_no')
-                    ->select(
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.house',
-                        'student.dob',
-                        'student.house as student_house',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'parent.parent_id',
-                        'parent.father_name',
-                        'parent.f_mobile',
-                        'parent.m_mobile'
-                    )
-                    ->get();
-                return response([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'Pending Student Id Card Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Pending Student Id Card Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $section_id = $request->input('section_id');
+            $result = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->leftJoin('confirmation_idcard', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                ->where('student.isDelete', 'N')
+                ->where('student.section_id', $section_id)
+                ->whereNull('confirmation_idcard.confirm')
+                ->orderBy('student.roll_no')
+                ->select(
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.house',
+                    'student.dob',
+                    'student.house as student_house',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'parent.parent_id',
+                    'parent.father_name',
+                    'parent.f_mobile',
+                    'parent.m_mobile'
+                )
+                ->get();
+            return response([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'Pending Student Id Card Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1569,36 +1386,27 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $month = $request->input('month');
+            $month = $request->input('month');
 
-                $result = DB::table('substitute_teacher')
-                    ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
-                    ->join('class', 'substitute_teacher.class_id', '=', 'class.class_id')
-                    ->join('section', 'substitute_teacher.section_id', '=', 'section.section_id')
-                    ->join('teacher as teacher', 'substitute_teacher.teacher_id', '=', 'teacher.teacher_id')
-                    ->join('teacher as subteacher', 'substitute_teacher.sub_teacher_id', '=', 'subteacher.teacher_id')
-                    ->whereMonth('substitute_teacher.date', $month)
-                    ->where('substitute_teacher.academic_yr', $customClaims)
-                    ->orderBy('substitute_teacher.teacher_id')
-                    ->orderBy('substitute_teacher.date')
-                    ->orderBy('substitute_teacher.period')
-                    ->select('substitute_teacher.*', 'subject_master.name', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'subteacher.name as substitutename')
-                    ->get();
-                return response([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'Substitute Teacher Monthly Report',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Substitute Teacher Monthly Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $result = DB::table('substitute_teacher')
+                ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
+                ->join('class', 'substitute_teacher.class_id', '=', 'class.class_id')
+                ->join('section', 'substitute_teacher.section_id', '=', 'section.section_id')
+                ->join('teacher as teacher', 'substitute_teacher.teacher_id', '=', 'teacher.teacher_id')
+                ->join('teacher as subteacher', 'substitute_teacher.sub_teacher_id', '=', 'subteacher.teacher_id')
+                ->whereMonth('substitute_teacher.date', $month)
+                ->where('substitute_teacher.academic_yr', $customClaims)
+                ->orderBy('substitute_teacher.teacher_id')
+                ->orderBy('substitute_teacher.date')
+                ->orderBy('substitute_teacher.period')
+                ->select('substitute_teacher.*', 'subject_master.name', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'subteacher.name as substitutename')
+                ->get();
+            return response([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'Substitute Teacher Monthly Report',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1611,96 +1419,87 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacher_id = $request->input('teacher_id');
-                $week = $request->input('week');
-                // dd($week);
-                if (is_null($week)) {
-                    $result = DB::table('substitute_teacher')
-                        ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
-                        ->join('teacher', 'teacher.teacher_id', '=', 'substitute_teacher.sub_teacher_id')
-                        ->join('timetable', function ($join) {
-                            $join
-                                ->on('substitute_teacher.period', '=', 'timetable.period_no')
-                                ->on('substitute_teacher.class_id', '=', 'timetable.class_id')
-                                ->on('substitute_teacher.section_id', '=', 'timetable.section_id');
-                        })
-                        ->where('substitute_teacher.academic_yr', $customClaims)
-                        ->where('substitute_teacher.sub_teacher_id', $teacher_id)
-                        ->orderBy('substitute_teacher.teacher_id')
-                        ->orderBy('substitute_teacher.date')
-                        ->select('substitute_teacher.*', 'subject_master.name', 'timetable.time_in', 'timetable.time_out', 'teacher.name as teachername')
-                        ->get();
+            $teacher_id = $request->input('teacher_id');
+            $week = $request->input('week');
+            // dd($week);
+            if (is_null($week)) {
+                $result = DB::table('substitute_teacher')
+                    ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
+                    ->join('teacher', 'teacher.teacher_id', '=', 'substitute_teacher.sub_teacher_id')
+                    ->join('timetable', function ($join) {
+                        $join
+                            ->on('substitute_teacher.period', '=', 'timetable.period_no')
+                            ->on('substitute_teacher.class_id', '=', 'timetable.class_id')
+                            ->on('substitute_teacher.section_id', '=', 'timetable.section_id');
+                    })
+                    ->where('substitute_teacher.academic_yr', $customClaims)
+                    ->where('substitute_teacher.sub_teacher_id', $teacher_id)
+                    ->orderBy('substitute_teacher.teacher_id')
+                    ->orderBy('substitute_teacher.date')
+                    ->select('substitute_teacher.*', 'subject_master.name', 'timetable.time_in', 'timetable.time_out', 'teacher.name as teachername')
+                    ->get();
 
-                    $total_minutes = 0;
-                    foreach ($result as $row) {
-                        $dateTime1 = new \DateTime($row->time_in);
-                        $dateTime2 = new \DateTime($row->time_out);
+                $total_minutes = 0;
+                foreach ($result as $row) {
+                    $dateTime1 = new \DateTime($row->time_in);
+                    $dateTime2 = new \DateTime($row->time_out);
 
-                        $interval = $dateTime1->diff($dateTime2);
+                    $interval = $dateTime1->diff($dateTime2);
 
-                        $minutes = $interval->h * 60 + $interval->i;
+                    $minutes = $interval->h * 60 + $interval->i;
 
-                        $total_minutes = $total_minutes + $minutes;
-                        $total_hours = intdiv($total_minutes, 60);
-                        $remaining_minutes = $total_minutes % 60;
+                    $total_minutes = $total_minutes + $minutes;
+                    $total_hours = intdiv($total_minutes, 60);
+                    $remaining_minutes = $total_minutes % 60;
 
-                        $row->time_difference_decimal = $total_hours . '.' . $remaining_minutes;
-                    }
-                } else {
-                    $dates = explode('/', $week);
-                    $start_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[0])->format('Y-m-d');
-                    $end_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[1])->format('Y-m-d');
-                    $result = DB::table('substitute_teacher')
-                        ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
-                        ->join('teacher', 'teacher.teacher_id', '=', 'substitute_teacher.sub_teacher_id')
-                        ->join('timetable', function ($join) {
-                            $join
-                                ->on('substitute_teacher.period', '=', 'timetable.period_no')
-                                ->on('substitute_teacher.class_id', '=', 'timetable.class_id')
-                                ->on('substitute_teacher.section_id', '=', 'timetable.section_id');
-                        })
-                        ->whereBetween('substitute_teacher.date', [$start_date, $end_date])
-                        ->where('substitute_teacher.academic_yr', $customClaims)
-                        ->where('substitute_teacher.sub_teacher_id', $teacher_id)
-                        ->orderBy('substitute_teacher.teacher_id')
-                        ->orderBy('substitute_teacher.date')
-                        ->select('substitute_teacher.*', 'subject_master.name', 'timetable.time_in', 'timetable.time_out', 'teacher.name as teachername')
-                        ->get();
-
-                    $total_minutes = 0;
-                    foreach ($result as $row) {
-                        $row->week = $week;
-
-                        $dateTime1 = new \DateTime($row->time_in);
-                        $dateTime2 = new \DateTime($row->time_out);
-
-                        $interval = $dateTime1->diff($dateTime2);
-
-                        $minutes = $interval->h * 60 + $interval->i;
-
-                        $total_minutes = $total_minutes + $minutes;
-                        $total_hours = intdiv($total_minutes, 60);
-                        $remaining_minutes = $total_minutes % 60;
-
-                        $row->time_difference_decimal = $total_hours . '.' . $remaining_minutes;
-                    }
+                    $row->time_difference_decimal = $total_hours . '.' . $remaining_minutes;
                 }
-
-                return response([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'Substitute Teacher Weekly Report.',
-                    'success' => true
-                ]);
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Substitute Teacher Weekly Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $dates = explode('/', $week);
+                $start_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[0])->format('Y-m-d');
+                $end_date = \Carbon\Carbon::createFromFormat('d-m-Y', $dates[1])->format('Y-m-d');
+                $result = DB::table('substitute_teacher')
+                    ->join('subject_master', 'substitute_teacher.subject_id', '=', 'subject_master.sm_id')
+                    ->join('teacher', 'teacher.teacher_id', '=', 'substitute_teacher.sub_teacher_id')
+                    ->join('timetable', function ($join) {
+                        $join
+                            ->on('substitute_teacher.period', '=', 'timetable.period_no')
+                            ->on('substitute_teacher.class_id', '=', 'timetable.class_id')
+                            ->on('substitute_teacher.section_id', '=', 'timetable.section_id');
+                    })
+                    ->whereBetween('substitute_teacher.date', [$start_date, $end_date])
+                    ->where('substitute_teacher.academic_yr', $customClaims)
+                    ->where('substitute_teacher.sub_teacher_id', $teacher_id)
+                    ->orderBy('substitute_teacher.teacher_id')
+                    ->orderBy('substitute_teacher.date')
+                    ->select('substitute_teacher.*', 'subject_master.name', 'timetable.time_in', 'timetable.time_out', 'teacher.name as teachername')
+                    ->get();
+
+                $total_minutes = 0;
+                foreach ($result as $row) {
+                    $row->week = $week;
+
+                    $dateTime1 = new \DateTime($row->time_in);
+                    $dateTime2 = new \DateTime($row->time_out);
+
+                    $interval = $dateTime1->diff($dateTime2);
+
+                    $minutes = $interval->h * 60 + $interval->i;
+
+                    $total_minutes = $total_minutes + $minutes;
+                    $total_hours = intdiv($total_minutes, 60);
+                    $remaining_minutes = $total_minutes % 60;
+
+                    $row->time_difference_decimal = $total_hours . '.' . $remaining_minutes;
+                }
             }
+
+            return response([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'Substitute Teacher Weekly Report.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1713,40 +1512,31 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $query = DB::table('leaving_certificate as a')
-                    ->join('student as b', 'a.stud_id', '=', 'b.student_id')
-                    ->join('class as c', 'b.class_id', '=', 'c.class_id')
-                    ->join('section as s', 'b.section_id', '=', 's.section_id')
-                    ->select(
-                        'a.*',
-                        DB::raw("CONCAT(a.stud_name, ' ', a.mid_name, ' ', a.last_name) as student_name"),
-                        'b.roll_no',
-                        'b.reg_no',
-                        'c.name as class_name',
-                        's.name as sec_name'
-                    )
-                    ->where('a.academic_yr', '=', $customClaims);
+            $class_id = $request->input('class_id');
+            $query = DB::table('leaving_certificate as a')
+                ->join('student as b', 'a.stud_id', '=', 'b.student_id')
+                ->join('class as c', 'b.class_id', '=', 'c.class_id')
+                ->join('section as s', 'b.section_id', '=', 's.section_id')
+                ->select(
+                    'a.*',
+                    DB::raw("CONCAT(a.stud_name, ' ', a.mid_name, ' ', a.last_name) as student_name"),
+                    'b.roll_no',
+                    'b.reg_no',
+                    'c.name as class_name',
+                    's.name as sec_name'
+                )
+                ->where('a.academic_yr', '=', $customClaims);
 
-                if (!empty($class_id)) {
-                    $query->where('b.class_id', '=', $class_id);
-                }
-                $result = $query->get();
-                return response([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'Leaving Certificate Report.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if (!empty($class_id)) {
+                $query->where('b.class_id', '=', $class_id);
             }
+            $result = $query->get();
+            return response([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'Leaving Certificate Report.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1759,33 +1549,24 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = DB::table('worldline_payment_details as w')
-                    ->select(
-                        'w.*',
-                        DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_nos')
-                    )
-                    ->leftJoin('onlinefees_payment_record as o', 'o.cheque_no', '=', 'w.OrderId')
-                    ->whereColumn('w.Amount', '<>', 'w.WL_Amount')
-                    ->where('w.Status_code', 'S')
-                    ->whereNotNull('w.WL_Amount')
-                    ->where('w.academic_yr', $customClaims)
-                    ->groupBy('w.OrderId')
-                    ->get();
-                return response([
-                    'status' => 200,
-                    'data' => $data,
-                    'message' => 'WL discrepancy report.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $data = DB::table('worldline_payment_details as w')
+                ->select(
+                    'w.*',
+                    DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_nos')
+                )
+                ->leftJoin('onlinefees_payment_record as o', 'o.cheque_no', '=', 'w.OrderId')
+                ->whereColumn('w.Amount', '<>', 'w.WL_Amount')
+                ->where('w.Status_code', 'S')
+                ->whereNotNull('w.WL_Amount')
+                ->where('w.academic_yr', $customClaims)
+                ->groupBy('w.OrderId')
+                ->get();
+            return response([
+                'status' => 200,
+                'data' => $data,
+                'message' => 'WL discrepancy report.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1798,11 +1579,8 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // $academicYear ='2023-2024';
-                //   $academicYear = '2023-2024';
 
-                $query = "
+            $query = "
                     SELECT student_id, installment  
                     FROM (
                         SELECT vf.student_id, vd.installment 
@@ -1818,54 +1596,46 @@ class ReportController extends Controller
                     HAVING COUNT(*) > 1
                 ";
 
-                $duplicates = DB::select($query, [$customClaims]);
-                // dd($duplicates);
+            $duplicates = DB::select($query, [$customClaims]);
+            // dd($duplicates);
 
-                $result = [];
-                $srNo = 1;
+            $result = [];
+            $srNo = 1;
 
-                foreach ($duplicates as $row) {
-                    $paymentDetails = DB::table('view_fees_payment_record as vf')
-                        ->join('view_fees_payment_detail as vd', 'vf.fees_payment_id', '=', 'vd.fees_payment_id')
-                        ->where('vf.amount', '<>', 0)
-                        ->where('vf.isCancel', '<>', 'Y')
-                        ->whereNotIn('vd.fee_type_id', [7, 8])
-                        ->where('vf.student_id', $row->student_id)
-                        ->where('vd.installment', $row->installment)
-                        ->groupBy('vf.fees_payment_id', 'vd.installment')
-                        ->select('vf.*', 'vd.installment')
-                        ->get();
+            foreach ($duplicates as $row) {
+                $paymentDetails = DB::table('view_fees_payment_record as vf')
+                    ->join('view_fees_payment_detail as vd', 'vf.fees_payment_id', '=', 'vd.fees_payment_id')
+                    ->where('vf.amount', '<>', 0)
+                    ->where('vf.isCancel', '<>', 'Y')
+                    ->whereNotIn('vd.fee_type_id', [7, 8])
+                    ->where('vf.student_id', $row->student_id)
+                    ->where('vd.installment', $row->installment)
+                    ->groupBy('vf.fees_payment_id', 'vd.installment')
+                    ->select('vf.*', 'vd.installment')
+                    ->get();
 
-                    foreach ($paymentDetails as $detail) {
-                        $studentName = $this->getStudentName($detail->student_id);
-                        $class = $this->getStudentClass($detail->student_id);
+                foreach ($paymentDetails as $detail) {
+                    $studentName = $this->getStudentName($detail->student_id);
+                    $class = $this->getStudentClass($detail->student_id);
 
-                        $result[] = [
-                            'sr_no' => $srNo++,
-                            'student_name' => $studentName,
-                            'payment_date' => date('d-m-Y', strtotime($detail->payment_date)),
-                            'class' => $class,
-                            'installment' => $detail->installment,
-                            'amount' => $detail->amount,
-                            'receipt_no' => $detail->receipt_no,
-                        ];
-                    }
+                    $result[] = [
+                        'sr_no' => $srNo++,
+                        'student_name' => $studentName,
+                        'payment_date' => date('d-m-Y', strtotime($detail->payment_date)),
+                        'class' => $class,
+                        'installment' => $detail->installment,
+                        'amount' => $detail->amount,
+                        'receipt_no' => $detail->receipt_no,
+                    ];
                 }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Duplicate payment report list.',
-                    'data' => $result,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Duplicate payment report list.',
+                'data' => $result,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1904,82 +1674,71 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $date = $request->input('date');
-                $presentstaff = DB::table('teacher_attendance as a')
-                    ->select(
-                        'a.employee_id',
-                        DB::raw('DATE(a.punch_time) as date_part'),
-                        DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
-                        DB::raw('CASE 
+            $date = $request->input('date');
+            $presentstaff = DB::table('teacher_attendance as a')
+                ->select(
+                    'a.employee_id',
+                    DB::raw('DATE(a.punch_time) as date_part'),
+                    DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
+                    DB::raw('CASE 
                                             WHEN COUNT(a.punch_time) > 1 
                                             THEN MAX(TIME(a.punch_time)) 
                                             ELSE NULL 
                                         END as punch_out_time'),
-                        'b.name',
-                        'b.tc_id',
-                        'c.late_time'
-                    )
-                    ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
-                    ->join('late_time as c', 'c.tc_id', '=', 'b.tc_id')
-                    ->whereDate('a.punch_time', '=', $date)
-                    ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
-                    ->havingRaw('MIN(TIME(a.punch_time)) <= c.late_time')
-                    ->orderBy(DB::raw('DATE(a.punch_time)'))
-                    ->orderBy('a.employee_id')
-                    ->get();
+                    'b.name',
+                    'b.tc_id',
+                    'c.late_time'
+                )
+                ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+                ->join('late_time as c', 'c.tc_id', '=', 'b.tc_id')
+                ->whereDate('a.punch_time', '=', $date)
+                ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
+                ->havingRaw('MIN(TIME(a.punch_time)) <= c.late_time')
+                ->orderBy(DB::raw('DATE(a.punch_time)'))
+                ->orderBy('a.employee_id')
+                ->get();
 
-                $latestaff = DB::table('teacher_attendance as a')
-                    ->select(
-                        'a.employee_id',
-                        DB::raw('DATE(a.punch_time) as date_part'),
-                        DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
-                        DB::raw('CASE 
+            $latestaff = DB::table('teacher_attendance as a')
+                ->select(
+                    'a.employee_id',
+                    DB::raw('DATE(a.punch_time) as date_part'),
+                    DB::raw('MIN(TIME(a.punch_time)) as punch_in_time'),
+                    DB::raw('CASE 
                                             WHEN COUNT(a.punch_time) > 1 
                                             THEN MAX(TIME(a.punch_time)) 
                                             ELSE NULL 
                                          END as punch_out_time'),
-                        'b.name',
-                        'b.tc_id',
-                        'c.late_time'
-                    )
-                    ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
-                    ->join('late_time as c', 'c.tc_id', '=', 'b.tc_id')
-                    ->whereDate('a.punch_time', '=', $date)
-                    ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
-                    ->havingRaw('MIN(TIME(a.punch_time)) >= c.late_time')
-                    ->orderBy(DB::raw('DATE(a.punch_time)'))
-                    ->orderBy('a.employee_id')
-                    ->get();
-                $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '$date' WHERE ta.employee_id IS NULL AND t.isDelete = 'N';");
-                // dd($absentstaff);
-                $totalattendance = DB::select("SELECT a.employee_id, DATE(a.punch_time) AS date_part, MIN(TIME(a.punch_time)) AS punch_in_time, MAX(TIME(a.punch_time)) AS punch_out_time, b.name,b.tc_id FROM teacher_attendance AS a JOIN teacher AS b ON a.employee_id = b.employee_id WHERE DATE(a.punch_time) = '" . $date . "' GROUP BY a.employee_id, DATE(a.punch_time), b.name ORDER BY DATE(a.punch_time),a.employee_id;");
+                    'b.name',
+                    'b.tc_id',
+                    'c.late_time'
+                )
+                ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+                ->join('late_time as c', 'c.tc_id', '=', 'b.tc_id')
+                ->whereDate('a.punch_time', '=', $date)
+                ->groupBy('a.employee_id', DB::raw('DATE(a.punch_time)'), 'b.name', 'b.tc_id')
+                ->havingRaw('MIN(TIME(a.punch_time)) >= c.late_time')
+                ->orderBy(DB::raw('DATE(a.punch_time)'))
+                ->orderBy('a.employee_id')
+                ->get();
+            $absentstaff = DB::select("SELECT t.* FROM teacher AS t LEFT JOIN teacher_attendance AS ta ON t.employee_id = ta.employee_id AND DATE(ta.punch_time) = '$date' WHERE ta.employee_id IS NULL AND t.isDelete = 'N';");
+            // dd($absentstaff);
+            $totalattendance = DB::select("SELECT a.employee_id, DATE(a.punch_time) AS date_part, MIN(TIME(a.punch_time)) AS punch_in_time, MAX(TIME(a.punch_time)) AS punch_out_time, b.name,b.tc_id FROM teacher_attendance AS a JOIN teacher AS b ON a.employee_id = b.employee_id WHERE DATE(a.punch_time) = '" . $date . "' GROUP BY a.employee_id, DATE(a.punch_time), b.name ORDER BY DATE(a.punch_time),a.employee_id;");
 
-                $totalattendancecount = count($totalattendance);
-                // dd($totalattendancecount);
-                $totalteacher = count(DB::table('teacher')->where('IsDelete', 'N')->get());
-                $staffattendance = [
-                    'present_staff' => $presentstaff,
-                    'late_staff' => $latestaff,
-                    'absent_staff' => $absentstaff,
-                    'total_attendance' => $totalattendancecount . '/' . $totalteacher
-                ];
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Staff daily attendance report.',
-                    'data' => $staffattendance,
-                    'success' => true
-                ]);
-
-                //  dd($latestaff);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $totalattendancecount = count($totalattendance);
+            // dd($totalattendancecount);
+            $totalteacher = count(DB::table('teacher')->where('IsDelete', 'N')->get());
+            $staffattendance = [
+                'present_staff' => $presentstaff,
+                'late_staff' => $latestaff,
+                'absent_staff' => $absentstaff,
+                'total_attendance' => $totalattendancecount . '/' . $totalteacher
+            ];
+            return response()->json([
+                'status' => 200,
+                'message' => 'Staff daily attendance report.',
+                'data' => $staffattendance,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1992,33 +1751,24 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $statuses = ['A', 'H'];
+            $statuses = ['A', 'H'];
 
-                $leaveApplications = DB::table('leave_application')
-                    ->whereIn('status', $statuses)
-                    ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
-                    ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-                    ->orderBy('leave_app_id', 'DESC')
-                    ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
-                    ->where('leave_application.academic_yr', $customClaims)
-                    ->get()
-                    ->toArray();
+            $leaveApplications = DB::table('leave_application')
+                ->whereIn('status', $statuses)
+                ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
+                ->orderBy('leave_app_id', 'DESC')
+                ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
+                ->where('leave_application.academic_yr', $customClaims)
+                ->get()
+                ->toArray();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave approve list!',
-                    'data' => $leaveApplications,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave approve list!',
+                'data' => $leaveApplications,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2031,46 +1781,37 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $status = $request->status;
-                $approverscomment = $request->approverscomment;
+            $status = $request->status;
+            $approverscomment = $request->approverscomment;
+            DB::table('leave_application')
+                ->where('leave_app_id', $id)
+                ->update([
+                    'status' => $status,
+                    'reason_for_rejection' => $approverscomment
+                ]);
+            if ($status == 'P') {
+                $leaveinformation = DB::table('leave_application')
+                    ->where('leave_app_id', $id)
+                    ->first();
                 DB::table('leave_application')
                     ->where('leave_app_id', $id)
                     ->update([
                         'status' => $status,
-                        'reason_for_rejection' => $approverscomment
+                        'reason_for_rejection' => $approverscomment,
+                        'approved_by' => $user->reg_id
                     ]);
-                if ($status == 'P') {
-                    $leaveinformation = DB::table('leave_application')
-                        ->where('leave_app_id', $id)
-                        ->first();
-                    DB::table('leave_application')
-                        ->where('leave_app_id', $id)
-                        ->update([
-                            'status' => $status,
-                            'reason_for_rejection' => $approverscomment,
-                            'approved_by' => $user->reg_id
-                        ]);
 
-                    DB::table('leave_allocation')
-                        ->where('staff_id', $leaveinformation->staff_id)
-                        ->where('leave_type_id', $leaveinformation->leave_type_id)
-                        ->increment('leaves_availed', $leaveinformation->no_of_days);
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave status changed!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                DB::table('leave_allocation')
+                    ->where('staff_id', $leaveinformation->staff_id)
+                    ->where('leave_type_id', $leaveinformation->leave_type_id)
+                    ->increment('leaves_availed', $leaveinformation->no_of_days);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave status changed!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2083,34 +1824,25 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $statuses = ['A', 'H'];
+            $statuses = ['A', 'H'];
 
-                $leaveApplications = DB::table('leave_application')
-                    ->whereIn('status', $statuses)
-                    ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
-                    ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-                    ->orderBy('leave_app_id', 'DESC')
-                    ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
-                    ->where('leave_application.academic_yr', $customClaims)
-                    ->get()
-                    ->toArray();
-                $leaveapplication = count($leaveApplications);
+            $leaveApplications = DB::table('leave_application')
+                ->whereIn('status', $statuses)
+                ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
+                ->orderBy('leave_app_id', 'DESC')
+                ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
+                ->where('leave_application.academic_yr', $customClaims)
+                ->get()
+                ->toArray();
+            $leaveapplication = count($leaveApplications);
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave approve count!',
-                    'data' => $leaveapplication,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave approve count!',
+                'data' => $leaveapplication,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2124,8 +1856,6 @@ class ReportController extends Controller
         $nextMonday = Carbon::now()->startOfWeek()->format('d-m-Y');
 
         $lessonplanteachers = DB::select("SELECT group_concat(' ',c.name ,' ', sc.name,' ', sm.name) as pending_classes, s.teacher_id, t.name, t.phone FROM subject s, teacher t, class c, section sc, subject_master sm WHERE s.teacher_id=t.teacher_id AND t.isDelete = 'N' and s.class_id=c.class_id and s.section_id=sc.section_id and s.sm_id=sm.sm_id and s.academic_yr='$academicYear' and concat(s.class_id, s.section_id, s.sm_id, s.teacher_id) not in (select concat(class_id, section_id, subject_id, reg_id) from lesson_plan where SUBSTRING_INDEX(week_date,' /',1)='$nextMonday') and s.sm_id not in (select sm_id from subjects_excluded_from_curriculum) group by s.teacher_id;");
-        //  dd($lessonplanteachers);
-        //  dd("Hello");
         foreach ($lessonplanteachers as $lessonplanteacher) {
             $teacherid = $lessonplanteacher->teacher_id ?? null;
             $pendingclasses = $lessonplanteacher->pending_classes ?? null;
@@ -2182,55 +1912,46 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teachers = DB::table('teacher')->where('isDelete', 'N')->get();  // Replace with actual active condition
-                // You can fetch this from DB if needed
+            $teachers = DB::table('teacher')->where('isDelete', 'N')->get();  // Replace with actual active condition
+            // You can fetch this from DB if needed
 
-                list($startYear, $endYear) = explode('-', $customClaims);
+            list($startYear, $endYear) = explode('-', $customClaims);
 
-                // Determine the correct year for this month
-                $year = ($month >= 4) ? $startYear : $endYear;
-                $report = [];
+            // Determine the correct year for this month
+            $year = ($month >= 4) ? $startYear : $endYear;
+            $report = [];
 
-                foreach ($teachers as $teacher) {
-                    $teacherReport = [
-                        'teacher_id' => $teacher->teacher_id,
-                        'name' => $teacher->name,
-                        'days' => []
+            foreach ($teachers as $teacher) {
+                $teacherReport = [
+                    'teacher_id' => $teacher->teacher_id,
+                    'name' => $teacher->name,
+                    'days' => []
+                ];
+
+                for ($day = 1; $day <= 31; $day++) {
+                    $d = str_pad($day, 2, '0', STR_PAD_LEFT);
+                    $m = str_pad($month, 2, '0', STR_PAD_LEFT);
+                    $adate = "$year-$m-$d";
+
+                    $inTime = $this->getPunchInTime($teacher->teacher_id, $adate);
+                    $outTime = $this->getPunchOutTime($teacher->teacher_id, $adate);
+
+                    $teacherReport['days'][] = [
+                        'date' => $adate,
+                        'in' => $inTime,
+                        'out' => $outTime,
                     ];
-
-                    for ($day = 1; $day <= 31; $day++) {
-                        $d = str_pad($day, 2, '0', STR_PAD_LEFT);
-                        $m = str_pad($month, 2, '0', STR_PAD_LEFT);
-                        $adate = "$year-$m-$d";
-
-                        $inTime = $this->getPunchInTime($teacher->teacher_id, $adate);
-                        $outTime = $this->getPunchOutTime($teacher->teacher_id, $adate);
-
-                        $teacherReport['days'][] = [
-                            'date' => $adate,
-                            'in' => $inTime,
-                            'out' => $outTime,
-                        ];
-                    }
-
-                    $report[] = $teacherReport;
                 }
 
-                return response()->json([
-                    'status' => true,
-                    'month' => $month,
-                    'year' => $year,
-                    'report' => $report
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the get teacher attendance monthly report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $report[] = $teacherReport;
             }
+
+            return response()->json([
+                'status' => true,
+                'month' => $month,
+                'year' => $year,
+                'report' => $report
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2268,79 +1989,61 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $staff_id = $request->input('staff_id');
+            $from_date = $request->input('from_date');
+            $to_date = $request->input('to_date');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
-                // if (!in_array($user->role_id, ['U', 'T', 'M', 'A'])) {
-                //     return response()->json([
-                //         'status' => 401,
-                //         'message' => 'Unauthorized access',
-                //         'success' => false
-                //     ]);
-                // }
+            // Step 1: Get all leave types
+            $leave_types = DB::table('leave_type_master')->pluck('name', 'leave_type_id');
 
-                $staff_id = $request->input('staff_id');
-                $from_date = $request->input('from_date');
-                $to_date = $request->input('to_date');
+            // Step 2: Get staff list
+            $staff_query = DB::table('teacher')->select('teacher_id', 'name')->where('isDelete', 'N');
+            if (!empty($staff_id)) {
+                $staff_query->where('teacher_id', $staff_id);
+            }
+            $staffList = $staff_query->get();
 
-                // Step 1: Get all leave types
-                $leave_types = DB::table('leave_type_master')->pluck('name', 'leave_type_id');
+            $result = [];
 
-                // Step 2: Get staff list
-                $staff_query = DB::table('teacher')->select('teacher_id', 'name')->where('isDelete', 'N');
-                if (!empty($staff_id)) {
-                    $staff_query->where('teacher_id', $staff_id);
-                }
-                $staffList = $staff_query->get();
+            // Step 3: For each staff and each leave type, calculate leaves
+            foreach ($staffList as $staff) {
+                $staffData = [
+                    'staff_id' => $staff->teacher_id,
+                    'staff_name' => $staff->name,
+                    'leaves' => [],
+                    'total' => 0
+                ];
 
-                $result = [];
+                foreach ($leave_types as $leave_type_id => $leave_type_name) {
+                    $query = DB::table('leave_application')
+                        ->where('staff_id', $staff->teacher_id)
+                        ->where('leave_type_id', $leave_type_id)
+                        ->where('academic_yr', $academic_year)
+                        ->where('status', 'P');
 
-                // Step 3: For each staff and each leave type, calculate leaves
-                foreach ($staffList as $staff) {
-                    $staffData = [
-                        'staff_id' => $staff->teacher_id,
-                        'staff_name' => $staff->name,
-                        'leaves' => [],
-                        'total' => 0
-                    ];
-
-                    foreach ($leave_types as $leave_type_id => $leave_type_name) {
-                        $query = DB::table('leave_application')
-                            ->where('staff_id', $staff->teacher_id)
-                            ->where('leave_type_id', $leave_type_id)
-                            ->where('academic_yr', $academic_year)
-                            ->where('status', 'P');
-
-                        if (!empty($from_date)) {
-                            $query->whereDate('leave_start_date', '>=', date('Y-m-d', strtotime($from_date)));
-                        }
-
-                        if (!empty($to_date)) {
-                            $query->whereDate('leave_end_date', '<=', date('Y-m-d', strtotime($to_date)));
-                        }
-
-                        $count = $query->sum('no_of_days') ?? 0;
-
-                        $staffData['leaves'][$leave_type_name] = (float) $count;
-                        $staffData['total'] += (float) $count;
+                    if (!empty($from_date)) {
+                        $query->whereDate('leave_start_date', '>=', date('Y-m-d', strtotime($from_date)));
                     }
 
-                    $result[] = $staffData;
+                    if (!empty($to_date)) {
+                        $query->whereDate('leave_end_date', '<=', date('Y-m-d', strtotime($to_date)));
+                    }
+
+                    $count = $query->sum('no_of_days') ?? 0;
+
+                    $staffData['leaves'][$leave_type_name] = (float) $count;
+                    $staffData['total'] += (float) $count;
                 }
 
-                return response()->json([
-                    'status' => 200,
-                    'success' => true,
-                    'leave_types' => array_values($leave_types->toArray()),
-                    'data' => $result
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Balance Leave Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $result[] = $staffData;
             }
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'leave_types' => array_values($leave_types->toArray()),
+                'data' => $result
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -2589,51 +2292,41 @@ class ReportController extends Controller
     {
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
+        $date = $request->input('date');
+        $staff_id = $request->input('staff_id');
 
-        if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
-            $date = $request->input('date');
-            $staff_id = $request->input('staff_id');
+        $query = DB::table('teachers_remark as tr')
+            ->join('teacher', 'teacher.teacher_id', '=', 'tr.teachers_id')
+            ->select('tr.*', 'teacher.name')
+            ->where('tr.academic_yr', 'like', '%');
 
-            $query = DB::table('teachers_remark as tr')
-                ->join('teacher', 'teacher.teacher_id', '=', 'tr.teachers_id')
-                ->select('tr.*', 'teacher.name')
-                ->where('tr.academic_yr', 'like', '%');
-
-            if (!empty($date)) {
-                $query->where(DB::raw("DATE_FORMAT(tr.remark_date, '%d-%m-%Y')"), '=', $date);
-            }
-
-            if (!empty($staff_id)) {
-                $query->where('tr.teachers_id', $staff_id);
-            }
-
-            $query->orderByDesc('tr.t_remark_id');
-            $remarks = $query->get();
-
-            $remarks = $remarks->map(function ($row) {
-                $row->published = ($row->remark_type === 'Remark' && $row->publish === 'Y') ? 'Yes' : 'No';
-                $row->acknowledged = ($row->remark_type === 'Remark' && $row->acknowledge === 'Y') ? 'Yes' : 'No';
-                $row->viewed = ($row->remark_type === 'Remark' && checkTeacherRemarkViewed($row->t_remark_id, $row->teachers_id) === 'Y') ? 'Yes' : 'No';
-                $row->formatted_date = $row->publish_date && $row->publish_date !== '0000-00-00'
-                    ? \Carbon\Carbon::parse($row->publish_date)->format('d-m-Y')
-                    : \Carbon\Carbon::parse($row->remark_date)->format('d-m-Y');
-                return $row;
-            });
-
-            return response()->json([
-                'status' => 200,
-                'message' => 'Teachers Remarks Data Successfully',
-                'success' => true,
-                'data' => $remarks,
-            ]);
-        } else {
-            return response()->json([
-                'status' => 401,
-                'message' => 'This User Doesnot have Permission for the Balance Leave Report',
-                'data' => $user->role_id,
-                'success' => false
-            ]);
+        if (!empty($date)) {
+            $query->where(DB::raw("DATE_FORMAT(tr.remark_date, '%d-%m-%Y')"), '=', $date);
         }
+
+        if (!empty($staff_id)) {
+            $query->where('tr.teachers_id', $staff_id);
+        }
+
+        $query->orderByDesc('tr.t_remark_id');
+        $remarks = $query->get();
+
+        $remarks = $remarks->map(function ($row) {
+            $row->published = ($row->remark_type === 'Remark' && $row->publish === 'Y') ? 'Yes' : 'No';
+            $row->acknowledged = ($row->remark_type === 'Remark' && $row->acknowledge === 'Y') ? 'Yes' : 'No';
+            $row->viewed = ($row->remark_type === 'Remark' && checkTeacherRemarkViewed($row->t_remark_id, $row->teachers_id) === 'Y') ? 'Yes' : 'No';
+            $row->formatted_date = $row->publish_date && $row->publish_date !== '0000-00-00'
+                ? \Carbon\Carbon::parse($row->publish_date)->format('d-m-Y')
+                : \Carbon\Carbon::parse($row->remark_date)->format('d-m-Y');
+            return $row;
+        });
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Teachers Remarks Data Successfully',
+            'success' => true,
+            'data' => $remarks,
+        ]);
     }
 
     public function getStaffDetailedYearwiseAttendance(Request $request)
@@ -2641,65 +2334,56 @@ class ReportController extends Controller
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-        if (in_array($user->role_id, ['A', 'T', 'M', 'U'])) {
-            $fromDate = getAcademicYearFrom();
-            $toDate = getAcademicYearTo();
+        $fromDate = getAcademicYearFrom();
+        $toDate = getAcademicYearTo();
 
-            $month = $request->input('month');
-            $staffId = $request->input('staff_id');  // This is teacher.teacher_id
+        $month = $request->input('month');
+        $staffId = $request->input('staff_id');  // This is teacher.teacher_id
 
-            $query = DB::table('teacher_attendance as a')
-                ->select(
-                    'a.employee_id',
-                    DB::raw('COUNT(DISTINCT DATE(a.punch_time)) AS attend_cnt'),
-                    DB::raw('MONTHNAME(a.punch_time) AS month_name'),
-                    'b.name',
-                    'b.tc_id',
-                    'b.teacher_id'
-                )
-                ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
-                ->whereDate('a.punch_time', '>=', $fromDate)
-                ->whereDate('a.punch_time', '<=', $toDate);
+        $query = DB::table('teacher_attendance as a')
+            ->select(
+                'a.employee_id',
+                DB::raw('COUNT(DISTINCT DATE(a.punch_time)) AS attend_cnt'),
+                DB::raw('MONTHNAME(a.punch_time) AS month_name'),
+                'b.name',
+                'b.tc_id',
+                'b.teacher_id'
+            )
+            ->join('teacher as b', 'a.employee_id', '=', 'b.employee_id')
+            ->whereDate('a.punch_time', '>=', $fromDate)
+            ->whereDate('a.punch_time', '<=', $toDate);
 
-            // Optional filter: teacher name
-            if (!empty($teacherName)) {
-                $query->where('b.name', 'like', '%' . $teacherName . '%');
-            }
-
-            // Optional filter: month (number or name)
-            if (!empty($month)) {
-                if (is_numeric($month)) {
-                    $query->whereMonth('a.punch_time', $month);
-                } else {
-                    $query->whereRaw('MONTHNAME(a.punch_time) = ?', [$month]);
-                }
-            }
-
-            // Optional filter: staff_id (which is teacher.teacher_id)
-            if (!empty($staffId)) {
-                $query->where('b.teacher_id', $staffId);
-            }
-
-            $attendance = $query
-                ->groupBy('a.employee_id', DB::raw('MONTHNAME(a.punch_time)'))
-                ->orderBy('a.employee_id')
-                ->orderBy(DB::raw('MONTH(a.punch_time)'))
-                ->get();
-
-            return response()->json([
-                'status' => 200,
-                'message' => 'Staff Yearwise Attendance Data Retrieved Successfully',
-                'success' => true,
-                'data' => $attendance,
-            ]);
-        } else {
-            return response()->json([
-                'status' => 401,
-                'message' => 'This User Does Not Have Permission for the Staff Yearwise Attendance Report',
-                'data' => $user->role_id,
-                'success' => false
-            ]);
+        // Optional filter: teacher name
+        if (!empty($teacherName)) {
+            $query->where('b.name', 'like', '%' . $teacherName . '%');
         }
+
+        // Optional filter: month (number or name)
+        if (!empty($month)) {
+            if (is_numeric($month)) {
+                $query->whereMonth('a.punch_time', $month);
+            } else {
+                $query->whereRaw('MONTHNAME(a.punch_time) = ?', [$month]);
+            }
+        }
+
+        // Optional filter: staff_id (which is teacher.teacher_id)
+        if (!empty($staffId)) {
+            $query->where('b.teacher_id', $staffId);
+        }
+
+        $attendance = $query
+            ->groupBy('a.employee_id', DB::raw('MONTHNAME(a.punch_time)'))
+            ->orderBy('a.employee_id')
+            ->orderBy(DB::raw('MONTH(a.punch_time)'))
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Staff Yearwise Attendance Data Retrieved Successfully',
+            'success' => true,
+            'data' => $attendance,
+        ]);
     }
 
     public function getStudentDailyAttendanceMonthwise(Request $request)
@@ -3052,7 +2736,6 @@ class ReportController extends Controller
         $academicYear = JWTAuth::getPayload()->get('academic_year');
         try {
             $classId = $request->input('class_id');
-            // dd($class_id);
             $className = DB::table('class')->where('class_id', $classId)->value('name');
             $subjects = DB::table('subject as s')
                 ->distinct()
@@ -3160,101 +2843,49 @@ class ReportController extends Controller
             $user = $this->authenticateUser();
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            // if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'U') {
-            //     $classId = $request->query('class_id');
-            //     $sectionId = $request->query('section_id');
-            //     $date = $request->query('date'); // format: YYYY-MM-DD
+            $sectionId = $request->query('section_id');
+            $classId = $request->query('class_id');  // optional
+            $date = $request->query('date');  // optional
 
-            //     if (!$classId || !$sectionId) {
-            //         return response()->json([
-            //             'status' => false,
-            //             'message' => 'class_id and section_id are required',
-            //         ], 400);
-            //     }
-
-            //     $query = DB::table('homework')
-            //         ->join('class', 'class.class_id', '=', 'homework.class_id')
-            //         ->join('section', 'section.section_id', '=', 'homework.section_id')
-            //         ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
-            //         ->join('teacher', 'teacher.teacher_id', '=', 'homework.teacher_id')
-            //         ->select(
-            //             'homework.*',
-            //             'class.name as class_name',
-            //             'subject_master.name as sub_name',
-            //             'section.section_id',
-            //             'section.name as sec_name',
-            //             'teacher.name as tec_name',
-            //             'teacher.teacher_id'
-            //         )
-            //         ->where('homework.class_id', $classId)
-            //         ->where('homework.section_id', $sectionId)
-            //         ->where('homework.publish', 'Y')
-            //         ->when($date, function ($query, $date) {
-            //             return $query->whereDate('homework.publish_date', $date);
-            //         })
-            //         ->orderByDesc('homework.publish_date')
-            //         ->get();
-
-            //     return response()->json([
-            //         'status' => 200,
-            //         'message' => 'Homework Classwise Details Report Successfully',
-            //         'success' => true,
-            //         'data' => $query,
-            //     ]);
-            // }
-
-            if (in_array($user->role_id, ['A', 'T', 'M', 'U'])) {
-                $sectionId = $request->query('section_id');
-                $classId = $request->query('class_id');  // optional
-                $date = $request->query('date');  // optional
-
-                if (!$sectionId) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'section_id is required',
-                    ], 400);
-                }
-
-                $query = DB::table('homework')
-                    ->join('class', 'class.class_id', '=', 'homework.class_id')
-                    ->join('section', 'section.section_id', '=', 'homework.section_id')
-                    ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
-                    ->join('teacher', 'teacher.teacher_id', '=', 'homework.teacher_id')
-                    ->select(
-                        'homework.*',
-                        'class.name as class_name',
-                        'subject_master.name as sub_name',
-                        'section.section_id',
-                        'section.name as sec_name',
-                        'teacher.name as tec_name',
-                        'teacher.teacher_id'
-                    )
-                    ->where('subject_master.subject_type', '!=', 'Social')
-                    ->where('homework.section_id', $sectionId)
-                    ->where('homework.publish', 'Y')
-                    ->when($classId, function ($query, $classId) {
-                        return $query->where('homework.class_id', $classId);
-                    })
-                    ->when($date, function ($query, $date) {
-                        return $query->whereDate('homework.publish_date', $date);
-                    })
-                    ->orderByDesc('homework.publish_date')
-                    ->get();
-
+            if (!$sectionId) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Homework Classwise Details Report Successfully',
-                    'success' => true,
-                    'data' => $query,
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Does Not Have Permission for the Staff Yearwise Attendance Report',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                    'status' => false,
+                    'message' => 'section_id is required',
+                ], 400);
             }
+
+            $query = DB::table('homework')
+                ->join('class', 'class.class_id', '=', 'homework.class_id')
+                ->join('section', 'section.section_id', '=', 'homework.section_id')
+                ->join('subject_master', 'subject_master.sm_id', '=', 'homework.sm_id')
+                ->join('teacher', 'teacher.teacher_id', '=', 'homework.teacher_id')
+                ->select(
+                    'homework.*',
+                    'class.name as class_name',
+                    'subject_master.name as sub_name',
+                    'section.section_id',
+                    'section.name as sec_name',
+                    'teacher.name as tec_name',
+                    'teacher.teacher_id'
+                )
+                ->where('subject_master.subject_type', '!=', 'Social')
+                ->where('homework.section_id', $sectionId)
+                ->where('homework.publish', 'Y')
+                ->when($classId, function ($query, $classId) {
+                    return $query->where('homework.class_id', $classId);
+                })
+                ->when($date, function ($query, $date) {
+                    return $query->whereDate('homework.publish_date', $date);
+                })
+                ->orderByDesc('homework.publish_date')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Homework Classwise Details Report Successfully',
+                'success' => true,
+                'data' => $query,
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -3271,11 +2902,10 @@ class ReportController extends Controller
             $academicYr = JWTAuth::getPayload()->get('academic_year');
             $classId = $request->input('class_id');
             $sectionId = $request->input('section_id');
-            $teacherId = $request->input('teacher_id');  // optional
+            $teacherId = $request->input('teacher_id');
             $daterange = $request->input('daterange');
-            // dd($classId,$sectionId,$daterange);
 
-            $dates = explode(' / ', $daterange);  // format: "2025-07-10 - 2025-07-19"
+            $dates = explode(' / ', $daterange);
             if (count($dates) !== 2) {
                 return response()->json(['error' => 'daterange format should be "YYYY-MM-DD / YYYY-MM-DD"'], 400);
             }
@@ -4863,68 +4493,60 @@ class ReportController extends Controller
             $user = $this->authenticateUser();  // Assume you have this
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            if (in_array($user->role_id, ['A', 'M', 'F', 'U'])) {
-                $account_type = $request->input('account_type');
-                $from_date = $request->input('fromdate');
-                $to_date = $request->input('todate');
-                $student_id = $request->input('student_id');
-                $order_id = $request->input('order_id');
+            $account_type = $request->input('account_type');
+            $from_date = $request->input('fromdate');
+            $to_date = $request->input('todate');
+            $student_id = $request->input('student_id');
+            $order_id = $request->input('order_id');
 
-                // Get parent_id based on student_id
-                $parent_id = null;
-                if (!empty($student_id)) {
-                    $parent = DB::table('student')
-                        ->where('student_id', $student_id)
-                        ->select('parent_id')
-                        ->first();
+            // Get parent_id based on student_id
+            $parent_id = null;
+            if (!empty($student_id)) {
+                $parent = DB::table('student')
+                    ->where('student_id', $student_id)
+                    ->select('parent_id')
+                    ->first();
 
-                    if ($parent) {
-                        $parent_id = $parent->parent_id;
-                    }
+                if ($parent) {
+                    $parent_id = $parent->parent_id;
                 }
-                // dd($parent_id);
-                // dd($from_date,$to_date);
-                $query = DB::table('icicipg_payment_details as ip')
-                    ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'ip.OrderId')
-                    ->select('ip.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
-                    ->where('ip.Status_code', '=', 'S');
-
-                if (!empty($account_type)) {
-                    $query->where('ip.Account_type', 'like', $account_type . '%');
-                }
-
-                if (!empty($from_date)) {
-                    $query->whereDate('ip.Trnx_date', '>=', $from_date);
-                }
-
-                if (!empty($to_date)) {
-                    $query->whereDate('ip.Trnx_date', '<=', $to_date);
-                }
-
-                if (!empty($parent_id)) {
-                    $query->where('ip.reg_id', '=', $parent_id);
-                }
-
-                if (!empty($order_id)) {
-                    $query->where('ip.OrderId', '=', $order_id);
-                }
-
-                $query->groupBy('ip.OrderId');
-                $result = $query->get();
-
-                return response()->json([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'ICICI Fee Payment Report fetched successfully',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized Access',
-                    'success' => false
-                ]);
             }
+            // dd($parent_id);
+            // dd($from_date,$to_date);
+            $query = DB::table('icicipg_payment_details as ip')
+                ->join('onlinefees_payment_record as o', DB::raw('SUBSTRING_INDEX(o.cheque_no, "/", 1)'), '=', 'ip.OrderId')
+                ->select('ip.*', DB::raw('GROUP_CONCAT(o.receipt_no) as receipt_no'))
+                ->where('ip.Status_code', '=', 'S');
+
+            if (!empty($account_type)) {
+                $query->where('ip.Account_type', 'like', $account_type . '%');
+            }
+
+            if (!empty($from_date)) {
+                $query->whereDate('ip.Trnx_date', '>=', $from_date);
+            }
+
+            if (!empty($to_date)) {
+                $query->whereDate('ip.Trnx_date', '<=', $to_date);
+            }
+
+            if (!empty($parent_id)) {
+                $query->where('ip.reg_id', '=', $parent_id);
+            }
+
+            if (!empty($order_id)) {
+                $query->where('ip.OrderId', '=', $order_id);
+            }
+
+            $query->groupBy('ip.OrderId');
+            $result = $query->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'ICICI Fee Payment Report fetched successfully',
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
