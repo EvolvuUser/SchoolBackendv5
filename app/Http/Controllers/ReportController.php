@@ -99,7 +99,7 @@ class ReportController extends Controller
 
                     // Fetch data
                     $admissionreport = $admissionreport->get()->map(function ($row) {
-                        // ✅ Handle sibling info
+                        $row->form_id = $row->form_id . ' (' . $row->adm_form_pk . ')';
                         if ($row->sibling == 'Y') {
                             if ($row->sibling_class_id != '0') {
                                 $class_id = substr($row->sibling_class_id, 0, strpos($row->sibling_class_id, '^'));
