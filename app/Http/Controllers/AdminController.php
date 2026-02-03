@@ -340,55 +340,6 @@ class AdminController extends Controller
         ]);
     }
 
-    // OLD - 2026-01-06
-    // public function staffBirthdayList(Request $request)
-    // {
-    //     $payload = getTokenPayload($request);
-    //     if (!$payload) {
-    //         return response()->json(['error' => 'Invalid or missing token'], 401);
-    //     }
-    //     $academicYr = $payload->get('academic_year');
-    //     if (!$academicYr) {
-    //         return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
-    //     }
-
-    //     $currentDate = Carbon::now();
-
-    //     $staffBirthday = Teacher::where('IsDelete', 'N')
-    //         ->whereMonth('birthday', $currentDate->month)
-    //         ->whereDay('birthday', $currentDate->day)
-    //         ->get();
-
-    //     $studentBirthday = Student::where('IsDelete', 'N')
-    //         ->join('class', 'class.class_id', '=', 'student.class_id')
-    //         ->join('section', 'section.section_id', '=', 'student.section_id')
-    //         ->leftjoin('contact_details', 'contact_details.id', '=', 'student.parent_id')
-    //         ->whereMonth('dob', $currentDate->month)
-    //         ->whereDay('dob', $currentDate->day)
-    //         ->where('student.academic_yr', $academicYr)
-    //         ->select('student.*', 'class.name as classname', 'section.name as sectionname', 'contact_details.*')
-    //         ->get();
-
-    //     $teachercount = Teacher::where('IsDelete', 'N')
-    //         ->whereMonth('birthday', $currentDate->month)
-    //         ->whereDay('birthday', $currentDate->day)
-    //         ->count();
-    //     $studentcount = Student::where('IsDelete', 'N')
-    //         ->whereMonth('dob', $currentDate->month)
-    //         ->whereDay('dob', $currentDate->day)
-    //         ->where('academic_yr', $academicYr)
-    //         ->count();
-
-    //     return response()->json([
-    //         'staffBirthday' => $staffBirthday,
-    //         'studentBirthday' => $studentBirthday,
-    //         'studentcount' => $studentcount,
-    //         'teachercount' => $teachercount
-
-    //     ]);
-    // }
-
-    // // NEW - 2026-01-06 - bdays seperated by yesterday , today , tomorrow
     public function staffBirthdayList(Request $request)
     {
         $payload = getTokenPayload($request);
@@ -818,24 +769,15 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $finalQuery = DB::select("
+            $finalQuery = DB::select("
                     select z.installment, z.Account, sum(z.installment_fees-concession-paid_amount) as pending_fee from (SELECT s.student_id,s.installment, installment_fees, coalesce(sum(d.amount),0) as concession,
                 0 as paid_amount, CASE WHEN cl.name = 'Nursery' THEN 'Nursery' WHEN cl.name IN ('LKG','UKG') THEN 'KG' ELSE 'School' END as Account FROM view_student_fees_category s left join fee_concession_details d on s.student_id=d.student_id and s.installment=d.installment join class cl on s.class_id=cl.class_id WHERE s.academic_yr='$customClaims' and s.installment<>4 and due_date < CURDATE() and s.student_installment not in (SELECT student_installment FROM view_student_fees_payment a where a.academic_yr='$customClaims') group by s.student_id, s.installment UNION SELECT f.student_id as student_id, b.installment as installment, b.installment_fees, coalesce(sum(c.amount),0) as concession, sum(f.fees_paid) as paid_amount, CASE WHEN cs.name = 'Nursery' THEN 'Nursery' WHEN cs.name IN ('LKG','UKG') THEN 'KG' ELSE 'School'  END as Account  FROM view_student_fees_payment f left join fee_concession_details c on  f.student_id=c.student_id and f.installment=c.installment join view_fee_allotment b on f.fee_allotment_id= b.fee_allotment_id and b.installment=f.installment join class cs on f.class_id=cs.class_id WHERE b.installment<>4 and f.academic_yr='$customClaims' group by f.installment, c.installment having (b.installment_fees-coalesce(sum(c.amount),0))>sum(f.fees_paid)) z group by z.installment, z.Account
                 ");
-                foreach ($finalQuery as &$row) {
-                    $row->pending_fee = formatIndianCurrency(number_format((float) $row->pending_fee, 2, '.', ''));
-                }
-
-                return response()->json($finalQuery);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            foreach ($finalQuery as &$row) {
+                $row->pending_fee = formatIndianCurrency(number_format((float) $row->pending_fee, 2, '.', ''));
             }
+
+            return response()->json($finalQuery);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1465,56 +1407,48 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'L') {
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $stafflist = DB::table('teacher')
-                    ->where('teacher.designation', '!=', 'Caretaker')
-                    ->select('teacher.*')
-                    ->get();
 
-                // Get class-section mappings for all teachers
-                $classMappings = DB::table('class_teachers')
-                    ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
-                    ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
-                    ->select(
-                        'class_teachers.teacher_id',
-                        'class.name as classname',
-                        'section.name as sectionname',
-                        'class_teachers.class_id',
-                        'class_teachers.section_id'
-                    )
-                    ->where('class_teachers.academic_yr', $customClaims)
-                    ->orderBy('class_teachers.section_id')
-                    ->get();
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $stafflist = DB::table('teacher')
+                ->where('teacher.designation', '!=', 'Caretaker')
+                ->select('teacher.*')
+                ->get();
 
-                // Attach classes + fix image URL
-                $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+            // Get class-section mappings for all teachers
+            $classMappings = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class_teachers.teacher_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id'
+                )
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->orderBy('class_teachers.section_id')
+                ->get();
 
-                    // Fix image path
-                    $staff->teacher_image_name = $staff->teacher_image_name
-                        ? $concatprojecturl . $staff->teacher_image_name
-                        : null;
+            // Attach classes + fix image URL
+            $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
 
-                    // Attach class-section data
-                    $staff->classes = $classMappings
-                        ->where('teacher_id', $staff->teacher_id)
-                        ->values();  // reset index
+                // Fix image path
+                $staff->teacher_image_name = $staff->teacher_image_name
+                    ? $concatprojecturl . $staff->teacher_image_name
+                    : null;
 
-                    return $staff;
-                });
+                // Attach class-section data
+                $staff->classes = $classMappings
+                    ->where('teacher_id', $staff->teacher_id)
+                    ->values();  // reset index
 
-                return response()->json($stafflist);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+                return $staff;
+            });
+
+            return response()->json($stafflist);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2436,31 +2370,22 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $student = Student::with(['parents.user', 'getClass', 'getDivision'])
-                    ->where('reg_no', $reg_no)
-                    ->where('academic_yr', $customClaims)
-                    ->first();
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $student = Student::with(['parents.user', 'getClass', 'getDivision'])
+                ->where('reg_no', $reg_no)
+                ->where('academic_yr', $customClaims)
+                ->first();
 
-                if (!$student) {
-                    return response()->json(['error' => 'Student not found'], 404);
-                }
-                $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
-                $student->student_image_url = $student->image_name
-                    ? $concatprojecturl . $student->image_name
-                    : null;
-                return response()->json(['student' => [$student]]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if (!$student) {
+                return response()->json(['error' => 'Student not found'], 404);
             }
+            $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+            $student->student_image_url = $student->image_name
+                ? $concatprojecturl . $student->image_name
+                : null;
+            return response()->json(['student' => [$student]]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2929,411 +2854,6 @@ class AdminController extends Controller
             }
         }
     }
-
-    // public function updateStudentAndParent(Request $request, $studentId)
-    // {
-    //     try {
-    //         $payload = getTokenPayload($request);
-    //         $academicYr = $payload->get('academic_year');
-    //         // Log the start of the request
-    //         Log::info("Starting updateStudentAndParent for student ID: {$studentId}");
-    //         //echo "Starting updateStudentAndParent for student ID: {$studentId}";
-    //         DB::enableQueryLog();
-    //         // Validate the incoming request for all fields
-    //         $validatedData = $request->validate([
-    //             // Student model fields
-    //             'first_name' => 'nullable|string|max:100',
-    //             'mid_name' => 'nullable|string|max:100',
-    //             'last_name' => 'nullable|string|max:100',
-    //             'house' => 'nullable|string|max:100',
-    //             'student_name' => 'nullable|string|max:100',
-    //             'dob' => 'nullable|date',
-    //             'admission_date' => 'nullable|date',
-    //             'stud_id_no' => 'nullable|string|max:25',
-    //             'stu_aadhaar_no' => 'nullable|string|max:14',
-    //             'gender' => 'nullable|string',
-    //             'mother_tongue' => 'nullable|string|max:20',
-    //             'birth_place' => 'nullable|string|max:50',
-    //             'admission_class' => 'nullable|string|max:255',
-    //             'city' => 'nullable|string|max:100',
-    //             'state' => 'nullable|string|max:100',
-    //             'roll_no' => 'nullable|max:11',
-    //             'class_id' => 'nullable|integer',
-    //             'section_id' => 'nullable|integer',
-    //             'religion' => 'nullable|string|max:255',
-    //             'caste' => 'nullable|string|max:100',
-    //             'subcaste' => 'nullable|string|max:255',
-    //             'vehicle_no' => 'nullable|string|max:13',
-    //             'emergency_name' => 'nullable|string|max:100',
-    //             'emergency_contact' => 'nullable|string|max:11',
-    //             'emergency_add' => 'nullable|string|max:200',
-    //             'height' => 'nullable|numeric',
-    //             'weight' => 'nullable|numeric',
-    //             'allergies' => 'nullable|string|max:200',
-    //             'nationality' => 'nullable|string|max:100',
-    //             'pincode' => 'nullable|max:11',
-    //             'image_name' => 'nullable|string',
-    //             'has_specs' => 'nullable|string|max:1',
-    //             'udise_pen_no'=>'nullable|string',
-    //             'reg_no'=>'nullable|string',
-    //             'blood_group'=>'nullable|string',
-    //             'permant_add'=>'nullable|string',
-    //             'transport_mode'=>'nullable|string',
-
-    //             // Parent model fields
-    //             'father_name' => 'nullable|string|max:100',
-    //             'father_occupation' => 'nullable|string|max:100',
-    //             'f_office_add' => 'nullable|string|max:200',
-    //             'f_office_tel' => 'nullable|string|max:11',
-    //             'f_mobile' => 'nullable|string|max:10',
-    //             'f_email' => 'nullable|string|max:50',
-    //             'f_dob' => 'nullable|date',
-    //             'f_blood_group' => 'nullable|string',
-    //             'parent_adhar_no' => 'nullable|string|max:14',
-    //             'mother_name' => 'nullable|string|max:100',
-    //             'mother_occupation' => 'nullable|string|max:100',
-    //             'm_office_add' => 'nullable|string|max:200',
-    //             'm_office_tel' => 'nullable|string|max:11',
-    //             'm_mobile' => 'nullable|string|max:10',
-    //             'm_dob' => 'nullable|date',
-    //             'm_emailid' => 'nullable|string|max:50',
-    //             'm_adhar_no' => 'nullable|string|max:14',
-    //             'm_blood_group' => 'nullable|string',
-
-    //             // Preferences for SMS and email as username
-    //             'SetToReceiveSMS' => 'nullable|string|in:Father,Mother',
-    //             'SetEmailIDAsUsername' => 'nullable|string',
-    //             // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
-    //         ]);
-
-    //         $validator = Validator::make($request->all(),[
-
-    //             'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,'. $studentId . ',student_id,academic_yr,'. $academicYr,
-    //             'stu_aadhaar_no' => 'nullable|string|max:255|unique:student,stu_aadhaar_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
-    //             'udise_pen_no' => 'nullable|string|max:255|unique:student,udise_pen_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
-    //             'reg_no' => 'nullable|string|max:255|unique:student,reg_no,'.$studentId . ',student_id,academic_yr,'.$academicYr,
-    //             ]);
-    //             if ($validator->fails()) {
-    //                 return response()->json([
-    //                     'status' => 422,
-    //                     'errors' => $validator->errors(),
-    //                 ], 422);
-    //             }
-
-    //         Log::info("Validation passed for student ID: {$studentId}");
-    //         Log::info("Validation passed for student ID: {$request->SetEmailIDAsUsername}");
-    //         //echo "Validation passed for student ID: {$studentId}";
-    //         // Convert relevant fields to uppercase
-    //         $fieldsToUpper = [
-    //             'first_name', 'mid_name', 'last_name', 'house', 'emergency_name',
-    //             'emergency_contact', 'nationality', 'city', 'state', 'birth_place',
-    //             'mother_tongue', 'father_name', 'mother_name', 'vehicle_no', 'caste'
-    //         ];
-
-    //         foreach ($fieldsToUpper as $field) {
-    //             if (isset($validatedData[$field])) {
-    //                 $validatedData[$field] = strtoupper(trim($validatedData[$field]));
-    //             }
-    //         }
-    //         //echo "msg1";
-    //         // Additional fields for parent model that need to be converted to uppercase
-    //         $parentFieldsToUpper = [
-    //             'father_name', 'mother_name', 'f_blood_group', 'm_blood_group', 'student_blood_group'
-    //         ];
-    //         //echo "msg2";
-    //         foreach ($parentFieldsToUpper as $field) {
-    //             if (isset($validatedData[$field])) {
-    //                 $validatedData[$field] = strtoupper(trim($validatedData[$field]));
-    //             }
-    //         }
-    //         //echo "msg3";
-    //         // Retrieve the token payload
-    //         $payload = getTokenPayload($request);
-    //         $academicYr = $payload->get('academic_year');
-
-    //         Log::info("Academic year: {$academicYr} for student ID: {$studentId}");
-    //         //echo "msg4";
-    //         // Find the student by ID
-    //         $student = Student::find($studentId);
-    //         if (!$student) {
-    //             Log::error("Student not found: ID {$studentId}");
-    //             return response()->json(['error' => 'Student not found'], 404);
-    //         }
-    //         //echo "msg5";
-    //         // Check if specified fields have changed
-    //         $fieldsToCheck = ['first_name', 'mid_name', 'last_name', 'class_id', 'section_id', 'roll_no'];
-    //         $isModified = false;
-
-    //         foreach ($fieldsToCheck as $field) {
-    //             if (isset($validatedData[$field]) && $student->$field != $validatedData[$field]) {
-    //                 $isModified = true;
-    //                 break;
-    //             }
-    //         }
-    //         //echo "msg6";
-    //         // If any of the fields are modified, set 'is_modify' to 'Y'
-    //         if ($isModified) {
-    //             $validatedData['is_modify'] = 'Y';
-    //         }
-
-    //         // Handle student image if provided
-    //         // if ($request->hasFile('student_image')) {
-    //         //     $image = $request->file('student_image');
-    //         //     $imageExtension = $image->getClientOriginalExtension();
-    //         //     $imageName = $studentId . '.' . $imageExtension;
-    //         //     $imagePath = public_path('uploads/student_image');
-
-    //         //     if (!file_exists($imagePath)) {
-    //         //         mkdir($imagePath, 0755, true);
-    //         //     }
-
-    //         //     $image->move($imagePath, $imageName);
-    //         //     $validatedData['image_name'] = $imageName;
-    //         //     Log::info("Image uploaded for student ID: {$studentId}");
-    //         // }
-    //         /*
-    //         //echo "msg7";
-    //         if ($request->has('image_name')) {
-    //             $newImageData = $request->input('image_name');
-
-    //             if (!empty($newImageData)) {
-    //                 if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
-    //                     $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
-    //                     $type = strtolower($type[1]); // jpg, png, gif
-
-    //                     if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-    //                         throw new \Exception('Invalid image type');
-    //                     }
-
-    //                     // Decode the image
-    //                     $newImageData = base64_decode($newImageData);
-    //                     if ($newImageData === false) {
-    //                         throw new \Exception('Base64 decode failed');
-    //                     }
-
-    //                     // Generate a unique filename
-    //                     $imageName = $studentId . '.' . $type;
-    //                     $imagePath = public_path('storage/uploads/student_image/' . $imageName);
-
-    //                     // Save the image file
-    //                     file_put_contents($imagePath, $newImageData);
-    //                     $validatedData['image_name'] = $imageName;
-
-    //                     Log::info("Image uploaded for student ID: {$studentId}");
-    //                 } else {
-    //                     throw new \Exception('Invalid image data format');
-    //                 }
-    //             }
-    //         }
-    //         */
-
-    //         $existingImageUrl = $student->image_name;
-
-    //         if ($request->has('image_name')) {
-    // $newImageData = $request->input('image_name');
-
-    // // Check if the new image data is null
-    // if ($newImageData === null || $newImageData === 'null' || $newImageData === 'default.png') {
-    //     // If the new image data is null, keep the existing filename
-    //     $validatedData['image_name'] = $student->image_name;
-    // } elseif (!empty($newImageData)) {
-    //     // Check if the new image data matches the existing image URL
-    //     if ($existingImageUrl !== $newImageData) {
-    //         if (preg_match('/^data:image\/(\w+);base64,/', $newImageData, $type)) {
-    //             $newImageData = substr($newImageData, strpos($newImageData, ',') + 1);
-    //             $type = strtolower($type[1]); // jpg, png, gif
-
-    //             if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-    //                 throw new \Exception('Invalid image type');
-    //             }
-
-    //             $newImageData = base64_decode($newImageData);
-    //             if ($newImageData === false) {
-    //                 throw new \Exception('Base64 decode failed');
-    //             }
-
-    //             // Generate a filename for the new image
-    //             $filename = 'student_' . time() . '.' . $type;
-    //             $filePath = storage_path('app/public/student_images/' . $filename);
-
-    //             // Ensure directory exists
-    //             $directory = dirname($filePath);
-    //             if (!is_dir($directory)) {
-    //                 mkdir($directory, 0755, true);
-    //             }
-
-    //             // Save the new image to file
-    //             if (file_put_contents($filePath, $newImageData) === false) {
-    //                 throw new \Exception('Failed to save image file');
-    //             }
-
-    //             // Update the validated data with the new filename
-    //             $validatedData['image_name'] = $filename;
-    //         } else {
-    //             throw new \Exception('Invalid image data');
-    //         }
-    //     } else {
-    //         // If the image is the same, keep the existing filename
-    //         $validatedData['image_name'] = $student->image_name;
-    //     }
-    // }
-    //         }
-
-    //         // if ($request->has('image_name')) {
-    //         //     $imageData=$request->input('image_name');
-    //         //     if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
-    //         //     $imageData = substr($imageData, strpos($imageData, ',') + 1);
-    //         //     $type = strtolower($type[1]); // jpg, png, gif
-
-    //         //     // Validate image type
-    //         //     if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
-    //         //         throw new \Exception('Invalid image type');
-    //         //     }
-
-    //         //     // Base64 decode the image
-    //         //     $imageData = base64_decode($imageData);
-    //         //     if ($imageData === false) {
-    //         //         throw new \Exception('Base64 decode failed');
-    //         //     }
-
-    //         //     // Define the filename and path to store the image
-    //         //     $filename = 'student_' . time() . '.' . $type;
-    //         //     $filePath = storage_path('app/public/student_images/' . $filename);
-
-    //         //     // Ensure the directory exists
-    //         //     $directory = dirname($filePath);
-    //         //     if (!is_dir($directory)) {
-    //         //         mkdir($directory, 0755, true);
-    //         //     }
-
-    //         //     // Save the image to the file system
-    //         //     if (file_put_contents($filePath, $imageData) === false) {
-    //         //         throw new \Exception('Failed to save image file');
-    //         //     }
-
-    //         //     // Store the filename in validated data
-    //         //     $validatedData['image_name'] = $filename;
-    //         // } else {
-    //         //     throw new \Exception('Invalid image data');
-    //         // }
-    //         // }
-    //         //echo "msg8";
-    //         // Include academic year in the update data
-    //         $validatedData['academic_yr'] = $academicYr;
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         // Update student information
-    //         $student->update($validatedData);
-    //         $student->updated_by = $user->reg_id;
-    //         $student->save();
-    //         //echo $student->toSql();
-    //         Log::info("Student information updated for student ID: {$studentId}");
-    //         //echo "msg9";
-    //         // Handle parent details if provided
-    //         $parent = Parents::find($student->parent_id);
-    //         //echo "msg10";
-    //         if ($parent) {
-    //             $parent->update($request->only([
-    //                 'father_name', 'father_occupation', 'f_office_add', 'f_office_tel',
-    //                 'f_mobile', 'f_email','f_blood_group', 'parent_adhar_no', 'mother_name',
-    //                 'mother_occupation', 'm_office_add', 'm_office_tel', 'm_mobile',
-    //                 'm_emailid', 'm_adhar_no','m_dob','f_dob','m_blood_group'
-    //             ]));
-    //             //echo "msg11";
-    //             // Determine the phone number based on the 'SetToReceiveSMS' input
-    //             $phoneNo = null;
-    //             $setToReceiveSMS = $request->input('SetToReceiveSMS');
-    //             if ($setToReceiveSMS == 'Father') {
-    //                 $phoneNo = $parent->f_mobile;
-    //             } elseif ($setToReceiveSMS == 'Mother') {
-    //                 $phoneNo = $parent->m_mobile;
-    //             }
-    //             elseif ($setToReceiveSMS) {
-    //                 $phoneNo = $setToReceiveSMS;
-    //             }
-    //             //echo "msg12";
-    //             // Check if a record already exists with parent_id as the id
-    //             $contactDetails = ContactDetails::find($student->parent_id);
-    //             $phoneNo1 = $parent->f_mobile;
-    //             if ($contactDetails) {
-    //                 // If the record exists, update the contact details
-    //                 $contactDetails->update([
-    //                     'phone_no' => $phoneNo,
-    //                     'alternate_phone_no' => $parent->f_mobile, // Assuming alternate phone is Father's mobile number
-    //                     'email_id' => $parent->f_email, // Father's email
-    //                     'm_emailid' => $parent->m_emailid, // Mother's email
-    //                     'sms_consent' => 'N' // Store consent for SMS
-    //                 ]);
-    //                 //echo "msg13";
-    //             } else {
-    //                 // If the record doesn't exist, create a new one with parent_id as the id
-    //                 DB::insert('INSERT INTO contact_details (id, phone_no, email_id, m_emailid, sms_consent) VALUES (?, ?, ?, ?, ?)', [
-    //                     $student->parent_id,
-    //                     $parent->f_mobile,
-    //                     $parent->f_email,
-    //                     $parent->m_emailid,
-    //                     'N' // sms_consent
-    //                 ]);
-    //                 //echo "msg14";
-    //             }
-
-    //             // Update email ID as username preference
-    //             $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id','P')->first();
-    //             Log::info("Student information updated for student ID: {$user}");
-
-    //             // $user = UserMaster::where('reg_id', $student->parent_id)->where('role_id', 'P')->first();
-
-    //             if ($user) {
-    //                 // Conditional logic for setting email/phone based on SetEmailIDAsUsername
-    //                 $emailOrPhoneMapping = [
-    //                     'Father'     => $parent->f_email,     // Father's email
-    //                     'Mother'     => $parent->m_emailid,   // Mother's email
-    //                     'FatherMob'  => $parent->f_mobile,    // Father's mobile
-    //                     'MotherMob'  => $parent->m_mobile,    // Mother's mobile
-    //                 ];
-
-    //                 // Check if the provided value exists in the mapping, otherwise use the default
-    //                 $user->user_id = $emailOrPhoneMapping[$request->SetEmailIDAsUsername] ?? $request->SetEmailIDAsUsername;
-
-    //                 Log::info($user->user_id);
-
-    //                if ($user->update(['user_id' => $user->user_id])) {
-    //                     Log::info("User record updated successfully for student ID: {$student->student_id}");
-    //                 } else {
-    //                     Log::error("Failed to update user record for student ID: {$student->student_id}");
-    //                 }
-    //             }
-
-    //             // $apiData = [
-    //             //     'user_id' => '',
-    //             //     'short_name' => 'SACS',
-    //             // ];
-
-    //             // $oldEmailPreference = $user->user_id; // Store old email preference for comparison
-
-    //             // // Check if the email preference changed
-    //             // if ($oldEmailPreference != $apiData['user_id']) {
-    //             //     // Call the external API only if the email preference has changed
-    //             //     $response = Http::post('http://aceventura.in/demo/evolvuUserService/user_create_new', $apiData);
-    //             //     if ($response->successful()) {
-    //             //         Log::info("API call successful for student ID: {$studentId}");
-    //             //     } else {
-    //             //         Log::error("API call failed for student ID: {$studentId}");
-    //             //     }
-    //             // } else {
-    //             //     Log::info("Email preference unchanged for student ID: {$studentId}");
-    //             // }
-    //         }
-
-    //         return response()->json(['success' => 'Student and parent information updated successfully']);
-    //     } catch (Exception $e) {
-    //         Log::error("Exception occurred for student ID: {$studentId} - " . $e->getMessage());
-    //         return response()->json(['error' => 'An error occurred while updating information'], 500);
-    //     }
-
-    //     // return response()->json($request->all());
-
-    // }
 
     public function updateStudentAndParent(Request $request, $studentId)
     {
@@ -6625,22 +6145,13 @@ class AdminController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         try {
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leavetype = LeaveType::all();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Type',
-                    'data' => $leavetype,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $leavetype = LeaveType::all();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Type',
+                'data' => $leavetype,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6652,22 +6163,13 @@ class AdminController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         try {
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $staff = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'All Staffs',
-                    'data' => $staff,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $staff = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'All Staffs',
+                'data' => $staff,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6679,34 +6181,25 @@ class AdminController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         try {
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveforstaff = DB::table('leave_allocation')->where('staff_id', $request->staff_id)->where('leave_type_id', $request->leave_type_id)->where('academic_yr', $customClaims)->first();
-                if (!$leaveforstaff) {
-                    $leaveallocation = new LeaveAllocation();
-                    $leaveallocation->staff_id = $request->staff_id;
-                    $leaveallocation->leave_type_id = $request->leave_type_id;
-                    $leaveallocation->leaves_allocated = $request->leaves_allocated;
-                    $leaveallocation->academic_yr = $customClaims;
-                    $leaveallocation->save();
+            $leaveforstaff = DB::table('leave_allocation')->where('staff_id', $request->staff_id)->where('leave_type_id', $request->leave_type_id)->where('academic_yr', $customClaims)->first();
+            if (!$leaveforstaff) {
+                $leaveallocation = new LeaveAllocation();
+                $leaveallocation->staff_id = $request->staff_id;
+                $leaveallocation->leave_type_id = $request->leave_type_id;
+                $leaveallocation->leaves_allocated = $request->leaves_allocated;
+                $leaveallocation->academic_yr = $customClaims;
+                $leaveallocation->save();
 
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Leave Allocated Successfully.',
-                        'data' => $leaveallocation,
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Leave Allocation for this staff is already done.',
-                        'success' => false
-                    ]);
-                }
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Leave Allocated Successfully.',
+                    'data' => $leaveallocation,
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'Leave Allocation for this staff is already done.',
                     'success' => false
                 ]);
             }
@@ -6721,29 +6214,21 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveallocationall = DB::table('leave_allocation')
-                    ->join('teacher', 'teacher.teacher_id', '=', 'leave_allocation.staff_id')
-                    ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
-                    ->select('leave_allocation.*', 'leave_type_master.name as leavename', 'teacher.name as teachername', DB::raw('leave_allocation.leaves_allocated - leave_allocation.leaves_availed as balance_leave'))
-                    ->where('leave_allocation.academic_yr', $customClaims)
-                    ->distinct()
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'ALl Leave Allocation',
-                    'data' => $leaveallocationall,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $leaveallocationall = DB::table('leave_allocation')
+                ->join('teacher', 'teacher.teacher_id', '=', 'leave_allocation.staff_id')
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
+                ->select('leave_allocation.*', 'leave_type_master.name as leavename', 'teacher.name as teachername', DB::raw('leave_allocation.leaves_allocated - leave_allocation.leaves_availed as balance_leave'))
+                ->where('leave_allocation.academic_yr', $customClaims)
+                ->distinct()
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'ALl Leave Allocation',
+                'data' => $leaveallocationall,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6755,30 +6240,22 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveallocationall = DB::table('leave_allocation')
-                    ->join('teacher', 'teacher.teacher_id', '=', 'leave_allocation.staff_id')
-                    ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
-                    ->where('leave_allocation.staff_id', '=', $staff_id)
-                    ->where('leave_allocation.leave_type_id', '=', $leave_type_id)
-                    ->where('leave_allocation.academic_yr', $customClaims)
-                    ->select('leave_allocation.*', 'leave_type_master.name as leavename', 'teacher.name as teachername')
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Allocation Data',
-                    'data' => $leaveallocationall,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $leaveallocationall = DB::table('leave_allocation')
+                ->join('teacher', 'teacher.teacher_id', '=', 'leave_allocation.staff_id')
+                ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
+                ->where('leave_allocation.staff_id', '=', $staff_id)
+                ->where('leave_allocation.leave_type_id', '=', $leave_type_id)
+                ->where('leave_allocation.academic_yr', $customClaims)
+                ->select('leave_allocation.*', 'leave_type_master.name as leavename', 'teacher.name as teachername')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Allocation Data',
+                'data' => $leaveallocationall,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6790,37 +6267,29 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveAllocation = LeaveAllocation::where('staff_id', $staff_id)
-                    ->where('leave_type_id', $leave_type_id)
-                    ->where('academic_yr', $customClaims)
-                    ->update([
-                        'leaves_allocated' => $request->leaves_allocated,
-                    ]);
 
-                if (!$leaveAllocation) {
-                    // If no record is found, return an error response
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Leave allocation not found!',
-                        'success' => false
-                    ]);
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave allocation updated successfully!',
-                    'data' => $leaveAllocation,
-                    'success' => true
+            $leaveAllocation = LeaveAllocation::where('staff_id', $staff_id)
+                ->where('leave_type_id', $leave_type_id)
+                ->where('academic_yr', $customClaims)
+                ->update([
+                    'leaves_allocated' => $request->leaves_allocated,
                 ]);
-            } else {
+
+            if (!$leaveAllocation) {
+                // If no record is found, return an error response
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 404,
+                    'message' => 'Leave allocation not found!',
                     'success' => false
                 ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave allocation updated successfully!',
+                'data' => $leaveAllocation,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6832,40 +6301,31 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd($staff_id,$leave_type_id);
-                $leaveApplication = DB::table('leave_application')
-                    ->where('staff_id', $staff_id)
-                    ->where('leave_type_id', $leave_type_id)
-                    ->where('academic_yr', $customClaims)
-                    ->first();
 
-                if ($leaveApplication) {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'This leave allocation is in use. Delete failed!!!',
-                        'success' => false
-                    ]);
-                }
-                DB::table('leave_allocation')
-                    ->where('staff_id', $staff_id)
-                    ->where('leave_type_id', $leave_type_id)
-                    ->where('academic_yr', $customClaims)
-                    ->delete();
+            $leaveApplication = DB::table('leave_application')
+                ->where('staff_id', $staff_id)
+                ->where('leave_type_id', $leave_type_id)
+                ->where('academic_yr', $customClaims)
+                ->first();
 
+            if ($leaveApplication) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Allocation deleted Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'This leave allocation is in use. Delete failed!!!',
                     'success' => false
                 ]);
             }
+            DB::table('leave_allocation')
+                ->where('staff_id', $staff_id)
+                ->where('leave_type_id', $leave_type_id)
+                ->where('academic_yr', $customClaims)
+                ->delete();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Allocation deleted Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -6877,47 +6337,39 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $status = false;
-                $staffData = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
 
-                foreach ($staffData as $staff) {
-                    $data = [
-                        'staff_id' => $staff->teacher_id,
-                        'leave_type_id' => $request->input('leave_type_id'),
-                        'leaves_allocated' => $request->input('leaves_allocated'),
-                        'academic_yr' => $customClaims,
-                    ];
+            $status = false;
+            $staffData = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
 
-                    $existingLeaveAllocation = LeaveAllocation::where('leave_type_id', $request->input('leave_type_id'))
-                        ->where('staff_id', $staff->teacher_id)
-                        ->where('academic_yr', $customClaims)
-                        ->first();
+            foreach ($staffData as $staff) {
+                $data = [
+                    'staff_id' => $staff->teacher_id,
+                    'leave_type_id' => $request->input('leave_type_id'),
+                    'leaves_allocated' => $request->input('leaves_allocated'),
+                    'academic_yr' => $customClaims,
+                ];
 
-                    if (!$existingLeaveAllocation) {
-                        LeaveAllocation::create($data);
-                        $status = true;
-                    }
+                $existingLeaveAllocation = LeaveAllocation::where('leave_type_id', $request->input('leave_type_id'))
+                    ->where('staff_id', $staff->teacher_id)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
+
+                if (!$existingLeaveAllocation) {
+                    LeaveAllocation::create($data);
+                    $status = true;
                 }
+            }
 
-                if ($status) {
-                    return response()->json([
-                        'status' => '200',
-                        'message' => 'Leave allocation successfully done!!!',
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => '400',
-                        'message' => 'Leave allocation is already present!!!',
-                        'success' => false
-                    ]);
-                }
+            if ($status) {
+                return response()->json([
+                    'status' => '200',
+                    'message' => 'Leave allocation successfully done!!!',
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => '400',
+                    'message' => 'Leave allocation is already present!!!',
                     'success' => false
                 ]);
             }
@@ -6987,37 +6439,29 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leavetype = DB::table('leave_type_master')
-                    ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
-                    ->where('leave_allocation.staff_id', $staff_id)
-                    ->where('leave_allocation.academic_yr', $customClaims)
-                    ->select(
-                        'leave_type_master.leave_type_id',
-                        DB::raw("CONCAT(leave_type_master.name, ' (', leave_allocation.leaves_allocated - leave_allocation.leaves_availed, ')') as name"),
-                        'leave_allocation.staff_id',
-                        'leave_allocation.leaves_allocated',
-                        'leave_allocation.leaves_availed',
-                        'leave_allocation.academic_yr',
-                        'leave_allocation.created_at',
-                        'leave_allocation.updated_at'
-                    )
-                    ->distinct()
-                    ->get();
-                return response()->json([
-                    'status' => '200',
-                    'message' => 'Leave type data',
-                    'data' => $leavetype,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $leavetype = DB::table('leave_type_master')
+                ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
+                ->where('leave_allocation.staff_id', $staff_id)
+                ->where('leave_allocation.academic_yr', $customClaims)
+                ->select(
+                    'leave_type_master.leave_type_id',
+                    DB::raw("CONCAT(leave_type_master.name, ' (', leave_allocation.leaves_allocated - leave_allocation.leaves_availed, ')') as name"),
+                    'leave_allocation.staff_id',
+                    'leave_allocation.leaves_allocated',
+                    'leave_allocation.leaves_availed',
+                    'leave_allocation.academic_yr',
+                    'leave_allocation.created_at',
+                    'leave_allocation.updated_at'
+                )
+                ->distinct()
+                ->get();
+            return response()->json([
+                'status' => '200',
+                'message' => 'Leave type data',
+                'data' => $leavetype,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7029,49 +6473,41 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leavetype = DB::table('leave_type_master')
-                    ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
-                    ->where('leave_allocation.staff_id', $request->staff_id)
-                    ->where('leave_allocation.academic_yr', $customClaims)
-                    ->where('leave_allocation.leave_type_id', $request->leave_type_id)
-                    ->first();
-                $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
-                if ($balanceleave < $request->no_of_days) {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'You have applied for leave more than the balance leaves',
-                        'success' => false
-                    ]);
-                }
 
-                $data = [
-                    'staff_id' => $request->staff_id,
-                    'leave_type_id' => $request->leave_type_id,
-                    'leave_start_date' => $request->leave_start_date,
-                    'leave_end_date' => $request->leave_end_date,
-                    'no_of_days' => $request->no_of_days,
-                    'reason' => $request->reason,
-                    'status' => 'A',
-                    'academic_yr' => $customClaims
-                ];
-
-                $leaveApplication = LeaveApplication::create($data);
-
+            $leavetype = DB::table('leave_type_master')
+                ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
+                ->where('leave_allocation.staff_id', $request->staff_id)
+                ->where('leave_allocation.academic_yr', $customClaims)
+                ->where('leave_allocation.leave_type_id', $request->leave_type_id)
+                ->first();
+            $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
+            if ($balanceleave < $request->no_of_days) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Application saved successfully.',
-                    'data' => $leaveApplication,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'You have applied for leave more than the balance leaves',
                     'success' => false
                 ]);
             }
+
+            $data = [
+                'staff_id' => $request->staff_id,
+                'leave_type_id' => $request->leave_type_id,
+                'leave_start_date' => $request->leave_start_date,
+                'leave_end_date' => $request->leave_end_date,
+                'no_of_days' => $request->no_of_days,
+                'reason' => $request->reason,
+                'status' => 'A',
+                'academic_yr' => $customClaims
+            ];
+
+            $leaveApplication = LeaveApplication::create($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Application saved successfully.',
+                'data' => $leaveApplication,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7083,42 +6519,34 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveapplicationlist = LeaveApplication::join('leave_type_master', 'leave_application.leave_type_id', '=', 'leave_type_master.leave_type_id')
-                    ->where('academic_yr', $customClaims)
-                    ->where('staff_id', $user->reg_id)
-                    ->get();
-                $leaveapplicationlist->transform(function ($leaveApplication) {
-                    if ($leaveApplication->status === 'A') {
-                        $leaveApplication->status = 'Apply';
-                    } elseif ($leaveApplication->status === 'H') {
-                        $leaveApplication->status = 'Hold';
-                    } elseif ($leaveApplication->status === 'R') {
-                        $leaveApplication->status = 'Rejected';
-                    } elseif ($leaveApplication->status === 'P') {
-                        $leaveApplication->status = 'Approve';
-                    } elseif ($leaveApplication->status === 'C') {
-                        $leaveApplication->status = 'Cancelled';
-                    } else {
-                        $leaveApplication->status = 'Unknown';
-                    }
-                    return $leaveApplication;
-                });
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Application List.',
-                    'data' => $leaveapplicationlist,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $leaveapplicationlist = LeaveApplication::join('leave_type_master', 'leave_application.leave_type_id', '=', 'leave_type_master.leave_type_id')
+                ->where('academic_yr', $customClaims)
+                ->where('staff_id', $user->reg_id)
+                ->get();
+            $leaveapplicationlist->transform(function ($leaveApplication) {
+                if ($leaveApplication->status === 'A') {
+                    $leaveApplication->status = 'Apply';
+                } elseif ($leaveApplication->status === 'H') {
+                    $leaveApplication->status = 'Hold';
+                } elseif ($leaveApplication->status === 'R') {
+                    $leaveApplication->status = 'Rejected';
+                } elseif ($leaveApplication->status === 'P') {
+                    $leaveApplication->status = 'Approve';
+                } elseif ($leaveApplication->status === 'C') {
+                    $leaveApplication->status = 'Cancelled';
+                } else {
+                    $leaveApplication->status = 'Unknown';
+                }
+                return $leaveApplication;
+            });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Application List.',
+                'data' => $leaveapplicationlist,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7130,40 +6558,32 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveApplicationn = LeaveApplication::find($leave_app_id);
-                if ($leaveApplicationn) {
-                    // Modify the status temporarily for displaying
-                    if ($leaveApplicationn->status === 'A') {
-                        $leaveApplicationn->status = 'Apply';
-                    } elseif ($leaveApplicationn->status === 'H') {
-                        $leaveApplicationn->status = 'Hold';
-                    } elseif ($leaveApplicationn->status === 'R') {
-                        $leaveApplicationn->status = 'Reject';
-                    } elseif ($leaveApplicationn->status === 'P') {
-                        $leaveApplicationn->status = 'Approve';
-                    } else {
-                        $leaveApplicationn->status = 'Unknown';
-                    }
 
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Leave Application Data.',
-                        'data' => $leaveApplicationn,
-                        'success' => true
-                    ]);
+            $leaveApplicationn = LeaveApplication::find($leave_app_id);
+            if ($leaveApplicationn) {
+                // Modify the status temporarily for displaying
+                if ($leaveApplicationn->status === 'A') {
+                    $leaveApplicationn->status = 'Apply';
+                } elseif ($leaveApplicationn->status === 'H') {
+                    $leaveApplicationn->status = 'Hold';
+                } elseif ($leaveApplicationn->status === 'R') {
+                    $leaveApplicationn->status = 'Reject';
+                } elseif ($leaveApplicationn->status === 'P') {
+                    $leaveApplicationn->status = 'Approve';
                 } else {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Leave application not found',
-                        'success' => false
-                    ]);
+                    $leaveApplicationn->status = 'Unknown';
                 }
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Leave Application Data.',
+                    'data' => $leaveApplicationn,
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 404,
+                    'message' => 'Leave application not found',
                     'success' => false
                 ]);
             }
@@ -7178,45 +6598,37 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leavetype = DB::table('leave_type_master')
-                    ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
-                    ->where('leave_allocation.staff_id', $request->staff_id)
-                    ->where('leave_allocation.academic_yr', $customClaims)
-                    ->where('leave_allocation.leave_type_id', $request->leave_type_id)
-                    ->first();
-                $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
-                if ($balanceleave < $request->no_of_days) {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Applied leave is greater than Balance leave',
-                        'success' => false
-                    ]);
-                }
 
-                $leaveApplication = LeaveApplication::find($leave_app_id);
-                $leaveApplication->staff_id = $request->staff_id;
-                $leaveApplication->leave_type_id = $request->leave_type_id;
-                $leaveApplication->leave_start_date = $request->leave_start_date;
-                $leaveApplication->leave_end_date = $request->leave_end_date;
-                $leaveApplication->no_of_days = $request->no_of_days;
-                $leaveApplication->reason = $request->reason;
-                $leaveApplication->save();
-
+            $leavetype = DB::table('leave_type_master')
+                ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
+                ->where('leave_allocation.staff_id', $request->staff_id)
+                ->where('leave_allocation.academic_yr', $customClaims)
+                ->where('leave_allocation.leave_type_id', $request->leave_type_id)
+                ->first();
+            $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
+            if ($balanceleave < $request->no_of_days) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Application Updated.',
-                    'data' => $leaveApplication,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'Applied leave is greater than Balance leave',
                     'success' => false
                 ]);
             }
+
+            $leaveApplication = LeaveApplication::find($leave_app_id);
+            $leaveApplication->staff_id = $request->staff_id;
+            $leaveApplication->leave_type_id = $request->leave_type_id;
+            $leaveApplication->leave_start_date = $request->leave_start_date;
+            $leaveApplication->leave_end_date = $request->leave_end_date;
+            $leaveApplication->no_of_days = $request->no_of_days;
+            $leaveApplication->reason = $request->reason;
+            $leaveApplication->save();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Application Updated.',
+                'data' => $leaveApplication,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7228,30 +6640,22 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $leaveApplication = LeaveApplication::find($leave_app_id);
 
-                if ($leaveApplication) {
-                    $leaveApplication->delete();
+            $leaveApplication = LeaveApplication::find($leave_app_id);
 
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Leave application deleted successfully',
-                        'data' => $leaveApplication,
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 400,
-                        'messagae' => 'Leave application not found',
-                        'success' => false
-                    ]);
-                }
+            if ($leaveApplication) {
+                $leaveApplication->delete();
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Leave application deleted successfully',
+                    'data' => $leaveApplication,
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'messagae' => 'Leave application not found',
                     'success' => false
                 ]);
             }
@@ -7266,125 +6670,116 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $changed_data = false;
-                $operation = $request->input('operation');
+            $changed_data = false;
+            $operation = $request->input('operation');
 
-                if ($operation == 'create') {
-                    $set_parent_id = $request->input('set_as_parent');
+            if ($operation == 'create') {
+                $set_parent_id = $request->input('set_as_parent');
 
-                    if ($set_parent_id == '1') {
-                        // dd("Hello");
-                        $student_id2 = $request->input('student_id2');
-                        $parent_id1 = $request->input('parent_id1');
-                        $parent_id2 = $request->input('parent_id2');
+                if ($set_parent_id == '1') {
+                    // dd("Hello");
+                    $student_id2 = $request->input('student_id2');
+                    $parent_id1 = $request->input('parent_id1');
+                    $parent_id2 = $request->input('parent_id2');
 
-                        // Update student record
-                        $student = Student::where('student_id', $student_id2)
-                            ->where('parent_id', $parent_id2)
-                            ->first();
+                    // Update student record
+                    $student = Student::where('student_id', $student_id2)
+                        ->where('parent_id', $parent_id2)
+                        ->first();
 
-                        if ($student) {
-                            $student->parent_id = $parent_id1;
-                            $student->save();
-                            $changed_data = true;
-                        }
-
-                        // Check if there are any remaining students with the old parent_id
-                        $studentsWithOldParent = Student::where('parent_id', $parent_id2)
-                            ->where('academic_yr', $customClaims)
-                            ->get();
-
-                        if ($studentsWithOldParent->isEmpty()) {
-                            UserMaster::where('reg_id', $parent_id2)
-                                ->where('role_id', 'P')
-                                ->update(['IsDelete' => 'Y']);
-
-                            Parents::where('parent_id', $parent_id2)
-                                ->update(['IsDelete' => 'Y']);
-
-                            // Handle contact details deletion and insertion into deleted_contact_details
-                            $contact = ContactDetails::where('id', $parent_id2)->first();
-                            if ($contact) {
-                                DB::table('deleted_contact_details')->insert([
-                                    'id' => $contact->id,
-                                    'phone_no' => $contact->phone_no,
-                                    'email_id' => $contact->email_id,
-                                    'm_emailid' => $contact->m_emailid,
-                                ]);
-                                $contact->delete();
-                            }
-                        }
-                    } elseif ($set_parent_id == '2') {
-                        // Get data for set_parent_id == 2
-                        $student_id1 = $request->input('student_id1');
-                        $parent_id1 = $request->input('parent_id1');
-                        $parent_id2 = $request->input('parent_id2');
-
-                        // Update student record
-                        $student = Student::where('student_id', $student_id1)
-                            ->where('parent_id', $parent_id1)
-                            ->first();
-
-                        if ($student) {
-                            $student->parent_id = $parent_id2;
-                            $student->save();
-                            $changed_data = true;
-                        }
-
-                        $studentsWithOldParent = Student::where('parent_id', $parent_id1)
-                            ->where('academic_yr', $customClaims)
-                            ->get();
-                        // dd($studentsWithOldParent);
-
-                        if ($studentsWithOldParent->isEmpty()) {
-                            // Set 'IsDelete' to 'Y' for user and parent records
-                            UserMaster::where('reg_id', $parent_id1)
-                                ->where('role_id', 'P')
-                                ->update(['IsDelete' => 'Y']);
-
-                            Parents::where('parent_id', $parent_id1)
-                                ->update(['IsDelete' => 'Y']);
-
-                            $contact = ContactDetails::where('id', $parent_id1)->first();
-
-                            if ($contact) {
-                                DB::table('deleted_contact_details')->insert([
-                                    'id' => $contact->id,
-                                    'phone_no' => $contact->phone_no,
-                                    'email_id' => $contact->email_id,
-                                    'm_emailid' => $contact->m_emailid,
-                                ]);
-                                $contact->delete();
-                            }
-                        }
+                    if ($student) {
+                        $student->parent_id = $parent_id1;
+                        $student->save();
+                        $changed_data = true;
                     }
 
-                    // Get student names to prepare response
-                    $stud1 = Student::find($request->input('student_id1'))->first_name ?? '';
-                    $stud2 = Student::find($request->input('student_id2'))->first_name ?? '';
+                    // Check if there are any remaining students with the old parent_id
+                    $studentsWithOldParent = Student::where('parent_id', $parent_id2)
+                        ->where('academic_yr', $customClaims)
+                        ->get();
 
-                    if ($changed_data) {
-                        return response()->json([
-                            'status' => 200,
-                            'message' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are mapped.!!!',
-                            'success' => true
-                        ]);
-                    } else {
-                        return response()->json([
-                            'status' => 400,
-                            'error' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are not mapped.!!!',
-                            'success' => false
-                        ], 400);
+                    if ($studentsWithOldParent->isEmpty()) {
+                        UserMaster::where('reg_id', $parent_id2)
+                            ->where('role_id', 'P')
+                            ->update(['IsDelete' => 'Y']);
+
+                        Parents::where('parent_id', $parent_id2)
+                            ->update(['IsDelete' => 'Y']);
+
+                        // Handle contact details deletion and insertion into deleted_contact_details
+                        $contact = ContactDetails::where('id', $parent_id2)->first();
+                        if ($contact) {
+                            DB::table('deleted_contact_details')->insert([
+                                'id' => $contact->id,
+                                'phone_no' => $contact->phone_no,
+                                'email_id' => $contact->email_id,
+                                'm_emailid' => $contact->m_emailid,
+                            ]);
+                            $contact->delete();
+                        }
+                    }
+                } elseif ($set_parent_id == '2') {
+                    // Get data for set_parent_id == 2
+                    $student_id1 = $request->input('student_id1');
+                    $parent_id1 = $request->input('parent_id1');
+                    $parent_id2 = $request->input('parent_id2');
+
+                    // Update student record
+                    $student = Student::where('student_id', $student_id1)
+                        ->where('parent_id', $parent_id1)
+                        ->first();
+
+                    if ($student) {
+                        $student->parent_id = $parent_id2;
+                        $student->save();
+                        $changed_data = true;
+                    }
+
+                    $studentsWithOldParent = Student::where('parent_id', $parent_id1)
+                        ->where('academic_yr', $customClaims)
+                        ->get();
+                    // dd($studentsWithOldParent);
+
+                    if ($studentsWithOldParent->isEmpty()) {
+                        // Set 'IsDelete' to 'Y' for user and parent records
+                        UserMaster::where('reg_id', $parent_id1)
+                            ->where('role_id', 'P')
+                            ->update(['IsDelete' => 'Y']);
+
+                        Parents::where('parent_id', $parent_id1)
+                            ->update(['IsDelete' => 'Y']);
+
+                        $contact = ContactDetails::where('id', $parent_id1)->first();
+
+                        if ($contact) {
+                            DB::table('deleted_contact_details')->insert([
+                                'id' => $contact->id,
+                                'phone_no' => $contact->phone_no,
+                                'email_id' => $contact->email_id,
+                                'm_emailid' => $contact->m_emailid,
+                            ]);
+                            $contact->delete();
+                        }
                     }
                 }
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+
+                // Get student names to prepare response
+                $stud1 = Student::find($request->input('student_id1'))->first_name ?? '';
+                $stud2 = Student::find($request->input('student_id2'))->first_name ?? '';
+
+                if ($changed_data) {
+                    return response()->json([
+                        'status' => 200,
+                        'message' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are mapped.!!!',
+                        'success' => true
+                    ]);
+                } else {
+                    return response()->json([
+                        'status' => 400,
+                        'error' => 'Students ' . $stud1 . ' and ' . $stud2 . ' are not mapped.!!!',
+                        'success' => false
+                    ], 400);
+                }
             }
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
@@ -7397,33 +6792,24 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $notexist = DB::table('leave_type_master')->where('name', $request->input('name'))->first();
-                if (!$notexist) {
-                    $data = [
-                        'name' => $request->input('name'),
-                    ];
+            $notexist = DB::table('leave_type_master')->where('name', $request->input('name'))->first();
+            if (!$notexist) {
+                $data = [
+                    'name' => $request->input('name'),
+                ];
 
-                    DB::table('leave_type_master')->insert($data);
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Leave Type Created Successfully',
-                        'success' => true
-                    ]);
-                }
+                DB::table('leave_type_master')->insert($data);
                 return response()->json([
-                    'status' => 400,
-                    'message' => 'The Name field must contain a unique value.',
-                    'success' => false
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
+                    'status' => 200,
+                    'message' => 'Leave Type Created Successfully',
+                    'success' => true
                 ]);
             }
+            return response()->json([
+                'status' => 400,
+                'message' => 'The Name field must contain a unique value.',
+                'success' => false
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7435,22 +6821,14 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = DB::table('leave_type_master')->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Type List',
-                    'data' => $data,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $data = DB::table('leave_type_master')->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Type List',
+                'data' => $data,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7462,22 +6840,14 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = DB::table('leave_type_master')->where('leave_type_id', $id)->first();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Type Data',
-                    'data' => $data,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $data = DB::table('leave_type_master')->where('leave_type_id', $id)->first();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Type Data',
+                'data' => $data,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7489,43 +6859,35 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $newName = $request->input('name');
-                $existingLeaveType = DB::table('leave_type_master')
-                    ->where('name', $newName)
-                    ->where('leave_type_id', '!=', $id)  // Ensure the same name is not assigned to another leave type with different ID
-                    ->exists();
 
-                if ($existingLeaveType) {
-                    // Return an error response if the name already exists for a different leave type
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Leave type name already exists for another leave type.',
-                        'success' => false,
-                    ]);
-                }
+            $newName = $request->input('name');
+            $existingLeaveType = DB::table('leave_type_master')
+                ->where('name', $newName)
+                ->where('leave_type_id', '!=', $id)  // Ensure the same name is not assigned to another leave type with different ID
+                ->exists();
 
-                // Proceed with updating the leave type record
-                DB::table('leave_type_master')
-                    ->where('leave_type_id', $id)
-                    ->update([
-                        'name' => $newName,  // Update the name field
-                    ]);
-
-                // Return a success response
+            if ($existingLeaveType) {
+                // Return an error response if the name already exists for a different leave type
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave type updated successfully.',
-                    'success' => true,
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
+                    'status' => 400,
+                    'message' => 'Leave type name already exists for another leave type.',
+                    'success' => false,
                 ]);
             }
+
+            // Proceed with updating the leave type record
+            DB::table('leave_type_master')
+                ->where('leave_type_id', $id)
+                ->update([
+                    'name' => $newName,  // Update the name field
+                ]);
+
+            // Return a success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave type updated successfully.',
+                'success' => true,
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7537,21 +6899,13 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = DB::table('leave_type_master')->where('leave_type_id', $id)->delete();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Leave Type deleted Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $data = DB::table('leave_type_master')->where('leave_type_id', $id)->delete();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Leave Type deleted Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7563,33 +6917,25 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = DB::table('student')
-                    ->where('section_id', $id)
-                    ->where('academic_yr', $customClaims)
-                    ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'reg_no', 'admission_date', 'stu_aadhaar_no')
-                    ->orderBy('roll_no', 'ASC')
-                    ->get();
 
-                $students = $students->map(function ($student) {
-                    $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
-                    return $student;
-                });
+            $students = DB::table('student')
+                ->where('section_id', $id)
+                ->where('academic_yr', $customClaims)
+                ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'reg_no', 'admission_date', 'stu_aadhaar_no')
+                ->orderBy('roll_no', 'ASC')
+                ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student List For Grno.',
-                    'data' => $students,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $students = $students->map(function ($student) {
+                $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
+                return $student;
+            });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student List For Grno.',
+                'data' => $students,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7601,63 +6947,55 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $studentsData = $request->input('students');
-                // dd($studentsData);
-                $validationErrors = [];
-                foreach ($studentsData as $key => $studentData) {
-                    // For each student, define the validation rules
-                    $validationRules["students.$key.reg_no"] = 'nullable|unique:student,reg_no,' . $studentData['student_id'] . ',student_id,academic_yr,' . $customClaims;
-                }
 
-                // Validate the entire student data
-                $validator = Validator::make($request->all(), $validationRules, [
-                    'students.*.reg_no.unique' => 'The GR number has already been taken by another student.',
-                ]);
-
-                // If validation fails, return the error response
-                if ($validator->fails()) {
-                    return response()->json([
-                        'status' => 422,
-                        'message' => 'Validation Error',
-                        'errors' => $validator->errors()->toArray(),
-                        'success' => false
-                    ], 422);
-                }
-
-                foreach ($studentsData as $studentData) {
-                    $studentId = $studentData['student_id'];
-                    $regNo = $studentData['reg_no'];
-                    $admissionDate = date('Y-m-d', strtotime($studentData['admission_date']));
-                    $aadhaarNo = $studentData['stu_aadhaar_no'];
-
-                    // Find existing student by student_id
-                    $student = Student::where('student_id', $studentId)->first();
-
-                    // If student exists, update the data
-                    if ($student) {
-                        $student->update([
-                            'reg_no' => $regNo,
-                            'admission_date' => $admissionDate,
-                            'stu_aadhaar_no' => $aadhaarNo
-                        ]);
-                    }
-                }
-
-                // Return success response
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student data saved successfully!',
-                    'success' => true
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $studentsData = $request->input('students');
+            // dd($studentsData);
+            $validationErrors = [];
+            foreach ($studentsData as $key => $studentData) {
+                // For each student, define the validation rules
+                $validationRules["students.$key.reg_no"] = 'nullable|unique:student,reg_no,' . $studentData['student_id'] . ',student_id,academic_yr,' . $customClaims;
             }
+
+            // Validate the entire student data
+            $validator = Validator::make($request->all(), $validationRules, [
+                'students.*.reg_no.unique' => 'The GR number has already been taken by another student.',
+            ]);
+
+            // If validation fails, return the error response
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Validation Error',
+                    'errors' => $validator->errors()->toArray(),
+                    'success' => false
+                ], 422);
+            }
+
+            foreach ($studentsData as $studentData) {
+                $studentId = $studentData['student_id'];
+                $regNo = $studentData['reg_no'];
+                $admissionDate = date('Y-m-d', strtotime($studentData['admission_date']));
+                $aadhaarNo = $studentData['stu_aadhaar_no'];
+
+                // Find existing student by student_id
+                $student = Student::where('student_id', $studentId)->first();
+
+                // If student exists, update the data
+                if ($student) {
+                    $student->update([
+                        'reg_no' => $regNo,
+                        'admission_date' => $admissionDate,
+                        'stu_aadhaar_no' => $aadhaarNo
+                    ]);
+                }
+            }
+
+            // Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student data saved successfully!',
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7669,33 +7007,25 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = DB::table('student')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'category', 'religion', 'gender')
-                    ->get();
 
-                $students = $students->map(function ($student) {
-                    $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
-                    return $student;
-                });
+            $students = DB::table('student')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'category', 'religion', 'gender')
+                ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student List For Category and Religion.',
-                    'data' => $students,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $students = $students->map(function ($student) {
+                $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
+                return $student;
+            });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student List For Category and Religion.',
+                'data' => $students,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7707,34 +7037,26 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = $request->input('students');
-                foreach ($students as $student) {
-                    // Prepare data to be updated
-                    $data = [
-                        'category' => $student['category'] ?? '',
-                        'religion' => $student['religion'] ?? '',
-                        'gender' => $student['gender'] ?? '',
-                    ];
 
-                    Student::where('student_id', $student['student_id'])
-                        ->where('academic_yr', $customClaims)  // Assuming session() is being used in Laravel
-                        ->update($data);
-                }
+            $students = $request->input('students');
+            foreach ($students as $student) {
+                // Prepare data to be updated
+                $data = [
+                    'category' => $student['category'] ?? '',
+                    'religion' => $student['religion'] ?? '',
+                    'gender' => $student['gender'] ?? '',
+                ];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student data updated successfully!',
-                    'success' => true
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                Student::where('student_id', $student['student_id'])
+                    ->where('academic_yr', $customClaims)  // Assuming session() is being used in Laravel
+                    ->update($data);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student data updated successfully!',
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7746,45 +7068,37 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = DB::table('student')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->select(
-                        'student_id',
-                        'first_name',
-                        'mid_name',
-                        'last_name',
-                        'roll_no',
-                        'stud_id_no',
-                        'birth_place',
-                        'mother_tongue',
-                        'admission_class',
-                        DB::raw("CASE WHEN udise_pen_no = '00000000000' THEN '' ELSE udise_pen_no END as udise_pen_no")
-                    )
-                    ->orderBy('roll_no', 'asc')
-                    ->get();
 
-                $students = $students->map(function ($student) {
-                    $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
-                    return $student;
-                });
+            $students = DB::table('student')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->select(
+                    'student_id',
+                    'first_name',
+                    'mid_name',
+                    'last_name',
+                    'roll_no',
+                    'stud_id_no',
+                    'birth_place',
+                    'mother_tongue',
+                    'admission_class',
+                    DB::raw("CASE WHEN udise_pen_no = '00000000000' THEN '' ELSE udise_pen_no END as udise_pen_no")
+                )
+                ->orderBy('roll_no', 'asc')
+                ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student List For Studentid and other Details.',
-                    'data' => $students,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $students = $students->map(function ($student) {
+                $student->full_name = getFullName($student->first_name, $student->mid_name, $student->last_name);
+                return $student;
+            });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student List For Studentid and other Details.',
+                'data' => $students,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7796,36 +7110,28 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = $request->input('students');
 
-                foreach ($students as $student) {
-                    $data = [
-                        'stud_id_no' => $student['stud_id_no'] ?? '',
-                        'birth_place' => $student['birth_place'] ?? '',
-                        'mother_tongue' => $student['mother_tongue'] ?? '',
-                        'admission_class' => $student['admission_class'] ?? '',
-                        'udise_pen_no' => $student['udise_pen_no'] ?? '',
-                    ];
+            $students = $request->input('students');
 
-                    Student::where('student_id', $student['student_id'])
-                        ->where('academic_yr', $customClaims)  // Assuming academic year is stored in session
-                        ->update($data);
-                }
+            foreach ($students as $student) {
+                $data = [
+                    'stud_id_no' => $student['stud_id_no'] ?? '',
+                    'birth_place' => $student['birth_place'] ?? '',
+                    'mother_tongue' => $student['mother_tongue'] ?? '',
+                    'admission_class' => $student['admission_class'] ?? '',
+                    'udise_pen_no' => $student['udise_pen_no'] ?? '',
+                ];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student data updated successfully!',
-                    'success' => true
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                Student::where('student_id', $student['student_id'])
+                    ->where('academic_yr', $customClaims)  // Assuming academic year is stored in session
+                    ->update($data);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student data updated successfully!',
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7838,33 +7144,25 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = [
-                    'title' => $request->input('title'),
-                    'holiday_date' => $request->input('holiday_date'),
-                    'to_date' => $request->input('to_date'),
-                    'academic_yr' => $customClaims,
-                    'isDelete' => 'N',
-                    'publish' => 'N',
-                    'created_by' => $user->reg_id,
-                ];
 
-                DB::table('holidaylist')->insert($data);
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims,
+                'isDelete' => 'N',
+                'publish' => 'N',
+                'created_by' => $user->reg_id,
+            ];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'New holiday created!!!',
-                    'data' => $data,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            DB::table('holidaylist')->insert($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'New holiday created!!!',
+                'data' => $data,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7877,33 +7175,25 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = [
-                    'title' => $request->input('title'),
-                    'holiday_date' => $request->input('holiday_date'),
-                    'to_date' => $request->input('to_date'),
-                    'academic_yr' => $customClaims,
-                    'isDelete' => 'N',
-                    'publish' => 'Y',
-                    'created_by' => $user->reg_id,
-                ];
 
-                DB::table('holidaylist')->insert($data);
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims,
+                'isDelete' => 'N',
+                'publish' => 'Y',
+                'created_by' => $user->reg_id,
+            ];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'New holiday created and published!!!',
-                    'data' => $data,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            DB::table('holidaylist')->insert($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'New holiday created and published!!!',
+                'data' => $data,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7917,30 +7207,22 @@ class AdminController extends Controller
             $user = $this->authenticateUser();
 
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
-                $holidaylist = DB::table('holidaylist')
-                    ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id')
-                    ->where('holidaylist.academic_yr', $customClaims)
-                    ->select('holidaylist.*', 'user_master.name as created_by_name')  // Select the necessary columns
-                    ->groupBy('holidaylist.holiday_id')
-                    ->orderBy('holiday_id', 'Desc')
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Holiday List!!!',
-                    'data' => $holidaylist,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
+            $holidaylist = DB::table('holidaylist')
+                ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id')
+                ->where('holidaylist.academic_yr', $customClaims)
+                ->select('holidaylist.*', 'user_master.name as created_by_name')  // Select the necessary columns
+                ->groupBy('holidaylist.holiday_id')
+                ->orderBy('holiday_id', 'Desc')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Holiday List!!!',
+                'data' => $holidaylist,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7953,31 +7235,23 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $holiday = DB::table('holidaylist')->where('holiday_id', $holiday_id)->first();
-                if ($holiday) {
-                    if ($holiday->publish == 'N') {
-                        DB::table('holidaylist')->where('holiday_id', $holiday_id)->delete();
-                    } else {
-                        DB::table('holidaylist')
-                            ->where('holiday_id', $holiday_id)
-                            ->update(['isDelete' => 'Y']);
-                    }
-                }
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Holiday Deleted.!!!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $holiday = DB::table('holidaylist')->where('holiday_id', $holiday_id)->first();
+            if ($holiday) {
+                if ($holiday->publish == 'N') {
+                    DB::table('holidaylist')->where('holiday_id', $holiday_id)->delete();
+                } else {
+                    DB::table('holidaylist')
+                        ->where('holiday_id', $holiday_id)
+                        ->update(['isDelete' => 'Y']);
+                }
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Holiday Deleted.!!!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -7990,33 +7264,25 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $holidayIds = $request->input('holiday_id');
 
-                if ($holidayIds && is_array($holidayIds) && count($holidayIds) > 0) {
-                    foreach ($holidayIds as $holiday_id) {
-                        DB::table('holidaylist')
-                            ->where('holiday_id', $holiday_id)
-                            ->update(['publish' => 'Y']);
-                    }
+            $holidayIds = $request->input('holiday_id');
 
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Holiday are published.!!!',
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'No holiday IDs provided.',
-                        'success' => false
-                    ]);
+            if ($holidayIds && is_array($holidayIds) && count($holidayIds) > 0) {
+                foreach ($holidayIds as $holiday_id) {
+                    DB::table('holidaylist')
+                        ->where('holiday_id', $holiday_id)
+                        ->update(['publish' => 'Y']);
                 }
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Holiday are published.!!!',
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'No holiday IDs provided.',
                     'success' => false
                 ]);
             }
@@ -8032,35 +7298,27 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $data = [
-                    'title' => $request->input('title'),
-                    'holiday_date' => $request->input('holiday_date'),
-                    'to_date' => $request->input('to_date'),
-                    'academic_yr' => $customClaims,
-                    'isDelete' => 'N',
-                    'publish' => 'N',
-                    'created_by' => $user->reg_id,
-                ];
 
-                $updateddata = DB::table('holidaylist')
-                    ->where('holiday_id', $holiday_id)
-                    ->update($data);
+            $data = [
+                'title' => $request->input('title'),
+                'holiday_date' => $request->input('holiday_date'),
+                'to_date' => $request->input('to_date'),
+                'academic_yr' => $customClaims,
+                'isDelete' => 'N',
+                'publish' => 'N',
+                'created_by' => $user->reg_id,
+            ];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Holiday edited!!!',
-                    'data' => $data,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $updateddata = DB::table('holidaylist')
+                ->where('holiday_id', $holiday_id)
+                ->update($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Holiday edited!!!',
+                'data' => $data,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8073,34 +7331,26 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $headers = [
-                    'Content-Type' => 'text/csv',
-                    'Content-Disposition' => 'attachment; filename="holidaylist.csv"',
-                ];
-                ob_get_clean();
-                $columns = [
-                    '*Title',
-                    '*Holiday date(in dd-mm-yyyy format)',
-                    'To date(in dd-mm-yyyy format)'
-                ];
 
-                $callback = function () use ($columns) {
-                    $file = fopen('php://output', 'w');
-                    fputcsv($file, $columns);
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="holidaylist.csv"',
+            ];
+            ob_get_clean();
+            $columns = [
+                '*Title',
+                '*Holiday date(in dd-mm-yyyy format)',
+                'To date(in dd-mm-yyyy format)'
+            ];
 
-                    fclose($file);
-                };
+            $callback = function () use ($columns) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $columns);
 
-                return response()->stream($callback, 200, $headers);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8182,28 +7432,20 @@ class AdminController extends Controller
             try {
                 $user = $this->authenticateUser();
                 $customClaims = JWTAuth::getPayload()->get('academic_year');
-                if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                    $data = [
-                        'title' => $holidayData['title'],
-                        'holiday_date' => $holidayData['holiday_date'],
-                        'to_date' => $holidayData['to_date'],
-                        'academic_yr' => $customClaims,
-                        'isDelete' => 'N',
-                        'publish' => 'N',
-                        'created_by' => $user->reg_id,
-                    ];
 
-                    DB::table('holidaylist')->insert($data);
-                    DB::commit();
-                    $successfulInserts++;
-                } else {
-                    return response()->json([
-                        'status' => 401,
-                        'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                        'data' => $user->role_id,
-                        'success' => false
-                    ]);
-                }
+                $data = [
+                    'title' => $holidayData['title'],
+                    'holiday_date' => $holidayData['holiday_date'],
+                    'to_date' => $holidayData['to_date'],
+                    'academic_yr' => $customClaims,
+                    'isDelete' => 'N',
+                    'publish' => 'N',
+                    'created_by' => $user->reg_id,
+                ];
+
+                DB::table('holidaylist')->insert($data);
+                DB::commit();
+                $successfulInserts++;
             } catch (Exception $e) {
                 DB::rollBack();
                 $invalidRows[] = array_merge($row, ['error' => 'Error updating student: ' . $e->getMessage()]);
@@ -8246,66 +7488,58 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $idcarddetails = DB::table('confirmation_idcard')
-                    ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->leftjoin('house', 'student.house', '=', 'house.house_id')
-                    ->select(
-                        'confirmation_idcard.*',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.parent_id',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.dob',
-                        'student.student_id',
-                        'parent.f_mobile',
-                        'parent.m_mobile',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'house.house_name as house'
-                    )
-                    ->where('student.section_id', $section_id)
-                    ->where('confirmation_idcard.confirm', 'Y')
-                    ->where('student.IsDelete', 'N')
-                    ->orderBy('student.roll_no')
-                    ->get();
 
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $section_id = $request->input('section_id');
+            $idcarddetails = DB::table('confirmation_idcard')
+                ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->leftjoin('house', 'student.house', '=', 'house.house_id')
+                ->select(
+                    'confirmation_idcard.*',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.parent_id',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.dob',
+                    'student.student_id',
+                    'parent.f_mobile',
+                    'parent.m_mobile',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'house.house_name as house'
+                )
+                ->where('student.section_id', $section_id)
+                ->where('confirmation_idcard.confirm', 'Y')
+                ->where('student.IsDelete', 'N')
+                ->orderBy('student.roll_no')
+                ->get();
 
-                // Append image URLs for each student
-                $idcarddetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_url = $concatprojecturl . '' . $student->image_name;
-                    } else {
-                        $student->image_url = '';
-                    }
-                });
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Id card details for this class.',
-                    'data' => $idcarddetails,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            // Append image URLs for each student
+            $idcarddetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_url = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_url = '';
+                }
+            });
+            return response()->json([
+                'status' => 200,
+                'message' => 'Id card details for this class.',
+                'data' => $idcarddetails,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8318,91 +7552,83 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $zip = new ZipArchive;
-                $zipName = time() . '.zip';
-                $imageAdded = false;
 
-                $studentDetails = DB::table('confirmation_idcard')
-                    ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->select(
-                        'confirmation_idcard.*',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.dob',
-                        'student.house',
-                        'student.student_id',
-                        'parent.f_mobile',
-                        'parent.m_mobile',
-                        'class.name as class_name',
-                        'section.name as sec_name'
-                    )
-                    ->where('student.section_id', $section_id)
-                    ->where('confirmation_idcard.confirm', 'Y')
-                    ->where('student.IsDelete', 'N')
-                    ->orderBy('student.roll_no')
-                    ->get();
+            $section_id = $request->input('section_id');
+            $zip = new ZipArchive;
+            $zipName = time() . '.zip';
+            $imageAdded = false;
 
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $studentDetails = DB::table('confirmation_idcard')
+                ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->select(
+                    'confirmation_idcard.*',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.dob',
+                    'student.house',
+                    'student.student_id',
+                    'parent.f_mobile',
+                    'parent.m_mobile',
+                    'class.name as class_name',
+                    'section.name as sec_name'
+                )
+                ->where('student.section_id', $section_id)
+                ->where('confirmation_idcard.confirm', 'Y')
+                ->where('student.IsDelete', 'N')
+                ->orderBy('student.roll_no')
+                ->get();
 
-                // Append image URLs for each student
-                $studentDetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_url = $concatprojecturl . '' . $student->image_name;
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            // Append image URLs for each student
+            $studentDetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_url = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_url = '';
+                }
+            });
+            $zip->open(public_path($zipName), ZipArchive::CREATE);
+            foreach ($studentDetails as $url) {
+                if (!empty($url->image_url)) {
+                    $fileContent = @file_get_contents($url->image_url);
+                    if ($fileContent) {
+                        $fileName = basename($url->image_url);
+                        $zip->addFromString($fileName, $fileContent);
+                        $imageAdded = true;
                     } else {
-                        $student->image_url = '';
-                    }
-                });
-                $zip->open(public_path($zipName), ZipArchive::CREATE);
-                foreach ($studentDetails as $url) {
-                    if (!empty($url->image_url)) {
-                        $fileContent = @file_get_contents($url->image_url);
-                        if ($fileContent) {
-                            $fileName = basename($url->image_url);
-                            $zip->addFromString($fileName, $fileContent);
-                            $imageAdded = true;
-                        } else {
-                            \Log::warning('File could not be downloaded: ' . $url->image_url);
-                        }
+                        \Log::warning('File could not be downloaded: ' . $url->image_url);
                     }
                 }
-                if (!$imageAdded) {
-                    $zip->addFromString('nofilesfound.txt', '');  // Optionally add a dummy file if you want to keep the ZIP non-empty
-                }
-
-                $zip->close();
-
-                $classname = DB::table('class')
-                    ->join('section', 'section.class_id', '=', 'class.class_id')
-                    ->where('section.section_id', $section_id)
-                    ->select('section.name as sectionname', 'class.name as classname')
-                    ->first();
-
-                $zipFileName = $classname->classname . '-' . $classname->sectionname . '.zip';
-                return response()
-                    ->download($zipName, $zipFileName)
-                    ->deleteFileAfterSend(true);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+            if (!$imageAdded) {
+                $zip->addFromString('nofilesfound.txt', '');  // Optionally add a dummy file if you want to keep the ZIP non-empty
+            }
+
+            $zip->close();
+
+            $classname = DB::table('class')
+                ->join('section', 'section.class_id', '=', 'class.class_id')
+                ->where('section.section_id', $section_id)
+                ->select('section.name as sectionname', 'class.name as classname')
+                ->first();
+
+            $zipFileName = $classname->classname . '-' . $classname->sectionname . '.zip';
+            return response()
+                ->download($zipName, $zipFileName)
+                ->deleteFileAfterSend(true);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8414,78 +7640,70 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
-                $lecturesPerWeek = $request->input('lectures_per_week', 0);
-                $saturdayLectures = $request->input('saturday_lectures', 0);
 
-                $existingtimetable = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->first();
-                if ($existingtimetable) {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Timetable already created for this class',
-                        'success' => false
-                    ]);
-                }
-                $fields = [];
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            $lecturesPerWeek = $request->input('lectures_per_week', 0);
+            $saturdayLectures = $request->input('saturday_lectures', 0);
 
-                // Generate Monday to Friday fields
-                $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-                foreach ($daysOfWeek as $day) {
-                    $fields[$day] = [];
-                    for ($i = 1; $i <= $lecturesPerWeek; $i++) {
-                        $fields[$day][] = [
-                            'subject' => [],
-                        ];
-                    }
-                }
-
-                for ($i = 1; $i <= $lecturesPerWeek; $i++) {
-                    $fields['Time-In'][] = [
-                        'Weekday Time In' => '',
-                    ];
-                }
-                for ($i = 1; $i <= $lecturesPerWeek; $i++) {
-                    $fields['Time-Out'][] = [
-                        'Weekday Time Out' => '',
-                    ];
-                }
-
-                for ($i = 1; $i <= $saturdayLectures; $i++) {
-                    $fields['Saturday'][] = [
-                        'subject' => [],
-                    ];
-                }
-                for ($i = 1; $i <= $saturdayLectures; $i++) {
-                    $fields['Sat Time In'][] = [
-                        'Weekend Time In' => '',
-                    ];
-                }
-                for ($i = 1; $i <= $saturdayLectures; $i++) {
-                    $fields['Sat Time Out'][] = [
-                        'Weekend Time Out' => '',
-                    ];
-                }
-
+            $existingtimetable = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->first();
+            if ($existingtimetable) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Fields for these lectures.',
-                    'data' => $fields,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'Timetable already created for this class',
                     'success' => false
                 ]);
             }
+            $fields = [];
+
+            // Generate Monday to Friday fields
+            $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            foreach ($daysOfWeek as $day) {
+                $fields[$day] = [];
+                for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+                    $fields[$day][] = [
+                        'subject' => [],
+                    ];
+                }
+            }
+
+            for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+                $fields['Time-In'][] = [
+                    'Weekday Time In' => '',
+                ];
+            }
+            for ($i = 1; $i <= $lecturesPerWeek; $i++) {
+                $fields['Time-Out'][] = [
+                    'Weekday Time Out' => '',
+                ];
+            }
+
+            for ($i = 1; $i <= $saturdayLectures; $i++) {
+                $fields['Saturday'][] = [
+                    'subject' => [],
+                ];
+            }
+            for ($i = 1; $i <= $saturdayLectures; $i++) {
+                $fields['Sat Time In'][] = [
+                    'Weekend Time In' => '',
+                ];
+            }
+            for ($i = 1; $i <= $saturdayLectures; $i++) {
+                $fields['Sat Time Out'][] = [
+                    'Weekend Time Out' => '',
+                ];
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Fields for these lectures.',
+                'data' => $fields,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8497,36 +7715,28 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
 
-                $subjects = DB::table('subject')
-                    ->select('subject_master.sm_id', 'subject_master.name')
-                    ->distinct()
-                    ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
-                    ->where('subject.class_id', $class_id)
-                    ->where('subject.section_id', $section_id)
-                    ->where('subject.academic_yr', $customClaims)
-                    ->orderBy('subject.class_id', 'asc')
-                    ->orderBy('subject.section_id', 'asc')
-                    ->orderBy('subject_master.name', 'asc')
-                    ->get();
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Subject for this class.',
-                    'data' => $subjects,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $subjects = DB::table('subject')
+                ->select('subject_master.sm_id', 'subject_master.name')
+                ->distinct()
+                ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                ->where('subject.class_id', $class_id)
+                ->where('subject.section_id', $section_id)
+                ->where('subject.academic_yr', $customClaims)
+                ->orderBy('subject.class_id', 'asc')
+                ->orderBy('subject.section_id', 'asc')
+                ->orderBy('subject_master.name', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Subject for this class.',
+                'data' => $subjects,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8538,26 +7748,17 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $deletetimetable = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->delete();
+            $deletetimetable = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->delete();
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Timetable Deleted.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Timetable Deleted.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8569,211 +7770,90 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $gettimetable = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->orderBy('period_no')
-                    ->get();
+            $gettimetable = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->orderBy('period_no')
+                ->get();
 
-                // Check if timetable data exists
-                if ($gettimetable->isEmpty()) {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'No timetable found for the provided class and section.',
-                        'success' => false,
-                    ], 404);
-                }
-
-                // Process the timetable data and fetch teacher names for each subject
-                $result = [];
-                foreach ($gettimetable as $row) {
-                    $subject_name = $row->subject;
-                    $teacher_names = $this->get_teacher_name_by_subname($subject_name, $class_id, $section_id);
-
-                    // Assuming that get_teacher_name_by_subname returns an array with teacher names
-                    $teacher_name = '';
-                    if (count($teacher_names) > 0) {
-                        $teacher_name = ucfirst($teacher_names[0]['t_name']);  // Take the first teacher's name
-                    }
-
-                    // Add to the result array
-                    $result[] = [
-                        'period_no' => $row->period_no,
-                        'subject' => $subject_name,
-                        'teacher' => $teacher_name
-                    ];
-                }
-
-                // Return the timetable data
+            // Check if timetable data exists
+            if ($gettimetable->isEmpty()) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Timetable fetched successfully',
-                    'data' => $result,
-                    'success' => true
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                    'status' => 404,
+                    'message' => 'No timetable found for the provided class and section.',
+                    'success' => false,
+                ], 404);
             }
+
+            // Process the timetable data and fetch teacher names for each subject
+            $result = [];
+            foreach ($gettimetable as $row) {
+                $subject_name = $row->subject;
+                $teacher_names = $this->get_teacher_name_by_subname($subject_name, $class_id, $section_id);
+
+                // Assuming that get_teacher_name_by_subname returns an array with teacher names
+                $teacher_name = '';
+                if (count($teacher_names) > 0) {
+                    $teacher_name = ucfirst($teacher_names[0]['t_name']);  // Take the first teacher's name
+                }
+
+                // Add to the result array
+                $result[] = [
+                    'period_no' => $row->period_no,
+                    'subject' => $subject_name,
+                    'teacher' => $teacher_name
+                ];
+            }
+
+            // Return the timetable data
+            return response()->json([
+                'status' => 200,
+                'message' => 'Timetable fetched successfully',
+                'data' => $result,
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 
-    //   public function getStudentexcelIdCard(Request $request){
-    //             $idcarddetails = DB::table('confirmation_idcard')
-    //             ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
-    //             ->join('class', 'student.class_id', '=', 'class.class_id')
-    //             ->join('section', 'student.section_id', '=', 'section.section_id')
-    //             ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-    //             ->select(
-    //                 'confirmation_idcard.*',
-    //                 'student.first_name',
-    //                 'student.mid_name',
-    //                 'student.last_name',
-    //                 'student.roll_no',
-    //                 'student.image_name',
-    //                 'student.reg_no',
-    //                 'student.permant_add',
-    //                 'student.blood_group',
-    //                 'student.dob',
-    //                 'student.student_id',
-    //                 'parent.f_mobile',
-    //                 'parent.m_mobile',
-    //                 'class.name as class_name',
-    //                 'section.name as sec_name',
-    //                 DB::raw("
-    //                     CASE
-    //                         WHEN student.house = 'E' THEN 'Emerald'
-    //                         WHEN student.house = 'R' THEN 'Ruby'
-    //                         WHEN student.house = 'S' THEN 'Sapphire'
-    //                         WHEN student.house = 'D' THEN 'Diamond'
-    //                         ELSE 'Unknown House'
-    //                     END as house
-    //                 ")
-    //             )
-    //             ->where('student.section_id', '471')
-    //             ->where('confirmation_idcard.confirm', 'Y')
-    //             ->where('student.IsDelete', 'N')
-    //             ->orderBy('student.roll_no')
-    //             ->get();
-
-    //         // Append image URLs for each student
-    //         $globalVariables = App::make('global_variables');
-    //         $parent_app_url = $globalVariables['parent_app_url'];
-    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-
-    //         $idcarddetails->each(function ($student) use($parent_app_url, $codeigniter_app_url) {
-    //         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
-    //         if (!empty($student->image_name)) {
-    //         $student->image_url = $concatprojecturl . $student->image_name;
-    //         } else {
-    //         $student->image_url = '';
-    //         }
-    //         });
-
-    //         // Export to Excel
-    //         return Excel::download(new IdCardExport($idcarddetails), 'idcarddetails_with_images.xlsx');
-
-    //   }
-
-    // public function getTeacherIdCard(Request $request){
-    //     try{
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //             $globalVariables = App::make('global_variables');
-    //             $parent_app_url = $globalVariables['parent_app_url'];
-    //             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-    //             $staffdata = DB::table('teacher')
-    //                             ->orderBy('teacher_id', 'asc')
-    //                             ->where('isDelete','N')
-    //                             ->get()
-    //                             ->map(function ($staff)use($parent_app_url,$codeigniter_app_url){
-    //                                 $concatprojecturl = $codeigniter_app_url."".'uploads/teacher_image/';
-    //                                 if ($staff->teacher_image_name) {
-    //                                     $staff->teacher_image_url = $concatprojecturl.""."$staff->teacher_image_name";
-    //                                 } else {
-    //                                     $staff->teacher_image_url = null;
-    //                                 }
-    //                                 return $staff;
-    //                             });
-    //                             return response()->json([
-    //                                 'status'=> 200,
-    //                                 'message'=>'Id card details for the Staffs.',
-    //                                 'data'=>$staffdata,
-    //                                 'success'=>true
-    //                                     ]);
-
-    //         }
-    //         else{
-    //             return response()->json([
-    //                 'status'=> 401,
-    //                 'message'=>'This User Doesnot have Permission for the Deleting of Data',
-    //                 'data' =>$user->role_id,
-    //                 'success'=>false
-    //                     ]);
-    //             }
-
-    //         }
-    //         catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //         }
-
-    // }
     public function getTeacherIdCard(Request $request)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
-                $staffdata = DB::table('teacher as t')
-                    ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
-                    ->select('t.*', 'c.confirm')
-                    ->where('t.isDelete', 'N')
-                    ->where('c.confirm', 'Y')  // Only confirmed teachers
-                    ->orderBy('t.teacher_id', 'asc')
-                    ->get()
-                    ->map(function ($staff) use ($codeigniter_app_url) {
-                        $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+            $staffdata = DB::table('teacher as t')
+                ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+                ->select('t.*', 'c.confirm')
+                ->where('t.isDelete', 'N')
+                ->where('c.confirm', 'Y')
+                ->orderBy('t.teacher_id', 'asc')
+                ->get()
+                ->map(function ($staff) use ($codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
 
-                        if ($staff->teacher_image_name) {
-                            $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
-                        } else {
-                            $staff->teacher_image_url = null;
-                        }
+                    if ($staff->teacher_image_name) {
+                        $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+                    } else {
+                        $staff->teacher_image_url = null;
+                    }
 
-                        return $staff;
-                    });
+                    return $staff;
+                });
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'ID card details for the Staffs.',
-                    'data' => $staffdata,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'ID card details for the Staffs.',
+                'data' => $staffdata,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8785,81 +7865,59 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M' || $user->role_id == 'P') {
-                $zip = new ZipArchive;
-                $zipName = time() . '.zip';
-                $imageAdded = false;
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                // $staffdata = DB::table('teacher')
-                //     ->orderBy('teacher_id', 'asc')
-                //     ->where('isDelete', 'N')
-                //     ->get()
-                //     ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
-                //         $concatprojecturl = $codeigniter_app_url . "" . 'uploads/teacher_image/';
-                //         if ($staff->teacher_image_name) {
-                //             $staff->teacher_image_url = $concatprojecturl . "" . "$staff->teacher_image_name";
-                //         } else {
-                //             $staff->teacher_image_url = '';
-                //         }
-                //         return $staff;
-                //     });
-                $staffdata = DB::table('teacher')
-                    ->join('confirmation_teacher_idcard', function ($join) {
-                        $join
-                            ->on('teacher.teacher_id', '=', 'confirmation_teacher_idcard.teacher_id')
-                            ->where('confirmation_teacher_idcard.confirm', 'Y');
-                    })
-                    ->where('teacher.isDelete', 'N')
-                    ->orderBy('teacher.teacher_id', 'asc')
-                    ->select('teacher.*', 'confirmation_teacher_idcard.confirm')
-                    ->get()
-                    ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
-                        $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
 
-                        if ($staff->teacher_image_name) {
-                            $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
-                        } else {
-                            $staff->teacher_image_url = '';
-                        }
+            $zip = new ZipArchive;
+            $zipName = time() . '.zip';
+            $imageAdded = false;
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                        return $staff;
-                    });
+            $staffdata = DB::table('teacher')
+                ->join('confirmation_teacher_idcard', function ($join) {
+                    $join
+                        ->on('teacher.teacher_id', '=', 'confirmation_teacher_idcard.teacher_id')
+                        ->where('confirmation_teacher_idcard.confirm', 'Y');
+                })
+                ->where('teacher.isDelete', 'N')
+                ->orderBy('teacher.teacher_id', 'asc')
+                ->select('teacher.*', 'confirmation_teacher_idcard.confirm')
+                ->get()
+                ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
 
-                $zip->open(public_path($zipName), ZipArchive::CREATE);
-                $folderInZip = 'Staff_IdCard_ProfileImages/';
-                foreach ($staffdata as $url) {
-                    if (!empty($url->teacher_image_url)) {
-                        $fileContent = @file_get_contents($url->teacher_image_url);
-                        if ($fileContent) {
-                            $fileName = basename($url->teacher_image_url);
-                            $zip->addFromString($folderInZip . $fileName, $fileContent);
-                            $imageAdded = true;
-                        } else {
-                            \Log::warning('File could not be downloaded: ' . $url->teacher_image_url);
-                        }
+                    if ($staff->teacher_image_name) {
+                        $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+                    } else {
+                        $staff->teacher_image_url = '';
+                    }
+
+                    return $staff;
+                });
+
+            $zip->open(public_path($zipName), ZipArchive::CREATE);
+            $folderInZip = 'Staff_IdCard_ProfileImages/';
+            foreach ($staffdata as $url) {
+                if (!empty($url->teacher_image_url)) {
+                    $fileContent = @file_get_contents($url->teacher_image_url);
+                    if ($fileContent) {
+                        $fileName = basename($url->teacher_image_url);
+                        $zip->addFromString($folderInZip . $fileName, $fileContent);
+                        $imageAdded = true;
+                    } else {
+                        \Log::warning('File could not be downloaded: ' . $url->teacher_image_url);
                     }
                 }
-                if (!$imageAdded) {
-                    $zip->addFromString($folderInZip . 'nofilesfound.txt', '');  // Optionally add a dummy file if you want to keep the ZIP non-empty
-                }
-
-                $zip->close();
-
-                // return response()->download($zipName, 'Staff_IdCard_ProfileImages')
-                //     ->deleteFileAfterSend(true);
-                return response()
-                    ->download(public_path($zipName), 'Staff_IdCard_ProfileImages')
-                    ->deleteFileAfterSend(true);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+            if (!$imageAdded) {
+                $zip->addFromString($folderInZip . 'nofilesfound.txt', '');
+            }
+
+            $zip->close();
+
+            return response()
+                ->download(public_path($zipName), 'Staff_IdCard_ProfileImages')
+                ->deleteFileAfterSend(true);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -8911,7 +7969,7 @@ class AdminController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
             $updateStationery = DB::table('stationery_master')
-                ->where('stationery_id', $stationery_id)  // Find the user with id = 1
+                ->where('stationery_id', $stationery_id)
                 ->update(['name' => $request->name]);
             return response()->json([
                 'status' => 200,
@@ -8950,45 +8008,37 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $num_lec = $request->input('num_lec');
-                $data = [];
 
-                for ($k = 1; $k <= $num_lec; $k++) {
-                    $data[] = [
-                        'class_id' => $request->input('class_id'),
-                        'section_id' => $request->input('section_id'),
-                        'monday' => $this->getSubjectss($request->input('mon' . $k)),
-                        'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
-                        'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
-                        'thursday' => $this->getSubjectss($request->input('thu' . $k)),
-                        'friday' => $this->getSubjectss($request->input('fri' . $k)),
-                        'saturday' => $this->getSubjectss($request->input('sat' . $k)),
-                        'time_in' => $request->input('time_in' . $k),
-                        'time_out' => $request->input('time_out' . $k),
-                        'sat_in' => $request->input('sat_in' . $k),
-                        'sat_out' => $request->input('sat_out' . $k),
-                        'period_no' => $k,
-                        'academic_yr' => $customClaims,
-                        'date' => now(),
-                    ];
-                }
+            $num_lec = $request->input('num_lec');
+            $data = [];
 
-                DB::table('timetable')->insert($data);
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Timetable created successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            for ($k = 1; $k <= $num_lec; $k++) {
+                $data[] = [
+                    'class_id' => $request->input('class_id'),
+                    'section_id' => $request->input('section_id'),
+                    'monday' => $this->getSubjectss($request->input('mon' . $k)),
+                    'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
+                    'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
+                    'thursday' => $this->getSubjectss($request->input('thu' . $k)),
+                    'friday' => $this->getSubjectss($request->input('fri' . $k)),
+                    'saturday' => $this->getSubjectss($request->input('sat' . $k)),
+                    'time_in' => $request->input('time_in' . $k),
+                    'time_out' => $request->input('time_out' . $k),
+                    'sat_in' => $request->input('sat_in' . $k),
+                    'sat_out' => $request->input('sat_out' . $k),
+                    'period_no' => $k,
+                    'academic_yr' => $customClaims,
+                    'date' => now(),
+                ];
             }
+
+            DB::table('timetable')->insert($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Timetable created successfully!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9001,542 +8051,293 @@ class AdminController extends Controller
         return implode('/', (array) $subjects);
     }
 
-    // Timetable Dev Name - Manish Kumar Sharma 27-02-2025
-    // public function viewclassTimetable(Request $request,$class_id,$section_id){
-    //     try{
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //               $timetables = DB::table('timetable')
-    //                                 ->where('class_id', $class_id)
-    //                                 ->where('section_id', $section_id)
-    //                                 ->where('academic_yr', $customClaims)
-    //                                 ->orderBy('t_id')
-    //                                 ->get();
-
-    //                 if(count($timetables)==0){
-
-    //                     return response()->json([
-    //                         'status'=> 400,
-    //                         'message'=>'Timetable is not created for this class.',
-    //                         'success'=>false
-    //                         ]);
-
-    //                 }
-    //             //   dd($timetable);
-    //              // Initialize an array to hold data for each day
-    //         $monday = [];
-    //         $tuesday = [];
-    //         $wednesday = [];
-    //         $thursday = [];
-    //         $friday = [];
-    //         $saturday = [];
-
-    //         // Iterate over the timetables and separate them by day
-    //         foreach ($timetables as $timetable) {
-    //             // For Monday
-    //             if ($timetable->monday) {
-    //                 $subjectIdmonday = null;
-    //                 $teacherIdmonday = null;
-
-    //                 if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
-    //                 list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
-    //                 }
-    //                 $monday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
-    //                 ];
-    //             }
-    //             if (empty($timetable->monday)) {
-
-    //                 $monday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-
-    //             // For Tuesday
-    //             if ($timetable->tuesday) {
-    //                 $subjectIdtuesday = null;
-    //                 $teacherIdtuesday = null;
-
-    //                 if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
-    //                 list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
-    //                 }
-    //                 $tuesday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
-    //                 ];
-    //             }
-    //             if (empty($timetable->tuesday)) {
-
-    //                 $tuesday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-
-    //             // For Wednesday
-    //             if ($timetable->wednesday) {
-    //                 $subjectIdwednesday = null;
-    //                 $teacherIdwednesday = null;
-
-    //                 if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
-    //                 list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
-    //                 }
-    //                 $wednesday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
-    //                 ];
-    //             }
-
-    //             if (empty($timetable->wednesday)) {
-
-    //                 $wednesday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-
-    //             // For Thursday
-    //             if ($timetable->thursday) {
-    //                 $subjectIdthursday = null;
-    //                 $teacherIdthursday = null;
-
-    //                 if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
-    //                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
-    //                 }
-    //                 $thursday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
-    //                 ];
-    //             }
-
-    //             if (empty($timetable->thursday)) {
-
-    //                 $thursday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-
-    //             // For Friday
-    //             if ($timetable->friday) {
-    //                 $subjectIdfriday = null;
-    //                 $teacherIdfriday = null;
-
-    //                 if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
-    //                 list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
-    //                 }
-    //                 $friday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
-    //                 ];
-    //             }
-
-    //             if (empty($timetable->friday)) {
-
-    //                 $friday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-
-    //             // For Saturday
-    //             if ($timetable->saturday) {
-    //                 $subjectIdsaturday = null;
-    //                 $teacherIdsaturday = null;
-
-    //                 if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
-    //                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
-    //                 }
-    //                 $saturday[] = [
-    //                     'time_in' => $timetable->sat_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->sat_out,
-    //                     'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
-    //                     'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
-    //                 ];
-    //             }
-    //             $saturdayperiodcount = DB::table('classwise_period_allocation')
-    //                                       ->where('academic_yr',$customClaims)
-    //                                       ->where('section_id',$section_id)
-    //                                       ->where('class_id',$class_id)
-    //                                       ->select('sat')
-    //                                       ->first();
-
-    //             if (is_null($timetable->saturday)&&$timetable->period_no<=$saturdayperiodcount->sat) {
-
-    //                 $saturday[] = [
-    //                     'time_in' => $timetable->time_in,
-    //                     'period_no'=>$timetable->period_no,
-    //                     'time_out' => $timetable->time_out,
-    //                     'subject' => null,
-    //                     'teacher' => null,
-    //                 ];
-    //             }
-    //         }
-    //         $weeklySchedule = [
-    //             'Monday' => $monday,
-    //             'Tuesday' => $tuesday,
-    //             'Wednesday' => $wednesday,
-    //             'Thursday' => $thursday,
-    //             'Friday' => $friday,
-    //             'Saturday' => $saturday,
-    //         ];
-
-    //               return response()->json([
-    //                 'status' =>200,
-    //                 'data'=>$weeklySchedule,
-    //                 'message' => 'View Timetable!',
-    //                 'success'=>true
-    //             ]);
-
-    //         }
-    //         else{
-    //             return response()->json([
-    //                 'status'=> 401,
-    //                 'message'=>'This User Doesnot have Permission for the Deleting of Data',
-    //                 'data' =>$user->role_id,
-    //                 'success'=>false
-    //                     ]);
-    //             }
-
-    //         }
-    //         catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //         }
-
-    // }
     public function viewclassTimetable(Request $request, $class_id, $section_id)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $timetables = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->orderBy('t_id')
-                    ->get();
 
-                if (count($timetables) == 0) {
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Timetable is not created for this class.',
-                        'success' => false
-                    ]);
-                }
-                //   dd($timetable);
-                // Initialize an array to hold data for each day
-                $monday = [];
-                $tuesday = [];
-                $wednesday = [];
-                $thursday = [];
-                $friday = [];
-                $saturday = [];
+            $timetables = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->orderBy('t_id')
+                ->get();
 
-                // Iterate over the timetables and separate them by day
-                foreach ($timetables as $timetable) {
-                    // For Monday
-                    if ($timetable->monday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->monday, ',')
-                            ? explode(',', $timetable->monday)
-                            : [$timetable->monday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $monday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-                    if (empty($timetable->monday)) {
-                        $monday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    // For Tuesday
-                    if ($timetable->tuesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->tuesday, ',')
-                            ? explode(',', $timetable->tuesday)
-                            : [$timetable->tuesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $tuesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-                    if (empty($timetable->tuesday)) {
-                        $tuesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    // For Wednesday
-                    if ($timetable->wednesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->wednesday, ',')
-                            ? explode(',', $timetable->wednesday)
-                            : [$timetable->wednesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $wednesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if (empty($timetable->wednesday)) {
-                        $wednesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    // For Thursday
-                    if ($timetable->thursday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->thursday, ',')
-                            ? explode(',', $timetable->thursday)
-                            : [$timetable->thursday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $thursday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if (empty($timetable->thursday)) {
-                        $thursday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    // For Friday
-                    if ($timetable->friday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->friday, ',')
-                            ? explode(',', $timetable->friday)
-                            : [$timetable->friday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $friday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if (empty($timetable->friday)) {
-                        $friday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    // For Saturday
-                    if ($timetable->saturday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->saturday, ',')
-                            ? explode(',', $timetable->saturday)
-                            : [$timetable->saturday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $saturday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-                    $saturdayperiodcount = DB::table('classwise_period_allocation')
-                        ->where('academic_yr', $customClaims)
-                        ->where('section_id', $section_id)
-                        ->where('class_id', $class_id)
-                        ->select('sat')
-                        ->first();
-
-                    if (is_null($timetable->saturday) && $timetable->period_no <= $saturdayperiodcount->sat) {
-                        $saturday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-                }
-                $weeklySchedule = [
-                    'Monday' => $monday,
-                    'Tuesday' => $tuesday,
-                    'Wednesday' => $wednesday,
-                    'Thursday' => $thursday,
-                    'Friday' => $friday,
-                    'Saturday' => $saturday,
-                ];
-
+            if (count($timetables) == 0) {
                 return response()->json([
-                    'status' => 200,
-                    'data' => $weeklySchedule,
-                    'message' => 'View Timetable!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 400,
+                    'message' => 'Timetable is not created for this class.',
                     'success' => false
                 ]);
             }
+
+            $monday = [];
+            $tuesday = [];
+            $wednesday = [];
+            $thursday = [];
+            $friday = [];
+            $saturday = [];
+            foreach ($timetables as $timetable) {
+                // For Monday
+                if ($timetable->monday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+                if (empty($timetable->monday)) {
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+
+                // For Tuesday
+                if ($timetable->tuesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+                if (empty($timetable->tuesday)) {
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+
+                // For Wednesday
+                if ($timetable->wednesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if (empty($timetable->wednesday)) {
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+
+                // For Thursday
+                if ($timetable->thursday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if (empty($timetable->thursday)) {
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+
+                // For Friday
+                if ($timetable->friday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if (empty($timetable->friday)) {
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+
+                // For Saturday
+                if ($timetable->saturday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+                $saturdayperiodcount = DB::table('classwise_period_allocation')
+                    ->where('academic_yr', $customClaims)
+                    ->where('section_id', $section_id)
+                    ->where('class_id', $class_id)
+                    ->select('sat')
+                    ->first();
+
+                if (is_null($timetable->saturday) && $timetable->period_no <= $saturdayperiodcount->sat) {
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+            }
+            $weeklySchedule = [
+                'Monday' => $monday,
+                'Tuesday' => $tuesday,
+                'Wednesday' => $wednesday,
+                'Thursday' => $thursday,
+                'Friday' => $friday,
+                'Saturday' => $saturday,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'data' => $weeklySchedule,
+                'message' => 'View Timetable!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9546,7 +8347,6 @@ class AdminController extends Controller
     // Timetable Dev Name - Manish Kumar Sharma 27-02-2025
     public function getTeacherBySubject($subname, $class_id, $section_id)
     {
-        // dd($class_id,$section_id,$subname);
         $teachers = DB::table('subject')
             ->select('teacher.name as t_name')
             ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
@@ -9555,33 +8355,28 @@ class AdminController extends Controller
             ->where('subject.section_id', $section_id)
             ->where('subject_master.name', 'like', "%$subname%")  // using `like` with `%` to match partial name
             ->get();
-        //    dd($teachers);
         return $teachers;
     }
 
     public function getTeacherBySubjectId($subname, $class_id, $section_id)
     {
-        // dd($class_id,$section_id,$subname);
         $teachers = DB::table('subject')
             ->select('teacher.name as t_name')
             ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
             ->join('teacher', 'subject.teacher_id', '=', 'teacher.teacher_id')
             ->where('subject.class_id', $class_id)
             ->where('subject.section_id', $section_id)
-            ->where('subject_master.sm_id', $subname)  // using `like` with `%` to match partial name
+            ->where('subject_master.sm_id', $subname)
             ->get();
-        //    dd($teachers);
         return $teachers;
     }
 
     public function getTeacherByTeacherId($teacher_id)
     {
-        // dd($class_id,$section_id,$subname);
         $teachers = DB::table('teacher')
             ->select('teacher.name as t_name')
             ->where('teacher_id', $teacher_id)
             ->get();
-        //    dd($teachers);
         return $teachers;
     }
 
@@ -9596,10 +8391,8 @@ class AdminController extends Controller
             return null;
         }
 
-        // Split name into parts
         $nameParts = preg_split('/\s+/', trim($teacher->name));
 
-        // Titles to skip (make all lowercase)
         $titlesToSkip = [
             'mr.',
             'ms.',
@@ -9615,16 +8408,14 @@ class AdminController extends Controller
         foreach ($nameParts as $part) {
             $lower = strtolower($part);
 
-            // Skip if this part is a title
             if (in_array($lower, $titlesToSkip)) {
                 continue;
             }
 
-            // Otherwise add normalized name part
             $filtered[] = ucfirst($lower);
         }
 
-        return implode(' ', $filtered);  // Full name without titles
+        return implode(' ', $filtered);
     }
 
     public function getSubjectnameBySubjectId($subject_id)
@@ -9632,9 +8423,7 @@ class AdminController extends Controller
         $subject = DB::table('subject_master')
             ->select('name')
             ->where('subject_master.sm_id', $subject_id)
-            ->first();  // Use first() to get the first result
-
-        // Check if the result is not null and return the name directly
+            ->first();
         return $subject ? $subject->name : null;
     }
 
@@ -9643,52 +8432,43 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
-                $deletetimetable = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->delete();
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            $deletetimetable = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->delete();
 
-                $num_lec = $request->input('num_lec');
-                $data = [];
+            $num_lec = $request->input('num_lec');
+            $data = [];
 
-                for ($k = 1; $k <= $num_lec; $k++) {
-                    $data[] = [
-                        'class_id' => $request->input('class_id'),
-                        'section_id' => $request->input('section_id'),
-                        'monday' => $this->getSubjectss($request->input('mon' . $k)),
-                        'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
-                        'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
-                        'thursday' => $this->getSubjectss($request->input('thu' . $k)),
-                        'friday' => $this->getSubjectss($request->input('fri' . $k)),
-                        'saturday' => $this->getSubjectss($request->input('sat' . $k)),
-                        'time_in' => $request->input('time_in' . $k),
-                        'time_out' => $request->input('time_out' . $k),
-                        'sat_in' => $request->input('sat_in' . $k),
-                        'sat_out' => $request->input('sat_out' . $k),
-                        'period_no' => $k,
-                        'academic_yr' => $customClaims,
-                        'date' => now(),
-                    ];
-                }
-
-                DB::table('timetable')->insert($data);
-                return response([
-                    'status' => 200,
-                    'message' => 'Timetable Updated Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            for ($k = 1; $k <= $num_lec; $k++) {
+                $data[] = [
+                    'class_id' => $request->input('class_id'),
+                    'section_id' => $request->input('section_id'),
+                    'monday' => $this->getSubjectss($request->input('mon' . $k)),
+                    'tuesday' => $this->getSubjectss($request->input('tue' . $k)),
+                    'wednesday' => $this->getSubjectss($request->input('wed' . $k)),
+                    'thursday' => $this->getSubjectss($request->input('thu' . $k)),
+                    'friday' => $this->getSubjectss($request->input('fri' . $k)),
+                    'saturday' => $this->getSubjectss($request->input('sat' . $k)),
+                    'time_in' => $request->input('time_in' . $k),
+                    'time_out' => $request->input('time_out' . $k),
+                    'sat_in' => $request->input('sat_in' . $k),
+                    'sat_out' => $request->input('sat_out' . $k),
+                    'period_no' => $k,
+                    'academic_yr' => $customClaims,
+                    'date' => now(),
+                ];
             }
+
+            DB::table('timetable')->insert($data);
+            return response([
+                'status' => 200,
+                'message' => 'Timetable Updated Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9701,95 +8481,86 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd($request->all());
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
-                $students = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->leftJoin('confirmation_idcard', function ($join) {
-                        $join
-                            ->on('student.parent_id', '=', 'confirmation_idcard.parent_id')
-                            ->where('confirmation_idcard.confirm', '=', 'Y');
-                    })
-                    ->where('student.isDelete', 'N')
-                    ->where('student.class_id', $class_id)
-                    ->where('student.section_id', $section_id)
-                    ->whereNull('confirmation_idcard.parent_id')  // This ensures the parent_id is not in the confirmation_idcard table
-                    ->select(
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.house',
-                        'student.dob',
-                        'student.house as student_house',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'parent.parent_id',
-                        'parent.father_name',
-                        'parent.f_mobile',
-                        'parent.m_mobile'
-                    )
-                    ->orderBy('student.roll_no')
+
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->leftJoin('confirmation_idcard', function ($join) {
+                    $join
+                        ->on('student.parent_id', '=', 'confirmation_idcard.parent_id')
+                        ->where('confirmation_idcard.confirm', '=', 'Y');
+                })
+                ->where('student.isDelete', 'N')
+                ->where('student.class_id', $class_id)
+                ->where('student.section_id', $section_id)
+                ->whereNull('confirmation_idcard.parent_id')  // This ensures the parent_id is not in the confirmation_idcard table
+                ->select(
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.house',
+                    'student.dob',
+                    'student.house as student_house',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'parent.parent_id',
+                    'parent.father_name',
+                    'parent.f_mobile',
+                    'parent.m_mobile'
+                )
+                ->orderBy('student.roll_no')
+                ->get();
+
+            $result = [];
+
+            foreach ($students as $student) {
+                $siblings = Student::where('parent_id', $student->parent_id)
+                    ->where('IsDelete', 'N')
+                    ->where('academic_yr', $customClaims)
                     ->get();
 
-                $result = [];
-
-                foreach ($students as $student) {
-                    $siblings = Student::where('parent_id', $student->parent_id)
-                        ->where('IsDelete', 'N')
-                        ->where('academic_yr', $customClaims)
-                        ->get();
-
-                    $sibling_data = [];
-                    foreach ($siblings as $sibling) {
-                        $sibling_data[] = [
-                            'student_id' => $sibling->student_id,
-                            'first_name' => $sibling->first_name,
-                            'mid_name' => $sibling->mid_name,
-                            'last_name' => $sibling->last_name,
-                            'roll_no' => $sibling->roll_no,
-                            'class-secname' => $this->getClassOfStudent($sibling->student_id),
-                            'dob' => $sibling->dob,
-                            'permant_add' => $sibling->permant_add,
-                            'blood_group' => $sibling->blood_group,
-                            'house' => $sibling->house,
-                        ];
-                    }
-
-                    $result[] = [
-                        'parent' => [
-                            'parent_id' => $student->parent_id,
-                            'father_name' => $student->father_name,
-                            'f_mobile' => $student->f_mobile,
-                            'm_mobile' => $student->m_mobile,
-                            'siblings' => $sibling_data
-                        ],
-                        // 'siblings' => $sibling_data
+                $sibling_data = [];
+                foreach ($siblings as $sibling) {
+                    $sibling_data[] = [
+                        'student_id' => $sibling->student_id,
+                        'first_name' => $sibling->first_name,
+                        'mid_name' => $sibling->mid_name,
+                        'last_name' => $sibling->last_name,
+                        'roll_no' => $sibling->roll_no,
+                        'class-secname' => $this->getClassOfStudent($sibling->student_id),
+                        'dob' => $sibling->dob,
+                        'permant_add' => $sibling->permant_add,
+                        'blood_group' => $sibling->blood_group,
+                        'house' => $sibling->house,
                     ];
                 }
 
-                return response([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'Pending Student Id Card List.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $result[] = [
+                    'parent' => [
+                        'parent_id' => $student->parent_id,
+                        'father_name' => $student->father_name,
+                        'f_mobile' => $student->f_mobile,
+                        'm_mobile' => $student->m_mobile,
+                        'siblings' => $sibling_data
+                    ],
+                    // 'siblings' => $sibling_data
+                ];
             }
+
+            return response([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'Pending Student Id Card List.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9814,43 +8585,34 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                foreach ($request->parents as $parent) {
-                    // Update Parent Data
-                    $this->updateParentData($parent);
+            foreach ($request->parents as $parent) {
+                // Update Parent Data
+                $this->updateParentData($parent);
 
-                    // Update Student Data
-                    $this->updateStudentData($parent);
+                // Update Student Data
+                $this->updateStudentData($parent);
 
-                    // Handle ConfirmationIdCard Data
-                    $data = [
-                        'confirm' => 'Y',
-                        'parent_id' => $parent['parent_id'],
-                        'academic_yr' => $customClaims
-                    ];
+                // Handle ConfirmationIdCard Data
+                $data = [
+                    'confirm' => 'Y',
+                    'parent_id' => $parent['parent_id'],
+                    'academic_yr' => $customClaims
+                ];
 
-                    $existingConfirmation = DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr', $customClaims)->first();
+                $existingConfirmation = DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr', $customClaims)->first();
 
-                    if ($existingConfirmation) {
-                        DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr', $customClaims)->update($data);
-                    } else {
-                        DB::table('confirmation_idcard')->insert($data);
-                    }
+                if ($existingConfirmation) {
+                    DB::table('confirmation_idcard')->where('parent_id', $parent['parent_id'])->where('academic_yr', $customClaims)->update($data);
+                } else {
+                    DB::table('confirmation_idcard')->insert($data);
                 }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Id card details saved successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Id card details saved successfully!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9887,86 +8649,78 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $parent_id = $request->input('parent_id');
-                $studentsdetails = DB::table('student')
-                    ->join('class', 'class.class_id', '=', 'student.class_id')
-                    ->join('section', 'section.section_id', '=', 'student.section_id')
-                    ->select('student.*', 'class.name as classname', 'section.name as sectionname')
-                    ->where('parent_id', $parent_id)
-                    ->where('IsDelete', 'N')
-                    ->where('student.academic_yr', $customClaims)
-                    ->get();
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                // Append image URLs for each student
-                $studentsdetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_url = $concatprojecturl . '' . $student->image_name;
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $parent_id = $request->input('parent_id');
+            $studentsdetails = DB::table('student')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->select('student.*', 'class.name as classname', 'section.name as sectionname')
+                ->where('parent_id', $parent_id)
+                ->where('IsDelete', 'N')
+                ->where('student.academic_yr', $customClaims)
+                ->get();
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            // Append image URLs for each student
+            $studentsdetails->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_url = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_url = '';
+                }
+            });
+
+            $parentdetails = DB::table('parent')
+                ->where('parent_id', $parent_id)
+                ->get()
+                ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/parent_image/';
+                    if ($staff->father_image_name) {
+                        $staff->father_image_url = $concatprojecturl . '' . "$staff->father_image_name";
                     } else {
-                        $student->image_url = '';
+                        $staff->father_image_url = '';
                     }
+                    if ($staff->mother_image_name) {
+                        $staff->mother_image_url = $concatprojecturl . '' . "$staff->mother_image_name";
+                    } else {
+                        $staff->mother_image_url = '';
+                    }
+                    return $staff;
                 });
 
-                $parentdetails = DB::table('parent')
-                    ->where('parent_id', $parent_id)
-                    ->get()
-                    ->map(function ($staff) use ($parent_app_url, $codeigniter_app_url) {
-                        $concatprojecturl = $codeigniter_app_url . '' . 'uploads/parent_image/';
-                        if ($staff->father_image_name) {
-                            $staff->father_image_url = $concatprojecturl . '' . "$staff->father_image_name";
-                        } else {
-                            $staff->father_image_url = '';
-                        }
-                        if ($staff->mother_image_name) {
-                            $staff->mother_image_url = $concatprojecturl . '' . "$staff->mother_image_name";
-                        } else {
-                            $staff->mother_image_url = '';
-                        }
-                        return $staff;
-                    });
+            // dd($parentdetails);
+            $guardiandetails = DB::table('student')
+                ->where('parent_id', $parent_id)
+                ->where('IsDelete', 'N')
+                ->where('academic_yr', $customClaims)
+                ->select('guardian_name', 'guardian_add', 'guardian_mobile', 'relation', 'guardian_image_name')
+                ->first();
 
-                // dd($parentdetails);
-                $guardiandetails = DB::table('student')
-                    ->where('parent_id', $parent_id)
-                    ->where('IsDelete', 'N')
-                    ->where('academic_yr', $customClaims)
-                    ->select('guardian_name', 'guardian_add', 'guardian_mobile', 'relation', 'guardian_image_name')
-                    ->first();
-
-                if ($guardiandetails) {
-                    $concatprojecturl = $codeigniter_app_url . 'uploads/parent_image/';
-                    $guardiandetails->guardian_image_url = $guardiandetails->guardian_image_name
-                        ? $concatprojecturl . $guardiandetails->guardian_image_name
-                        : '';  // If guardian_image_name exists, append the URL, otherwise set an empty string.
-                }
-
-                $response = [
-                    'students' => $studentsdetails,
-                    'parents' => $parentdetails,
-                    'guardian' => $guardiandetails,
-                ];
-
-                return response()->json([
-                    'status' => 200,
-                    'data' => $response,
-                    'message' => 'Fetching the data for the Id Card of Parent,Student,Guardian!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($guardiandetails) {
+                $concatprojecturl = $codeigniter_app_url . 'uploads/parent_image/';
+                $guardiandetails->guardian_image_url = $guardiandetails->guardian_image_name
+                    ? $concatprojecturl . $guardiandetails->guardian_image_name
+                    : '';  // If guardian_image_name exists, append the URL, otherwise set an empty string.
             }
+
+            $response = [
+                'students' => $studentsdetails,
+                'parents' => $parentdetails,
+                'guardian' => $guardiandetails,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'data' => $response,
+                'message' => 'Fetching the data for the Id Card of Parent,Student,Guardian!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -9978,169 +8732,157 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd($request->input('student'));
-                // count($request->input('student'));
-                // dd(count($request->input('student')));
-                $parentId = $request->input('parent.0.parent_id');
+            $parentId = $request->input('parent.0.parent_id');
 
-                // Handle Guardian Image
-                $gCroppedImage = $request->input('guardian.0.guardian_image_base');
-                if ($gCroppedImage != '') {
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $gCroppedImage);
-                    $ext = 'jpg';
-                    $dataI = base64_decode($base64Data);
-                    $imgNameEndG = 'g_' . $parentId . '.' . $ext;
-                    $imagePath = storage_path('app/public/parent_image/' . $imgNameEndG);
-                    file_put_contents($imagePath, $dataI);
-                    $data['guardian_image_name'] = $imgNameEndG;
-                    $doc_type_folder = 'parent_image';
-                    upload_guardian_profile_image_into_folder($parentId, $imgNameEndG, $doc_type_folder, $base64Data);
-                }
-                // dd("Hello from out");
-                // dd($gCroppedImage);
+            // Handle Guardian Image
+            $gCroppedImage = $request->input('guardian.0.guardian_image_base');
+            if ($gCroppedImage != '') {
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $gCroppedImage);
+                $ext = 'jpg';
+                $dataI = base64_decode($base64Data);
+                $imgNameEndG = 'g_' . $parentId . '.' . $ext;
+                $imagePath = storage_path('app/public/parent_image/' . $imgNameEndG);
+                file_put_contents($imagePath, $dataI);
+                $data['guardian_image_name'] = $imgNameEndG;
+                $doc_type_folder = 'parent_image';
+                upload_guardian_profile_image_into_folder($parentId, $imgNameEndG, $doc_type_folder, $base64Data);
+            }
+            // dd("Hello from out");
+            // dd($gCroppedImage);
 
-                // Loop through students
-                // dd($request->input('student'));
-                $students = $request->input('student');
-                foreach ($students as $studentData) {
-                    // dd($studentData);
-                    $data = [
-                        'blood_group' => $studentData['blood_group'],
-                        'house' => $studentData['house'],
-                        'permant_add' => $studentData['permant_add']
-                    ];
-
-                    $studentId = $studentData['student_id'];
-                    // dd($studentId);
-
-                    // Handle Student Image
-                    $sCroppedImage = $studentData['image_base'];
-                    // dd($sCroppedImage);
-                    if ($sCroppedImage != '') {
-                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
-                        $ext = 'jpg';
-                        $dataI = base64_decode($base64Data);
-                        $imgNameEnd = $studentId . '.' . $ext;
-                        $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
-                        file_put_contents($imagePath, $dataI);
-                        $data['image_name'] = $imgNameEnd;
-                        $doc_type_folder = 'student_image';
-                        upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
-                    }
-                    // dd("Hello from outside");
-
-                    $data['guardian_name'] = $request->input('guardian.0.guardian_name');
-                    $data['guardian_mobile'] = $request->input('guardian.0.guardian_mobile');
-                    $data['relation'] = $request->input('guardian.0.relation');
-
-                    // Update student
-                    Student::where('student_id', $studentId)->update($data);
-                }
-
-                // Handle Parent Info
-                $data1['f_mobile'] = $request->input('parent.0.f_mobile');
-                $fCroppedImage = $request->input('parent.0.father_image_base');
-                $mCroppedImage = $request->input('parent.0.mother_image_base');
-
-                // Handle Father's Image
-                if ($fCroppedImage != '') {
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $fCroppedImage);
-                    $ext = 'jpg';
-                    $data = base64_decode($base64Data);
-                    $imgNameEndF = 'f_' . $parentId . '.' . $ext;
-                    $imagePath = storage_path('app/public/parent_image/' . $imgNameEndF);
-                    file_put_contents($imagePath, $data);
-                    $data1['father_image_name'] = $imgNameEndF;
-                    $doc_type_folder = 'parent_image';
-                    upload_father_profile_image_into_folder($parentId, $imgNameEndF, $doc_type_folder, $base64Data);
-                }
-
-                // Handle Mother's Image
-                if ($mCroppedImage != '') {
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mCroppedImage);
-                    $ext = 'jpg';
-                    $data = base64_decode($base64Data);
-                    $imgNameEndM = 'm_' . $parentId . '.' . $ext;
-                    $imagePath = storage_path('app/public/parent_image/' . $imgNameEndM);
-                    file_put_contents($imagePath, $data);
-                    $data1['mother_image_name'] = $imgNameEndM;
-                    $doc_type_folder = 'parent_image';
-                    upload_mother_profile_image_into_folder($parentId, $imgNameEndM, $doc_type_folder, $base64Data);
-                }
-
-                $data1['m_mobile'] = $request->input('parent.0.m_mobile');
-
-                // Update parent
-
-                DB::table('parent')->where('parent_id', $parentId)->update($data1);
-                // dd("Hello");
-                // Handle Confirmation Data
-                $data2['confirm'] = 'Y';
-                $data2['parent_id'] = $parentId;
-                $data2['academic_yr'] = $customClaims;
-
-                // Check if Confirmation exists, then insert or update
-                $confirmation = DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr', $customClaims)->first();
-                if ($confirmation) {
-                    DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr', $customClaims)->update($data2);
-                } else {
-                    DB::table('confirmation_idcard')->insert($data2);
-                }
-
-                $qrCodeImageDir = 'app/public/qrcode/';
-
-                // Ensure the directory exists
-                $directory = storage_path($qrCodeImageDir);
-                if (!is_dir($directory)) {
-                    mkdir($directory, 0755, true);
-                }
-                // dd($directory);
-
-                // Define image name
-                $imageName = $parentId . '.png';
-                // dd($imageName);
-                // Set the QR code parameters
-                $qrCodeConfig = [
-                    'format' => 'png',  // You can change this to 'svg' if needed
-                    'size' => 50,
-                    'color' => [0, 0, 0],  // Black color for the QR code (foreground)
-                    'backgroundColor' => [254, 255, 255],  // White color for the background
-                    'margin' => 2,  // Margin around the QR code
-                    'errorCorrection' => 'H',  // Error correction level: L, M, Q, H
+            // Loop through students
+            // dd($request->input('student'));
+            $students = $request->input('student');
+            foreach ($students as $studentData) {
+                // dd($studentData);
+                $data = [
+                    'blood_group' => $studentData['blood_group'],
+                    'house' => $studentData['house'],
+                    'permant_add' => $studentData['permant_add']
                 ];
 
-                // Generate the QR code
-                $qrCode = QrCode::format($qrCodeConfig['format'])
-                    ->size($qrCodeConfig['size'])
-                    ->color($qrCodeConfig['color'][0], $qrCodeConfig['color'][1], $qrCodeConfig['color'][2])
-                    ->backgroundColor($qrCodeConfig['backgroundColor'][0], $qrCodeConfig['backgroundColor'][1], $qrCodeConfig['backgroundColor'][2])
-                    ->margin($qrCodeConfig['margin'])
-                    ->errorCorrection($qrCodeConfig['errorCorrection'])
-                    ->generate($parentId, $directory . $imageName);
-                // dd($qrCode);
-                // $data = '123';
-                // $imagePath = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
-                // $qrCode->generate($data, $imagePath);
-                $filelocation = storage_path('app/public/qrcode/' . $imageName);
-                // dd($filelocation);
-                $imageData = file_get_contents($filelocation);
-                $base64File = base64_encode($imageData);
-                $doc_type_folder = 'qrcode';
-                upload_qrcode_into_folder($imageName, $doc_type_folder, $base64File);
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Id Card Saved Successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $studentId = $studentData['student_id'];
+                // dd($studentId);
+
+                // Handle Student Image
+                $sCroppedImage = $studentData['image_base'];
+                // dd($sCroppedImage);
+                if ($sCroppedImage != '') {
+                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                    $ext = 'jpg';
+                    $dataI = base64_decode($base64Data);
+                    $imgNameEnd = $studentId . '.' . $ext;
+                    $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
+                    file_put_contents($imagePath, $dataI);
+                    $data['image_name'] = $imgNameEnd;
+                    $doc_type_folder = 'student_image';
+                    upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
+                }
+                // dd("Hello from outside");
+
+                $data['guardian_name'] = $request->input('guardian.0.guardian_name');
+                $data['guardian_mobile'] = $request->input('guardian.0.guardian_mobile');
+                $data['relation'] = $request->input('guardian.0.relation');
+
+                // Update student
+                Student::where('student_id', $studentId)->update($data);
             }
+
+            // Handle Parent Info
+            $data1['f_mobile'] = $request->input('parent.0.f_mobile');
+            $fCroppedImage = $request->input('parent.0.father_image_base');
+            $mCroppedImage = $request->input('parent.0.mother_image_base');
+
+            // Handle Father's Image
+            if ($fCroppedImage != '') {
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $fCroppedImage);
+                $ext = 'jpg';
+                $data = base64_decode($base64Data);
+                $imgNameEndF = 'f_' . $parentId . '.' . $ext;
+                $imagePath = storage_path('app/public/parent_image/' . $imgNameEndF);
+                file_put_contents($imagePath, $data);
+                $data1['father_image_name'] = $imgNameEndF;
+                $doc_type_folder = 'parent_image';
+                upload_father_profile_image_into_folder($parentId, $imgNameEndF, $doc_type_folder, $base64Data);
+            }
+
+            // Handle Mother's Image
+            if ($mCroppedImage != '') {
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mCroppedImage);
+                $ext = 'jpg';
+                $data = base64_decode($base64Data);
+                $imgNameEndM = 'm_' . $parentId . '.' . $ext;
+                $imagePath = storage_path('app/public/parent_image/' . $imgNameEndM);
+                file_put_contents($imagePath, $data);
+                $data1['mother_image_name'] = $imgNameEndM;
+                $doc_type_folder = 'parent_image';
+                upload_mother_profile_image_into_folder($parentId, $imgNameEndM, $doc_type_folder, $base64Data);
+            }
+
+            $data1['m_mobile'] = $request->input('parent.0.m_mobile');
+
+            // Update parent
+
+            DB::table('parent')->where('parent_id', $parentId)->update($data1);
+            // dd("Hello");
+            // Handle Confirmation Data
+            $data2['confirm'] = 'Y';
+            $data2['parent_id'] = $parentId;
+            $data2['academic_yr'] = $customClaims;
+
+            // Check if Confirmation exists, then insert or update
+            $confirmation = DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr', $customClaims)->first();
+            if ($confirmation) {
+                DB::table('confirmation_idcard')->where('parent_id', $parentId)->where('academic_yr', $customClaims)->update($data2);
+            } else {
+                DB::table('confirmation_idcard')->insert($data2);
+            }
+
+            $qrCodeImageDir = 'app/public/qrcode/';
+
+            // Ensure the directory exists
+            $directory = storage_path($qrCodeImageDir);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            // dd($directory);
+
+            // Define image name
+            $imageName = $parentId . '.png';
+            // dd($imageName);
+            // Set the QR code parameters
+            $qrCodeConfig = [
+                'format' => 'png',  // You can change this to 'svg' if needed
+                'size' => 50,
+                'color' => [0, 0, 0],  // Black color for the QR code (foreground)
+                'backgroundColor' => [254, 255, 255],  // White color for the background
+                'margin' => 2,  // Margin around the QR code
+                'errorCorrection' => 'H',  // Error correction level: L, M, Q, H
+            ];
+
+            // Generate the QR code
+            $qrCode = QrCode::format($qrCodeConfig['format'])
+                ->size($qrCodeConfig['size'])
+                ->color($qrCodeConfig['color'][0], $qrCodeConfig['color'][1], $qrCodeConfig['color'][2])
+                ->backgroundColor($qrCodeConfig['backgroundColor'][0], $qrCodeConfig['backgroundColor'][1], $qrCodeConfig['backgroundColor'][2])
+                ->margin($qrCodeConfig['margin'])
+                ->errorCorrection($qrCodeConfig['errorCorrection'])
+                ->generate($parentId, $directory . $imageName);
+            // dd($qrCode);
+            // $data = '123';
+            // $imagePath = ('https://sms.evolvu.in/storage/app/public/qrcode/'.$imageName);
+            // $qrCode->generate($data, $imagePath);
+            $filelocation = storage_path('app/public/qrcode/' . $imageName);
+            // dd($filelocation);
+            $imageData = file_get_contents($filelocation);
+            $base64File = base64_encode($imageData);
+            $doc_type_folder = 'qrcode';
+            upload_qrcode_into_folder($imageName, $doc_type_folder, $base64File);
+            return response()->json([
+                'status' => 200,
+                'message' => 'Id Card Saved Successfully!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10152,58 +8894,49 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $student_id = $request->input('student_id');
-                $academic_yr = $request->input('academic_yr');
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $student_id = $request->input('student_id');
+            $academic_yr = $request->input('academic_yr');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                $remarkobservation = DB::table('remark')
-                    ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
-                    ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
-                    ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
-                    ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
-                    ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
-                    ->where('remark.student_id', $student_id)
-                    ->where('remark.academic_yr', $academic_yr)
-                    ->where(function ($query) {
-                        $query
-                            ->where('remark_type', 'Observation')
-                            ->orWhere(function ($query) {
-                                $query
-                                    ->where('remark_type', 'Remark')
-                                    ->where('publish', 'Y');
-                            });
-                    })
-                    ->orderBy('publish_date')
-                    ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
-                    ->get()
-                    ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
-                        $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
-                        $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
-                        if ($remark->image_name) {
-                            $remark->remark_url = $remark_url . '' . "$remark->image_name";
-                        } else {
-                            $remark->remark_url = null;
-                        }
-                        return $remark;
-                    });
+            $remarkobservation = DB::table('remark')
+                ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
+                ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
+                ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
+                ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
+                ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
+                ->where('remark.student_id', $student_id)
+                ->where('remark.academic_yr', $academic_yr)
+                ->where(function ($query) {
+                    $query
+                        ->where('remark_type', 'Observation')
+                        ->orWhere(function ($query) {
+                            $query
+                                ->where('remark_type', 'Remark')
+                                ->where('publish', 'Y');
+                        });
+                })
+                ->orderBy('publish_date')
+                ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
+                ->get()
+                ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
+                    $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
+                    if ($remark->image_name) {
+                        $remark->remark_url = $remark_url . '' . "$remark->image_name";
+                    } else {
+                        $remark->remark_url = null;
+                    }
+                    return $remark;
+                });
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $remarkobservation,
-                    'message' => 'Student Remark Observation',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $remarkobservation,
+                'message' => 'Student Remark Observation',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10216,58 +8949,50 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $student_id = $request->input('student_id');
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                $query = Student::query();
-                $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
-                if ($student_id) {
-                    $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $customClaims)->where('parent_id', '!=', '0');
+            $student_id = $request->input('student_id');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            $query = Student::query();
+            $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+            if ($student_id) {
+                $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $customClaims)->where('parent_id', '!=', '0');
+            }
+
+            $students = $query->get();
+
+            $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_name = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_name = '';
                 }
 
-                $students = $query->get();
+                $contactDetails = ContactDetails::find($student->parent_id);
+                if ($contactDetails === null) {
+                    $student->SetToReceiveSMS = '';
+                } else {
+                    $student->SetToReceiveSMS = $contactDetails->phone_no;
+                }
 
-                $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_name = $concatprojecturl . '' . $student->image_name;
-                    } else {
-                        $student->image_name = '';
-                    }
-
-                    $contactDetails = ContactDetails::find($student->parent_id);
-                    if ($contactDetails === null) {
-                        $student->SetToReceiveSMS = '';
-                    } else {
-                        $student->SetToReceiveSMS = $contactDetails->phone_no;
-                    }
-
-                    $userMaster = UserMaster::where('role_id', 'P')
-                        ->where('reg_id', $student->parent_id)
-                        ->first();
-                    if ($userMaster === null) {
-                        $student->SetEmailIDAsUsername = '';
-                    } else {
-                        $student->SetEmailIDAsUsername = $userMaster->user_id;
-                    }
-                });
-                return response()->json([
-                    'status' => 200,
-                    'data' => $students,
-                    'message' => 'Student Data By Student Id.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Student Data By Student Id',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+                $userMaster = UserMaster::where('role_id', 'P')
+                    ->where('reg_id', $student->parent_id)
+                    ->first();
+                if ($userMaster === null) {
+                    $student->SetEmailIDAsUsername = '';
+                } else {
+                    $student->SetEmailIDAsUsername = $userMaster->user_id;
+                }
+            });
+            return response()->json([
+                'status' => 200,
+                'data' => $students,
+                'message' => 'Student Data By Student Id.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10280,22 +9005,14 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $academic_yr = DB::table('settings')->select('academic_yr', 'active')->get();
-                return response()->json([
-                    'status' => 200,
-                    'data' => $academic_yr,
-                    'message' => 'Academic yr List.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Academic yr List',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $academic_yr = DB::table('settings')->select('academic_yr', 'active')->get();
+            return response()->json([
+                'status' => 200,
+                'data' => $academic_yr,
+                'message' => 'Academic yr List.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10308,31 +9025,23 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $student_id = $request->input('student_id');
-                $student_name = get_student_name($student_id);
-                $fitnessdata = check_health_activity_data_exist_for_studentid($student_id);
-                $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
 
-                $pdf = PDF::loadView('healthactivityrecord.healthactivityrecordpdf1', compact('student_id', 'customClaims'))->setPaper('A4', 'portrait');
-                return response()->stream(
-                    function () use ($pdf) {
-                        echo $pdf->output();
-                    },
-                    200,
-                    [
-                        'Content-Type' => 'application/pdf',
-                        'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
-                    ]
-                );
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Academic yr List',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $student_id = $request->input('student_id');
+            $student_name = get_student_name($student_id);
+            $fitnessdata = check_health_activity_data_exist_for_studentid($student_id);
+            $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
+
+            $pdf = PDF::loadView('healthactivityrecord.healthactivityrecordpdf1', compact('student_id', 'customClaims'))->setPaper('A4', 'portrait');
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10345,31 +9054,23 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacher_id = $request->input('teacher_id');
-                $classdata = DB::table('subject')
-                    ->join('class', 'class.class_id', '=', 'subject.class_id')
-                    ->join('section', 'section.section_id', '=', 'subject.section_id')
-                    ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
-                    ->where('subject.academic_yr', $customClaims)
-                    ->where('subject.teacher_id', $teacher_id)
-                    ->distinct()
-                    ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
-                    ->get();
-                return response()->json([
-                    'status' => 200,
-                    'data' => $classdata,
-                    'message' => 'Teachers Class',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Class.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $teacher_id = $request->input('teacher_id');
+            $classdata = DB::table('subject')
+                ->join('class', 'class.class_id', '=', 'subject.class_id')
+                ->join('section', 'section.section_id', '=', 'subject.section_id')
+                ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+                ->where('subject.academic_yr', $customClaims)
+                ->where('subject.teacher_id', $teacher_id)
+                ->distinct()
+                ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
+                ->get();
+            return response()->json([
+                'status' => 200,
+                'data' => $classdata,
+                'message' => 'Teachers Class',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10382,26 +9083,18 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $departments = DB::table('view_teacher_group')
-                    ->distinct()
-                    ->select('teacher_group')
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $departments,
-                    'message' => 'Departments',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Class.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $departments = DB::table('view_teacher_group')
+                ->distinct()
+                ->select('teacher_group')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $departments,
+                'message' => 'Departments',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10414,54 +9107,46 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $department = $request->input('departmentname');
-                $subject = $request->input('subject');
-                $teachersQuery = DB::table('teacher')
-                    ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
-                    ->where('user_master.role_id', 'T')
-                    ->leftJoin('teachers_period_allocation', function ($join) use ($customClaims) {
-                        $join
-                            ->on('teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
-                            ->where(function ($query) use ($customClaims) {
-                                $query
-                                    ->where('teachers_period_allocation.academic_yr', $customClaims)
-                                    ->orWhereNull('teachers_period_allocation.academic_yr');
-                            });
-                    })
-                    ->where('teacher.isDelete', 'N')
-                    ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'), 'teachers_period_allocation.periods_used');
 
-                if ($department) {
-                    $teachersQuery
-                        ->leftJoin('view_teacher_group', 'teacher.teacher_id', '=', 'view_teacher_group.teacher_id')
-                        ->whereRaw('view_teacher_group.teacher_group COLLATE utf8mb4_unicode_ci = ?', [$department])
-                        ->where('view_teacher_group.academic_yr', $customClaims);
-                }
-                if ($subject) {
-                    $teachersQuery
-                        ->leftJoin('subject', 'teacher.teacher_id', '=', 'subject.teacher_id')
-                        ->where('subject.sm_id', '=', $subject)
-                        ->where('subject.academic_yr', $customClaims);
-                }
-                $teachersQuery->distinct();
+            $department = $request->input('departmentname');
+            $subject = $request->input('subject');
+            $teachersQuery = DB::table('teacher')
+                ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
+                ->where('user_master.role_id', 'T')
+                ->leftJoin('teachers_period_allocation', function ($join) use ($customClaims) {
+                    $join
+                        ->on('teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
+                        ->where(function ($query) use ($customClaims) {
+                            $query
+                                ->where('teachers_period_allocation.academic_yr', $customClaims)
+                                ->orWhereNull('teachers_period_allocation.academic_yr');
+                        });
+                })
+                ->where('teacher.isDelete', 'N')
+                ->select('teacher.teacher_id', 'teacher.name', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'), 'teachers_period_allocation.periods_used');
 
-                $teachers = $teachersQuery->get();
-
-                return response()->json([
-                    'status' => 200,
-                    'data' => $teachers,
-                    'message' => 'Teachers List Period Allocated.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period ALlocation Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            if ($department) {
+                $teachersQuery
+                    ->leftJoin('view_teacher_group', 'teacher.teacher_id', '=', 'view_teacher_group.teacher_id')
+                    ->whereRaw('view_teacher_group.teacher_group COLLATE utf8mb4_unicode_ci = ?', [$department])
+                    ->where('view_teacher_group.academic_yr', $customClaims);
             }
+            if ($subject) {
+                $teachersQuery
+                    ->leftJoin('subject', 'teacher.teacher_id', '=', 'subject.teacher_id')
+                    ->where('subject.sm_id', '=', $subject)
+                    ->where('subject.academic_yr', $customClaims);
+            }
+            $teachersQuery->distinct();
+
+            $teachers = $teachersQuery->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $teachers,
+                'message' => 'Teachers List Period Allocated.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10474,36 +9159,28 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacherperiodAllocations = $request->all();
-                foreach ($teacherperiodAllocations as $teacherperiodAllocation) {
-                    $teacherId = $teacherperiodAllocation['teacher_id'];
-                    $periodsAllocated = $teacherperiodAllocation['periods_allocated'];
 
-                    DB::table('teachers_period_allocation')->updateOrInsert(
-                        [
-                            'teacher_id' => $teacherId,
-                            'academic_yr' => $customClaims
-                        ],
-                        [
-                            'periods_allocated' => $periodsAllocated
-                        ]
-                    );
-                }
+            $teacherperiodAllocations = $request->all();
+            foreach ($teacherperiodAllocations as $teacherperiodAllocation) {
+                $teacherId = $teacherperiodAllocation['teacher_id'];
+                $periodsAllocated = $teacherperiodAllocation['periods_allocated'];
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Teachers Period Allocated.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Save Teacher Period ALlocation Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                DB::table('teachers_period_allocation')->updateOrInsert(
+                    [
+                        'teacher_id' => $teacherId,
+                        'academic_yr' => $customClaims
+                    ],
+                    [
+                        'periods_allocated' => $periodsAllocated
+                    ]
+                );
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Teachers Period Allocated.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10516,22 +9193,14 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $subjects = DB::table('subject_master')->where('subject_type', '!=', 'Social')->get();
-                return response()->json([
-                    'status' => 200,
-                    'data' => $subjects,
-                    'message' => 'Get Subjects Without Social',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Get Subject Without Social.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $subjects = DB::table('subject_master')->where('subject_type', '!=', 'Social')->get();
+            return response()->json([
+                'status' => 200,
+                'data' => $subjects,
+                'message' => 'Get Subjects Without Social',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10544,28 +9213,20 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classsection = DB::table('section')
-                    ->join('class', 'section.class_id', '=', 'class.class_id')
-                    ->select(DB::raw('CONCAT(class.name," ", section.name) as classname_section'), 'class.class_id', 'section.section_id')
-                    ->where('section.academic_yr', $customClaims)
-                    ->get();
-                $groupedByClass = $classsection->groupBy('class_id');
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $groupedByClass,
-                    'message' => 'Get Class Section with Section Id and class Id',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Get Class Section.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $classsection = DB::table('section')
+                ->join('class', 'section.class_id', '=', 'class.class_id')
+                ->select(DB::raw('CONCAT(class.name," ", section.name) as classname_section'), 'class.class_id', 'section.section_id')
+                ->where('section.academic_yr', $customClaims)
+                ->get();
+            $groupedByClass = $classsection->groupBy('class_id');
+
+            return response()->json([
+                'status' => 200,
+                'data' => $groupedByClass,
+                'message' => 'Get Class Section with Section Id and class Id',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10578,40 +9239,32 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classwiseperiods = $request->all();
-                foreach ($classwiseperiods as $classwiseperiod) {
-                    // dd($classwiseperiod);
-                    $classId = $classwiseperiod['class_id'];
-                    $sectionId = $classwiseperiod['section_id'];
-                    $monfri = $classwiseperiod['mon-fri'];
-                    $sat = $classwiseperiod['sat'];
-                    DB::table('classwise_period_allocation')->updateOrInsert(
-                        [
-                            'class_id' => $classId,
-                            'section_id' => $sectionId,
-                            'academic_yr' => $customClaims
-                        ],
-                        [
-                            'mon-fri' => $monfri,
-                            'sat' => $sat
-                        ]
-                    );
-                }
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Classwise Period Allocated.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Get Class Section.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $classwiseperiods = $request->all();
+            foreach ($classwiseperiods as $classwiseperiod) {
+                // dd($classwiseperiod);
+                $classId = $classwiseperiod['class_id'];
+                $sectionId = $classwiseperiod['section_id'];
+                $monfri = $classwiseperiod['mon-fri'];
+                $sat = $classwiseperiod['sat'];
+                DB::table('classwise_period_allocation')->updateOrInsert(
+                    [
+                        'class_id' => $classId,
+                        'section_id' => $sectionId,
+                        'academic_yr' => $customClaims
+                    ],
+                    [
+                        'mon-fri' => $monfri,
+                        'sat' => $sat
+                    ]
+                );
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Classwise Period Allocated.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10624,45 +9277,37 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classwiseperiodlist = DB::table('classwise_period_allocation')
-                    ->join('class', 'class.class_id', '=', 'classwise_period_allocation.class_id')
-                    ->join('section', 'section.section_id', '=', 'classwise_period_allocation.section_id')
-                    ->select(DB::raw('CONCAT(class.name," ", section.name) as classname'), 'classwise_period_allocation.*')
-                    ->where('classwise_period_allocation.academic_yr', $customClaims)
-                    ->orderBy('classwise_period_allocation.c_p_id', 'desc')
-                    ->get();
 
-                $classCheck = $classwiseperiodlist->map(function ($classPeriod) {
-                    $exists = DB::table('timetable')
-                        ->where('class_id', $classPeriod->class_id)
-                        ->where('section_id', $classPeriod->section_id)
-                        ->exists();
+            $classwiseperiodlist = DB::table('classwise_period_allocation')
+                ->join('class', 'class.class_id', '=', 'classwise_period_allocation.class_id')
+                ->join('section', 'section.section_id', '=', 'classwise_period_allocation.section_id')
+                ->select(DB::raw('CONCAT(class.name," ", section.name) as classname'), 'classwise_period_allocation.*')
+                ->where('classwise_period_allocation.academic_yr', $customClaims)
+                ->orderBy('classwise_period_allocation.c_p_id', 'desc')
+                ->get();
 
-                    return [
-                        'classname' => $classPeriod->classname,
-                        'class_id' => $classPeriod->class_id,
-                        'section_id' => $classPeriod->section_id,
-                        'mon-fri' => $classPeriod->{'mon-fri'},
-                        'sat' => $classPeriod->sat,
-                        'exists_in_timetable' => $exists,
-                    ];
-                });
+            $classCheck = $classwiseperiodlist->map(function ($classPeriod) {
+                $exists = DB::table('timetable')
+                    ->where('class_id', $classPeriod->class_id)
+                    ->where('section_id', $classPeriod->section_id)
+                    ->exists();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $classCheck,
-                    'message' => 'Get Classwise Period List.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Get Classwise Period List.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+                return [
+                    'classname' => $classPeriod->classname,
+                    'class_id' => $classPeriod->class_id,
+                    'section_id' => $classPeriod->section_id,
+                    'mon-fri' => $classPeriod->{'mon-fri'},
+                    'sat' => $classPeriod->sat,
+                    'exists_in_timetable' => $exists,
+                ];
+            });
+
+            return response()->json([
+                'status' => 200,
+                'data' => $classCheck,
+                'message' => 'Get Classwise Period List.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10675,29 +9320,21 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $lectures = $request->all();
-                $monfri = $lectures['mon-fri'];
-                $sat = $lectures['sat'];
-                DB::table('classwise_period_allocation')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->update(['mon-fri' => $monfri, 'sat' => $sat]);
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Classwise Period Updated Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Update Classwise Period.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $lectures = $request->all();
+            $monfri = $lectures['mon-fri'];
+            $sat = $lectures['sat'];
+            DB::table('classwise_period_allocation')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->update(['mon-fri' => $monfri, 'sat' => $sat]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Classwise Period Updated Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10710,25 +9347,17 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classwiseperiod = DB::table('classwise_period_allocation')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->delete();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Classwise Period Deleted Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Delete Classwise Period.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $classwiseperiod = DB::table('classwise_period_allocation')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->delete();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Classwise Period Deleted Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10741,27 +9370,19 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacherId = $request->input('teacher_id');
-                $teacherperiod = DB::table('teachers_period_allocation')
-                    ->where('teacher_id', $teacherId)
-                    ->where('academic_yr', $customClaims)
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $teacherperiod,
-                    'message' => 'Teacher Period Data.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $teacherId = $request->input('teacher_id');
+            $teacherperiod = DB::table('teachers_period_allocation')
+                ->where('teacher_id', $teacherId)
+                ->where('academic_yr', $customClaims)
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $teacherperiod,
+                'message' => 'Teacher Period Data.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10815,37 +9436,29 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacherId = $request->input('teacher_id');
-                $classId = $request->input('class_id');
-                $sectionId = $request->input('section_id');
-                $excludedSubjectIds = DB::table('subjects_excluded_from_curriculum')
-                    ->pluck('sm_id')
-                    ->toArray();
-                $subjectdata = DB::table('subject')
-                    ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
-                    ->where('subject.class_id', $classId)
-                    ->where('subject.section_id', $sectionId)
-                    ->where('subject.teacher_id', $teacherId)
-                    ->where('subject.academic_yr', $customClaims)
-                    ->whereNotIn('subject.sm_id', $excludedSubjectIds)
-                    ->select('subject_master.name as subjectname', 'subject.*')
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $subjectdata,
-                    'message' => 'Subject Data.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $teacherId = $request->input('teacher_id');
+            $classId = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $excludedSubjectIds = DB::table('subjects_excluded_from_curriculum')
+                ->pluck('sm_id')
+                ->toArray();
+            $subjectdata = DB::table('subject')
+                ->join('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
+                ->where('subject.class_id', $classId)
+                ->where('subject.section_id', $sectionId)
+                ->where('subject.teacher_id', $teacherId)
+                ->where('subject.academic_yr', $customClaims)
+                ->whereNotIn('subject.sm_id', $excludedSubjectIds)
+                ->select('subject_master.name as subjectname', 'subject.*')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $subjectdata,
+                'message' => 'Subject Data.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10858,31 +9471,23 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teacherlist = DB::table('teacher')
-                    ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
-                    ->where('user_master.role_id', 'T')
-                    ->join('teachers_period_allocation', 'teachers_period_allocation.teacher_id', '=', 'teacher.teacher_id')
-                    ->where('teachers_period_allocation.academic_yr', $customClaims)
-                    ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
-                    ->where('teacher.isDelete', 'N')
-                    ->select('teacher.name as teachername', 'teachers_period_allocation.*')
-                    ->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $teacherlist,
-                    'message' => 'Teacher List.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $teacherlist = DB::table('teacher')
+                ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
+                ->where('user_master.role_id', 'T')
+                ->join('teachers_period_allocation', 'teachers_period_allocation.teacher_id', '=', 'teacher.teacher_id')
+                ->where('teachers_period_allocation.academic_yr', $customClaims)
+                ->where('teachers_period_allocation.periods_allocated', '>', DB::raw('teachers_period_allocation.periods_used'))
+                ->where('teacher.isDelete', 'N')
+                ->select('teacher.name as teachername', 'teachers_period_allocation.*')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $teacherlist,
+                'message' => 'Teacher List.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -11145,328 +9750,93 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $timetables = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->orderBy('t_id')
-                    ->get();
 
-                if (count($timetables) == 0) {
-                    $monday = [];
-                    $tuesday = [];
-                    $wednesday = [];
-                    $thursday = [];
-                    $friday = [];
-                    $saturday = [];
-                    $classwiseperiod = DB::table('classwise_period_allocation')
-                        ->where('class_id', $class_id)
-                        ->where('section_id', $section_id)
-                        ->where('academic_yr', $customClaims)
-                        ->first();
+            $timetables = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->orderBy('t_id')
+                ->get();
 
-                    if ($classwiseperiod === null) {
-                        return response()->json([
-                            'status' => 400,
-                            'message' => 'Classwise Period Allocation is not done.',
-                            'success' => false
-                        ]);
-                    }
-
-                    $monfrilectures = $classwiseperiod->{'mon-fri'};
-                    for ($i = 1; $i <= $monfrilectures; $i++) {
-                        $monday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $tuesday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $wednesday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $thursday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $friday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-                    $satlectures = $classwiseperiod->sat;
-                    for ($i = 1; $i <= $satlectures; $i++) {
-                        $saturday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    $weeklySchedule = [
-                        'mon_fri' => $monfrilectures,
-                        'sat' => $satlectures,
-                        'Monday' => $monday,
-                        'Tuesday' => $tuesday,
-                        'Wednesday' => $wednesday,
-                        'Thursday' => $thursday,
-                        'Friday' => $friday,
-                        'Saturday' => $saturday,
-                    ];
-
-                    return response()->json([
-                        'status' => 200,
-                        'data' => $weeklySchedule,
-                        'message' => 'View Timetable!',
-                        'success' => true
-                    ]);
-                }
+            if (count($timetables) == 0) {
                 $monday = [];
                 $tuesday = [];
                 $wednesday = [];
                 $thursday = [];
                 $friday = [];
                 $saturday = [];
+                $classwiseperiod = DB::table('classwise_period_allocation')
+                    ->where('class_id', $class_id)
+                    ->where('section_id', $section_id)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
 
-                foreach ($timetables as $timetable) {
-                    $subjectIdmonday = null;
-                    $subjectIdtuesday = null;
-                    $subjectIdwednesday = null;
-                    $subjectIdthursday = null;
-                    $subjectIdfriday = null;
-                    $subjectIdsaturday = null;
-                    //   dd("Hello");
-                    if ($timetable->monday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->monday, ',')
-                            ? explode(',', $timetable->monday)
-                            : [$timetable->monday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdmonday = $subjectId;
-                                }
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $monday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdmonday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->tuesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->tuesday, ',')
-                            ? explode(',', $timetable->tuesday)
-                            : [$timetable->tuesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdtuesday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $tuesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdtuesday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->wednesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->wednesday, ',')
-                            ? explode(',', $timetable->wednesday)
-                            : [$timetable->wednesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdwednesday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $wednesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdwednesday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->thursday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->thursday, ',')
-                            ? explode(',', $timetable->thursday)
-                            : [$timetable->thursday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdthursday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $thursday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdthursday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->friday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->friday, ',')
-                            ? explode(',', $timetable->friday)
-                            : [$timetable->friday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdfriday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $friday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdfriday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->saturday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->saturday, ',')
-                            ? explode(',', $timetable->saturday)
-                            : [$timetable->saturday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdsaturday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $saturday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdsaturday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
+                if ($classwiseperiod === null) {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => 'Classwise Period Allocation is not done.',
+                        'success' => false
+                    ]);
                 }
 
-                $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
-                $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+                $monfrilectures = $classwiseperiod->{'mon-fri'};
+                for ($i = 1; $i <= $monfrilectures; $i++) {
+                    $monday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $tuesday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $wednesday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $thursday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $friday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+                $satlectures = $classwiseperiod->sat;
+                for ($i = 1; $i <= $satlectures; $i++) {
+                    $saturday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
 
                 $weeklySchedule = [
-                    'mon_fri' => $lastMondayPeriodNo->{'mon-fri'},
-                    'sat' => $lastSaturdayPeriodNo->sat,
+                    'mon_fri' => $monfrilectures,
+                    'sat' => $satlectures,
                     'Monday' => $monday,
                     'Tuesday' => $tuesday,
                     'Wednesday' => $wednesday,
@@ -11481,3070 +9851,694 @@ class AdminController extends Controller
                     'message' => 'View Timetable!',
                     'success' => true
                 ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+            $monday = [];
+            $tuesday = [];
+            $wednesday = [];
+            $thursday = [];
+            $friday = [];
+            $saturday = [];
+
+            foreach ($timetables as $timetable) {
+                $subjectIdmonday = null;
+                $subjectIdtuesday = null;
+                $subjectIdwednesday = null;
+                $subjectIdthursday = null;
+                $subjectIdfriday = null;
+                $subjectIdsaturday = null;
+                //   dd("Hello");
+                if ($timetable->monday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdmonday = $subjectId;
+                            }
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdmonday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->tuesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdtuesday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdtuesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->wednesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdwednesday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdwednesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->thursday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdthursday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdthursday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->friday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdfriday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdfriday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->saturday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdsaturday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdsaturday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+            }
+
+            $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+            $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+
+            $weeklySchedule = [
+                'mon_fri' => $lastMondayPeriodNo->{'mon-fri'},
+                'sat' => $lastSaturdayPeriodNo->sat,
+                'Monday' => $monday,
+                'Tuesday' => $tuesday,
+                'Wednesday' => $wednesday,
+                'Thursday' => $thursday,
+                'Friday' => $friday,
+                'Saturday' => $saturday,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'data' => $weeklySchedule,
+                'message' => 'View Timetable!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 
-    // Timetable Teacherwise  Dev Name- Manish Kumar Sharma 04-04-2025
-    //    public function saveTimetableAllotment(Request $request){
-    //     try{
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //              $timetablerequest = $request->all();
-    //              $timetabledata = $timetablerequest['timetable_data'];
-    //              $teacherId =  $timetablerequest['teacher_id'];
-    //              $periodUsed = $timetablerequest['period_used'];
-    //              DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
-    //              foreach ($timetabledata as $timetable){
-
-    //                   $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
-    //                   if(is_null($timetabledata5)){
-    //                       $timetabledata1 = $timetable['subjects'];
-    //                          $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
-    //                              $monfrilectures =  $classwiseperiod->{'mon-fri'};
-    //                              for($i=1;$i<=$monfrilectures;$i++){
-    //                                  $inserttimetable = DB::table('timetable')->insert([
-    //                                                          'date'=>Carbon::now()->format('Y-m-d H:i:s'),
-    //                                                          'class_id' => $timetable['class_id'],
-    //                                                          'section_id' => $timetable['section_id'],
-    //                                                          'academic_yr'=>$customClaims,
-    //                                                          'period_no'=>$i,
-    //                                                      ]);
-
-    //                              }
-    //                          foreach ($timetabledata1 as $timetabledata2){
-
-    //                              if($timetabledata2['day']== 'Monday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Tuesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Wednesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Thursday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Friday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Saturday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                          }
-
-    //                   }
-    //                   else{
-    //                       $timetabledata1 = $timetable['subjects'];
-    //                  foreach ($timetabledata1 as $timetabledata2){
-
-    //                      if($timetabledata2['day']== 'Monday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('monday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                 $subjectIdmonday = null;
-    //                                 $teacherIdmonday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
-    //                                  list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
-    //                                  $teacheridforexistingsubject = $teacherIdmonday;
-    //                                 }
-
-    //                             }
-
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Tuesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('tuesday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                 $subjectIdtuesday = null;
-    //                                 $teacherIdtuesday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
-    //                                  list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
-    //                                  $teacheridforexistingsubject = $teacherIdtuesday;
-    //                                 }
-
-    //                             }
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Wednesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('wednesday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                  $subjectIdwednesday = null;
-    //                                 $teacherIdwednesday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
-    //                                     list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-    //                                     $teacheridforexistingsubject = $teacherIdwednesday;
-    //                                 }
-
-    //                             }
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Thursday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('thursday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                 $subjectIdthursday = null;
-    //                                 $teacherIdthursday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
-    //                                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
-    //                                  $teacheridforexistingsubject = $teacherIdthursday;
-    //                                 }
-
-    //                             }
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Friday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('friday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                 $subjectIdfriday = null;
-    //                                 $teacherIdfriday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
-    //                                  list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
-    //                                  $teacheridforexistingsubject = $teacherIdfriday;
-    //                                 }
-
-    //                             }
-
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Saturday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              $timetablesubject = DB::table('timetable')
-    //                                                     ->select('saturday')
-    //                                                     ->where('class_id',$timetable['class_id'])
-    //                                                     ->where('section_id',$timetable['section_id'])
-    //                                                     ->where('academic_yr', $customClaims)
-    //                                                     ->where('period_no', $timetabledata4['period_no'])
-    //                                                     ->first();
-
-    //                             if(is_null($timetablesubject)){
-    //                                  $teacheridforexistingsubject=null;
-
-    //                             }
-    //                             else{
-    //                                 $subjectIdsaturday = null;
-    //                                 $teacherIdsaturday = null;
-    //                                 $teacheridforexistingsubject = null;
-
-    //                                 if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
-    //                                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
-    //                                  $teacheridforexistingsubject = $teacherIdsaturday;
-    //                                 }
-
-    //                             }
-
-    //                             if(is_null($teacheridforexistingsubject)){
-    //                                 // dd("Hello");
-    //                                         DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             elseif($teacheridforexistingsubject == $teacherId){
-
-    //                                 DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-
-    //                             }
-    //                             else{
-    //                                 DB::table('teachers_period_allocation')
-    //                                     ->where('teacher_id', $teacheridforexistingsubject)
-    //                                     ->where('academic_yr', $customClaims)
-    //                                     ->decrement('periods_used', 1);
-
-    //                                 DB::table('timetable')
-    //                                          ->where('class_id', $timetable['class_id'])
-    //                                          ->where('section_id', $timetable['section_id'])
-    //                                          ->where('academic_yr', $customClaims)
-    //                                          ->where('period_no', $timetabledata4['period_no'])
-    //                                          ->update([
-    //                                              'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                          ]);
-
-    //                             }
-
-    //                          }
-
-    //                      }
-    //                  }
-
-    //                   }
-
-    //              }
-    //              return response()->json([
-    //             'status' =>200,
-    //             'message' => 'Timetable Saved Successfully!',
-    //             'success'=>true
-    //            ]);
-
-    //         }
-    //         else{
-    //             return response()->json([
-    //                 'status'=> 401,
-    //                 'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-    //                 'data' =>$user->role_id,
-    //                 'success'=>false
-    //                     ]);
-    //             }
-
-    //         }
-    //         catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //         }
-
-    // }
-
-    // public function saveTimetableAllotment(Request $request){
-    //     try{
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //             // dd("Hello");
-    //              $timetablerequest = $request->all();
-    //              $timetabledata = $timetablerequest['timetable_data'];
-    //              $teacherId =  $timetablerequest['teacher_id'];
-    //              $periodUsed = $timetablerequest['period_used'];
-    //              DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
-    //              foreach ($timetabledata as $timetable){
-
-    //                   $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
-    //                   if(is_null($timetabledata5)){
-    //                       $timetabledata1 = $timetable['subjects'];
-    //                          $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
-    //                              $monfrilectures =  $classwiseperiod->{'mon-fri'};
-    //                              for($i=1;$i<=$monfrilectures;$i++){
-    //                                  $inserttimetable = DB::table('timetable')->insert([
-    //                                                          'date'=>Carbon::now()->format('Y-m-d H:i:s'),
-    //                                                          'class_id' => $timetable['class_id'],
-    //                                                          'section_id' => $timetable['section_id'],
-    //                                                          'academic_yr'=>$customClaims,
-    //                                                          'period_no'=>$i,
-    //                                                      ]);
-
-    //                              }
-    //                          foreach ($timetabledata1 as $timetabledata2){
-
-    //                              if($timetabledata2['day']== 'Monday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Tuesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Wednesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Thursday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Friday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Saturday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                          }
-
-    //                   }
-    //                   else{
-    //                       $timetabledata1 = $timetable['subjects'];
-
-    //                  foreach ($timetabledata1 as $timetabledata2){
-
-    //                      if($timetabledata2['day']== 'Monday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-
-    //                          foreach ($timetabledata3 as $timetabledata4){
-
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                  $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         // Override existing value
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->monday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'monday' => $finalValue,
-    //                                         ]);
-
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('monday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdmonday = null;
-    //                             //     $teacherIdmonday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
-    //                             //      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
-    //                             //      $teacheridforexistingsubject = $teacherIdmonday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-    //                            }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Tuesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                  $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->tuesday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'tuesday' => $finalValue,
-    //                                         ]);
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('tuesday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdtuesday = null;
-    //                             //     $teacherIdtuesday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
-    //                             //      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
-    //                             //      $teacheridforexistingsubject = $teacherIdtuesday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-    //                         }
-    //                      }
-    //                      elseif($timetabledata2['day']=='Wednesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                             $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->wednesday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'wednesday' => $finalValue,
-    //                                         ]);
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('wednesday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //      $subjectIdwednesday = null;
-    //                             //     $teacherIdwednesday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
-    //                             //         list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-    //                             //         $teacheridforexistingsubject = $teacherIdwednesday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-    //                             }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Thursday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->thursday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'thursday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('thursday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdthursday = null;
-    //                             //     $teacherIdthursday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
-    //                             //     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
-    //                             //      $teacheridforexistingsubject = $teacherIdthursday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Friday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->friday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'friday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('friday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdfriday = null;
-    //                             //     $teacherIdfriday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
-    //                             //      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
-    //                             //      $teacheridforexistingsubject = $teacherIdfriday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Saturday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         // Append to existing value (if any)
-    //                                         $currentMonday = $existing->saturday ?? '';
-    //                                         $finalValue = $currentMonday
-    //                                             ? $currentMonday . ',' . $newValue
-    //                                             : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'saturday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('saturday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdsaturday = null;
-    //                             //     $teacherIdsaturday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
-    //                             //     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
-    //                             //      $teacheridforexistingsubject = $teacherIdsaturday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                       }
-    //                     }
-
-    //                   }
-
-    //              }
-    //              return response()->json([
-    //             'status' =>200,
-    //             'message' => 'Timetable Saved Successfully!',
-    //             'success'=>true
-    //            ]);
-
-    //         }
-    //         else{
-    //             return response()->json([
-    //                 'status'=> 401,
-    //                 'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-    //                 'data' =>$user->role_id,
-    //                 'success'=>false
-    //                     ]);
-    //             }
-
-    //         }
-    //         catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //         }
-
-    // }
-
-    // public function saveTimetableAllotment(Request $request){
-    //     try{
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //         if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //             // dd("Hello");
-    //              $timetablerequest = $request->all();
-    //              $timetabledata = $timetablerequest['timetable_data'];
-    //              $teacherId =  $timetablerequest['teacher_id'];
-    //              $periodUsed = $timetablerequest['period_used'];
-    //              DB::table('teachers_period_allocation')->where('teacher_id',$teacherId)->where('academic_yr',$customClaims)->update(['periods_used'=>$periodUsed]);
-    //              foreach ($timetabledata as $timetable){
-
-    //                   $timetabledata5 = DB::table('timetable')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->where('academic_yr',$customClaims)->first();
-    //                   if(is_null($timetabledata5)){
-    //                       $timetabledata1 = $timetable['subjects'];
-    //                          $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id',$timetable['class_id'])->where('section_id',$timetable['section_id'])->first();
-    //                              $monfrilectures =  $classwiseperiod->{'mon-fri'};
-    //                              for($i=1;$i<=$monfrilectures;$i++){
-    //                                  $inserttimetable = DB::table('timetable')->insert([
-    //                                                          'date'=>Carbon::now()->format('Y-m-d H:i:s'),
-    //                                                          'class_id' => $timetable['class_id'],
-    //                                                          'section_id' => $timetable['section_id'],
-    //                                                          'academic_yr'=>$customClaims,
-    //                                                          'period_no'=>$i,
-    //                                                      ]);
-
-    //                              }
-    //                          foreach ($timetabledata1 as $timetabledata2){
-
-    //                              if($timetabledata2['day']== 'Monday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Tuesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'tuesday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Wednesday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Thursday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Friday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                              elseif($timetabledata2['day']=='Saturday'){
-    //                                  $timetabledata3 = $timetabledata2['periods'];
-    //                                  foreach ($timetabledata3 as $timetabledata4){
-    //                                       if (isset($timetabledata4['subject']['id'])){
-    //                                             DB::table('timetable')
-    //                                                  ->where('class_id', $timetable['class_id'])
-    //                                                  ->where('section_id', $timetable['section_id'])
-    //                                                  ->where('academic_yr', $customClaims)
-    //                                                  ->where('period_no', $timetabledata4['period_no'])
-    //                                                  ->update([
-    //                                                      'saturday' =>$timetabledata4['subject']['id'].'^'.$teacherId
-    //                                                  ]);
-    //                                       }
-    //                                  }
-
-    //                              }
-    //                          }
-
-    //                   }
-    //                   else{
-    //                       $timetabledata1 = $timetable['subjects'];
-
-    //                  foreach ($timetabledata1 as $timetabledata2){
-
-    //                      if($timetabledata2['day']== 'Monday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-
-    //                          foreach ($timetabledata3 as $timetabledata4){
-
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                  $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         // Override existing value
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->monday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->monday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'monday' => $finalValue,
-    //                                         ]);
-
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('monday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdmonday = null;
-    //                             //     $teacherIdmonday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
-    //                             //      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
-    //                             //      $teacheridforexistingsubject = $teacherIdmonday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-    //                            }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Tuesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                  $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->tuesday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->tuesday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'tuesday' => $finalValue,
-    //                                         ]);
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('tuesday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdtuesday = null;
-    //                             //     $teacherIdtuesday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
-    //                             //      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
-    //                             //      $teacheridforexistingsubject = $teacherIdtuesday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-    //                         }
-    //                      }
-    //                      elseif($timetabledata2['day']=='Wednesday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                             $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->wednesday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->wednesday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'wednesday' => $finalValue,
-    //                                         ]);
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('wednesday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //      $subjectIdwednesday = null;
-    //                             //     $teacherIdwednesday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
-    //                             //         list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-    //                             //         $teacheridforexistingsubject = $teacherIdwednesday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-    //                             }
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Thursday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->thursday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->thursday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'thursday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('thursday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdthursday = null;
-    //                             //     $teacherIdthursday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
-    //                             //     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
-    //                             //      $teacheridforexistingsubject = $teacherIdthursday;
-    //                             //     }
-
-    //                             // }
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Friday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                             if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->friday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->friday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'friday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('friday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdfriday = null;
-    //                             //     $teacherIdfriday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
-    //                             //      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
-    //                             //      $teacheridforexistingsubject = $teacherIdfriday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                      }
-    //                      elseif($timetabledata2['day']=='Saturday'){
-    //                          $timetabledata3 = $timetabledata2['periods'];
-    //                          foreach ($timetabledata3 as $timetabledata4){
-    //                              if (isset($timetabledata4['subject']['id'])){
-    //                                 $existing = DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->first();
-
-    //                                     $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
-
-    //                                     if ($timetabledata4['override'] === 'Y') {
-    //                                         $finalValue = $newValue;
-    //                                         // dd($finalValue);
-    //                                     } else {
-    //                                         $currentMonday = $existing->saturday ?? '';
-    //                                         $valuesArray = array_filter(explode(',', $currentMonday));
-
-    //                                         if (in_array($newValue, $valuesArray)) {
-    //                                             // Do nothing if value already exists
-    //                                             $finalValue = $currentMonday;
-    //                                         } else {
-    //                                             $finalValue = $currentMonday
-    //                                                 ? $currentMonday . ',' . $newValue
-    //                                                 : $newValue;
-    //                                         }
-    //                                         // Append to existing value (if any)
-    //                                         // $currentMonday = $existing->saturday ?? '';
-    //                                         // $finalValue = $currentMonday
-    //                                         //     ? $currentMonday . ',' . $newValue
-    //                                         //     : $newValue;
-    //                                     }
-
-    //                                     DB::table('timetable')
-    //                                         ->where('class_id', $timetable['class_id'])
-    //                                         ->where('section_id', $timetable['section_id'])
-    //                                         ->where('academic_yr', $customClaims)
-    //                                         ->where('period_no', $timetabledata4['period_no'])
-    //                                         ->update([
-    //                                             'saturday' => $finalValue,
-    //                                         ]);
-
-    //                             }
-    //                             //  $timetablesubject = DB::table('timetable')
-    //                             //                         ->select('saturday')
-    //                             //                         ->where('class_id',$timetable['class_id'])
-    //                             //                         ->where('section_id',$timetable['section_id'])
-    //                             //                         ->where('academic_yr', $customClaims)
-    //                             //                         ->where('period_no', $timetabledata4['period_no'])
-    //                             //                         ->first();
-
-    //                             // if(is_null($timetablesubject)){
-    //                             //      $teacheridforexistingsubject=null;
-
-    //                             // }
-    //                             // else{
-    //                             //     $subjectIdsaturday = null;
-    //                             //     $teacherIdsaturday = null;
-    //                             //     $teacheridforexistingsubject = null;
-
-    //                             //     if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
-    //                             //     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
-    //                             //      $teacheridforexistingsubject = $teacherIdsaturday;
-    //                             //     }
-
-    //                             // }
-
-    //                             // if(is_null($teacheridforexistingsubject)){
-    //                             //     // dd("Hello");
-    //                             //             DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // elseif($teacheridforexistingsubject == $teacherId){
-
-    //                             //     DB::table('timetable')
-    //                             //                      ->where('class_id', $timetable['class_id'])
-    //                             //                      ->where('section_id', $timetable['section_id'])
-    //                             //                      ->where('academic_yr', $customClaims)
-    //                             //                      ->where('period_no', $timetabledata4['period_no'])
-    //                             //                      ->update([
-    //                             //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //                      ]);
-
-    //                             // }
-    //                             // else{
-    //                             //     DB::table('teachers_period_allocation')
-    //                             //         ->where('teacher_id', $teacheridforexistingsubject)
-    //                             //         ->where('academic_yr', $customClaims)
-    //                             //         ->decrement('periods_used', 1);
-
-    //                             //     DB::table('timetable')
-    //                             //              ->where('class_id', $timetable['class_id'])
-    //                             //              ->where('section_id', $timetable['section_id'])
-    //                             //              ->where('academic_yr', $customClaims)
-    //                             //              ->where('period_no', $timetabledata4['period_no'])
-    //                             //              ->update([
-    //                             //                  'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-    //                             //              ]);
-
-    //                             // }
-
-    //                          }
-
-    //                       }
-    //                     }
-
-    //                   }
-
-    //              }
-    //              return response()->json([
-    //             'status' =>200,
-    //             'message' => 'Timetable Saved Successfully!',
-    //             'success'=>true
-    //            ]);
-
-    //         }
-    //         else{
-    //             return response()->json([
-    //                 'status'=> 401,
-    //                 'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-    //                 'data' =>$user->role_id,
-    //                 'success'=>false
-    //                     ]);
-    //             }
-
-    //         }
-    //         catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //         }
-
-    // }
     public function saveTimetableAllotment(Request $request)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // dd("Hello");
-                $timetablerequest = $request->all();
-                $timetabledata = $timetablerequest['timetable_data'];
-                $teacherId = $timetablerequest['teacher_id'];
-                $periodUsed = $timetablerequest['period_used'];
-                DB::table('teachers_period_allocation')->where('teacher_id', $teacherId)->where('academic_yr', $customClaims)->update(['periods_used' => $periodUsed]);
-                foreach ($timetabledata as $timetable) {
-                    $timetabledata5 = DB::table('timetable')->where('class_id', $timetable['class_id'])->where('section_id', $timetable['section_id'])->where('academic_yr', $customClaims)->first();
-                    if (is_null($timetabledata5)) {
-                        $timetabledata1 = $timetable['subjects'];
-                        $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id', $timetable['class_id'])->where('section_id', $timetable['section_id'])->first();
-                        $monfrilectures = $classwiseperiod->{'mon-fri'};
-                        for ($i = 1; $i <= $monfrilectures; $i++) {
-                            $inserttimetable = DB::table('timetable')->insert([
-                                'date' => Carbon::now()->format('Y-m-d H:i:s'),
-                                'class_id' => $timetable['class_id'],
-                                'section_id' => $timetable['section_id'],
-                                'academic_yr' => $customClaims,
-                                'period_no' => $i,
-                            ]);
-                        }
-                        foreach ($timetabledata1 as $timetabledata2) {
-                            if ($timetabledata2['day'] == 'Monday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'monday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+            $timetablerequest = $request->all();
+            $timetabledata = $timetablerequest['timetable_data'];
+            $teacherId = $timetablerequest['teacher_id'];
+            $periodUsed = $timetablerequest['period_used'];
+            DB::table('teachers_period_allocation')->where('teacher_id', $teacherId)->where('academic_yr', $customClaims)->update(['periods_used' => $periodUsed]);
+            foreach ($timetabledata as $timetable) {
+                $timetabledata5 = DB::table('timetable')->where('class_id', $timetable['class_id'])->where('section_id', $timetable['section_id'])->where('academic_yr', $customClaims)->first();
+                if (is_null($timetabledata5)) {
+                    $timetabledata1 = $timetable['subjects'];
+                    $classwiseperiod = DB::table('classwise_period_allocation')->where('class_id', $timetable['class_id'])->where('section_id', $timetable['section_id'])->first();
+                    $monfrilectures = $classwiseperiod->{'mon-fri'};
+                    for ($i = 1; $i <= $monfrilectures; $i++) {
+                        $inserttimetable = DB::table('timetable')->insert([
+                            'date' => Carbon::now()->format('Y-m-d H:i:s'),
+                            'class_id' => $timetable['class_id'],
+                            'section_id' => $timetable['section_id'],
+                            'academic_yr' => $customClaims,
+                            'period_no' => $i,
+                        ]);
+                    }
+                    foreach ($timetabledata1 as $timetabledata2) {
+                        if ($timetabledata2['day'] == 'Monday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'monday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Tuesday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'tuesday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+                            }
+                        } elseif ($timetabledata2['day'] == 'Tuesday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'tuesday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Wednesday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'wednesday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+                            }
+                        } elseif ($timetabledata2['day'] == 'Wednesday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'wednesday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Thursday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'thursday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+                            }
+                        } elseif ($timetabledata2['day'] == 'Thursday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'thursday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Friday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'friday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+                            }
+                        } elseif ($timetabledata2['day'] == 'Friday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'friday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Saturday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'saturday' => $timetabledata4['subject']['id'] . '^' . $teacherId
-                                            ]);
-                                    }
+                            }
+                        } elseif ($timetabledata2['day'] == 'Saturday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'saturday' => $timetabledata4['subject']['id'] . '^' . $teacherId
+                                        ]);
                                 }
                             }
                         }
-                    } else {
-                        $timetabledata1 = $timetable['subjects'];
+                    }
+                } else {
+                    $timetabledata1 = $timetable['subjects'];
 
-                        foreach ($timetabledata1 as $timetabledata2) {
-                            if ($timetabledata2['day'] == 'Monday') {
-                                $timetabledata3 = $timetabledata2['periods'];
+                    foreach ($timetabledata1 as $timetabledata2) {
+                        if ($timetabledata2['day'] == 'Monday') {
+                            $timetabledata3 = $timetabledata2['periods'];
 
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            // Override existing value
-                                            $currentMonday = $existing->monday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        // Override existing value
+                                        $currentMonday = $existing->monday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->monday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // // Append to existing value (if any)
-                                            // $currentMonday = $existing->monday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'monday' => $finalValue,
-                                            ]);
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                        // dd($finalValue);
+                                    } else {
+                                        $currentMonday = $existing->monday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
 
-                                        //  $timetablesubject = DB::table('timetable')
-                                        //                         ->select('monday')
-                                        //                         ->where('class_id',$timetable['class_id'])
-                                        //                         ->where('section_id',$timetable['section_id'])
-                                        //                         ->where('academic_yr', $customClaims)
-                                        //                         ->where('period_no', $timetabledata4['period_no'])
-                                        //                         ->first();
-
-                                        // if(is_null($timetablesubject)){
-                                        //      $teacheridforexistingsubject=null;
-
-                                        // }
-                                        // else{
-                                        //     $subjectIdmonday = null;
-                                        //     $teacherIdmonday = null;
-                                        //     $teacheridforexistingsubject = null;
-
-                                        //     if (!empty($timetablesubject->monday) && str_contains($timetablesubject->monday, '^')) {
-                                        //      list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetablesubject->monday);
-                                        //      $teacheridforexistingsubject = $teacherIdmonday;
-                                        //     }
-
-                                        // }
-
-                                        // if(is_null($teacheridforexistingsubject)){
-                                        //     // dd("Hello");
-                                        //             DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // elseif($teacheridforexistingsubject == $teacherId){
-
-                                        //     DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // else{
-                                        //     DB::table('teachers_period_allocation')
-                                        //         ->where('teacher_id', $teacheridforexistingsubject)
-                                        //         ->where('academic_yr', $customClaims)
-                                        //         ->decrement('periods_used', 1);
-
-                                        //     DB::table('timetable')
-                                        //              ->where('class_id', $timetable['class_id'])
-                                        //              ->where('section_id', $timetable['section_id'])
-                                        //              ->where('academic_yr', $customClaims)
-                                        //              ->where('period_no', $timetabledata4['period_no'])
-                                        //              ->update([
-                                        //                  'monday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //              ]);
-
-                                        // }
+                                        if (in_array($newValue, $valuesArray)) {
+                                            // Do nothing if value already exists
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
+
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'monday' => $finalValue,
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Tuesday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            }
+                        } elseif ($timetabledata2['day'] == 'Tuesday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            $currentMonday = $existing->tuesday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        $currentMonday = $existing->tuesday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->tuesday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // Append to existing value (if any)
-                                            // $currentMonday = $existing->tuesday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'tuesday' => $finalValue,
-                                            ]);
-                                        //  $timetablesubject = DB::table('timetable')
-                                        //                         ->select('tuesday')
-                                        //                         ->where('class_id',$timetable['class_id'])
-                                        //                         ->where('section_id',$timetable['section_id'])
-                                        //                         ->where('academic_yr', $customClaims)
-                                        //                         ->where('period_no', $timetabledata4['period_no'])
-                                        //                         ->first();
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                    } else {
+                                        $currentMonday = $existing->tuesday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
 
-                                        // if(is_null($timetablesubject)){
-                                        //      $teacheridforexistingsubject=null;
-
-                                        // }
-                                        // else{
-                                        //     $subjectIdtuesday = null;
-                                        //     $teacherIdtuesday = null;
-                                        //     $teacheridforexistingsubject = null;
-
-                                        //     if (!empty($timetablesubject->tuesday) && str_contains($timetablesubject->tuesday, '^')) {
-                                        //      list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetablesubject->tuesday);
-                                        //      $teacheridforexistingsubject = $teacherIdtuesday;
-                                        //     }
-
-                                        // }
-                                        // if(is_null($teacheridforexistingsubject)){
-                                        //     // dd("Hello");
-                                        //             DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // elseif($teacheridforexistingsubject == $teacherId){
-
-                                        //     DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // else{
-                                        //     DB::table('teachers_period_allocation')
-                                        //         ->where('teacher_id', $teacheridforexistingsubject)
-                                        //         ->where('academic_yr', $customClaims)
-                                        //         ->decrement('periods_used', 1);
-
-                                        //     DB::table('timetable')
-                                        //              ->where('class_id', $timetable['class_id'])
-                                        //              ->where('section_id', $timetable['section_id'])
-                                        //              ->where('academic_yr', $customClaims)
-                                        //              ->where('period_no', $timetabledata4['period_no'])
-                                        //              ->update([
-                                        //                  'tuesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //              ]);
-
-                                        // }
+                                        if (in_array($newValue, $valuesArray)) {
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
+
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'tuesday' => $finalValue,
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Wednesday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            }
+                        } elseif ($timetabledata2['day'] == 'Wednesday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            $currentMonday = $existing->wednesday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        $currentMonday = $existing->wednesday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->wednesday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // Append to existing value (if any)
-                                            // $currentMonday = $existing->wednesday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'wednesday' => $finalValue,
-                                            ]);
-                                        //  $timetablesubject = DB::table('timetable')
-                                        //                         ->select('wednesday')
-                                        //                         ->where('class_id',$timetable['class_id'])
-                                        //                         ->where('section_id',$timetable['section_id'])
-                                        //                         ->where('academic_yr', $customClaims)
-                                        //                         ->where('period_no', $timetabledata4['period_no'])
-                                        //                         ->first();
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                    } else {
+                                        $currentMonday = $existing->wednesday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
 
-                                        // if(is_null($timetablesubject)){
-                                        //      $teacheridforexistingsubject=null;
-
-                                        // }
-                                        // else{
-                                        //      $subjectIdwednesday = null;
-                                        //     $teacherIdwednesday = null;
-                                        //     $teacheridforexistingsubject = null;
-
-                                        //     if (!empty($timetablesubject->wednesday) && str_contains($timetablesubject->wednesday, '^')) {
-                                        //         list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetablesubject->wednesday);
-                                        //         $teacheridforexistingsubject = $teacherIdwednesday;
-                                        //     }
-
-                                        // }
-                                        // if(is_null($teacheridforexistingsubject)){
-                                        //     // dd("Hello");
-                                        //             DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // elseif($teacheridforexistingsubject == $teacherId){
-
-                                        //     DB::table('timetable')
-                                        //                      ->where('class_id', $timetable['class_id'])
-                                        //                      ->where('section_id', $timetable['section_id'])
-                                        //                      ->where('academic_yr', $customClaims)
-                                        //                      ->where('period_no', $timetabledata4['period_no'])
-                                        //                      ->update([
-                                        //                          'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //                      ]);
-
-                                        // }
-                                        // else{
-                                        //     DB::table('teachers_period_allocation')
-                                        //         ->where('teacher_id', $teacheridforexistingsubject)
-                                        //         ->where('academic_yr', $customClaims)
-                                        //         ->decrement('periods_used', 1);
-
-                                        //     DB::table('timetable')
-                                        //              ->where('class_id', $timetable['class_id'])
-                                        //              ->where('section_id', $timetable['section_id'])
-                                        //              ->where('academic_yr', $customClaims)
-                                        //              ->where('period_no', $timetabledata4['period_no'])
-                                        //              ->update([
-                                        //                  'wednesday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                        //              ]);
-
-                                        // }
+                                        if (in_array($newValue, $valuesArray)) {
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
+
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'wednesday' => $finalValue,
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Thursday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            }
+                        } elseif ($timetabledata2['day'] == 'Thursday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            $currentMonday = $existing->thursday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        $currentMonday = $existing->thursday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->thursday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // Append to existing value (if any)
-                                            // $currentMonday = $existing->thursday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'thursday' => $finalValue,
-                                            ]);
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                    } else {
+                                        $currentMonday = $existing->thursday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                        if (in_array($newValue, $valuesArray)) {
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
-                                    //  $timetablesubject = DB::table('timetable')
-                                    //                         ->select('thursday')
-                                    //                         ->where('class_id',$timetable['class_id'])
-                                    //                         ->where('section_id',$timetable['section_id'])
-                                    //                         ->where('academic_yr', $customClaims)
-                                    //                         ->where('period_no', $timetabledata4['period_no'])
-                                    //                         ->first();
 
-                                    // if(is_null($timetablesubject)){
-                                    //      $teacheridforexistingsubject=null;
-
-                                    // }
-                                    // else{
-                                    //     $subjectIdthursday = null;
-                                    //     $teacherIdthursday = null;
-                                    //     $teacheridforexistingsubject = null;
-
-                                    //     if (!empty($timetablesubject->thursday) && str_contains($timetablesubject->thursday, '^')) {
-                                    //     list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetablesubject->thursday);
-                                    //      $teacheridforexistingsubject = $teacherIdthursday;
-                                    //     }
-
-                                    // }
-                                    // if(is_null($teacheridforexistingsubject)){
-                                    //     // dd("Hello");
-                                    //             DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // elseif($teacheridforexistingsubject == $teacherId){
-
-                                    //     DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // else{
-                                    //     DB::table('teachers_period_allocation')
-                                    //         ->where('teacher_id', $teacheridforexistingsubject)
-                                    //         ->where('academic_yr', $customClaims)
-                                    //         ->decrement('periods_used', 1);
-
-                                    //     DB::table('timetable')
-                                    //              ->where('class_id', $timetable['class_id'])
-                                    //              ->where('section_id', $timetable['section_id'])
-                                    //              ->where('academic_yr', $customClaims)
-                                    //              ->where('period_no', $timetabledata4['period_no'])
-                                    //              ->update([
-                                    //                  'thursday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //              ]);
-
-                                    // }
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'thursday' => $finalValue,
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Friday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            }
+                        } elseif ($timetabledata2['day'] == 'Friday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            $currentMonday = $existing->friday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        $currentMonday = $existing->friday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->friday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // Append to existing value (if any)
-                                            // $currentMonday = $existing->friday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'friday' => $finalValue,
-                                            ]);
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                    } else {
+                                        $currentMonday = $existing->friday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                        if (in_array($newValue, $valuesArray)) {
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
-                                    //  $timetablesubject = DB::table('timetable')
-                                    //                         ->select('friday')
-                                    //                         ->where('class_id',$timetable['class_id'])
-                                    //                         ->where('section_id',$timetable['section_id'])
-                                    //                         ->where('academic_yr', $customClaims)
-                                    //                         ->where('period_no', $timetabledata4['period_no'])
-                                    //                         ->first();
 
-                                    // if(is_null($timetablesubject)){
-                                    //      $teacheridforexistingsubject=null;
-
-                                    // }
-                                    // else{
-                                    //     $subjectIdfriday = null;
-                                    //     $teacherIdfriday = null;
-                                    //     $teacheridforexistingsubject = null;
-
-                                    //     if (!empty($timetablesubject->friday) && str_contains($timetablesubject->friday, '^')) {
-                                    //      list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetablesubject->friday);
-                                    //      $teacheridforexistingsubject = $teacherIdfriday;
-                                    //     }
-
-                                    // }
-
-                                    // if(is_null($teacheridforexistingsubject)){
-                                    //     // dd("Hello");
-                                    //             DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // elseif($teacheridforexistingsubject == $teacherId){
-
-                                    //     DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // else{
-                                    //     DB::table('teachers_period_allocation')
-                                    //         ->where('teacher_id', $teacheridforexistingsubject)
-                                    //         ->where('academic_yr', $customClaims)
-                                    //         ->decrement('periods_used', 1);
-
-                                    //     DB::table('timetable')
-                                    //              ->where('class_id', $timetable['class_id'])
-                                    //              ->where('section_id', $timetable['section_id'])
-                                    //              ->where('academic_yr', $customClaims)
-                                    //              ->where('period_no', $timetabledata4['period_no'])
-                                    //              ->update([
-                                    //                  'friday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //              ]);
-
-                                    // }
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'friday' => $finalValue,
+                                        ]);
                                 }
-                            } elseif ($timetabledata2['day'] == 'Saturday') {
-                                $timetabledata3 = $timetabledata2['periods'];
-                                foreach ($timetabledata3 as $timetabledata4) {
-                                    if (isset($timetabledata4['subject']['id'])) {
-                                        $existing = DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
-                                            ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->first();
+                            }
+                        } elseif ($timetabledata2['day'] == 'Saturday') {
+                            $timetabledata3 = $timetabledata2['periods'];
+                            foreach ($timetabledata3 as $timetabledata4) {
+                                if (isset($timetabledata4['subject']['id'])) {
+                                    $existing = DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->first();
 
-                                        $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
+                                    $newValue = $timetabledata4['subject']['id'] . '^' . $teacherId;
 
-                                        if ($timetabledata4['override'] === 'Y') {
-                                            $currentMonday = $existing->saturday ?? '';
-                                            $teacherIds = [];
+                                    if ($timetabledata4['override'] === 'Y') {
+                                        $currentMonday = $existing->saturday ?? '';
+                                        $teacherIds = [];
 
-                                            $entries = explode(',', $currentMonday);
+                                        $entries = explode(',', $currentMonday);
 
-                                            foreach ($entries as $entry) {
-                                                if (str_contains($entry, '^')) {
-                                                    list($subjectId, $teacherId) = explode('^', $entry);
-                                                    $teacherIds[] = $teacherId;
-                                                }
+                                        foreach ($entries as $entry) {
+                                            if (str_contains($entry, '^')) {
+                                                list($subjectId, $teacherId) = explode('^', $entry);
+                                                $teacherIds[] = $teacherId;
                                             }
-                                            DB::table('teachers_period_allocation')
-                                                ->whereIn('teacher_id', $teacherIds)
-                                                ->where('academic_yr', $customClaims)
-                                                ->decrement('periods_used', 1);
-                                            $finalValue = $newValue;
-                                            // dd($finalValue);
-                                        } else {
-                                            $currentMonday = $existing->saturday ?? '';
-                                            $valuesArray = array_filter(explode(',', $currentMonday));
-
-                                            if (in_array($newValue, $valuesArray)) {
-                                                // Do nothing if value already exists
-                                                $finalValue = $currentMonday;
-                                            } else {
-                                                $finalValue = $currentMonday
-                                                    ? $currentMonday . ',' . $newValue
-                                                    : $newValue;
-                                            }
-                                            // Append to existing value (if any)
-                                            // $currentMonday = $existing->saturday ?? '';
-                                            // $finalValue = $currentMonday
-                                            //     ? $currentMonday . ',' . $newValue
-                                            //     : $newValue;
                                         }
-
-                                        DB::table('timetable')
-                                            ->where('class_id', $timetable['class_id'])
-                                            ->where('section_id', $timetable['section_id'])
+                                        DB::table('teachers_period_allocation')
+                                            ->whereIn('teacher_id', $teacherIds)
                                             ->where('academic_yr', $customClaims)
-                                            ->where('period_no', $timetabledata4['period_no'])
-                                            ->update([
-                                                'saturday' => $finalValue,
-                                            ]);
+                                            ->decrement('periods_used', 1);
+                                        $finalValue = $newValue;
+                                    } else {
+                                        $currentMonday = $existing->saturday ?? '';
+                                        $valuesArray = array_filter(explode(',', $currentMonday));
+
+                                        if (in_array($newValue, $valuesArray)) {
+                                            $finalValue = $currentMonday;
+                                        } else {
+                                            $finalValue = $currentMonday
+                                                ? $currentMonday . ',' . $newValue
+                                                : $newValue;
+                                        }
                                     }
-                                    //  $timetablesubject = DB::table('timetable')
-                                    //                         ->select('saturday')
-                                    //                         ->where('class_id',$timetable['class_id'])
-                                    //                         ->where('section_id',$timetable['section_id'])
-                                    //                         ->where('academic_yr', $customClaims)
-                                    //                         ->where('period_no', $timetabledata4['period_no'])
-                                    //                         ->first();
 
-                                    // if(is_null($timetablesubject)){
-                                    //      $teacheridforexistingsubject=null;
-
-                                    // }
-                                    // else{
-                                    //     $subjectIdsaturday = null;
-                                    //     $teacherIdsaturday = null;
-                                    //     $teacheridforexistingsubject = null;
-
-                                    //     if (!empty($timetablesubject->saturday) && str_contains($timetablesubject->saturday, '^')) {
-                                    //     list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetablesubject->saturday);
-                                    //      $teacheridforexistingsubject = $teacherIdsaturday;
-                                    //     }
-
-                                    // }
-
-                                    // if(is_null($teacheridforexistingsubject)){
-                                    //     // dd("Hello");
-                                    //             DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // elseif($teacheridforexistingsubject == $teacherId){
-
-                                    //     DB::table('timetable')
-                                    //                      ->where('class_id', $timetable['class_id'])
-                                    //                      ->where('section_id', $timetable['section_id'])
-                                    //                      ->where('academic_yr', $customClaims)
-                                    //                      ->where('period_no', $timetabledata4['period_no'])
-                                    //                      ->update([
-                                    //                          'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //                      ]);
-
-                                    // }
-                                    // else{
-                                    //     DB::table('teachers_period_allocation')
-                                    //         ->where('teacher_id', $teacheridforexistingsubject)
-                                    //         ->where('academic_yr', $customClaims)
-                                    //         ->decrement('periods_used', 1);
-
-                                    //     DB::table('timetable')
-                                    //              ->where('class_id', $timetable['class_id'])
-                                    //              ->where('section_id', $timetable['section_id'])
-                                    //              ->where('academic_yr', $customClaims)
-                                    //              ->where('period_no', $timetabledata4['period_no'])
-                                    //              ->update([
-                                    //                  'saturday' => $timetabledata4['subject']['id'].'^'.$teacherId
-                                    //              ]);
-
-                                    // }
+                                    DB::table('timetable')
+                                        ->where('class_id', $timetable['class_id'])
+                                        ->where('section_id', $timetable['section_id'])
+                                        ->where('academic_yr', $customClaims)
+                                        ->where('period_no', $timetabledata4['period_no'])
+                                        ->update([
+                                            'saturday' => $finalValue,
+                                        ]);
                                 }
                             }
                         }
                     }
                 }
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Timetable Saved Successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Timetable Saved Successfully!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -14557,634 +10551,130 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teachersQuery = DB::table('teacher')
-                    ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
-                    ->where('user_master.role_id', 'T')
-                    ->leftJoin('teachers_period_allocation', function ($join) use ($customClaims) {
-                        $join
-                            ->on('teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
-                            ->where(function ($query) use ($customClaims) {
-                                $query
-                                    ->where('teachers_period_allocation.academic_yr', $customClaims)
-                                    ->orWhereNull('teachers_period_allocation.academic_yr');
-                            });
-                    })
-                    ->where('teacher.isDelete', 'N')
-                    ->where('teachers_period_allocation.periods_used', '!=', '0')
-                    ->select('teacher.teacher_id', 'teacher.name as teachername', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'), 'teachers_period_allocation.periods_used');
+            $teachersQuery = DB::table('teacher')
+                ->Join('user_master', 'user_master.reg_id', '=', 'teacher.teacher_id')
+                ->where('user_master.role_id', 'T')
+                ->leftJoin('teachers_period_allocation', function ($join) use ($customClaims) {
+                    $join
+                        ->on('teacher.teacher_id', '=', 'teachers_period_allocation.teacher_id')
+                        ->where(function ($query) use ($customClaims) {
+                            $query
+                                ->where('teachers_period_allocation.academic_yr', $customClaims)
+                                ->orWhereNull('teachers_period_allocation.academic_yr');
+                        });
+                })
+                ->where('teacher.isDelete', 'N')
+                ->where('teachers_period_allocation.periods_used', '!=', '0')
+                ->select('teacher.teacher_id', 'teacher.name as teachername', DB::raw('COALESCE(teachers_period_allocation.periods_allocated, 0) as periods_allocated'), 'teachers_period_allocation.periods_used');
 
-                $teachersQuery->distinct();
+            $teachersQuery->distinct();
 
-                $teachers = $teachersQuery->get();
+            $teachers = $teachersQuery->get();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $teachers,
-                    'message' => 'Teacher list timetable.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission for the teacher list by period.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $teachers,
+                'message' => 'Teacher list timetable.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 
-    // Timetable Teacherwise  Dev Name- Manish Kumar Sharma 07-04-2025
-    // public function getEditTimetableClassSection($class_id,$section_id){
-    //    try{
-    //            $user = $this->authenticateUser();
-    //            $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //                $timetables = DB::table('timetable')
-    //                                ->where('class_id', $class_id)
-    //                                ->where('section_id', $section_id)
-    //                                ->where('academic_yr', $customClaims)
-    //                                ->orderBy('t_id')
-    //                                ->get();
-
-    //                if(count($timetables)==0){
-
-    //                    $monday = [];
-    //                    $tuesday = [];
-    //                    $wednesday = [];
-    //                    $thursday = [];
-    //                    $friday = [];
-    //                    $saturday = [];
-    //                    $classwiseperiod = DB::table('classwise_period_allocation')
-    //                                          ->where('class_id',$class_id)
-    //                                          ->where('section_id',$section_id)
-    //                                          ->where('academic_yr',$customClaims)
-    //                                          ->first();
-
-    //                                          if($classwiseperiod === null){
-    //                                              return response()->json([
-    //                                                'status' =>400,
-    //                                                'message' => 'Classwise Period Allocation is not done.',
-    //                                                'success'=>false
-    //                                            ]);
-    //                                          }
-
-    //                    $monfrilectures = $classwiseperiod->{'mon-fri'};
-    //                    for($i=1;$i<=$monfrilectures;$i++){
-    //                        $monday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-    //                        $tuesday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i ,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-    //                        $wednesday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i ,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-    //                        $thursday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i ,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-    //                        $friday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-
-    //                    }
-    //                    $satlectures=$classwiseperiod->sat;
-    //                    for($i=1;$i<=$satlectures;$i++){
-    //                        $saturday[] = [
-    //                            'time_in' => null,
-    //                            'period_no'=>$i,
-    //                            'time_out' => null,
-    //                            'subject_id'=>null,
-    //                            'subject' => null,
-    //                            'teacher' => null,
-    //                        ];
-
-    //                    }
-
-    //                    $weeklySchedule = [
-    //                         'mon_fri'=>$monfrilectures,
-    //                         'sat'=>$satlectures,
-    //                        'Monday' => $monday,
-    //                        'Tuesday' => $tuesday,
-    //                        'Wednesday' => $wednesday,
-    //                        'Thursday' => $thursday,
-    //                        'Friday' => $friday,
-    //                        'Saturday' => $saturday,
-    //                    ];
-
-    //                   return response()->json([
-    //                        'status' =>200,
-    //                        'data'=>$weeklySchedule,
-    //                        'message' => 'View Timetable!',
-    //                        'success'=>true
-    //                    ]);
-
-    //                }
-    //        $monday = [];
-    //        $tuesday = [];
-    //        $wednesday = [];
-    //        $thursday = [];
-    //        $friday = [];
-    //        $saturday = [];
-
-    //        foreach ($timetables as $timetable) {
-    //            if ($timetable->monday) {
-    //                $subjectIdmonday = null;
-    //                 $teacherIdmonday = null;
-
-    //                 if (!empty($timetable->monday) && str_contains($timetable->monday, '^')) {
-    //                 list($subjectIdmonday, $teacherIdmonday) = explode('^', $timetable->monday);
-    //                 }
-    //                $monday[] = [
-    //                    'time_in' => $timetable->time_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->time_out,
-    //                    'subject_id'=>$subjectIdmonday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdmonday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdmonday),
-    //                ];
-    //            }
-
-    //            if ($timetable->tuesday) {
-    //                $subjectIdtuesday = null;
-    //                 $teacherIdtuesday = null;
-
-    //                 if (!empty($timetable->tuesday) && str_contains($timetable->tuesday, '^')) {
-    //                 list($subjectIdtuesday, $teacherIdtuesday) = explode('^', $timetable->tuesday);
-    //                 }
-    //                $tuesday[] = [
-    //                    'time_in' => $timetable->time_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->time_out,
-    //                    'subject_id'=>$subjectIdtuesday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdtuesday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdtuesday),
-    //                ];
-    //            }
-
-    //            if ($timetable->wednesday) {
-    //                $subjectIdwednesday = null;
-    //                 $teacherIdwednesday = null;
-
-    //                 if (!empty($timetable->wednesday) && str_contains($timetable->wednesday, '^')) {
-    //                 list($subjectIdwednesday, $teacherIdwednesday) = explode('^', $timetable->wednesday);
-    //                 }
-    //                $wednesday[] = [
-    //                    'time_in' => $timetable->time_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->time_out,
-    //                    'subject_id'=>$subjectIdwednesday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdwednesday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdwednesday),
-    //                ];
-    //            }
-
-    //            if ($timetable->thursday) {
-    //                $subjectIdthursday = null;
-    //                 $teacherIdthursday = null;
-
-    //                 if (!empty($timetable->thursday) && str_contains($timetable->thursday, '^')) {
-    //                 list($subjectIdthursday, $teacherIdthursday) = explode('^', $timetable->thursday);
-    //                 }
-    //                $thursday[] = [
-    //                    'time_in' => $timetable->time_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->time_out,
-    //                     'subject_id'=>$subjectIdthursday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdthursday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdthursday),
-    //                ];
-    //            }
-
-    //            if ($timetable->friday) {
-    //                $subjectIdfriday = null;
-    //                 $teacherIdfriday = null;
-
-    //                 if (!empty($timetable->friday) && str_contains($timetable->friday, '^')) {
-    //                 list($subjectIdfriday, $teacherIdfriday) = explode('^', $timetable->friday);
-    //                 }
-    //                $friday[] = [
-    //                    'time_in' => $timetable->time_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->time_out,
-    //                     'subject_id'=>$subjectIdfriday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdfriday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdfriday),
-    //                ];
-    //            }
-
-    //            if ($timetable->saturday) {
-    //                $subjectIdsaturday = null;
-    //                 $teacherIdsaturday = null;
-
-    //                 if (!empty($timetable->saturday) && str_contains($timetable->saturday, '^')) {
-    //                 list($subjectIdsaturday, $teacherIdsaturday) = explode('^', $timetable->saturday);
-    //                 }
-    //                $saturday[] = [
-    //                    'time_in' => $timetable->sat_in,
-    //                    'period_no'=>$timetable->period_no,
-    //                    'time_out' => $timetable->sat_out,
-    //                    'subject_id'=>$subjectIdsaturday,
-    //                    'subject' => $this->getSubjectnameBySubjectId($subjectIdsaturday),
-    //                    'teacher' => $this->getTeacherByTeacherId($teacherIdsaturday),
-    //                ];
-    //            }
-    //        }
-
-    //         $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first();
-    //         $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id',$class_id)->where('section_id',$section_id)->where('academic_yr',$customClaims)->first();
-
-    //        $weeklySchedule = [
-    //            'mon_fri'=>$lastMondayPeriodNo->{'mon-fri'},
-    //            'sat'=>$lastSaturdayPeriodNo->sat,
-    //            'Monday' => $monday,
-    //            'Tuesday' => $tuesday,
-    //            'Wednesday' => $wednesday,
-    //            'Thursday' => $thursday,
-    //            'Friday' => $friday,
-    //            'Saturday' => $saturday,
-    //        ];
-
-    //              return response()->json([
-    //                'status' =>200,
-    //                'data'=>$weeklySchedule,
-    //                'message' => 'View Timetable!',
-    //                'success'=>true
-    //            ]);
-
-    //            }
-    //            else{
-    //                return response()->json([
-    //                    'status'=> 401,
-    //                    'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-    //                    'data' =>$user->role_id,
-    //                    'success'=>false
-    //                        ]);
-    //                }
-
-    //            }
-    //            catch (Exception $e) {
-    //            \Log::error($e);
-    //            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //            }
-
-    // }
     public function getEditTimetableClassSection($class_id, $section_id, $teacher_id)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $timetables = DB::table('timetable')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('academic_yr', $customClaims)
-                    ->orderBy('t_id')
-                    ->get();
 
-                if (count($timetables) == 0) {
-                    $monday = [];
-                    $tuesday = [];
-                    $wednesday = [];
-                    $thursday = [];
-                    $friday = [];
-                    $saturday = [];
-                    $classwiseperiod = DB::table('classwise_period_allocation')
-                        ->where('class_id', $class_id)
-                        ->where('section_id', $section_id)
-                        ->where('academic_yr', $customClaims)
-                        ->first();
+            $timetables = DB::table('timetable')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $customClaims)
+                ->orderBy('t_id')
+                ->get();
 
-                    if ($classwiseperiod === null) {
-                        return response()->json([
-                            'status' => 400,
-                            'message' => 'Classwise Period Allocation is not done.',
-                            'success' => false
-                        ]);
-                    }
-
-                    $monfrilectures = $classwiseperiod->{'mon-fri'};
-                    for ($i = 1; $i <= $monfrilectures; $i++) {
-                        $monday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $tuesday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $wednesday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $thursday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                        $friday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-                    $satlectures = $classwiseperiod->sat;
-                    for ($i = 1; $i <= $satlectures; $i++) {
-                        $saturday[] = [
-                            'time_in' => null,
-                            'period_no' => $i,
-                            'time_out' => null,
-                            'subject_id' => null,
-                            'subject' => null,
-                            'teacher' => null,
-                        ];
-                    }
-
-                    $weeklySchedule = [
-                        'mon_fri' => $monfrilectures,
-                        'sat' => $satlectures,
-                        'Monday' => $monday,
-                        'Tuesday' => $tuesday,
-                        'Wednesday' => $wednesday,
-                        'Thursday' => $thursday,
-                        'Friday' => $friday,
-                        'Saturday' => $saturday,
-                    ];
-
-                    return response()->json([
-                        'status' => 200,
-                        'data' => $weeklySchedule,
-                        'message' => 'View Timetable!',
-                        'success' => true
-                    ]);
-                }
+            if (count($timetables) == 0) {
                 $monday = [];
                 $tuesday = [];
                 $wednesday = [];
                 $thursday = [];
                 $friday = [];
                 $saturday = [];
+                $classwiseperiod = DB::table('classwise_period_allocation')
+                    ->where('class_id', $class_id)
+                    ->where('section_id', $section_id)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
 
-                foreach ($timetables as $timetable) {
-                    $subjectIdmonday = null;
-                    $subjectIdtuesday = null;
-                    $subjectIdwednesday = null;
-                    $subjectIdthursday = null;
-                    $subjectIdfriday = null;
-                    $subjectIdsaturday = null;
-
-                    if ($timetable->monday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->monday, ',')
-                            ? explode(',', $timetable->monday)
-                            : [$timetable->monday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdmonday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $monday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdmonday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->tuesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->tuesday, ',')
-                            ? explode(',', $timetable->tuesday)
-                            : [$timetable->tuesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdtuesday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $tuesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdtuesday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->wednesday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->wednesday, ',')
-                            ? explode(',', $timetable->wednesday)
-                            : [$timetable->wednesday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdwednesday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $wednesday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdwednesday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->thursday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->thursday, ',')
-                            ? explode(',', $timetable->thursday)
-                            : [$timetable->thursday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdthursday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $thursday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdthursday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->friday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->friday, ',')
-                            ? explode(',', $timetable->friday)
-                            : [$timetable->friday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdfriday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $friday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdfriday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
-
-                    if ($timetable->saturday) {
-                        $subjects = [];
-                        $teachers = [];
-
-                        $entries = str_contains($timetable->saturday, ',')
-                            ? explode(',', $timetable->saturday)
-                            : [$timetable->saturday];
-
-                        foreach ($entries as $entry) {
-                            if (str_contains($entry, '^')) {
-                                list($subjectId, $teacherId) = explode('^', $entry);
-                                if ($teacherId === $teacher_id) {
-                                    $subjectIdsaturday = $subjectId;
-                                }
-
-                                $subjectName = $this->getSubjectnameBySubjectId($subjectId);
-                                $teacherName = $this->getTeacherByTeacherIddd($teacherId);
-
-                                $subjects[] = ['subject_name' => $subjectName];
-                                $teachers[] = ['t_name' => $teacherName];
-                            }
-                        }
-
-                        $saturday[] = [
-                            'time_in' => $timetable->time_in,
-                            'period_no' => $timetable->period_no,
-                            'time_out' => $timetable->time_out,
-                            'subject_id' => $subjectIdsaturday,
-                            'subject' => $subjects,
-                            'teacher' => $teachers,
-                        ];
-                    }
+                if ($classwiseperiod === null) {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => 'Classwise Period Allocation is not done.',
+                        'success' => false
+                    ]);
                 }
 
-                $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
-                $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+                $monfrilectures = $classwiseperiod->{'mon-fri'};
+                for ($i = 1; $i <= $monfrilectures; $i++) {
+                    $monday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $tuesday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $wednesday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $thursday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                    $friday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
+                $satlectures = $classwiseperiod->sat;
+                for ($i = 1; $i <= $satlectures; $i++) {
+                    $saturday[] = [
+                        'time_in' => null,
+                        'period_no' => $i,
+                        'time_out' => null,
+                        'subject_id' => null,
+                        'subject' => null,
+                        'teacher' => null,
+                    ];
+                }
 
                 $weeklySchedule = [
-                    'mon_fri' => $lastMondayPeriodNo->{'mon-fri'},
-                    'sat' => $lastSaturdayPeriodNo->sat,
+                    'mon_fri' => $monfrilectures,
+                    'sat' => $satlectures,
                     'Monday' => $monday,
                     'Tuesday' => $tuesday,
                     'Wednesday' => $wednesday,
@@ -15199,144 +10689,301 @@ class AdminController extends Controller
                     'message' => 'View Timetable!',
                     'success' => true
                 ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+            $monday = [];
+            $tuesday = [];
+            $wednesday = [];
+            $thursday = [];
+            $friday = [];
+            $saturday = [];
+
+            foreach ($timetables as $timetable) {
+                $subjectIdmonday = null;
+                $subjectIdtuesday = null;
+                $subjectIdwednesday = null;
+                $subjectIdthursday = null;
+                $subjectIdfriday = null;
+                $subjectIdsaturday = null;
+
+                if ($timetable->monday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->monday, ',')
+                        ? explode(',', $timetable->monday)
+                        : [$timetable->monday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdmonday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $monday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdmonday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->tuesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->tuesday, ',')
+                        ? explode(',', $timetable->tuesday)
+                        : [$timetable->tuesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdtuesday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $tuesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdtuesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->wednesday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->wednesday, ',')
+                        ? explode(',', $timetable->wednesday)
+                        : [$timetable->wednesday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdwednesday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $wednesday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdwednesday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->thursday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->thursday, ',')
+                        ? explode(',', $timetable->thursday)
+                        : [$timetable->thursday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdthursday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $thursday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdthursday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->friday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->friday, ',')
+                        ? explode(',', $timetable->friday)
+                        : [$timetable->friday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdfriday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $friday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdfriday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+
+                if ($timetable->saturday) {
+                    $subjects = [];
+                    $teachers = [];
+
+                    $entries = str_contains($timetable->saturday, ',')
+                        ? explode(',', $timetable->saturday)
+                        : [$timetable->saturday];
+
+                    foreach ($entries as $entry) {
+                        if (str_contains($entry, '^')) {
+                            list($subjectId, $teacherId) = explode('^', $entry);
+                            if ($teacherId === $teacher_id) {
+                                $subjectIdsaturday = $subjectId;
+                            }
+
+                            $subjectName = $this->getSubjectnameBySubjectId($subjectId);
+                            $teacherName = $this->getTeacherByTeacherIddd($teacherId);
+
+                            $subjects[] = ['subject_name' => $subjectName];
+                            $teachers[] = ['t_name' => $teacherName];
+                        }
+                    }
+
+                    $saturday[] = [
+                        'time_in' => $timetable->time_in,
+                        'period_no' => $timetable->period_no,
+                        'time_out' => $timetable->time_out,
+                        'subject_id' => $subjectIdsaturday,
+                        'subject' => $subjects,
+                        'teacher' => $teachers,
+                    ];
+                }
+            }
+
+            $lastMondayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+            $lastSaturdayPeriodNo = DB::table('classwise_period_allocation')->where('class_id', $class_id)->where('section_id', $section_id)->where('academic_yr', $customClaims)->first();
+
+            $weeklySchedule = [
+                'mon_fri' => $lastMondayPeriodNo->{'mon-fri'},
+                'sat' => $lastSaturdayPeriodNo->sat,
+                'Monday' => $monday,
+                'Tuesday' => $tuesday,
+                'Wednesday' => $wednesday,
+                'Thursday' => $thursday,
+                'Friday' => $friday,
+                'Saturday' => $saturday,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'data' => $weeklySchedule,
+                'message' => 'View Timetable!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 
-    // Delete Teacher Periods Dev Name-Manish Kumar Sharma 14-04-2025
-    //  public function deleteTeacherPeriodTimetable($teacher_id){
-    //       try{
-    //            $user = $this->authenticateUser();
-    //            $customClaims = JWTAuth::getPayload()->get('academic_year');
-    //            if($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M'){
-    //                $updateperiodallocation = DB::table('teachers_period_allocation')
-    //                                              ->where('teacher_id',$teacher_id)
-    //                                              ->where('academic_yr',$customClaims)
-    //                                              ->update([
-    //                                                   'periods_used'=>0
-    //                                                  ]);
-    //                $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-    //                 $rows = DB::table('timetable')->get();
-
-    //                 foreach ($rows as $row) {
-    //                     $updateData = [];
-
-    //                     foreach ($days as $day) {
-    //                         $value = $row->$day;
-
-    //                         // Check if value exists and has '^' (i.e., subjectId^teacherId format)
-    //                         if (!empty($value) && str_contains($value, '^')) {
-    //                             $parts = explode('^', $value);
-
-    //                             if (count($parts) === 2 && (int)$parts[1] === (int)$teacher_id) {
-    //                                 $updateData[$day] = null; // or '' to set as empty string
-    //                             }
-    //                         }
-    //                     }
-
-    //                     // If any column matched, update this row
-    //                     if (!empty($updateData)) {
-    //                         DB::table('timetable')->where('t_id', $row->t_id)->update($updateData);
-    //                     }
-    //                 }
-
-    //                   return response()->json([
-    //                    'status'=> 200,
-    //                    'message'=>'Teacher periods removed successfully. ',
-    //                    'success'=>true
-    //                        ]);
-
-    //            }
-    //            else{
-    //                return response()->json([
-    //                    'status'=> 401,
-    //                    'message'=>'This User Doesnot have Permission for the Teacher Period Data.',
-    //                    'data' =>$user->role_id,
-    //                    'success'=>false
-    //                        ]);
-    //                }
-
-    //            }
-    //            catch (Exception $e) {
-    //            \Log::error($e);
-    //            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //            }
-
-    //  }
     public function deleteTeacherPeriodTimetable($teacher_id)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $updateperiodallocation = DB::table('teachers_period_allocation')
-                    ->where('teacher_id', $teacher_id)
-                    ->where('academic_yr', $customClaims)
-                    ->update([
-                        'periods_used' => 0
-                    ]);
-                $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            $updateperiodallocation = DB::table('teachers_period_allocation')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $customClaims)
+                ->update([
+                    'periods_used' => 0
+                ]);
+            $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-                $rows = DB::table('timetable')->get();
+            $rows = DB::table('timetable')->get();
 
-                foreach ($rows as $row) {
-                    $updateData = [];
+            foreach ($rows as $row) {
+                $updateData = [];
 
-                    foreach ($days as $day) {
-                        $value = $row->$day;
+                foreach ($days as $day) {
+                    $value = $row->$day;
 
-                        if (!empty($value) && str_contains($value, '^')) {
-                            $entries = explode(',', $value);
-                            $filteredEntries = [];
+                    if (!empty($value) && str_contains($value, '^')) {
+                        $entries = explode(',', $value);
+                        $filteredEntries = [];
 
-                            foreach ($entries as $entry) {
-                                if (str_contains($entry, '^')) {
-                                    list($subjectId, $entryTeacherId) = explode('^', $entry);
+                        foreach ($entries as $entry) {
+                            if (str_contains($entry, '^')) {
+                                list($subjectId, $entryTeacherId) = explode('^', $entry);
 
-                                    // Keep only those entries where teacherId doesn't match
-                                    if ((int) $entryTeacherId !== (int) $teacher_id) {
-                                        $filteredEntries[] = $entry;
-                                    }
-                                } else {
-                                    // In case there's an invalid entry without '^', keep as-is
+                                // Keep only those entries where teacherId doesn't match
+                                if ((int) $entryTeacherId !== (int) $teacher_id) {
                                     $filteredEntries[] = $entry;
                                 }
+                            } else {
+                                // In case there's an invalid entry without '^', keep as-is
+                                $filteredEntries[] = $entry;
                             }
-
-                            // Join remaining entries back or set to null if empty
-                            $updateData[$day] = count($filteredEntries) > 0 ? implode(',', $filteredEntries) : null;
                         }
-                    }
 
-                    if (!empty($updateData)) {
-                        DB::table('timetable')->where('t_id', $row->t_id)->update($updateData);
+                        // Join remaining entries back or set to null if empty
+                        $updateData[$day] = count($filteredEntries) > 0 ? implode(',', $filteredEntries) : null;
                     }
                 }
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Teacher periods removed successfully. ',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                if (!empty($updateData)) {
+                    DB::table('timetable')->where('t_id', $row->t_id)->update($updateData);
+                }
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Teacher periods removed successfully. ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15349,32 +10996,23 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $classname = DB::table('section')
-                    ->join('class', 'class.class_id', '=', 'section.class_id')
-                    ->where('section.academic_yr', $customClaims)
-                    ->select('section.section_id', 'class.name as classname', 'section.name as sectionname')
-                    ->get();
+            $classname = DB::table('section')
+                ->join('class', 'class.class_id', '=', 'section.class_id')
+                ->where('section.academic_yr', $customClaims)
+                ->select('section.section_id', 'class.name as classname', 'section.name as sectionname')
+                ->get();
 
-                $result = [];
+            $result = [];
 
-                foreach ($classname as $item) {
-                    $result[$item->section_id] = $item->classname . '-' . $item->sectionname;
-                }
-                return response()->json([
-                    'status' => 200,
-                    'data' => $result,
-                    'message' => 'SectionId with classname. ',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Teacher Period Data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            foreach ($classname as $item) {
+                $result[$item->section_id] = $item->classname . '-' . $item->sectionname;
             }
+            return response()->json([
+                'status' => 200,
+                'data' => $result,
+                'message' => 'SectionId with classname. ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15387,32 +11025,24 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                return DB::table('student')
-                    ->distinct()
-                    ->select([
-                        'student.class_id as class_id',
-                        'student.section_id as section_id',
-                        'class.name as classname',
-                        'section.name as sectionname',
-                    ])
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->where('class.academic_yr', $customClaims)
-                    ->where('section.academic_yr', $customClaims)
-                    ->where('student.parent_id', 0)
-                    ->where('student.IsDelete', 'N')
-                    ->where('student.isNew', 'Y')
-                    ->get()
-                    ->toArray();
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the classes for new student list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            return DB::table('student')
+                ->distinct()
+                ->select([
+                    'student.class_id as class_id',
+                    'student.section_id as section_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                ])
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->where('class.academic_yr', $customClaims)
+                ->where('section.academic_yr', $customClaims)
+                ->where('student.parent_id', 0)
+                ->where('student.IsDelete', 'N')
+                ->where('student.isNew', 'Y')
+                ->get()
+                ->toArray();
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15425,52 +11055,43 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $date = $request->input('date');
-                $carbonDate = Carbon::createFromFormat('d-m-Y', $date);
+            $date = $request->input('date');
+            $carbonDate = Carbon::createFromFormat('d-m-Y', $date);
 
-                $day = $carbonDate->day;
-                $month = $carbonDate->month;
+            $day = $carbonDate->day;
+            $month = $carbonDate->month;
 
-                $staffBirthday = Teacher::where('IsDelete', 'N')
-                    ->whereMonth('birthday', $month)
-                    ->whereDay('birthday', $day)
-                    ->get();
+            $staffBirthday = Teacher::where('IsDelete', 'N')
+                ->whereMonth('birthday', $month)
+                ->whereDay('birthday', $day)
+                ->get();
 
-                $studentBirthday = Student::where('IsDelete', 'N')
-                    ->join('class', 'class.class_id', '=', 'student.class_id')
-                    ->join('section', 'section.section_id', '=', 'student.section_id')
-                    ->join('contact_details', 'contact_details.id', '=', 'student.parent_id')
-                    ->whereMonth('dob', $month)
-                    ->whereDay('dob', $day)
-                    ->where('student.academic_yr', $customClaims)
-                    ->select('student.*', 'class.name as classname', 'section.name as sectionname', 'contact_details.*')
-                    ->get();
+            $studentBirthday = Student::where('IsDelete', 'N')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->join('contact_details', 'contact_details.id', '=', 'student.parent_id')
+                ->whereMonth('dob', $month)
+                ->whereDay('dob', $day)
+                ->where('student.academic_yr', $customClaims)
+                ->select('student.*', 'class.name as classname', 'section.name as sectionname', 'contact_details.*')
+                ->get();
 
-                $teachercount = Teacher::where('IsDelete', 'N')
-                    ->whereMonth('birthday', $month)
-                    ->whereDay('birthday', $day)
-                    ->count();
-                $studentcount = Student::where('IsDelete', 'N')
-                    ->whereMonth('dob', $month)
-                    ->whereDay('dob', $day)
-                    ->where('academic_yr', $customClaims)
-                    ->count();
+            $teachercount = Teacher::where('IsDelete', 'N')
+                ->whereMonth('birthday', $month)
+                ->whereDay('birthday', $day)
+                ->count();
+            $studentcount = Student::where('IsDelete', 'N')
+                ->whereMonth('dob', $month)
+                ->whereDay('dob', $day)
+                ->where('academic_yr', $customClaims)
+                ->count();
 
-                return response()->json([
-                    'staffBirthday' => $staffBirthday,
-                    'studentBirthday' => $studentBirthday,
-                    'studentcount' => $studentcount,
-                    'teachercount' => $teachercount
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the birthday list of staff and student.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'staffBirthday' => $staffBirthday,
+                'studentBirthday' => $studentBirthday,
+                'studentcount' => $studentcount,
+                'teachercount' => $teachercount
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15483,44 +11104,36 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $student_id = $request->input('student_id');
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $students = DB::table('student')
-                    ->join('class', 'class.class_id', '=', 'student.class_id')
-                    ->join('section', 'section.section_id', '=', 'student.section_id')
-                    ->where([
-                        ['student_id', '=', $student_id],
-                        ['student.academic_yr', '=', $customClaims]
-                    ])
-                    ->select('student.*', 'class.name as classname', 'section.name as sectionname')
-                    ->get();
-                $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    // Check if the image_name is present and not empty
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_name = $concatprojecturl . '' . $student->image_name;
-                    } else {
-                        $student->image_name = '';
-                    }
-                });
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $students,
-                    'message' => 'Student data by studentid. ',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the student data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $student_id = $request->input('student_id');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $students = DB::table('student')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->where([
+                    ['student_id', '=', $student_id],
+                    ['student.academic_yr', '=', $customClaims]
+                ])
+                ->select('student.*', 'class.name as classname', 'section.name as sectionname')
+                ->get();
+            $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                // Check if the image_name is present and not empty
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_name = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_name = '';
+                }
+            });
+
+            return response()->json([
+                'status' => 200,
+                'data' => $students,
+                'message' => 'Student data by studentid. ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15533,51 +11146,43 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = $request->all();
-                // dd($studentData);
-                $data = [
-                    'blood_group' => $students['blood_group'],
-                    'house' => $students['house'],
-                    'permant_add' => $students['permant_add']
-                ];
 
-                $studentId = $students['student_id'];
+            $students = $request->all();
+            // dd($studentData);
+            $data = [
+                'blood_group' => $students['blood_group'],
+                'house' => $students['house'],
+                'permant_add' => $students['permant_add']
+            ];
 
-                // Handle Student Image
-                $sCroppedImage = $students['image_base'];
-                if ($sCroppedImage != '') {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
-                        $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
-                    } else {
-                        $ext = 'jpg';
-                    }
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
-                    $dataI = base64_decode($base64Data);
-                    $imgNameEnd = $studentId . '.' . $ext;
-                    $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
-                    file_put_contents($imagePath, $dataI);
-                    $data['image_name'] = $imgNameEnd;
-                    $doc_type_folder = 'student_image';
-                    upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
+            $studentId = $students['student_id'];
+
+            // Handle Student Image
+            $sCroppedImage = $students['image_base'];
+            if ($sCroppedImage != '') {
+                if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
+                    $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
+                } else {
+                    $ext = 'jpg';
                 }
-
-                // Update student
-                Student::where('student_id', $studentId)->update($data);
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student data updated successfully. ',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the birthday list of staff and student.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                $dataI = base64_decode($base64Data);
+                $imgNameEnd = $studentId . '.' . $ext;
+                $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
+                file_put_contents($imagePath, $dataI);
+                $data['image_name'] = $imgNameEnd;
+                $doc_type_folder = 'student_image';
+                upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
             }
+
+            // Update student
+            Student::where('student_id', $studentId)->update($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student data updated successfully. ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15589,69 +11194,61 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $students = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.section_id', $section_id)
-                    ->orderBy('roll_no')
-                    ->select(
-                        'student.student_id',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.house',
-                        'student.dob',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'parent.parent_id',
-                        'parent.father_name',
-                        'parent.f_mobile',
-                        'parent.m_mobile'
-                    )
-                    ->get()
-                    ->map(function ($student) {
-                        $confirm = DB::table('confirmation_idcard')
-                            ->where('parent_id', $student->parent_id)
-                            ->value('confirm');
 
-                        $student->idcard_confirm = $confirm ?? 'N';
-                        return $student;
-                    });
-                $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-                    if (!empty($student->image_name)) {
-                        $student->image_name = $concatprojecturl . '' . $student->image_name;
-                    } else {
-                        $student->image_name = '';
-                    }
+            $section_id = $request->input('section_id');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->where('student.isDelete', 'N')
+                ->where('student.section_id', $section_id)
+                ->orderBy('roll_no')
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.house',
+                    'student.dob',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'parent.parent_id',
+                    'parent.father_name',
+                    'parent.f_mobile',
+                    'parent.m_mobile'
+                )
+                ->get()
+                ->map(function ($student) {
+                    $confirm = DB::table('confirmation_idcard')
+                        ->where('parent_id', $student->parent_id)
+                        ->value('confirm');
+
+                    $student->idcard_confirm = $confirm ?? 'N';
+                    return $student;
                 });
+            $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+                if (!empty($student->image_name)) {
+                    $student->image_name = $concatprojecturl . '' . $student->image_name;
+                } else {
+                    $student->image_name = '';
+                }
+            });
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $students,
-                    'message' => 'Student data by class. ',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the birthday list of staff and student.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $students,
+                'message' => 'Student data by class. ',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15664,69 +11261,61 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $students = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.section_id', $section_id)
-                    ->orderBy('roll_no')
-                    ->select(
-                        'student.student_id',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.house',
-                        'student.dob',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'parent.parent_id',
-                        'parent.father_name',
-                        'parent.f_mobile',
-                        'parent.m_mobile'
-                    )
-                    ->get();
-                foreach ($students as $srow) {
-                    $parent_id = $srow->parent_id;
 
-                    // Update parent data
-                    DB::table('parent')
-                        ->where('parent_id', $parent_id)
-                        ->update([
-                            'f_mobile' => $request->input("f_mobile_$parent_id"),
-                            'm_mobile' => $request->input("m_mobile_$parent_id"),
-                        ]);
+            $section_id = $request->input('section_id');
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->where('student.isDelete', 'N')
+                ->where('student.section_id', $section_id)
+                ->orderBy('roll_no')
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.house',
+                    'student.dob',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'parent.parent_id',
+                    'parent.father_name',
+                    'parent.f_mobile',
+                    'parent.m_mobile'
+                )
+                ->get();
+            foreach ($students as $srow) {
+                $parent_id = $srow->parent_id;
 
-                    // Update student data
-                    DB::table('student')
-                        ->where('student_id', $srow->student_id)
-                        ->update([
-                            'permant_add' => $request->input("permant_add_$parent_id"),
-                            'blood_group' => $request->input("blood_group_$parent_id"),
-                            'house' => $request->input("house_$parent_id"),
-                        ]);
-                }
+                // Update parent data
+                DB::table('parent')
+                    ->where('parent_id', $parent_id)
+                    ->update([
+                        'f_mobile' => $request->input("f_mobile_$parent_id"),
+                        'm_mobile' => $request->input("m_mobile_$parent_id"),
+                    ]);
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student and parent records updated successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the updating of student data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                // Update student data
+                DB::table('student')
+                    ->where('student_id', $srow->student_id)
+                    ->update([
+                        'permant_add' => $request->input("permant_add_$parent_id"),
+                        'blood_group' => $request->input("blood_group_$parent_id"),
+                        'house' => $request->input("house_$parent_id"),
+                    ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student and parent records updated successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15739,87 +11328,79 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $section_id = $request->input('section_id');
-                $students = DB::table('student')
-                    ->join('class', 'student.class_id', '=', 'class.class_id')
-                    ->join('section', 'student.section_id', '=', 'section.section_id')
-                    ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
-                    ->where('student.isDelete', 'N')
-                    ->where('student.section_id', $section_id)
-                    ->orderBy('roll_no')
-                    ->select(
-                        'student.student_id',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'student.roll_no',
-                        'student.image_name',
-                        'student.reg_no',
-                        'student.permant_add',
-                        'student.blood_group',
-                        'student.house',
-                        'student.dob',
-                        'class.name as class_name',
-                        'section.name as sec_name',
-                        'parent.parent_id',
-                        'parent.father_name',
-                        'parent.f_mobile',
-                        'parent.m_mobile'
-                    )
-                    ->get();
-                foreach ($students as $srow) {
-                    $parent_id = $srow->parent_id;
 
-                    // Update parent data
-                    DB::table('parent')
+            $section_id = $request->input('section_id');
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->where('student.isDelete', 'N')
+                ->where('student.section_id', $section_id)
+                ->orderBy('roll_no')
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.roll_no',
+                    'student.image_name',
+                    'student.reg_no',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.house',
+                    'student.dob',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'parent.parent_id',
+                    'parent.father_name',
+                    'parent.f_mobile',
+                    'parent.m_mobile'
+                )
+                ->get();
+            foreach ($students as $srow) {
+                $parent_id = $srow->parent_id;
+
+                // Update parent data
+                DB::table('parent')
+                    ->where('parent_id', $parent_id)
+                    ->update([
+                        'f_mobile' => $request->input("f_mobile_$parent_id"),
+                        'm_mobile' => $request->input("m_mobile_$parent_id"),
+                    ]);
+
+                // Update student data
+                DB::table('student')
+                    ->where('student_id', $srow->student_id)
+                    ->update([
+                        'permant_add' => $request->input("permant_add_$parent_id"),
+                        'blood_group' => $request->input("blood_group_$parent_id"),
+                        'house' => $request->input("house_$parent_id"),
+                    ]);
+                $data2 = [
+                    'confirm' => 'Y',
+                    'parent_id' => $parent_id,
+                    'academic_yr' => $customClaims,
+                ];
+
+                $exists = DB::table('confirmation_idcard')
+                    ->where('parent_id', $parent_id)
+                    ->exists();
+
+                if ($exists) {
+                    DB::table('confirmation_idcard')
                         ->where('parent_id', $parent_id)
-                        ->update([
-                            'f_mobile' => $request->input("f_mobile_$parent_id"),
-                            'm_mobile' => $request->input("m_mobile_$parent_id"),
-                        ]);
-
-                    // Update student data
-                    DB::table('student')
-                        ->where('student_id', $srow->student_id)
-                        ->update([
-                            'permant_add' => $request->input("permant_add_$parent_id"),
-                            'blood_group' => $request->input("blood_group_$parent_id"),
-                            'house' => $request->input("house_$parent_id"),
-                        ]);
-                    $data2 = [
-                        'confirm' => 'Y',
-                        'parent_id' => $parent_id,
-                        'academic_yr' => $customClaims,
-                    ];
-
-                    $exists = DB::table('confirmation_idcard')
-                        ->where('parent_id', $parent_id)
-                        ->exists();
-
-                    if ($exists) {
-                        DB::table('confirmation_idcard')
-                            ->where('parent_id', $parent_id)
-                            ->update($data2);
-                    } else {
-                        DB::table('confirmation_idcard')
-                            ->insert($data2);
-                    }
+                        ->update($data2);
+                } else {
+                    DB::table('confirmation_idcard')
+                        ->insert($data2);
                 }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Id card details are saved and confirmed.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the updating of student data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Id card details are saved and confirmed.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15832,44 +11413,36 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $students = $request->all();
-                // dd($studentData);
 
-                $studentId = $students['student_id'];
+            $students = $request->all();
+            // dd($studentData);
 
-                // Handle Student Image
-                $sCroppedImage = $students['image_base'];
-                if ($sCroppedImage != '') {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
-                        $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
-                    } else {
-                        $ext = 'jpg';
-                    }
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+            $studentId = $students['student_id'];
+
+            // Handle Student Image
+            $sCroppedImage = $students['image_base'];
+            if ($sCroppedImage != '') {
+                if (preg_match('/^data:image\/(\w+);base64,/', $sCroppedImage, $matches)) {
+                    $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
+                } else {
                     $ext = 'jpg';
-                    $dataI = base64_decode($base64Data);
-                    $imgNameEnd = $studentId . '.' . $ext;
-                    $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
-                    file_put_contents($imagePath, $dataI);
-                    $data['image_name'] = $imgNameEnd;
-                    $doc_type_folder = 'student_image';
-                    upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
                 }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student Photo Saved Successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the updating of student photo.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sCroppedImage);
+                $ext = 'jpg';
+                $dataI = base64_decode($base64Data);
+                $imgNameEnd = $studentId . '.' . $ext;
+                $imagePath = storage_path('app/public/student_images/' . $imgNameEnd);
+                file_put_contents($imagePath, $dataI);
+                $data['image_name'] = $imgNameEnd;
+                $doc_type_folder = 'student_image';
+                upload_student_profile_image_into_folder($studentId, $imgNameEnd, $doc_type_folder, $base64Data);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student Photo Saved Successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15882,86 +11455,78 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $studentId = $request->input('student_id');
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-                $parentdata = DB::table('student as s')
-                    ->select(
-                        's.*',
-                        'p.parent_id',
-                        'p.father_name',
-                        'p.father_occupation',
-                        'p.f_office_add',
-                        'p.f_office_tel',
-                        'p.f_mobile',
-                        'p.f_email',
-                        'p.mother_occupation',
-                        'p.m_office_add',
-                        'p.m_office_tel',
-                        'p.mother_name',
-                        'p.m_mobile',
-                        'p.m_emailid',
-                        'p.parent_adhar_no',
-                        'p.m_adhar_no',
-                        'p.f_dob',
-                        'p.m_dob',
-                        'p.f_blood_group',
-                        'p.m_blood_group',
-                        'p.f_qualification',
-                        'p.m_qualification',
-                        'p.father_image_name',
-                        'p.mother_image_name',
-                        'u.user_id',
-                        'c.name as class_name',
-                        'd.name as sec_name',
-                        'e.house_name'
-                    )
-                    ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
-                    ->join('user_master as u', 's.parent_id', '=', 'u.reg_id')
-                    ->join('class as c', 's.class_id', '=', 'c.class_id')
-                    ->join('section as d', 's.section_id', '=', 'd.section_id')
-                    ->leftJoin('house as e', 's.house', '=', 'e.house_id')
-                    ->where('s.student_id', $studentId)
-                    ->where('s.academic_yr', $customClaims)
-                    ->where('u.role_id', 'P')
-                    ->get();
-                $parentdata->each(function ($parent) use ($parent_app_url, $codeigniter_app_url) {
-                    // Check if the image_name is present and not empty
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/parent_image/';
-                    if (!empty($parent->father_image_name)) {
-                        $parent->father_image_name = $concatprojecturl . '' . $parent->father_image_name;
-                    } else {
-                        $parent->father_image_name = '';
-                    }
 
-                    if (!empty($parent->mother_image_name)) {
-                        $parent->mother_image_name = $concatprojecturl . '' . $parent->mother_image_name;
-                    } else {
-                        $parent->mother_image_name = '';
-                    }
+            $studentId = $request->input('student_id');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $parentdata = DB::table('student as s')
+                ->select(
+                    's.*',
+                    'p.parent_id',
+                    'p.father_name',
+                    'p.father_occupation',
+                    'p.f_office_add',
+                    'p.f_office_tel',
+                    'p.f_mobile',
+                    'p.f_email',
+                    'p.mother_occupation',
+                    'p.m_office_add',
+                    'p.m_office_tel',
+                    'p.mother_name',
+                    'p.m_mobile',
+                    'p.m_emailid',
+                    'p.parent_adhar_no',
+                    'p.m_adhar_no',
+                    'p.f_dob',
+                    'p.m_dob',
+                    'p.f_blood_group',
+                    'p.m_blood_group',
+                    'p.f_qualification',
+                    'p.m_qualification',
+                    'p.father_image_name',
+                    'p.mother_image_name',
+                    'u.user_id',
+                    'c.name as class_name',
+                    'd.name as sec_name',
+                    'e.house_name'
+                )
+                ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+                ->join('user_master as u', 's.parent_id', '=', 'u.reg_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as d', 's.section_id', '=', 'd.section_id')
+                ->leftJoin('house as e', 's.house', '=', 'e.house_id')
+                ->where('s.student_id', $studentId)
+                ->where('s.academic_yr', $customClaims)
+                ->where('u.role_id', 'P')
+                ->get();
+            $parentdata->each(function ($parent) use ($parent_app_url, $codeigniter_app_url) {
+                // Check if the image_name is present and not empty
+                $concatprojecturl = $codeigniter_app_url . '' . 'uploads/parent_image/';
+                if (!empty($parent->father_image_name)) {
+                    $parent->father_image_name = $concatprojecturl . '' . $parent->father_image_name;
+                } else {
+                    $parent->father_image_name = '';
+                }
 
-                    if (!empty($parent->guardian_image_name)) {
-                        $parent->guardian_image_name = $concatprojecturl . '' . $parent->guardian_image_name;
-                    } else {
-                        $parent->guardian_image_name = '';
-                    }
-                });
-                return response()->json([
-                    'status' => 200,
-                    'data' => $parentdata,
-                    'message' => 'Parent Guardian Image data.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of parent and guardian image.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+                if (!empty($parent->mother_image_name)) {
+                    $parent->mother_image_name = $concatprojecturl . '' . $parent->mother_image_name;
+                } else {
+                    $parent->mother_image_name = '';
+                }
+
+                if (!empty($parent->guardian_image_name)) {
+                    $parent->guardian_image_name = $concatprojecturl . '' . $parent->guardian_image_name;
+                } else {
+                    $parent->guardian_image_name = '';
+                }
+            });
+            return response()->json([
+                'status' => 200,
+                'data' => $parentdata,
+                'message' => 'Parent Guardian Image data.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -15974,93 +11539,85 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $studentId = $request->input('student_id');
-                $parentId = $request->input('parent_id');
-                $father_image = $request->input('father_image');
-                $mother_image = $request->input('mother_image');
-                $guardian_image = $request->input('guardian_image');
-                if ($guardian_image != '') {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $guardian_image, $matches)) {
-                        $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
-                    } else {
-                        $ext = 'jpg';
-                    }
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $guardian_image);
-                    $dataI = base64_decode($base64Data);
-                    $imgNameEndG = 'g_' . $parentId . '.' . $ext;
-                    $directory = storage_path('app/public/parent_image');
 
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);  // Create directory with permissions, recursive
-                    }
+            $studentId = $request->input('student_id');
+            $parentId = $request->input('parent_id');
+            $father_image = $request->input('father_image');
+            $mother_image = $request->input('mother_image');
+            $guardian_image = $request->input('guardian_image');
+            if ($guardian_image != '') {
+                if (preg_match('/^data:image\/(\w+);base64,/', $guardian_image, $matches)) {
+                    $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
+                } else {
+                    $ext = 'jpg';
+                }
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $guardian_image);
+                $dataI = base64_decode($base64Data);
+                $imgNameEndG = 'g_' . $parentId . '.' . $ext;
+                $directory = storage_path('app/public/parent_image');
 
-                    $imagePath = $directory . '/' . $imgNameEndG;
-                    file_put_contents($imagePath, $dataI);
-                    $data['guardian_image_name'] = $imgNameEndG;
-                    $doc_type_folder = 'parent_image';
-                    upload_guardian_profile_image_into_folder($parentId, $imgNameEndG, $doc_type_folder, $base64Data);
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0755, true);  // Create directory with permissions, recursive
                 }
 
-                if ($father_image != '') {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $father_image, $matches)) {
-                        $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
-                    } else {
-                        $ext = 'jpg';
-                    }
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $father_image);
-
-                    $data = base64_decode($base64Data);
-                    $imgNameEndF = 'f_' . $parentId . '.' . $ext;
-                    $directory = storage_path('app/public/parent_image');
-
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);  // Create directory with permissions, recursive
-                    }
-
-                    $imagePath = $directory . '/' . $imgNameEndF;
-                    file_put_contents($imagePath, $data);
-                    $data1['father_image_name'] = $imgNameEndF;
-                    $doc_type_folder = 'parent_image';
-                    upload_father_profile_image_into_folder($parentId, $imgNameEndF, $doc_type_folder, $base64Data);
-                }
-
-                if ($mother_image != '') {
-                    if (preg_match('/^data:image\/(\w+);base64,/', $mother_image, $matches)) {
-                        $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
-                    } else {
-                        $ext = 'jpg';
-                    }
-                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mother_image);
-
-                    $data = base64_decode($base64Data);
-                    $imgNameEndM = 'm_' . $parentId . '.' . $ext;
-                    $directory = storage_path('app/public/parent_image');
-
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);
-                    }
-
-                    $imagePath = $directory . '/' . $imgNameEndM;
-                    file_put_contents($imagePath, $data);
-                    $data1['mother_image_name'] = $imgNameEndM;
-                    $doc_type_folder = 'parent_image';
-                    upload_mother_profile_image_into_folder($parentId, $imgNameEndM, $doc_type_folder, $base64Data);
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Parent guardian image data successfully updated.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the updating of parent and guardian image.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $imagePath = $directory . '/' . $imgNameEndG;
+                file_put_contents($imagePath, $dataI);
+                $data['guardian_image_name'] = $imgNameEndG;
+                $doc_type_folder = 'parent_image';
+                upload_guardian_profile_image_into_folder($parentId, $imgNameEndG, $doc_type_folder, $base64Data);
             }
+
+            if ($father_image != '') {
+                if (preg_match('/^data:image\/(\w+);base64,/', $father_image, $matches)) {
+                    $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
+                } else {
+                    $ext = 'jpg';
+                }
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $father_image);
+
+                $data = base64_decode($base64Data);
+                $imgNameEndF = 'f_' . $parentId . '.' . $ext;
+                $directory = storage_path('app/public/parent_image');
+
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0755, true);  // Create directory with permissions, recursive
+                }
+
+                $imagePath = $directory . '/' . $imgNameEndF;
+                file_put_contents($imagePath, $data);
+                $data1['father_image_name'] = $imgNameEndF;
+                $doc_type_folder = 'parent_image';
+                upload_father_profile_image_into_folder($parentId, $imgNameEndF, $doc_type_folder, $base64Data);
+            }
+
+            if ($mother_image != '') {
+                if (preg_match('/^data:image\/(\w+);base64,/', $mother_image, $matches)) {
+                    $ext = strtolower($matches[1]);  // e.g., "png", "jpeg", "jpg"
+                } else {
+                    $ext = 'jpg';
+                }
+                $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $mother_image);
+
+                $data = base64_decode($base64Data);
+                $imgNameEndM = 'm_' . $parentId . '.' . $ext;
+                $directory = storage_path('app/public/parent_image');
+
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0755, true);
+                }
+
+                $imagePath = $directory . '/' . $imgNameEndM;
+                file_put_contents($imagePath, $data);
+                $data1['mother_image_name'] = $imgNameEndM;
+                $doc_type_folder = 'parent_image';
+                upload_mother_profile_image_into_folder($parentId, $imgNameEndM, $doc_type_folder, $base64Data);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Parent guardian image data successfully updated.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16343,85 +11900,74 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
-                //   dd($class_id,$section_id);
-                $only_date = Carbon::today()->toDateString();
-                $absentstudents = DB::table('attendance')
-                    ->join('student', 'student.student_id', '=', 'attendance.student_id')
-                    ->join('class', 'class.class_id', '=', 'attendance.class_id')
-                    ->join('section', 'section.section_id', '=', 'attendance.section_id')
-                    ->leftJoin('redington_webhook_details', function ($join) use ($only_date) {
-                        $join
-                            ->on('redington_webhook_details.stu_teacher_id', '=', 'student.student_id')
-                            ->where('redington_webhook_details.message_type', '=', 'student_daily_attendance_shortage')
-                            ->whereDate('redington_webhook_details.created_at', '=', $only_date);
-                    })
-                    ->where('attendance.attendance_status', '1')
-                    ->where('only_date', $only_date)
-                    ->where('student.isDelete', 'N')
-                    ->when($class_id, function ($query) use ($class_id) {
-                        return $query->where('attendance.class_id', $class_id);
-                    })
-                    ->when($section_id, function ($query) use ($section_id) {
-                        return $query->where('attendance.section_id', $section_id);
-                    })
-                    ->select(
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'class.name as classname',
-                        'section.name as sectionname',
-                        'class.class_id',
-                        'section.section_id',
-                        'student.student_id',
-                        DB::raw('COUNT(redington_webhook_details.webhook_id) as messages_sent_count'),
-                        DB::raw('MAX(redington_webhook_details.created_at) as last_message_sent_at'),
-                        DB::raw('MAX(redington_webhook_details.webhook_id) as webhook_id'),
-                        DB::raw("
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
+            $only_date = Carbon::today()->toDateString();
+            $absentstudents = DB::table('attendance')
+                ->join('student', 'student.student_id', '=', 'attendance.student_id')
+                ->join('class', 'class.class_id', '=', 'attendance.class_id')
+                ->join('section', 'section.section_id', '=', 'attendance.section_id')
+                ->leftJoin('redington_webhook_details', function ($join) use ($only_date) {
+                    $join
+                        ->on('redington_webhook_details.stu_teacher_id', '=', 'student.student_id')
+                        ->where('redington_webhook_details.message_type', '=', 'student_daily_attendance_shortage')
+                        ->whereDate('redington_webhook_details.created_at', '=', $only_date);
+                })
+                ->where('attendance.attendance_status', '1')
+                ->where('only_date', $only_date)
+                ->where('student.isDelete', 'N')
+                ->when($class_id, function ($query) use ($class_id) {
+                    return $query->where('attendance.class_id', $class_id);
+                })
+                ->when($section_id, function ($query) use ($section_id) {
+                    return $query->where('attendance.section_id', $section_id);
+                })
+                ->select(
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class.class_id',
+                    'section.section_id',
+                    'student.student_id',
+                    DB::raw('COUNT(redington_webhook_details.webhook_id) as messages_sent_count'),
+                    DB::raw('MAX(redington_webhook_details.created_at) as last_message_sent_at'),
+                    DB::raw('MAX(redington_webhook_details.webhook_id) as webhook_id'),
+                    DB::raw("
                                             CASE 
                                                 WHEN COUNT(redington_webhook_details.webhook_id) = 0 THEN 'not_try'
                                                 WHEN SUM(CASE WHEN redington_webhook_details.sms_sent = 'Y' THEN 1 ELSE 0 END) > 0 THEN 'Y'
                                                 ELSE 'N'
                                             END as sms_sent_status
                                         "),
-                        DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
-                        DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status')
-                    )
-                    ->groupBy(
-                        'student.student_id',
-                        'student.first_name',
-                        'student.mid_name',
-                        'student.last_name',
-                        'class.name',
-                        'section.name',
-                        'class.class_id',
-                        'section.section_id'
-                    )
-                    ->orderBy('section_id')
-                    ->get();
-                $countstudents = count($absentstudents);
-                // dd($countstudents);
-                $absentstudentdata = [
-                    'absent_student' => $absentstudents,
-                    'count_absent_student' => $countstudents
-                ];
+                    DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                    DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status')
+                )
+                ->groupBy(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'class.name',
+                    'section.name',
+                    'class.class_id',
+                    'section.section_id'
+                )
+                ->orderBy('section_id')
+                ->get();
+            $countstudents = count($absentstudents);
+            $absentstudentdata = [
+                'absent_student' => $absentstudents,
+                'count_absent_student' => $countstudents
+            ];
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $absentstudentdata,
-                    'message' => 'Absent students list.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Absent students list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $absentstudentdata,
+                'message' => 'Absent students list.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16434,10 +11980,9 @@ class AdminController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $date = $request->input('date');
-                $selectedCategory = $request->get('category');
-                $presentlate = DB::select("SELECT * FROM (
+            $date = $request->input('date');
+            $selectedCategory = $request->get('category');
+            $presentlate = DB::select("SELECT * FROM (
                     SELECT 
                         t.teacher_id, 
                         t.employee_id, 
@@ -16495,113 +12040,101 @@ class AdminController extends Controller
                     HAVING DATE_FORMAT(MIN(ta.punch_time), '%H:%i') > lt.late_time 
                 ) AS attendance_result
                 ORDER BY late_time ASC,teachercategoryname;");
-                foreach ($presentlate as $entry) {
-                    // Fetch class-section mapping for each teacher
-                    $classSections = DB::table('subject')
-                        ->join('class', 'class.class_id', '=', 'subject.class_id')
-                        ->join('section', 'section.section_id', '=', 'subject.section_id')
-                        ->where('subject.academic_yr', $customClaims)
-                        ->where('subject.teacher_id', $entry->teacher_id)
-                        ->select(
-                            'class.name as class_name',
-                            'section.name as section_name'
-                        )
-                        ->distinct()
-                        ->orderBy('class.class_id', 'ASC')
-                        ->orderBy('section.section_id', 'ASC')
-                        ->get();
+            foreach ($presentlate as $entry) {
+                $classSections = DB::table('subject')
+                    ->join('class', 'class.class_id', '=', 'subject.class_id')
+                    ->join('section', 'section.section_id', '=', 'subject.section_id')
+                    ->where('subject.academic_yr', $customClaims)
+                    ->where('subject.teacher_id', $entry->teacher_id)
+                    ->select(
+                        'class.name as class_name',
+                        'section.name as section_name'
+                    )
+                    ->distinct()
+                    ->orderBy('class.class_id', 'ASC')
+                    ->orderBy('section.section_id', 'ASC')
+                    ->get();
 
-                    if ($classSections->isNotEmpty()) {
-                        // Group by class name
-                        $grouped = [];
-                        foreach ($classSections as $row) {
-                            $grouped[$row->class_name][] = $row->section_name;
-                        }
-
-                        // Format: Class1(A,B), Class2(C,D)
-                        $formatted = [];
-                        foreach ($grouped as $class => $sections) {
-                            $formatted[] = $class . '(' . implode(',', $sections) . ')';
-                        }
-
-                        $entry->class_section = implode(', ', $formatted);
-                    } else {
-                        $entry->class_section = '';
+                if ($classSections->isNotEmpty()) {
+                    $grouped = [];
+                    foreach ($classSections as $row) {
+                        $grouped[$row->class_name][] = $row->section_name;
                     }
-                    $redington = DB::table('redington_webhook_details')
-                        ->where('stu_teacher_id', $entry->teacher_id)
-                        ->where('message_type', 'late_message_for_teacher')
-                        ->whereDate('created_at', $date)
-                        ->first();
-                    $entry->sms_sent = $redington->sms_sent ?? 'N';
-                    $entry->whatsappstatus = $redington->status ?? '';
+
+                    $formatted = [];
+                    foreach ($grouped as $class => $sections) {
+                        $formatted[] = $class . '(' . implode(',', $sections) . ')';
+                    }
+
+                    $entry->class_section = implode(', ', $formatted);
+                } else {
+                    $entry->class_section = '';
                 }
-                $absentstaff = DB::select("
+                $redington = DB::table('redington_webhook_details')
+                    ->where('stu_teacher_id', $entry->teacher_id)
+                    ->where('message_type', 'late_message_for_teacher')
+                    ->whereDate('created_at', $date)
+                    ->first();
+                $entry->sms_sent = $redington->sms_sent ?? 'N';
+                $entry->whatsappstatus = $redington->status ?? '';
+            }
+            $absentstaff = DB::select("
                         SELECT t.teacher_id, t.name, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t  JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
                         ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date')  UNION
                         SELECT t.teacher_id, t.name, t.phone,tc.name as category_name,  'Leave not applied' as leave_status,tc.tc_id FROM teacher AS t  LEFT JOIN teacher_category AS tc
                         ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'Y' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P') ORDER BY category_name;");
-                foreach ($absentstaff as $entryabsent) {
-                    $classSectionsabsent = DB::table('subject')
-                        ->join('class', 'class.class_id', '=', 'subject.class_id')
-                        ->join('section', 'section.section_id', '=', 'subject.section_id')
-                        ->where('subject.academic_yr', $customClaims)
-                        ->where('subject.teacher_id', $entryabsent->teacher_id)
-                        ->select(
-                            'class.name as class_name',
-                            'section.name as section_name',
-                            'section.section_id'
-                        )
-                        ->distinct()
-                        ->orderBy('section_id', 'ASC')
-                        ->get();
-                    if ($classSectionsabsent->isNotEmpty()) {
-                        // Group by class name
-                        $grouped = [];
-                        foreach ($classSectionsabsent as $row) {
-                            $grouped[$row->class_name][] = $row->section_name;
-                        }
-
-                        $formatted = [];
-                        foreach ($grouped as $class => $sections) {
-                            $formatted[] = $class . '(' . implode(',', $sections) . ')';
-                        }
-
-                        $entryabsent->class_section = implode(', ', $formatted);
-                    } else {
-                        $entryabsent->class_section = '';
+            foreach ($absentstaff as $entryabsent) {
+                $classSectionsabsent = DB::table('subject')
+                    ->join('class', 'class.class_id', '=', 'subject.class_id')
+                    ->join('section', 'section.section_id', '=', 'subject.section_id')
+                    ->where('subject.academic_yr', $customClaims)
+                    ->where('subject.teacher_id', $entryabsent->teacher_id)
+                    ->select(
+                        'class.name as class_name',
+                        'section.name as section_name',
+                        'section.section_id'
+                    )
+                    ->distinct()
+                    ->orderBy('section_id', 'ASC')
+                    ->get();
+                if ($classSectionsabsent->isNotEmpty()) {
+                    $grouped = [];
+                    foreach ($classSectionsabsent as $row) {
+                        $grouped[$row->class_name][] = $row->section_name;
                     }
-                }
-                $absentstaff = collect($absentstaff);
-                if (!empty($selectedCategory)) {
-                    $absentstaff = $absentstaff->where('category_name', $selectedCategory);
-                }
-                $grouped = collect($absentstaff)->groupBy('category_name')->map(function ($items, $category) {
-                    return [
-                        'category_name' => $category,
-                        'teachers' => $items->values(),
-                    ];
-                })->values();
 
-                $lateabsent = [
-                    'absent_staff' => $grouped,
-                    'present_late' => $presentlate
-                ];
+                    $formatted = [];
+                    foreach ($grouped as $class => $sections) {
+                        $formatted[] = $class . '(' . implode(',', $sections) . ')';
+                    }
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $lateabsent,
-                    'message' => 'Absent and late teachers.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Absent and late teachers.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                    $entryabsent->class_section = implode(', ', $formatted);
+                } else {
+                    $entryabsent->class_section = '';
+                }
             }
+            $absentstaff = collect($absentstaff);
+            if (!empty($selectedCategory)) {
+                $absentstaff = $absentstaff->where('category_name', $selectedCategory);
+            }
+            $grouped = collect($absentstaff)->groupBy('category_name')->map(function ($items, $category) {
+                return [
+                    'category_name' => $category,
+                    'teachers' => $items->values(),
+                ];
+            })->values();
+
+            $lateabsent = [
+                'absent_staff' => $grouped,
+                'present_late' => $presentlate
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'data' => $lateabsent,
+                'message' => 'Absent and late teachers.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16615,10 +12148,9 @@ class AdminController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $selectedCategory = $request->get('category');
-                $date = $request->input('date');
-                $nonteacherpresent = DB::select("SELECT * FROM (
+            $selectedCategory = $request->get('category');
+            $date = $request->input('date');
+            $nonteacherpresent = DB::select("SELECT * FROM (
     SELECT 
         t.teacher_id, 
         t.employee_id, 
@@ -16677,48 +12209,40 @@ class AdminController extends Controller
 ) AS combined
 ORDER BY combined.late_time,combined.teachercategoryname;");
 
-                $nonteacherabsent = DB::select("SELECT t.teacher_id, t.name,t.designation, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
+            $nonteacherabsent = DB::select("SELECT t.teacher_id, t.name,t.designation, t.phone,tc.name as category_name, 'Leave applied' as leave_status,tc.tc_id FROM teacher AS t JOIN user_master AS u ON t.teacher_id = u.reg_id JOIN leave_application AS la ON t.teacher_id = la.staff_id LEFT JOIN teacher_category AS tc
     ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'N' and la.leave_start_date<='$date' and la.leave_end_date>='$date'  and la.status='P' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') UNION
 SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'Leave not applied' as leave_status,tc.tc_id FROM teacher AS t  LEFT JOIN teacher_category AS tc
     ON t.tc_id = tc.tc_id WHERE t.isDelete = 'N'  AND tc.teaching = 'N' and t.employee_id not in(select employee_id from teacher_attendance ta where date_format(ta.punch_time,'%Y-%m-%d') = '$date') and t.teacher_id not in (select staff_id from leave_application la where la.leave_start_date<='$date' and la.leave_end_date>='$date' and la.status='P') ORDER BY category_name ;");
-                $nonteacherabsent = collect($nonteacherabsent);
-                if (!empty($selectedCategory)) {
-                    $nonteacherabsent = $nonteacherabsent->where('category_name', $selectedCategory);
-                }
-                $grouped = collect($nonteacherabsent)->groupBy('category_name')->map(function ($items, $category) {
-                    return [
-                        'category_name' => $category,
-                        'teachers' => $items->values(),
-                    ];
-                })->values();
-                foreach ($nonteacherpresent as $nonteacherpresentt) {
-                    $redington = DB::table('redington_webhook_details')
-                        ->where('stu_teacher_id', $nonteacherpresentt->teacher_id)
-                        ->where('message_type', 'late_message_for_teacher')
-                        ->whereDate('created_at', $date)
-                        ->first();
-                    $nonteacherpresentt->sms_sent = $redington->sms_sent ?? 'N';
-                    $nonteacherpresentt->whatsappstatus = $redington->status ?? '';
-                }
-                // dd($nonteacherabsent);
-                $nonteacher = [
-                    'nonteacher_present' => $nonteacherpresent,
-                    'nonteacher_absent' => $grouped
-                ];
-                return response()->json([
-                    'status' => 200,
-                    'data' => $nonteacher,
-                    'message' => 'Absent non teachers.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Absent non teachers.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            $nonteacherabsent = collect($nonteacherabsent);
+            if (!empty($selectedCategory)) {
+                $nonteacherabsent = $nonteacherabsent->where('category_name', $selectedCategory);
             }
+            $grouped = collect($nonteacherabsent)->groupBy('category_name')->map(function ($items, $category) {
+                return [
+                    'category_name' => $category,
+                    'teachers' => $items->values(),
+                ];
+            })->values();
+            foreach ($nonteacherpresent as $nonteacherpresentt) {
+                $redington = DB::table('redington_webhook_details')
+                    ->where('stu_teacher_id', $nonteacherpresentt->teacher_id)
+                    ->where('message_type', 'late_message_for_teacher')
+                    ->whereDate('created_at', $date)
+                    ->first();
+                $nonteacherpresentt->sms_sent = $redington->sms_sent ?? 'N';
+                $nonteacherpresentt->whatsappstatus = $redington->status ?? '';
+            }
+            // dd($nonteacherabsent);
+            $nonteacher = [
+                'nonteacher_present' => $nonteacherpresent,
+                'nonteacher_absent' => $grouped
+            ];
+            return response()->json([
+                'status' => 200,
+                'data' => $nonteacher,
+                'message' => 'Absent non teachers.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16731,36 +12255,28 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $teachers = DB::table('lesson_plan')
-                    ->distinct()
-                    ->select('teacher.teacher_id', 'teacher.name', 'lesson_plan.reg_id')
-                    ->join('teacher', 'lesson_plan.reg_id', '=', 'teacher.teacher_id')
-                    ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                    ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
-                    ->where('lesson_plan.academic_yr', $customClaims)
-                    ->where('lesson_plan.approve', '!=', 'Y')
-                    ->where('chapters.isDelete', '!=', 'Y')
-                    ->get();
-                $teachers = $teachers->map(function ($teacher) use ($customClaims) {
-                    $lessonCount = getPendingLessonCountForTeacher($customClaims, $teacher->teacher_id);
-                    $teacher->name = $teacher->name . " ({$lessonCount})";
-                    return $teacher;
-                });
-                return response()->json([
-                    'status' => 200,
-                    'data' => $teachers,
-                    'message' => 'Lesson Plan created teachers.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the lesson plan created teachers.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+
+            $teachers = DB::table('lesson_plan')
+                ->distinct()
+                ->select('teacher.teacher_id', 'teacher.name', 'lesson_plan.reg_id')
+                ->join('teacher', 'lesson_plan.reg_id', '=', 'teacher.teacher_id')
+                ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                ->join('class', 'lesson_plan.class_id', '=', 'class.class_id')
+                ->where('lesson_plan.academic_yr', $customClaims)
+                ->where('lesson_plan.approve', '!=', 'Y')
+                ->where('chapters.isDelete', '!=', 'Y')
+                ->get();
+            $teachers = $teachers->map(function ($teacher) use ($customClaims) {
+                $lessonCount = getPendingLessonCountForTeacher($customClaims, $teacher->teacher_id);
+                $teacher->name = $teacher->name . " ({$lessonCount})";
+                return $teacher;
+            });
+            return response()->json([
+                'status' => 200,
+                'data' => $teachers,
+                'message' => 'Lesson Plan created teachers.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16773,28 +12289,20 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $pending = DB::table('lesson_plan')
-                    ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
-                    ->where('chapters.isDelete', '!=', 'Y')
-                    ->where('lesson_plan.approve', '!=', 'Y')
-                    ->where('lesson_plan.academic_yr', $customClaims)
-                    ->count();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $pending,
-                    'message' => 'Lesson Plan created teachers.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the lesson plan created teachers.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $pending = DB::table('lesson_plan')
+                ->join('chapters', 'lesson_plan.chapter_id', '=', 'chapters.chapter_id')
+                ->where('chapters.isDelete', '!=', 'Y')
+                ->where('lesson_plan.approve', '!=', 'Y')
+                ->where('lesson_plan.academic_yr', $customClaims)
+                ->count();
+
+            return response()->json([
+                'status' => 200,
+                'data' => $pending,
+                'message' => 'Lesson Plan created teachers.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16807,98 +12315,90 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $settingsData = getSchoolSettingsData();
-                $schoolName = $settingsData->institute_name;
-                $defaultPassword = $settingsData->default_pwd;
-                $websiteUrl = $settingsData->website_url;
-                $shortName = $settingsData->short_name;
-                $whatsappIntegration = $settingsData->whatsapp_integration;
-                $smsIntegration = $settingsData->sms_integration;
-                $teacherids = $request->teacher_id;
-                $message = $request->message;
 
-                foreach ($teacherids as $teacherid) {
-                    $staffdetails = DB::table('teacher')->where('teacher_id', $teacherid)->first();
-                    $staffphone = $staffdetails->phone ?? null;
-                    // dd($staffphone);
-                    $templateName = 'emergency_message';
-                    $parameters = [ucwords(strtolower($staffdetails->name)) . ',' . $message];
-                    Log::info($staffphone);
-                    if ($staffphone) {
-                        if ($whatsappIntegration == 'Y') {
-                            $result = $this->whatsAppService->sendTextMessage(
-                                $staffphone,
-                                $templateName,
-                                $parameters
-                            );
-                            if (isset($result['code']) && isset($result['message'])) {
-                                $message_type = 'late_message_for_teacher';
+            $settingsData = getSchoolSettingsData();
+            $schoolName = $settingsData->institute_name;
+            $defaultPassword = $settingsData->default_pwd;
+            $websiteUrl = $settingsData->website_url;
+            $shortName = $settingsData->short_name;
+            $whatsappIntegration = $settingsData->whatsapp_integration;
+            $smsIntegration = $settingsData->sms_integration;
+            $teacherids = $request->teacher_id;
+            $message = $request->message;
 
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => null,
-                                    'phone_no' => $staffphone,
-                                    'message' => $message,
-                                    'status' => 'failed',
-                                    'sms_sent' => 'N',
-                                    'stu_teacher_id' => $teacherid,
-                                    'message_type' => $message_type,
-                                    'created_at' => now()
-                                ]);
-                            } else {
-                                // Proceed if no error
-                                $wamid = $result['messages'][0]['id'];
-                                $phone_no = $result['contacts'][0]['input'];
-                                $message_type = 'late_message_for_teacher';
+            foreach ($teacherids as $teacherid) {
+                $staffdetails = DB::table('teacher')->where('teacher_id', $teacherid)->first();
+                $staffphone = $staffdetails->phone ?? null;
+                // dd($staffphone);
+                $templateName = 'emergency_message';
+                $parameters = [ucwords(strtolower($staffdetails->name)) . ',' . $message];
+                Log::info($staffphone);
+                if ($staffphone) {
+                    if ($whatsappIntegration == 'Y') {
+                        $result = $this->whatsAppService->sendTextMessage(
+                            $staffphone,
+                            $templateName,
+                            $parameters
+                        );
+                        if (isset($result['code']) && isset($result['message'])) {
+                            $message_type = 'late_message_for_teacher';
 
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => $wamid,
-                                    'phone_no' => $phone_no,
-                                    'stu_teacher_id' => $teacherid,
-                                    'message' => $message,
-                                    'message_type' => $message_type,
-                                    'created_at' => now()
-                                ]);
-                            }
-                            sleep(5);
-                            $leftmessages = DB::table('redington_webhook_details')
-                                ->where('status', 'failed')
-                                ->where('sms_sent', 'N')
-                                ->where('message_type', 'late_message_for_teacher')
-                                ->whereDate('created_at', Carbon::today())
-                                ->get();
-                            foreach ($leftmessages as $leftmessage) {
-                                $temp_id = '1107164450693700526';
-                                $message = 'Dear Staff, ' . $message . '. Login @ ' . $websiteurl . ' for details.-EvolvU';
-                                $sms_status = app('App\Http\Services\SmsService')->sendSms($leftmessage->phone_no, $message, $temp_id);
-                                $messagestatus = $sms_status['data']['status'] ?? null;
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => null,
+                                'phone_no' => $staffphone,
+                                'message' => $message,
+                                'status' => 'failed',
+                                'sms_sent' => 'N',
+                                'stu_teacher_id' => $teacherid,
+                                'message_type' => $message_type,
+                                'created_at' => now()
+                            ]);
+                        } else {
+                            // Proceed if no error
+                            $wamid = $result['messages'][0]['id'];
+                            $phone_no = $result['contacts'][0]['input'];
+                            $message_type = 'late_message_for_teacher';
 
-                                if ($messagestatus == 'success') {
-                                    DB::table('redington_webhook_details')->where('webhook_id', $leftmessage->webhook_id)->update(['sms_sent' => 'Y']);
-                                }
-                            }
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $wamid,
+                                'phone_no' => $phone_no,
+                                'stu_teacher_id' => $teacherid,
+                                'message' => $message,
+                                'message_type' => $message_type,
+                                'created_at' => now()
+                            ]);
                         }
-                        if ($smsIntegration == 'Y') {
+                        sleep(5);
+                        $leftmessages = DB::table('redington_webhook_details')
+                            ->where('status', 'failed')
+                            ->where('sms_sent', 'N')
+                            ->where('message_type', 'late_message_for_teacher')
+                            ->whereDate('created_at', Carbon::today())
+                            ->get();
+                        foreach ($leftmessages as $leftmessage) {
                             $temp_id = '1107164450693700526';
-                            $message = 'Dear Staff,' . $message . '. Login @ ' . $websiteUrl . ' for details.-EvolvU';
-                            $sms_status = app('App\Http\Services\SmsService')->sendSms($staffphone, $message, $temp_id);
+                            $message = 'Dear Staff, ' . $message . '. Login @ ' . $websiteurl . ' for details.-EvolvU';
+                            $sms_status = app('App\Http\Services\SmsService')->sendSms($leftmessage->phone_no, $message, $temp_id);
+                            $messagestatus = $sms_status['data']['status'] ?? null;
+
+                            if ($messagestatus == 'success') {
+                                DB::table('redington_webhook_details')->where('webhook_id', $leftmessage->webhook_id)->update(['sms_sent' => 'Y']);
+                            }
                         }
                     }
+                    if ($smsIntegration == 'Y') {
+                        $temp_id = '1107164450693700526';
+                        $message = 'Dear Staff,' . $message . '. Login @ ' . $websiteUrl . ' for details.-EvolvU';
+                        $sms_status = app('App\Http\Services\SmsService')->sendSms($staffphone, $message, $temp_id);
+                    }
                 }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Whatsapp sended successfully.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Leaving Certificate Report.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Whatsapp sended successfully.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -16911,7 +12411,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            //  if($user->role_id == 'A'|| $user->role_id == 'U'  || $user->role_id == 'M'){
+
             $timetables = DB::table('timetable')
                 ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
@@ -17241,19 +12741,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'View Timetable!',
                 'success' => true
             ]);
-
-            //  }
-            //  else
-            //      {
-            //         return response()->json([
-            //             'status'=> 401,
-            //             'message'=>'This User Doesnot have Permission for the getting of department list.',
-            //             'data' =>$user->role_id,
-            //             'success'=>false
-            //             ]);
-            //         }
         } catch (Exception $e) {
-            \Log::error($e);  // Log the exception
+            \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -17261,13 +12750,10 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function listAdmissionClasses(Request $request)
     {
         try {
-            // Authenticate user
             $user = $this->authenticateUser();
 
-            // Get academic year from JWT
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            // Fetch classes open for new admission
             $classes = DB::table('new_admission_class as nac')
                 ->join('class as c', 'nac.class_id', '=', 'c.class_id')
                 ->where('nac.academic_yr', $academicYear)
@@ -17291,17 +12777,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function indexSuccessfulPayments(Request $request)
     {
         try {
-            // Authenticate user
             $user = $this->authenticateUser();
-
-            // Get academic year from JWT
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            // Get optional filters
             $classId = $request->query('class_id');
             $formId = $request->query('form_id');
 
-            // Build query
             $query = DB::table('online_admission_form as a')
                 ->join('class', 'class.class_id', '=', 'a.class_id')
                 ->join('online_admfee as b', 'b.form_id', '=', 'a.form_id')
@@ -17316,7 +12797,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 )
                 ->orderBy('a.adm_form_pk', 'asc');
 
-            // Optional filters
             if (!empty($classId)) {
                 $query->where('a.class_id', $classId);
             }
@@ -17351,10 +12831,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 400);
             }
 
-            // Authenticate user
             $user = $this->authenticateUser();
-
-            // Fetch application
             $application = DB::table('online_admission_form')
                 ->select(
                     'online_admission_form.*',
@@ -17372,14 +12849,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             if ($application->sibling === 'Y') {
-                // Example: "119^468"
                 $classSection = $application->sibling_class_id;
                 $class_id = null;
                 $section_id = null;
                 if (!empty($classSection) && strpos($classSection, '^') !== false) {
                     [$class_id, $section_id] = explode('^', $classSection);
                 }
-                // Sibling name logic
                 $sibling_id = $application->sibling_student_id;
                 if (!empty($sibling_id) && ctype_digit((string) $sibling_id)) {
                     $sibling_student = DB::table('student')
@@ -17397,7 +12872,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     $application->sibling_name = $sibling_id;
                 }
 
-                // Fetch class & section safely
                 $application->sibling_class = $class_id
                     ? DB::table('class')->where('class_id', $class_id)->first()->name
                     : null;
@@ -17407,7 +12881,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null;
             }
 
-            // Hardcoded doc types (same as CodeIgniter logic)
             $docTypes = [
                 '9R',
                 'AC',
@@ -19671,14 +15144,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
             $date = $request->input('date', date('Y-m-d'));
 
-            if (!in_array($user->role_id, ['A', 'M', 'T'])) {
-                return response()->json([
-                    'status' => 401,
-                    'success' => false,
-                    'message' => 'Unauthorized access'
-                ]);
-            }
-
             /*
              * |--------------------------------------------------------------------------
              * | 1️⃣ Total teachers per department
@@ -19783,20 +15248,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $date = $request->input('date', now()->toDateString());
-
-            if (!in_array($user->role_id, ['A', 'M', 'T'])) {
-                return response()->json([
-                    'status' => 401,
-                    'success' => false,
-                    'message' => 'Unauthorized access'
-                ]);
-            }
-
-            /*
-             * |--------------------------------------------------------------------------
-             * | 1️⃣ Total teachers per category
-             * |--------------------------------------------------------------------------
-             */
             $totalByCategory = DB::table('teacher as t')
                 ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
@@ -20492,492 +15943,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             'TotalClassesCount' => $totalClasses,
         ]);
     }
-
-    // ########################
-    // Dashboard Summary API
-    // ########################
-    // public function principalDashboardSummary(Request $request) {
-    //     try {
-    //         $user = $this->authenticateUser();
-    //         $short_code = JWTAuth::getPayload()->get('short_code');
-    //         $academicYr = JWTAuth::getPayload()->get('academic_year');
-    //         $currentDate = Carbon::now()->toDateString();
-    //         $response = [];
-
-    //         // 1. student
-    //         $totalStudent = DB::table('student')
-    //             ->where('IsDelete', 'N')
-    //             ->where('academic_yr', $academicYr)
-    //             ->select(DB::raw('COUNT(*) as total'))
-    //             ->value('total');
-
-    //         $presentStudent = DB::table('attendance')
-    //             ->where('only_date', $currentDate)
-    //             ->where('attendance_status', '0')
-    //             ->where('academic_yr', $academicYr)
-    //             ->select(DB::raw('COUNT(*) as present'))
-    //             ->value('present');
-
-    //         $date = $request->query('date', now()->toDateString());
-
-    //         $result = DB::selectOne("
-    //             SELECT
-    //                 COUNT(cs.class_id) AS total,
-    //                 SUM(
-    //                     CASE
-    //                         WHEN a.class_id IS NULL THEN 1
-    //                         ELSE 0
-    //                     END
-    //                 ) AS not_marked
-    //             FROM class c
-    //             JOIN section cs ON cs.class_id = c.class_id
-    //             LEFT JOIN (
-    //                 SELECT DISTINCT class_id, section_id
-    //                 FROM attendance
-    //                 WHERE only_date = ?
-    //             ) a
-    //                 ON a.class_id = c.class_id
-    //                 AND a.section_id = cs.section_id
-    //             WHERE c.academic_yr = ?
-    //         ", [$date, $academicYr]);
-
-    //         $response['student'] = [
-    //             'present' => $presentStudent,
-    //             'total'   => $totalStudent,
-    //             'attendanceNotMarked' => [
-    //                 'notMarked' => $result->not_marked,
-    //                 'total'        => $result->total,
-    //             ],
-    //         ];
-
-    //         // 2. staff
-    //         if($short_code == 'HSCS') {
-    //             $teachingStaff = DB::table('teacher as t')
-    //                 ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
-    //                 ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'Y')
-    //                 ->distinct('t.teacher_id')
-    //                 ->count(DB::raw('t.teacher_id'));
-
-    //             $attendanceteachingstaff = DB::table('teacher_attendance as ta')
-    //                 ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
-    //                 ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'Y')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->distinct('ta.employee_id')
-    //                 ->count(DB::raw('ta.employee_id'));
-
-    //             $nonTeachingQuery1 = DB::table('teacher as t')
-    //                 ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->select(DB::raw('t.teacher_id'));
-
-    //             $nonTeachingQuery2 = DB::table('teacher as c')
-    //                 ->leftJoin('teacher_category as tc', 'c.tc_id', '=', 'tc.tc_id')
-    //                 ->where('c.isDelete', 'N')
-    //                 ->where('c.designation', 'Caretaker')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->select(DB::raw('c.teacher_id'));
-
-    //             $non_teachingStaff = $nonTeachingQuery1
-    //                 ->union($nonTeachingQuery2)
-    //                 ->distinct()
-    //                 ->count();
-
-    //             $attendanceNonTeaching1 = DB::table('teacher_attendance as ta')
-    //                 ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
-    //                 ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->select(DB::raw('ta.employee_id'));
-
-    //             $attendanceNonTeaching2 = DB::table('teacher_attendance as ta')
-    //                 ->join('teacher as t', DB::raw('ta.employee_id'), '=', DB::raw('CAST(t.employee_id AS UNSIGNED)'))
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('t.designation', 'Caretaker')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->select(DB::raw('ta.employee_id'));
-
-    //             $attendancenonteachingstaff = $attendanceNonTeaching1
-    //                 ->union($attendanceNonTeaching2)
-    //                 ->distinct()
-    //                 ->count();
-
-    //             $response['staff'] = [
-    //                 'teachingStaff'              => $teachingStaff,
-    //                 'non_teachingStaff'          => $non_teachingStaff,
-    //                 'attendancenonteachingstaff' => $attendancenonteachingstaff,
-    //                 'attendanceteachingstaff'    => $attendanceteachingstaff,
-    //             ];
-    //         } else if('SACS') {
-    //             $teachingStaff = DB::table('teacher as t')
-    //                 ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
-    //                 ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'Y')
-    //                 ->distinct()
-    //                 ->count(DB::raw('t.teacher_id'));
-
-    //             $attendanceteachingstaff = DB::table('teacher_attendance as ta')
-    //                 ->join(
-    //                     'teacher as t',
-    //                     DB::raw('ta.employee_id'),
-    //                     '=',
-    //                     DB::raw('CAST(t.employee_id AS UNSIGNED)')
-    //                 )
-    //                 ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'Y')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->distinct()
-    //                 ->count(DB::raw('ta.employee_id'));
-
-    //             $nonTeachingTeachers = DB::table('teacher as t')
-    //                 ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
-    //                 ->leftJoin('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->select(DB::raw('t.teacher_id'));
-
-    //             $nonTeachingCaretakers = DB::table('teacher as c')
-    //                 ->leftJoin('teacher_category as tc', 'c.tc_id', '=', 'tc.tc_id')
-    //                 ->where('c.isDelete', 'N')
-    //                 ->where('c.designation', 'Caretaker')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->select(DB::raw('c.teacher_id'));
-
-    //             $non_teachingStaff = $nonTeachingTeachers
-    //                 ->union($nonTeachingCaretakers)
-    //                 ->distinct()
-    //                 ->count();
-
-    //             $attendanceNonTeachingTeachers = DB::table('teacher_attendance as ta')
-    //                 ->join(
-    //                     'teacher as t',
-    //                     DB::raw('ta.employee_id'),
-    //                     '=',
-    //                     DB::raw('CAST(t.employee_id AS UNSIGNED)')
-    //                 )
-    //                 ->join('user_master as u', 't.teacher_id', '=', 'u.reg_id')
-    //                 ->join('teacher_category as tc', 't.tc_id', '=', 'tc.tc_id')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('tc.teaching', 'N')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->select(DB::raw('ta.employee_id'));
-
-    //             $attendanceCaretakers = DB::table('teacher_attendance as ta')
-    //                 ->join(
-    //                     'teacher as t',
-    //                     DB::raw('ta.employee_id'),
-    //                     '=',
-    //                     DB::raw('CAST(t.employee_id AS UNSIGNED)')
-    //                 )
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('t.designation', 'Caretaker')
-    //                 ->whereDate('ta.punch_time', DB::raw('CURDATE()'))
-    //                 ->select(DB::raw('ta.employee_id'));
-
-    //             $attendancenonteachingstaff = $attendanceNonTeachingTeachers
-    //                 ->union($attendanceCaretakers)
-    //                 ->distinct()
-    //                 ->count();
-
-    //             $response['staff'] = [
-    //                 'teachingStaff'              => $teachingStaff,
-    //                 'non_teachingStaff'          => $non_teachingStaff,
-    //                 'attendancenonteachingstaff' => $attendancenonteachingstaff,
-    //                 'attendanceteachingstaff'    => $attendanceteachingstaff,
-    //             ];
-    //         }
-
-    //         // 3. staff birthday
-    //         $currentDate = Carbon::now();
-
-    //         // Teacher birthday count
-    //         $teachercount = DB::table('teacher')
-    //             ->where('IsDelete', 'N')
-    //             ->whereMonth(DB::raw('birthday'), $currentDate->month)
-    //             ->whereDay(DB::raw('birthday'), $currentDate->day)
-    //             ->select(DB::raw('COUNT(*) as cnt'))
-    //             ->value('cnt');
-
-    //         // Student birthday count
-    //         $studentcount = DB::table('student')
-    //             ->where('IsDelete', 'N')
-    //             ->where('academic_yr', $academicYr)
-    //             ->whereMonth(DB::raw('dob'), $currentDate->month)
-    //             ->whereDay(DB::raw('dob'), $currentDate->day)
-    //             ->select(DB::raw('COUNT(*) as cnt'))
-    //             ->value('cnt');
-
-    //         $teacherStudentBdayCount = $teachercount + $studentcount;
-
-    //         $response['staff_student_bday_count'] = [
-    //             'count' => $teacherStudentBdayCount,
-    //         ];
-
-    //         // 4. feeCollection
-    //         DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
-
-    //         $sql = "
-    //             SELECT SUM(installment_fees - concession - paid_amount) AS pending_fee FROM
-    //             (SELECT s.student_id, s.installment, installment_fees, COALESCE(SUM(d.amount), 0) AS concession, 0 AS paid_amount FROM
-    //             view_student_fees_category s LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment WHERE
-    //             s.academic_yr = '$academicYr' and s.installment<>4 AND due_date < CURDATE() AND s.student_installment NOT IN
-    //             (SELECT student_installment FROM view_student_fees_payment a WHERE a.academic_yr = '$academicYr') GROUP BY s.student_id, s.installment
-    //             UNION SELECT f.student_id AS student_id, b.installment AS installment, b.installment_fees, COALESCE(SUM(c.amount), 0) AS concession,
-    //             SUM(f.fees_paid) AS paid_amount FROM view_student_fees_payment f LEFT JOIN fee_concession_details c ON f.student_id = c.student_id
-    //             AND f.installment = c.installment JOIN view_fee_allotment b ON f.fee_allotment_id = b.fee_allotment_id AND b.installment = f.installment
-    //             WHERE b.installment<>4 and f.academic_yr = '$academicYr' GROUP BY f.installment, c.installment  HAVING
-    //             (b.installment_fees - COALESCE(SUM(c.amount), 0)) > SUM(f.fees_paid)) as z
-    //         ";
-
-    //         $results = DB::select($sql);
-
-    //         $pendingFee = $results[0]->pending_fee ?? 0;
-
-    //         $collectedfees = DB::select(
-    //             "SELECT 'Nursery' AS account,
-    //             IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment,
-    //             SUM(d.amount) AS amount
-    //                 FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c
-    //                 WHERE a.student_id = b.student_id
-    //                 AND b.class_id = c.class_id
-    //                 AND a.fees_payment_id = d.fees_payment_id
-    //                 AND a.isCancel = 'N'
-    //                 AND a.academic_yr = '$academicYr'
-    //                 AND c.name = 'Nursery'
-    //                 GROUP BY d.installment
-
-    //                 UNION
-
-    //                 SELECT 'KG' AS account,
-    //                     IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment,
-    //                     SUM(d.amount) AS amount
-    //                         FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c
-    //                         WHERE a.student_id = b.student_id
-    //                         AND b.class_id = c.class_id
-    //                         AND a.fees_payment_id = d.fees_payment_id
-    //                         AND a.isCancel = 'N'
-    //                         AND a.academic_yr = '$academicYr'
-    //                         AND c.name IN ('LKG','UKG')
-    //                         GROUP BY d.installment
-
-    //                         UNION
-
-    //                         SELECT 'School' AS account,
-    //                             IF(d.installment = 4, 'CBSE Exam fee', d.installment) AS installment,
-    //                             SUM(d.amount) AS amount
-    //                         FROM view_fees_payment_record a, view_fees_payment_detail d, student b, class c
-    //                         WHERE a.student_id = b.student_id
-    //                         AND b.class_id = c.class_id
-    //                         AND a.fees_payment_id = d.fees_payment_id
-    //                         AND a.isCancel = 'N'
-    //                         AND a.academic_yr = '$academicYr'
-    //                         AND c.name IN ('1','2','3','4','5','6','7','8','9','10','11','12')
-    //                         GROUP BY d.installment"
-    //         );
-    //         $totalAmount = number_format(collect($collectedfees)->sum('amount'), 2, '.', '');
-
-    //         $response['fees_collection'] = [
-    //             'Collected Fees' => $totalAmount,
-    //             'Pending Fees' => $pendingFee
-    //         ];
-
-    //         // 5. approve leave
-    //         $statuses = ['A', 'H'];
-
-    //         $leaveApplications = DB::table('leave_application')
-    //             ->whereIn('status', $statuses)
-    //             ->join('teacher', 'teacher.teacher_id', '=', 'leave_application.staff_id')
-    //             ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
-    //             ->orderBy('leave_app_id', 'DESC')
-    //             ->select('leave_application.*', 'teacher.name as teachername', 'leave_type_master.name as leavetypename')
-    //             ->where('leave_application.academic_yr', $academicYr)
-    //             ->get()
-    //             ->toArray();
-
-    //         $leaveapplication = count($leaveApplications);
-
-    //         $response['approve_leave'] = [
-    //             'count' => $leaveapplication,
-    //         ];
-
-    //         // $response['attendanceNotMarkedCount'] = [
-    //         //     'attendanceNotMarkedCount' => $result->not_marked,
-    //         //     'totalClassesCount'        => $result->total,
-    //         // ];
-
-    //         // $response['student']
-
-    //         // 7. lesson plan summary
-    //         $nextMonday = now()->next('Monday')->format('d-m-Y');
-    //         $totalNumberOfTeachers = DB::table('subject as s')
-    //             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('tc.teaching', 'Y')
-    //             ->where('t.isDelete', 'N')
-    //             ->where('s.academic_yr', $academicYr)
-    //             ->whereNotIn('s.sm_id', function ($query) {
-    //                 $query->select('sm_id')
-    //                     ->from('subjects_excluded_from_curriculum');
-    //             })
-    //             ->distinct('s.teacher_id')
-    //             ->count('s.teacher_id');
-
-    //         $lessonPlanSubmitted = DB::table('subject as s')
-    //             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-    //             ->join('class as c', 's.class_id', '=', 'c.class_id')
-    //             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-    //             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('tc.teaching', 'Y')
-    //             ->where('t.isDelete', 'N')
-    //             ->where('s.academic_yr', $academicYr)
-    //             ->whereIn(
-    //                 DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-    //                 function ($query) use ($nextMonday) {
-    //                     $query->select(
-    //                         DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-    //                     )
-    //                     ->from('lesson_plan')
-    //                     ->whereRaw(
-    //                         "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-    //                         [$nextMonday]
-    //                     );
-    //                 }
-    //             )
-    //             ->whereNotIn('s.sm_id', function ($query) {
-    //                 $query->select('sm_id')
-    //                     ->from('subjects_excluded_from_curriculum');
-    //             })
-    //             ->groupBy('s.teacher_id')
-    //             ->get()
-    //             ->count();
-
-    //         $lessonPlanNotSubmitted = DB::table('subject as s')
-    //             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-    //             ->join('class as c', 's.class_id', '=', 'c.class_id')
-    //             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-    //             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('tc.teaching', 'Y')
-    //             ->where('t.isDelete', 'N')
-    //             ->where('s.academic_yr', $academicYr)
-    //             ->whereNotIn(
-    //                 DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-    //                 function ($query) use ($nextMonday) {
-    //                     $query->select(
-    //                         DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-    //                     )
-    //                     ->from('lesson_plan')
-    //                     ->whereRaw(
-    //                         "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-    //                         [$nextMonday]
-    //                     );
-    //                 }
-    //             )
-    //             ->whereNotIn('s.sm_id', function ($query) {
-    //                 $query->select('sm_id')
-    //                     ->from('subjects_excluded_from_curriculum');
-    //             })
-    //             ->groupBy('s.teacher_id')
-    //             ->get()
-    //             ->count();
-
-    //         $pendingForApproval = DB::table('subject as s')
-    //             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-    //             ->join('class as c', 's.class_id', '=', 'c.class_id')
-    //             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-    //             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-    //             ->where('t.isDelete', 'N')
-    //             ->where('s.academic_yr', $academicYr)
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('tc.teaching', 'Y')
-    //             ->whereIn(
-    //                 DB::raw("CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)"),
-    //                 function ($query) use ($nextMonday) {
-    //                     $query->select(
-    //                         DB::raw("CONCAT(class_id, section_id, subject_id, reg_id)")
-    //                     )
-    //                     ->from('lesson_plan')
-    //                     ->where('approve', '!=', 'Y')
-    //                     ->whereRaw(
-    //                         "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-    //                         [$nextMonday]
-    //                     );
-    //                 }
-    //             )
-    //             ->whereNotIn('s.sm_id', function ($query) {
-    //                 $query->select('sm_id')
-    //                     ->from('subjects_excluded_from_curriculum');
-    //             })
-    //             ->groupBy('s.teacher_id')
-    //             ->get()
-    //             ->count();
-
-    //         $response['lesson_plan_summary'] = [
-    //             'totalNumberOfTeachers' => $totalNumberOfTeachers,
-    //             'lessonPlanSubmitted' => $lessonPlanSubmitted,
-    //             'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
-    //             'pendingForApproval' => $pendingForApproval,
-    //             'nextMonday' => $nextMonday
-    //         ];
-
-    //         // 8. attendanceSummaryByCategory
-    //         $date = $request->input('date', now()->toDateString());
-    //         $totalByCategory = DB::table('teacher as t')
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('t.isDelete', 'N')
-    //             ->groupBy('tc.name')
-    //             ->select(
-    //                 'tc.name as category',
-    //                 DB::raw('COUNT(t.teacher_id) as total')
-    //             )
-    //             ->pluck('total', 'category');
-
-    //         $presentByCategory = DB::table('teacher_attendance as ta')
-    //             ->join('teacher as t', 't.employee_id', '=', 'ta.employee_id')
-    //             ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-    //             ->where('t.isDelete', 'N')
-    //             ->whereDate('ta.punch_time', $date)
-    //             ->groupBy('tc.name')
-    //             ->select(
-    //                 'tc.name as category',
-    //                 DB::raw('COUNT(DISTINCT t.teacher_id) as present')
-    //             )
-    //             ->pluck('present', 'category');
-
-    //         $finalData = [];
-
-    //         foreach ($totalByCategory as $category => $total) {
-    //             $present = $presentByCategory[$category] ?? 0;
-
-    //             if(in_array($category,['Nursery teachers' , 'KG teachers' , 'SACS teachers' , 'Caretakers'])) {
-    //                 $response[$category] = [
-    //                     'total'   => $total,
-    //                     'present' => $present,
-    //                     'absent'  => $total - $present
-    //                 ];
-    //             }
-    //         }
-
-    //         return response()->json([
-    //             'data' => $response,
-    //             'count' => count($response),
-    //         ] , 200);
-    //     } catch(Exception $err) {
-    //         return response()->json([
-    //             'message' => 'Something went wrong',
-    //             'error' => $err->getMessage(),
-    //             'line' => $err->getLine(),
-    //         ], 500);
-    //     }
-    // }
 
     private function studentCard(Request $request, $academicYr)
     {

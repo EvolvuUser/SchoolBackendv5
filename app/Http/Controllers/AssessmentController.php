@@ -820,105 +820,47 @@ class AssessmentController extends Controller
     public function saveSubjectMapping(Request $request)
     {
         try {
-            // 1. Authenticate user
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                // 3. Validate required inputs
-                $validated = $request->validate([
-                    'subject_name' => 'required|integer',
-                    'report_sub_name' => 'required|integer'
-                ]);
+            $validated = $request->validate([
+                'subject_name' => 'required|integer',
+                'report_sub_name' => 'required|integer'
+            ]);
 
-                $sm_id = $validated['subject_name'];
-                $sub_rc_master_id = $validated['report_sub_name'];
+            $sm_id = $validated['subject_name'];
+            $sub_rc_master_id = $validated['report_sub_name'];
 
-                // 4. Check for duplicate entry
-                $exists = DB::table('sub_subreportcard_mapping')
-                    ->where('sm_id', $sm_id)
-                    ->where('sub_rc_master_id', $sub_rc_master_id)
-                    ->exists();
+            // 4. Check for duplicate entry
+            $exists = DB::table('sub_subreportcard_mapping')
+                ->where('sm_id', $sm_id)
+                ->where('sub_rc_master_id', $sub_rc_master_id)
+                ->exists();
 
-                if ($exists) {
-                    return response()->json([
-                        'status' => 409,
-                        'message' => 'Mapping already exists!',
-                        'success' => false
-                    ]);
-                }
-
-                // 5. Insert new mapping
-                DB::table('sub_subreportcard_mapping')->insert([
-                    'sm_id' => $sm_id,
-                    'sub_rc_master_id' => $sub_rc_master_id
-                ]);
-
+            if ($exists) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Subject mapped successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
+                    'status' => 409,
+                    'message' => 'Mapping already exists!',
                     'success' => false
                 ]);
             }
+
+            // 5. Insert new mapping
+            DB::table('sub_subreportcard_mapping')->insert([
+                'sm_id' => $sm_id,
+                'sub_rc_master_id' => $sub_rc_master_id
+            ]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Subject mapped successfully!',
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
-
-    // public function getSubjectMappingList()
-    // {
-    //     try {
-    //         $user = $this->authenticateUser();
-    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
-
-    //         // Allow only specific roles
-    //         if (in_array($user->role_id, ['A', 'U', 'M'])) {
-
-    //             // JOIN with subject_master and subjects_on_report_card_master
-    //             $subjectmappinglist = DB::table('sub_subreportcard_mapping')
-    //                 ->select(
-    //                     'sub_subreportcard_mapping.sub_mapping',
-    //                     'sub_subreportcard_mapping.sm_id',
-    //                     'subject_master.name as sub_name',
-    //                     'sub_subreportcard_mapping.sub_rc_master_id',
-    //                     'subjects_on_report_card_master.name as report_sub_name',
-    //                     'subjects_on_report_card_master.sequence'
-    //                 )
-    //                 ->join('subject_master', 'sub_subreportcard_mapping.sm_id', '=', 'subject_master.sm_id')
-    //                 ->join('subjects_on_report_card_master', 'sub_subreportcard_mapping.sub_rc_master_id', '=', 'subjects_on_report_card_master.sub_rc_master_id')
-    //                 ->get();
-
-    //             return response()->json([
-    //                 'status' => 200,
-    //                 'message' => 'Subject Mapping List.',
-    //                 'data' => $subjectmappinglist,
-    //                 'success' => true
-    //             ]);
-    //         } else {
-    //             return response()->json([
-    //                 'status' => 401,
-    //                 'message' => 'This user does not have permission to access this data.',
-    //                 'data' => $user->role_id,
-    //                 'success' => false
-    //             ]);
-    //         }
-    //     } catch (\Exception $e) {
-    //         \Log::error('Error fetching subject mapping list: ' . $e->getMessage());
-    //         return response()->json([
-    //             'status' => 500,
-    //             'message' => 'An error occurred: ' . $e->getMessage(),
-    //             'success' => false
-    //         ], 500);
-    //     }
-    // }
 
     public function getSubjectMappingList()
     {
@@ -926,17 +868,15 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            // Allow only specific roles
-            if (in_array($user->role_id, ['A', 'U', 'M'])) {
-                $subjectmappinglist = DB::table('sub_subreportcard_mapping')
-                    ->select(
-                        'sub_subreportcard_mapping.sub_mapping',
-                        'sub_subreportcard_mapping.sm_id',
-                        'subject_master.name as sub_name',
-                        'sub_subreportcard_mapping.sub_rc_master_id',
-                        'subjects_on_report_card_master.name as report_sub_name',
-                        'subjects_on_report_card_master.sequence',
-                        DB::raw("CASE 
+            $subjectmappinglist = DB::table('sub_subreportcard_mapping')
+                ->select(
+                    'sub_subreportcard_mapping.sub_mapping',
+                    'sub_subreportcard_mapping.sm_id',
+                    'subject_master.name as sub_name',
+                    'sub_subreportcard_mapping.sub_rc_master_id',
+                    'subjects_on_report_card_master.name as report_sub_name',
+                    'subjects_on_report_card_master.sequence',
+                    DB::raw("CASE 
                                 WHEN EXISTS (
                                     SELECT 1 
                                     FROM student_marks 
@@ -946,35 +886,27 @@ class AssessmentController extends Controller
                                 THEN 'N' 
                                 ELSE 'Y' 
                              END as isDelete")
-                    )
-                    ->join('subject_master', 'sub_subreportcard_mapping.sm_id', '=', 'subject_master.sm_id')
-                    ->join(
-                        'subjects_on_report_card_master',
-                        'sub_subreportcard_mapping.sub_rc_master_id',
-                        '=',
-                        'subjects_on_report_card_master.sub_rc_master_id'
-                    )
-                    ->get();
+                )
+                ->join('subject_master', 'sub_subreportcard_mapping.sm_id', '=', 'subject_master.sm_id')
+                ->join(
+                    'subjects_on_report_card_master',
+                    'sub_subreportcard_mapping.sub_rc_master_id',
+                    '=',
+                    'subjects_on_report_card_master.sub_rc_master_id'
+                )
+                ->get();
 
-                // Attach class names using helper
-                foreach ($subjectmappinglist as $subject) {
-                    $subject->class_names = getClassNamesBySubject($subject->sm_id);
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Subject Mapping List fetched successfully.',
-                    'data' => $subjectmappinglist,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission to access this data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+            // Attach class names using helper
+            foreach ($subjectmappinglist as $subject) {
+                $subject->class_names = getClassNamesBySubject($subject->sm_id);
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Subject Mapping List fetched successfully.',
+                'data' => $subjectmappinglist,
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error fetching subject mapping list: ' . $e->getMessage());
             return response()->json([
@@ -985,144 +917,62 @@ class AssessmentController extends Controller
         }
     }
 
-    // public function updateSubjectMapping(Request $request, $id)
-    // {
-    //     try {
-    //         $user = $this->authenticateUser();
-    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
-
-    //         if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-    //             $request->validate([
-    //                 'subject_name' => 'required|integer', // sm_id
-    //                 'report_sub_name' => 'required|integer', // sub_rc_master_id
-    //             ]);
-
-    //             // Prepare update data
-    //             // $data = [
-    //             //     'sm_id' => $request->input('subject_name'),
-    //             //     'sub_rc_master_id' => $request->input('report_sub_name'),
-    //             // ];
-
-    //             // Check if record exists
-    //             $mapping = DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->first();
-
-    //             if (!$mapping) {
-    //                 return response()->json([
-    //                     'status' => 404,
-    //                     'message' => 'Mapping record not found.',
-    //                     'success' => false,
-    //                 ]);
-    //             }
-
-    //             // Check for duplicate mapping (excluding current record)
-    //             $exists = DB::table('sub_subreportcard_mapping')
-    //                 ->where('sm_id', $sm_id)
-    //                 ->where('sub_rc_master_id', $sub_rc_master_id)
-    //                 ->exists();
-
-    //             if ($exists) {
-    //                 return response()->json([
-    //                     'status' => 409,
-    //                     'message' => 'Mapping already exists!',
-    //                     'success' => false,
-    //                 ]);
-    //             }
-
-    //             // Prepare update data
-    //             $data = [
-    //                 'sm_id' => $sm_id,
-    //                 'sub_rc_master_id' => $sub_rc_master_id,
-    //             ];
-
-    //             // Perform the update
-    //             DB::table('sub_subreportcard_mapping')
-    //                 ->where('sub_mapping', $id)
-    //                 ->update($data);
-
-    //             return response()->json([
-    //                 'status' => 200,
-    //                 'message' => 'Subject mapping updated successfully.',
-    //                 'success' => true,
-    //             ]);
-    //         } else {
-    //             return response()->json([
-    //                 'status' => 401,
-    //                 'message' => 'This User Doesnot have Permission for the Deleting of Data',
-    //                 'data' => $user->role_id,
-    //                 'success' => false
-    //             ]);
-    //         }
-    //     } catch (\Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
     public function updateSubjectMapping(Request $request, $id)
     {
         try {
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $request->validate([
-                    'subject_name' => 'required|integer',  // sm_id
-                    'report_sub_name' => 'required|integer',  // sub_rc_master_id
-                ]);
+            $request->validate([
+                'subject_name' => 'required|integer',  // sm_id
+                'report_sub_name' => 'required|integer',  // sub_rc_master_id
+            ]);
 
-                $sm_id = $request->input('subject_name');
-                $sub_rc_master_id = $request->input('report_sub_name');
+            $sm_id = $request->input('subject_name');
+            $sub_rc_master_id = $request->input('report_sub_name');
 
-                // Check if record exists
-                $mapping = DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->first();
+            // Check if record exists
+            $mapping = DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->first();
 
-                if (!$mapping) {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Mapping record not found.',
-                        'success' => false,
-                    ]);
-                }
-
-                // Check for duplicate mapping (excluding current record)
-                $exists = DB::table('sub_subreportcard_mapping')
-                    ->where('sm_id', $sm_id)
-                    ->where('sub_rc_master_id', $sub_rc_master_id)
-                    ->where('sub_mapping', '!=', $id)  // Exclude current record
-                    ->exists();
-
-                if ($exists) {
-                    return response()->json([
-                        'status' => 409,
-                        'message' => 'Mapping already exists!',
-                        'success' => false,
-                    ]);
-                }
-
-                // Prepare update data
-                $data = [
-                    'sm_id' => $sm_id,
-                    'sub_rc_master_id' => $sub_rc_master_id,
-                ];
-
-                // Perform the update
-                DB::table('sub_subreportcard_mapping')
-                    ->where('sub_mapping', $id)
-                    ->update($data);
-
+            if (!$mapping) {
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Subject mapping updated successfully.',
-                    'success' => true,
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission to update this data.',
-                    'data' => $user->role_id,
-                    'success' => false
+                    'status' => 404,
+                    'message' => 'Mapping record not found.',
+                    'success' => false,
                 ]);
             }
+
+            // Check for duplicate mapping (excluding current record)
+            $exists = DB::table('sub_subreportcard_mapping')
+                ->where('sm_id', $sm_id)
+                ->where('sub_rc_master_id', $sub_rc_master_id)
+                ->where('sub_mapping', '!=', $id)  // Exclude current record
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status' => 409,
+                    'message' => 'Mapping already exists!',
+                    'success' => false,
+                ]);
+            }
+
+            // Prepare update data
+            $data = [
+                'sm_id' => $sm_id,
+                'sub_rc_master_id' => $sub_rc_master_id,
+            ];
+
+            // Perform the update
+            DB::table('sub_subreportcard_mapping')
+                ->where('sub_mapping', $id)
+                ->update($data);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Subject mapping updated successfully.',
+                'success' => true,
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1134,28 +984,20 @@ class AssessmentController extends Controller
         try {
             $user = $this->authenticateUser();
 
-            if ($user->role_id === 'A' || $user->role_id === 'U') {
-                $mapping = DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->first();
+            $mapping = DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->first();
 
-                if ($mapping) {
-                    DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->delete();
+            if ($mapping) {
+                DB::table('sub_subreportcard_mapping')->where('sub_mapping', $id)->delete();
 
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Subject mapping deleted successfully!',
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Subject mapping not found!',
-                        'success' => false
-                    ]);
-                }
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Subject mapping deleted successfully!',
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized: You do not have permission to delete subject mappings.',
+                    'status' => 404,
+                    'message' => 'Subject mapping not found!',
                     'success' => false
                 ]);
             }
@@ -1176,40 +1018,31 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                if (!$academicYear) {
-                    return response()->json([
-                        'status' => 400,
-                        'success' => false,
-                        'message' => 'Academic year not found.',
-                    ], 400);
-                }
-                // Get class names for the given subject and academic year
-                $classNames = DB::table('class')
-                    ->whereIn('class_id', function ($query) use ($sm_id, $academicYear) {
-                        $query
-                            ->select(DB::raw('DISTINCT class_id'))
-                            ->from('subject')
-                            ->where('sm_id', $sm_id)
-                            ->where('academic_yr', $academicYear);
-                    })
-                    ->pluck('name')
-                    ->toArray();
-
+            if (!$academicYear) {
                 return response()->json([
-                    'status' => 200,
-                    'success' => true,
-                    'message' => 'Class names fetched successfully.',
-                    'data' => $classNames,
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Deleting of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                    'status' => 400,
+                    'success' => false,
+                    'message' => 'Academic year not found.',
+                ], 400);
             }
+            // Get class names for the given subject and academic year
+            $classNames = DB::table('class')
+                ->whereIn('class_id', function ($query) use ($sm_id, $academicYear) {
+                    $query
+                        ->select(DB::raw('DISTINCT class_id'))
+                        ->from('subject')
+                        ->where('sm_id', $sm_id)
+                        ->where('academic_yr', $academicYear);
+                })
+                ->pluck('name')
+                ->toArray();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Class names fetched successfully.',
+                'data' => $classNames,
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -1217,15 +1050,12 @@ class AssessmentController extends Controller
     }
 
     // Book Requistion
-    // Book Requistion
     public function createBookRequisition(Request $request)
     {
         try {
-            // 1. Authenticate user
             $user = $this->authenticateUser();  // Custom method to get logged-in user
             $academicYear = JWTAuth::getPayload()->get('academic_year');  // Optional, if needed
 
-            // 3. Validate request data
             $validated = $request->validate([
                 'title' => 'required|string',
                 'author' => 'nullable|string',
@@ -1240,7 +1070,6 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            // 4. Prepare data
             $data = [
                 'title' => $validated['title'],
                 'author' => $validated['author'] ?? null,
@@ -1519,45 +1348,35 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();  // Custom method
             $academicYear = JWTAuth::getPayload()->get('academic_year');  // Optional
 
-            // 2. Check role permission
-            if (in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                // 3. Validate request data
-                $validated = $request->validate([
-                    'title' => 'required|string|max:255',
-                    'description' => 'nullable|string',
-                    'url' => 'required|url',
-                    'type_link' => 'required|string|max:50',
-                ]);
+            // 3. Validate request data
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'url' => 'required|url',
+                'type_link' => 'required|string|max:50',
+            ]);
 
-                // 4. Prepare data
-                $data = [
-                    'title' => $validated['title'],
-                    'description' => $validated['description'] ?? null,
-                    'create_date' => now()->toDateString(),
-                    'url' => $validated['url'],
-                    'type_link' => $validated['type_link'],
-                    'publish' => 'N',
-                    'IsDelete' => 'N',
-                    'posted_by' => $user->reg_id,
-                ];
+            // 4. Prepare data
+            $data = [
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'create_date' => now()->toDateString(),
+                'url' => $validated['url'],
+                'type_link' => $validated['type_link'],
+                'publish' => 'N',
+                'IsDelete' => 'N',
+                'posted_by' => $user->reg_id,
+            ];
 
-                // 5. Insert into DB
-                DB::table('important_links')->insert($data);
+            // 5. Insert into DB
+            DB::table('important_links')->insert($data);
 
-                // 6. Return success response
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Important Link created successfully!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to create important links.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            // 6. Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Important Link created successfully!',
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -1572,29 +1391,18 @@ class AssessmentController extends Controller
     {
         try {
             // 1. Authenticate user
-            $user = $this->authenticateUser();  // Custom method for auth
+            $user = $this->authenticateUser();
+            $links = DB::table('important_links')
+                ->orderBy('create_date', 'DESC')
+                ->get();
 
-            // 2. Check role permission (optional: adjust as per access policy)
-            if (in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                // 3. Fetch data ordered by create_date
-                $links = DB::table('important_links')
-                    ->orderBy('create_date', 'DESC')
-                    ->get();
-
-                // 4. Return success response
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Important links fetched successfully!',
-                    'data' => $links,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to access important links.',
-                    'success' => false
-                ]);
-            }
+            // 4. Return success response
+            return response()->json([
+                'status' => 200,
+                'message' => 'Important links fetched successfully!',
+                'data' => $links,
+                'success' => true
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -1609,34 +1417,24 @@ class AssessmentController extends Controller
     {
         try {
             // 1. Authenticate user
-            $user = $this->authenticateUser();  // Custom auth method
+            $user = $this->authenticateUser();
+            // 3. Get the link info
+            $link = DB::table('important_links')
+                ->where('link_id', $link_id)
+                ->first();
 
-            // 2. Check role permission
-            if (in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                // 3. Get the link info
-                $link = DB::table('important_links')
-                    ->where('link_id', $link_id)
-                    ->first();
-
-                // 4. Check if found
-                if ($link) {
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Important link fetched successfully!',
-                        'data' => $link,
-                        'success' => true
-                    ]);
-                } else {
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Important link not found.',
-                        'success' => false
-                    ]);
-                }
+            // 4. Check if found
+            if ($link) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Important link fetched successfully!',
+                    'data' => $link,
+                    'success' => true
+                ]);
             } else {
                 return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to access this data.',
+                    'status' => 404,
+                    'message' => 'Important link not found.',
                     'success' => false
                 ]);
             }
@@ -1655,16 +1453,7 @@ class AssessmentController extends Controller
         try {
             // 1. Authenticate user
             $user = $this->authenticateUser();  // Custom method
-            $academicYear = JWTAuth::getPayload()->get('academic_year');  // Optional
-
-            // 2. Role-based permission check
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to update important links.',
-                    'success' => false
-                ]);
-            }
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
 
             // 3. Validate request
             $validated = $request->validate([
@@ -1723,15 +1512,6 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();  // Custom method
             $academicYear = JWTAuth::getPayload()->get('academic_year');  // Optional
 
-            // 2. Check permissions
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to delete important links.',
-                    'success' => false
-                ]);
-            }
-
             // 3. Get the link
             $link = DB::table('important_links')->where('link_id', $link_id)->first();
 
@@ -1782,15 +1562,6 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();  // Your custom auth method
             $academicYear = JWTAuth::getPayload()->get('academic_year');  // Optional
 
-            // 2. Permission check
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to publish links.',
-                    'success' => false
-                ]);
-            }
-
             // 3. Check if link exists
             $link = DB::table('important_links')->where('link_id', $link_id)->first();
 
@@ -1828,14 +1599,6 @@ class AssessmentController extends Controller
     {
         try {
             $user = $this->authenticateUser();
-
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to create news.',
-                    'success' => false,
-                ]);
-            }
 
             // 4. Prepare data
             $data = [
@@ -1934,14 +1697,6 @@ class AssessmentController extends Controller
             // 1. Authenticate user
             $user = $this->authenticateUser();
 
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized access.',
-                    'success' => false
-                ]);
-            }
-
             $news = DB::table('news')
                 ->where('news_id', $id)
                 ->where('IsDelete', '!=', 'Y')
@@ -1977,15 +1732,6 @@ class AssessmentController extends Controller
         try {
             // 1. Authenticate user
             $user = $this->authenticateUser();
-
-            // 2. Role check
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'You do not have permission to edit news.',
-                    'success' => false
-                ]);
-            }
 
             // 4. Check if news exists
             $news = DB::table('news')->where('news_id', $id)->first();
@@ -2050,15 +1796,6 @@ class AssessmentController extends Controller
             // 1. Authenticate user
             $user = $this->authenticateUser();
 
-            // 2. Check permission
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to delete news.',
-                    'success' => false
-                ]);
-            }
-
             // 3. Find news by ID
             $news = DB::table('news')->where('news_id', $id)->first();
 
@@ -2102,15 +1839,6 @@ class AssessmentController extends Controller
             // 1. Authenticate user
             $user = $this->authenticateUser();
 
-            // 2. Check permission
-            if (!in_array($user->role_id, ['A', 'U', 'M', 'P'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'Unauthorized to publish news.',
-                    'success' => false
-                ]);
-            }
-
             // 3. Fetch news
             $news = DB::table('news')->where('news_id', $id)->first();
 
@@ -2150,16 +1878,6 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            // Allowed roles
-            if (!in_array($user->role_id, ['A', 'T', 'M', 'P', 'U'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission to view stationery approvals.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
-
             $status = ['A', 'H'];
 
             $stationeryApprove = DB::table('stationery_req as sr')
@@ -2195,49 +1913,37 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                // Validation
-                $request->validate([
-                    'status' => 'required|string',
-                    'comments' => 'nullable|string',
-                    'approved_by' => 'nullable|string'
-                ]);
+            $request->validate([
+                'status' => 'required|string',
+                'comments' => 'nullable|string',
+                'approved_by' => 'nullable|string'
+            ]);
 
-                $data = [
-                    'status' => $request->status,
-                    'comments' => $request->comments,
-                    'approved_by' => $request->approved_by,
-                    'approved_date' => now()->format('Y-m-d')
-                ];
+            $data = [
+                'status' => $request->status,
+                'comments' => $request->comments,
+                'approved_by' => $request->approved_by,
+                'approved_date' => now()->format('Y-m-d')
+            ];
 
-                if ($requisition_id) {
-                    // EDIT existing record
-                    $result = DB::table('stationery_req')
-                        ->where('requisition_id', $requisition_id)
-                        ->update($data);
+            if ($requisition_id) {
+                $result = DB::table('stationery_req')
+                    ->where('requisition_id', $requisition_id)
+                    ->update($data);
 
-                    $message = 'Stationery Requisition Status Updated Successfully.';
-                } else {
-                    // CREATE new record
-                    $result = DB::table('stationery_req')->insert($data);
-
-                    $message = 'Stationery Requisition Saved Successfully.';
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => $message,
-                    'data' => $result,
-                    'success' => true
-                ]);
+                $message = 'Stationery Requisition Status Updated Successfully.';
             } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Does not have Permission to Save or Update Stationery Approval.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                $result = DB::table('stationery_req')->insert($data);
+
+                $message = 'Stationery Requisition Saved Successfully.';
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => $message,
+                'data' => $result,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -2246,15 +1952,12 @@ class AssessmentController extends Controller
         }
     }
 
-    // View Book Availability
-
     public function getBooksOnCopyId(Request $request, $copy_id)
     {
         try {
             // 1. Authenticate user
             $user = $this->authenticateUser();
 
-            // 3. Fetch book details with joins
             $query = DB::table('book as a')
                 ->select('a.*', 'b.*', 'c.*')
                 ->join('book_copies as b', 'a.book_id', '=', 'b.book_id')
@@ -3446,90 +3149,81 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYr = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $class_id = $request->input('class_id');
-                $section_id = $request->input('section_id');
+            $class_id = $request->input('class_id');
+            $section_id = $request->input('section_id');
 
-                // Fetch students automatically
-                $students = DB::table('student as s')
-                    ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
-                    ->where('s.class_id', $class_id)
-                    ->where('s.section_id', $section_id)
-                    ->where('s.IsDelete', 'N')
-                    ->select('s.student_id', 'p.parent_id')
-                    ->get();
+            // Fetch students automatically
+            $students = DB::table('student as s')
+                ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+                ->where('s.class_id', $class_id)
+                ->where('s.section_id', $section_id)
+                ->where('s.IsDelete', 'N')
+                ->select('s.student_id', 'p.parent_id')
+                ->get();
 
-                $photo_for_upload = 0;
+            $photo_for_upload = 0;
 
-                // Ensure folders exist
-                $student_image_folder = storage_path('app/public/student_image/');
-                if (!file_exists($student_image_folder))
-                    mkdir($student_image_folder, 0777, true);
+            // Ensure folders exist
+            $student_image_folder = storage_path('app/public/student_image/');
+            if (!file_exists($student_image_folder))
+                mkdir($student_image_folder, 0777, true);
 
-                $family_image_folder = storage_path('app/public/family_image/');
-                if (!file_exists($family_image_folder))
-                    mkdir($family_image_folder, 0777, true);
+            $family_image_folder = storage_path('app/public/family_image/');
+            if (!file_exists($family_image_folder))
+                mkdir($family_image_folder, 0777, true);
 
-                foreach ($students as $student) {
-                    if ($photo_for_upload >= 20)
-                        break;
+            foreach ($students as $student) {
+                if ($photo_for_upload >= 20)
+                    break;
 
-                    // Student image
-                    $sImageBase = $request->input('s_image_' . $student->student_id);
-                    if ($sImageBase && $sImageBase != '') {
-                        $photo_for_upload++;
-                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sImageBase);
-                        $ext = 'jpg';  // or detect from base64 if needed
-                        $dataI = base64_decode($base64Data);
-                        $imgNameEnd = $student->student_id . '.' . $ext;
-                        $imagePath = $student_image_folder . $imgNameEnd;
-                        file_put_contents($imagePath, $dataI);
+                // Student image
+                $sImageBase = $request->input('s_image_' . $student->student_id);
+                if ($sImageBase && $sImageBase != '') {
+                    $photo_for_upload++;
+                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $sImageBase);
+                    $ext = 'jpg';  // or detect from base64 if needed
+                    $dataI = base64_decode($base64Data);
+                    $imgNameEnd = $student->student_id . '.' . $ext;
+                    $imagePath = $student_image_folder . $imgNameEnd;
+                    file_put_contents($imagePath, $dataI);
 
-                        DB::table('student')
-                            ->where('student_id', $student->student_id)
-                            ->update(['image_name' => $imgNameEnd]);
+                    DB::table('student')
+                        ->where('student_id', $student->student_id)
+                        ->update(['image_name' => $imgNameEnd]);
 
-                        // Optional: call your upload helper
-                        $doc_type_folder = 'student_image';
-                        upload_student_profile_image_into_folder($student->student_id, $imgNameEnd, $doc_type_folder, $base64Data);
-                    }
-
-                    // Family image
-                    $fImageBase = $request->input('f_image_' . $student->parent_id);
-                    if ($fImageBase && $fImageBase != '') {
-                        $photo_for_upload++;
-                        $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $fImageBase);
-                        $ext = 'jpg';
-                        $dataI = base64_decode($base64Data);
-                        $f_imgNameEnd = $student->parent_id . '.' . $ext;
-                        $imagePath = $family_image_folder . $f_imgNameEnd;
-                        file_put_contents($imagePath, $dataI);
-
-                        DB::table('parent')
-                            ->where('parent_id', $student->parent_id)
-                            ->update(['family_image_name' => $f_imgNameEnd]);
-
-                        $docTypeFolder = 'family_image';
-                        // upload_student_profile_image_into_folder($student->parent_id, $imgNameEnd, $doc_type_folder, $base64Data);
-                        upload_parent_related_images($f_imgNameEnd, $base64Data, $docTypeFolder, $student->parent_id);
-                    }
+                    // Optional: call your upload helper
+                    $doc_type_folder = 'student_image';
+                    upload_student_profile_image_into_folder($student->student_id, $imgNameEnd, $doc_type_folder, $base64Data);
                 }
 
-                return response()->json([
-                    'status' => 200,
-                    'success' => true,
-                    'message' => $photo_for_upload > 0
-                        ? 'Photos uploaded successfully.'
-                        : 'No photos were added for upload.'
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'success' => false,
-                    'message' => 'This user does not have permission for uploading images.',
-                    'data' => $user->role_id
-                ]);
+                // Family image
+                $fImageBase = $request->input('f_image_' . $student->parent_id);
+                if ($fImageBase && $fImageBase != '') {
+                    $photo_for_upload++;
+                    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $fImageBase);
+                    $ext = 'jpg';
+                    $dataI = base64_decode($base64Data);
+                    $f_imgNameEnd = $student->parent_id . '.' . $ext;
+                    $imagePath = $family_image_folder . $f_imgNameEnd;
+                    file_put_contents($imagePath, $dataI);
+
+                    DB::table('parent')
+                        ->where('parent_id', $student->parent_id)
+                        ->update(['family_image_name' => $f_imgNameEnd]);
+
+                    $docTypeFolder = 'family_image';
+                    // upload_student_profile_image_into_folder($student->parent_id, $imgNameEnd, $doc_type_folder, $base64Data);
+                    upload_parent_related_images($f_imgNameEnd, $base64Data, $docTypeFolder, $student->parent_id);
+                }
             }
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => $photo_for_upload > 0
+                    ? 'Photos uploaded successfully.'
+                    : 'No photos were added for upload.'
+            ]);
         } catch (\Exception $e) {
             Log::error($e);
             return response()->json([
@@ -9977,14 +9671,6 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
 
-            // Only roles A or U allowed
-            if (!in_array($user->role_id, ['A', 'U'])) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized access'
-                ], 403);
-            }
-
             $request->validate([
                 'exam_from_id' => 'required|integer',
                 'exam_to_id' => 'required|integer|different:exam_from_id',
@@ -10142,19 +9828,8 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $currentAcdYear = JWTAuth::getPayload()->get('academic_year');
 
-            // Allow only user type U or A
-            if (!in_array($user->role_id, ['A', 'U'])) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized access'
-                ], 403);
-            }
-
             DB::beginTransaction();
 
-            // ---------------------------------------
-            // STEP 1: Check if grades already exist
-            // ---------------------------------------
             $existingGrades = DB::table('grade')
                 ->join('class', 'class.class_id', '=', 'grade.class_id')
                 ->where('grade.academic_yr', $currentAcdYear)
@@ -10168,9 +9843,6 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            // ---------------------------------------
-            // STEP 2: Get current academic year details
-            // ---------------------------------------
             $acdDetails = DB::table('settings')
                 ->where('academic_yr', $currentAcdYear)
                 ->first();
@@ -10340,86 +10012,78 @@ class AssessmentController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $globalVariables = App::make('global_variables');
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $globalVariables = App::make('global_variables');
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                $tc_id = $request->tc_id;
-                $teacher_id = $request->teacher_id;
+            $tc_id = $request->tc_id;
+            $teacher_id = $request->teacher_id;
 
-                //    both tc_id and teacher_id
-                if (!empty($tc_id) && !empty($teacher_id)) {
-                    $teacher = DB::table('teacher')
-                        ->where('isDelete', 'N')
-                        ->where('teacher_id', $teacher_id)
-                        ->first();
+            //    both tc_id and teacher_id
+            if (!empty($tc_id) && !empty($teacher_id)) {
+                $teacher = DB::table('teacher')
+                    ->where('isDelete', 'N')
+                    ->where('teacher_id', $teacher_id)
+                    ->first();
 
-                    if (!$teacher) {
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'Teacher not found.',
-                            'success' => false
-                        ]);
-                    }
-
-                    // Check if tc_id matches
-                    if ($teacher->tc_id != $tc_id) {
-                        return response()->json([
-                            'status' => 400,
-                            'message' => 'This teacher is not present in that particular teacher category.',
-                            'success' => false
-                        ]);
-                    }
-
-                    // If tc_id matches → return the teacher
-                    $teacher->teacher_image_url = $teacher->teacher_image_name
-                        ? $codeigniter_app_url . 'uploads/teacher_image/' . $teacher->teacher_image_name
-                        : null;
-
+                if (!$teacher) {
                     return response()->json([
-                        'status' => 200,
-                        'message' => 'Teacher details matched successfully.',
-                        'data' => $teacher,
-                        'success' => true
+                        'status' => 404,
+                        'message' => 'Teacher not found.',
+                        'success' => false
                     ]);
                 }
 
-                //   tc_id
-                $query = DB::table('teacher')->where('isDelete', 'N');
-
-                if (!empty($tc_id)) {
-                    $query->where('tc_id', $tc_id);
+                // Check if tc_id matches
+                if ($teacher->tc_id != $tc_id) {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => 'This teacher is not present in that particular teacher category.',
+                        'success' => false
+                    ]);
                 }
 
-                //    teacher_id
-                if (!empty($teacher_id)) {
-                    $query->where('teacher_id', $teacher_id);
-                }
-
-                //  fetch all
-                $staffdata = $query
-                    ->orderBy('teacher_id', 'asc')
-                    ->get()
-                    ->map(function ($staff) use ($codeigniter_app_url) {
-                        $imgUrl = $codeigniter_app_url . 'uploads/teacher_image/';
-                        $staff->teacher_image_url = $staff->teacher_image_name
-                            ? $imgUrl . $staff->teacher_image_name
-                            : null;
-                        return $staff;
-                    });
+                // If tc_id matches → return the teacher
+                $teacher->teacher_image_url = $teacher->teacher_image_name
+                    ? $codeigniter_app_url . 'uploads/teacher_image/' . $teacher->teacher_image_name
+                    : null;
 
                 return response()->json([
                     'status' => 200,
-                    'message' => 'Teacher ID card details.',
-                    'data' => $staffdata,
+                    'message' => 'Teacher details matched successfully.',
+                    'data' => $teacher,
                     'success' => true
                 ]);
             }
 
+            //   tc_id
+            $query = DB::table('teacher')->where('isDelete', 'N');
+
+            if (!empty($tc_id)) {
+                $query->where('tc_id', $tc_id);
+            }
+
+            //    teacher_id
+            if (!empty($teacher_id)) {
+                $query->where('teacher_id', $teacher_id);
+            }
+
+            //  fetch all
+            $staffdata = $query
+                ->orderBy('teacher_id', 'asc')
+                ->get()
+                ->map(function ($staff) use ($codeigniter_app_url) {
+                    $imgUrl = $codeigniter_app_url . 'uploads/teacher_image/';
+                    $staff->teacher_image_url = $staff->teacher_image_name
+                        ? $imgUrl . $staff->teacher_image_name
+                        : null;
+                    return $staff;
+                });
+
             return response()->json([
-                'status' => 401,
-                'message' => 'Unauthorized user.',
-                'success' => false
+                'status' => 200,
+                'message' => 'Teacher ID card details.',
+                'data' => $staffdata,
+                'success' => true
             ]);
         } catch (Exception $e) {
             \Log::error($e);
@@ -10444,116 +10108,46 @@ class AssessmentController extends Controller
         ]);
     }
 
-    // public function getpendingteacheridcardreport(Request $request)
-    // {
-    //     try {
-    //         $user = $this->authenticateUser();
-    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
-
-    //         if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-
-    //             $globalVariables = App::make('global_variables');
-    //             $parent_app_url = $globalVariables['parent_app_url'];
-    //             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-
-    //             // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
-    //             $staffdata = DB::table('teacher as t')
-    //                 ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
-    //                 ->select('t.*', 'c.confirm')
-    //                 ->where('t.isDelete', 'N')
-    //                 ->where('c.confirm', 'N')      // Only confirmed teachers
-    //                 ->orderBy('t.teacher_id', 'asc')
-    //                 ->get()
-    //                 ->map(function ($staff) use ($codeigniter_app_url) {
-
-    //                     $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
-
-    //                     if ($staff->teacher_image_name) {
-    //                         $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
-    //                     } else {
-    //                         $staff->teacher_image_url = null;
-    //                     }
-
-    //                     return $staff;
-    //                 });
-
-    //             return response()->json([
-    //                 'status' => 200,
-    //                 'message' => 'ID card details for the Staffs.',
-    //                 'data' => $staffdata,
-    //                 'success' => true
-    //             ]);
-    //         } else {
-    //             return response()->json([
-    //                 'status' => 401,
-    //                 'message' => 'This user does not have permission.',
-    //                 'data' => $user->role_id,
-    //                 'success' => false
-    //             ]);
-    //         }
-    //     } catch (Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
     public function getpendingteacheridcardreport(Request $request)
     {
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
-            if ($user->role_id == 'A' || $user->role_id == 'T' || $user->role_id == 'M') {
-                $globalVariables = App::make('global_variables');
-                $parent_app_url = $globalVariables['parent_app_url'];
-                $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-                // JOIN teacher + confirmation_teacher_idcard and filter confirm == 'Y'
-                // $staffdata = DB::table('teacher as t')
-                //     ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
-                //     ->select('t.*', 'c.confirm')
-                //     ->where('t.isDelete', 'N')
-                //     ->where('c.confirm', 'N')      // Only confirmed teachers
-                //     ->orderBy('t.teacher_id', 'asc')
-                //     ->get()
-                $staffdata = DB::table('teacher as t')
-                    ->leftJoin(
-                        'confirmation_teacher_idcard as c',
-                        'c.teacher_id',
-                        '=',
-                        't.teacher_id'
-                    )
-                    ->select('t.*')
-                    ->where('t.isDelete', 'N')
-                    ->whereNull('c.teacher_id')  //  NOT present in confirmation table
-                    ->orderBy('t.teacher_id', 'asc')
-                    ->get()
-                    ->map(function ($staff) use ($codeigniter_app_url) {
-                        $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+            $staffdata = DB::table('teacher as t')
+                ->leftJoin(
+                    'confirmation_teacher_idcard as c',
+                    'c.teacher_id',
+                    '=',
+                    't.teacher_id'
+                )
+                ->select('t.*')
+                ->where('t.isDelete', 'N')
+                ->whereNull('c.teacher_id')  //  NOT present in confirmation table
+                ->orderBy('t.teacher_id', 'asc')
+                ->get()
+                ->map(function ($staff) use ($codeigniter_app_url) {
+                    $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
 
-                        if ($staff->teacher_image_name) {
-                            $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
-                        } else {
-                            $staff->teacher_image_url = null;
-                        }
+                    if ($staff->teacher_image_name) {
+                        $staff->teacher_image_url = $concatprojecturl . $staff->teacher_image_name;
+                    } else {
+                        $staff->teacher_image_url = null;
+                    }
 
-                        return $staff;
-                    });
+                    return $staff;
+                });
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'ID card details for the Staffs.',
-                    'data' => $staffdata,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'ID card details for the Staffs.',
+                'data' => $staffdata,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -10753,15 +10347,6 @@ class AssessmentController extends Controller
     {
         try {
             $user = $this->authenticateUser();
-
-            if (!in_array($user->role_id, ['A', 'T', 'M', 'P', 'T'])) {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'No permission',
-                    'success' => false
-                ]);
-            }
-
             $globalVariables = App::make('global_variables');
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 

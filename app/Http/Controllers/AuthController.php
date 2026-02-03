@@ -18,65 +18,6 @@ use Http;
 
 class AuthController extends Controller
 {
-    //     public function login(Request $request)
-    // {
-    //     $credentials = $request->only('email', 'password');
-
-    //     if (!$token = JWTAuth::attempt($credentials)) {
-    //         return response()->json(['error' => 'Invalid credentials'], 401);
-    //     }
-
-    //     $user = auth()->user();
-    //     $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
-    //     $customClaims = [
-    //         'role_id' => $user->role_id,
-    //         'reg_id' =>$user->reg_id,
-    //         'academic_year' => $academic_yr,
-    //     ];
-
-    //     $token = JWTAuth::claims($customClaims)->fromUser($user);
-
-    //     return response()->json([
-    //         'token' => $token,
-    //         // 'user' => $user,
-    //     ]);
-    // }
-
-    // public function login(Request $request)
-    // {
-    //     $credentials = $request->only('email', 'password');
-
-    //     Log::info('Login attempt with credentials:', $credentials);
-
-    //     try {
-    //         if (!$token = JWTAuth::attempt($credentials)) {
-    //             Log::warning('Invalid credentials for user:', $credentials);
-    //             return response()->json(['error' => 'Invalid credentials'], 401);
-    //         }
-
-    //         $user = JWTAuth::setToken($token)->toUser();
-    //         $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
-
-    //         Log::info('Authenticated user:', ['user_id' => $user->id, 'academic_year' => $academic_yr]);
-
-    //         $customClaims = [
-    //             'role_id' => $user->role_id,
-    //             'reg_id' => $user->reg_id,
-    //             'academic_year' => $academic_yr,
-    //         ];
-
-    //         $token = JWTAuth::claims($customClaims)->fromUser($user);
-
-    //         Log::info('Token created successfully:', ['token' => $token]);
-
-    //         return response()->json(['token' => $token]);
-
-    //     } catch (JWTException $e) {
-    //         Log::error('JWTException occurred:', ['message' => $e->getMessage()]);
-    //         return response()->json(['error' => 'Could not create token'], 500);
-    //     }
-    // }
-
     public function connectByShortName(Request $request)
     {
         $request->validate([
@@ -84,13 +25,6 @@ class AuthController extends Controller
         ]);
 
         $shortName = $request->short_name;
-        Log::info($shortName);
-
-        // Optional: validate short_name from a master DB
-        // $exists = DB::table('schools')->where('short_name', $shortName)->exists();
-        // if (!$exists) {
-        //     return response()->json(['error' => 'Invalid school short_name'], 404);
-        // }
         session(['short_name' => $shortName]);
         return response()->json([
             'status' => 200,
@@ -111,7 +45,6 @@ class AuthController extends Controller
             } else {
                 $shortName = 'SACS';
             }
-            // dd($shortName);
             $shortName = $request->short_name;
             if ($request->has('short_name') && !empty($request->short_name)) {
                 $shortName = $request->short_name;
@@ -135,17 +68,14 @@ class AuthController extends Controller
                 if (!$isHashed) {
                     return response()->json([
                         'status' => 403,
-                        'message' => 'Invalid userid',
+                        'message' => 'Password is not hashed.',
                         'success' => false
                     ]);
                 }
 
                 if ($remember_me == 'true') {
-                    // e.g. 1 week in minutes
                     JWTAuth::factory()->setTTL(null);
                 } else {
-                    // Default e.g. 1 hour
-                    // dd("Hello from else");
                     JWTAuth::factory()->setTTL(null);
                 }
                 if (!$user) {
