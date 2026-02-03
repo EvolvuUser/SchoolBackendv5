@@ -576,27 +576,18 @@ class StudentController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $students = DB::table('student')
-                    ->where('class_id', $class_id)
-                    ->where('section_id', $section_id)
-                    ->where('IsDelete', 'N')
-                    ->where('isPromoted', '!=', 'Y')
-                    ->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Student List for this class',
-                    'data' => $students,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Updating of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $students = DB::table('student')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('IsDelete', 'N')
+                ->where('isPromoted', '!=', 'Y')
+                ->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student List for this class',
+                'data' => $students,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -608,35 +599,26 @@ class StudentController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $current_academic_year = $customClaims;
+            $current_academic_year = $customClaims;
 
-                // Split the string into start year and end year
-                list($start_year, $end_year) = explode('-', $current_academic_year);
+            // Split the string into start year and end year
+            list($start_year, $end_year) = explode('-', $current_academic_year);
 
-                // Increment the start year to move to the next academic year
-                $next_start_year = $start_year + 1;
-                $next_end_year = $end_year + 1;
+            // Increment the start year to move to the next academic year
+            $next_start_year = $start_year + 1;
+            $next_end_year = $end_year + 1;
 
-                // Create the next academic year
-                $next_academic_year = $next_start_year . '-' . $next_end_year;
-                // dd($next_academic_year);
+            // Create the next academic year
+            $next_academic_year = $next_start_year . '-' . $next_end_year;
+            // dd($next_academic_year);
 
-                $class = DB::table('class')->where('academic_yr', $next_academic_year)->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Class List for the next academic year',
-                    'data' => $class,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Updating of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $class = DB::table('class')->where('academic_yr', $next_academic_year)->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Class List for the next academic year',
+                'data' => $class,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -648,35 +630,26 @@ class StudentController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $current_academic_year = $customClaims;
+            $current_academic_year = $customClaims;
 
-                // Split the string into start year and end year
-                list($start_year, $end_year) = explode('-', $current_academic_year);
+            // Split the string into start year and end year
+            list($start_year, $end_year) = explode('-', $current_academic_year);
 
-                // Increment the start year to move to the next academic year
-                $next_start_year = $start_year + 1;
-                $next_end_year = $end_year + 1;
+            // Increment the start year to move to the next academic year
+            $next_start_year = $start_year + 1;
+            $next_end_year = $end_year + 1;
 
-                // Create the next academic year
-                $next_academic_year = $next_start_year . '-' . $next_end_year;
-                // dd($next_academic_year);
+            // Create the next academic year
+            $next_academic_year = $next_start_year . '-' . $next_end_year;
+            // dd($next_academic_year);
 
-                $section = DB::table('section')->where('academic_yr', $next_academic_year)->where('class_id', $class_id)->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Section List for the next academic year',
-                    'data' => $section,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Updating of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $section = DB::table('section')->where('academic_yr', $next_academic_year)->where('class_id', $class_id)->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'Section List for the next academic year',
+                'data' => $section,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -688,102 +661,93 @@ class StudentController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $current_academic_year = $customClaims;
+            $current_academic_year = $customClaims;
 
-                // Split the string into start year and end year
-                list($start_year, $end_year) = explode('-', $current_academic_year);
+            // Split the string into start year and end year
+            list($start_year, $end_year) = explode('-', $current_academic_year);
 
-                // Increment the start year to move to the next academic year
-                $next_start_year = $start_year + 1;
-                $next_end_year = $end_year + 1;
+            // Increment the start year to move to the next academic year
+            $next_start_year = $start_year + 1;
+            $next_end_year = $end_year + 1;
 
-                // Create the next academic year
-                $next_academic_year = $next_start_year . '-' . $next_end_year;
-                $students = $request->input('selector');
-                $tclass_id = $request->input('tclass_id');
-                $tsection_id = $request->input('tsection_id');
+            // Create the next academic year
+            $next_academic_year = $next_start_year . '-' . $next_end_year;
+            $students = $request->input('selector');
+            $tclass_id = $request->input('tclass_id');
+            $tsection_id = $request->input('tsection_id');
 
-                foreach ($students as $student_id) {
-                    // Skip if student ID is empty or null
-                    if (empty($student_id)) {
-                        continue;
-                    }
-
-                    // Fetch the student info
-                    $student = Student::where('student_id', $student_id)
-                        ->where('academic_yr', $customClaims)  // Assuming the current academic year is stored in session
-                        ->first();
-
-                    if ($student) {
-                        // dd($student);
-                        // Prepare the data for the new record
-                        $data = [
-                            'first_name' => $student->first_name,
-                            'mid_name' => $student->mid_name,
-                            'last_name' => $student->last_name,
-                            'parent_id' => $student->parent_id,
-                            'dob' => $student->dob,
-                            'gender' => $student->gender,
-                            'admission_date' => $student->admission_date,
-                            'blood_group' => $student->blood_group,
-                            'religion' => $student->religion,
-                            'caste' => $student->caste,
-                            'subcaste' => $student->subcaste,
-                            'transport_mode' => $student->transport_mode,
-                            'vehicle_no' => $student->vehicle_no,
-                            'emergency_name' => $student->emergency_name,
-                            'emergency_contact' => $student->emergency_contact,
-                            'emergency_add' => $student->emergency_add,
-                            'height' => $student->height,
-                            'weight' => $student->weight,
-                            'nationality' => $student->nationality,
-                            'permant_add' => $student->permant_add,
-                            'city' => $student->city,
-                            'state' => $student->state,
-                            'pincode' => $student->pincode,
-                            'IsDelete' => $student->IsDelete,
-                            'reg_no' => $student->reg_no,
-                            'house' => $student->house,
-                            'stu_aadhaar_no' => $student->stu_aadhaar_no,
-                            'category' => $student->category,
-                            'academic_yr' => $next_academic_year,
-                            'prev_year_student_id' => $student_id,
-                            'stud_id_no' => $student->stud_id_no,
-                            'birth_place' => $student->birth_place,
-                            'admission_class' => $student->admission_class,
-                            'mother_tongue' => $student->mother_tongue,
-                            'has_specs' => $student->has_specs,
-                            'student_name' => $student->student_name,
-                            'class_id' => $tclass_id,
-                            'section_id' => $tsection_id,
-                        ];
-                        // dd($data);
-                        // Insert the student record for the next academic year
-                        Student::create($data);
-
-                        // Mark the student as promoted
-                        DB::table('student')
-                            ->where('student_id', $student_id)
-                            ->where('academic_yr', $customClaims)
-                            ->update(['isPromoted' => 'Y']);
-                    }
+            foreach ($students as $student_id) {
+                // Skip if student ID is empty or null
+                if (empty($student_id)) {
+                    continue;
                 }
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Students promoted successfully!',
-                    'data' => $student,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Updating of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+                // Fetch the student info
+                $student = Student::where('student_id', $student_id)
+                    ->where('academic_yr', $customClaims)  // Assuming the current academic year is stored in session
+                    ->first();
+
+                if ($student) {
+                    // dd($student);
+                    // Prepare the data for the new record
+                    $data = [
+                        'first_name' => $student->first_name,
+                        'mid_name' => $student->mid_name,
+                        'last_name' => $student->last_name,
+                        'parent_id' => $student->parent_id,
+                        'dob' => $student->dob,
+                        'gender' => $student->gender,
+                        'admission_date' => $student->admission_date,
+                        'blood_group' => $student->blood_group,
+                        'religion' => $student->religion,
+                        'caste' => $student->caste,
+                        'subcaste' => $student->subcaste,
+                        'transport_mode' => $student->transport_mode,
+                        'vehicle_no' => $student->vehicle_no,
+                        'emergency_name' => $student->emergency_name,
+                        'emergency_contact' => $student->emergency_contact,
+                        'emergency_add' => $student->emergency_add,
+                        'height' => $student->height,
+                        'weight' => $student->weight,
+                        'nationality' => $student->nationality,
+                        'permant_add' => $student->permant_add,
+                        'city' => $student->city,
+                        'state' => $student->state,
+                        'pincode' => $student->pincode,
+                        'IsDelete' => $student->IsDelete,
+                        'reg_no' => $student->reg_no,
+                        'house' => $student->house,
+                        'stu_aadhaar_no' => $student->stu_aadhaar_no,
+                        'category' => $student->category,
+                        'academic_yr' => $next_academic_year,
+                        'prev_year_student_id' => $student_id,
+                        'stud_id_no' => $student->stud_id_no,
+                        'birth_place' => $student->birth_place,
+                        'admission_class' => $student->admission_class,
+                        'mother_tongue' => $student->mother_tongue,
+                        'has_specs' => $student->has_specs,
+                        'student_name' => $student->student_name,
+                        'class_id' => $tclass_id,
+                        'section_id' => $tsection_id,
+                    ];
+                    // dd($data);
+                    // Insert the student record for the next academic year
+                    Student::create($data);
+
+                    // Mark the student as promoted
+                    DB::table('student')
+                        ->where('student_id', $student_id)
+                        ->where('academic_yr', $customClaims)
+                        ->update(['isPromoted' => 'Y']);
+                }
             }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Students promoted successfully!',
+                'data' => $student,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -796,37 +760,28 @@ class StudentController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $data = $this->get_all_registered_students($customClaims);
+            $data = $this->get_all_registered_students($customClaims);
 
-                // Process the data to add 'label' and 'value'
-                $data->transform(function ($item) {
-                    if (!empty($item->last_name) && $item->last_name != 'No Data') {
-                        $item->label = $item->first_name . ' ' . $item->last_name . ' (' . $item->class_name . $item->section_name . ')';
+            // Process the data to add 'label' and 'value'
+            $data->transform(function ($item) {
+                if (!empty($item->last_name) && $item->last_name != 'No Data') {
+                    $item->label = $item->first_name . ' ' . $item->last_name . ' (' . $item->class_name . $item->section_name . ')';
+                } else {
+                    if (!empty($item->mid_name) && $item->mid_name != 'No Data') {
+                        $item->label = $item->first_name . ' ' . $item->mid_name . ' (' . $item->class_name . $item->section_name . ')';
                     } else {
-                        if (!empty($item->mid_name) && $item->mid_name != 'No Data') {
-                            $item->label = $item->first_name . ' ' . $item->mid_name . ' (' . $item->class_name . $item->section_name . ')';
-                        } else {
-                            $item->label = $item->first_name . ' (' . $item->class_name . $item->section_name . ')';
-                        }
+                        $item->label = $item->first_name . ' (' . $item->class_name . $item->section_name . ')';
                     }
+                }
 
-                    // Create the 'value' field
-                    $item->value = $item->student_id . '^' . $item->class_id . '*' . $item->section_id;
+                // Create the 'value' field
+                $item->value = $item->student_id . '^' . $item->class_id . '*' . $item->section_id;
 
-                    return $item;
-                });
+                return $item;
+            });
 
-                // Return the processed data as a JSON response
-                return response()->json($data);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This user does not have permission for the updating of data.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            // Return the processed data as a JSON response
+            return response()->json($data);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
