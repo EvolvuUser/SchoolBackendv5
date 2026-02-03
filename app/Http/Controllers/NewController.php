@@ -718,53 +718,69 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M' || $user->role_id == 'T') {
-                $remarkslist = DB::select("SELECT 
-                        Z.*,
-                        COUNT(CASE 
-                            WHEN rwd.sms_sent = 'N' 
-                            THEN 1 END) AS failed_sms_count
-                    FROM (
-                        SELECT  
-                            tr.*, 
-                            teacher.name, 
-                            0 AS read_status
-                        FROM teachers_remark tr
-                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
-                        WHERE tr.academic_yr = '" . $customClaims . "'
-                          AND tr.t_remark_id NOT IN (SELECT t_remark_id FROM tremarks_read_log)
-                    
-                        UNION 
-                    
-                        SELECT  
-                            tr.*, 
-                            teacher.name, 
-                            1 AS read_status
-                        FROM teachers_remark tr
-                        JOIN teacher ON teacher.teacher_id = tr.teachers_id
-                        WHERE tr.academic_yr = '" . $customClaims . "'
-                          AND tr.t_remark_id IN (SELECT t_remark_id FROM tremarks_read_log)
-                    ) AS Z
-                    LEFT JOIN redington_webhook_details rwd 
-                        ON rwd.notice_id = Z.t_remark_id
-                    GROUP BY Z.t_remark_id
-                    ORDER BY Z.t_remark_id DESC;");
 
-                // dd($remarkslist);
-                return response()->json([
-                    'status' => 200,
-                    'date' => $remarkslist,
-                    'message' => 'Remark and observation list.',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $remarkslist = DB::select("SELECT 
+    Z.*,
+
+    /* latest whatsapp/sms status */
+    COALESCE(rwd_latest.sms_sent, 'N') AS sms_sent,
+    COALESCE(rwd_latest.status, '') AS whatsapp_status,
+
+    /* failed sms count */
+    COUNT(
+        CASE 
+            WHEN rwd_all.sms_sent = 'N' THEN 1 
+        END
+    ) AS failed_sms_count
+
+FROM (
+    SELECT  
+        tr.*, 
+        teacher.name, 
+        0 AS read_status
+    FROM teachers_remark tr
+    JOIN teacher ON teacher.teacher_id = tr.teachers_id
+    WHERE tr.academic_yr = '" . $customClaims . "'
+      AND tr.t_remark_id NOT IN (
+          SELECT t_remark_id FROM tremarks_read_log
+      )
+
+    UNION ALL
+
+    SELECT  
+        tr.*, 
+        teacher.name, 
+        1 AS read_status
+    FROM teachers_remark tr
+    JOIN teacher ON teacher.teacher_id = tr.teachers_id
+    WHERE tr.academic_yr = '" . $customClaims . "'
+      AND tr.t_remark_id IN (
+          SELECT t_remark_id FROM tremarks_read_log
+      )
+) AS Z
+
+/* join ALL rows only for counting */
+LEFT JOIN redington_webhook_details rwd_all
+    ON rwd_all.notice_id = Z.t_remark_id
+
+/* join ONLY latest row for status */
+LEFT JOIN redington_webhook_details rwd_latest
+    ON rwd_latest.webhook_id = (
+        SELECT MAX(rwd2.webhook_id)
+        FROM redington_webhook_details rwd2
+        WHERE rwd2.notice_id = Z.t_remark_id
+    )
+
+GROUP BY Z.t_remark_id
+ORDER BY Z.t_remark_id DESC;");
+
+            // dd($remarkslist);
+            return response()->json([
+                'status' => 200,
+                'date' => $remarkslist,
+                'message' => 'Remark and observation list.',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -3599,7 +3615,9 @@ class NewController extends Controller
                     DB::raw('CONCAT(UPPER(LEFT(student.last_name, 1)), LOWER(SUBSTRING(student.last_name, 2))) as last_name'),
                     'subject_master.name as subjectname',
                     DB::raw('(CASE WHEN remark.remark_id IN (SELECT remark_id FROM remarks_read_log) THEN 1 ELSE 0 END) as read_status'),
-                    DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count')
+                    DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count'),
+                    DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                    DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status'),
                 )
                 ->groupBy('remark.remark_id')
                 ->orderBy('remark.remark_id', 'DESC')
@@ -4474,29 +4492,20 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $classteachers = DB::table('class_teachers')
-                    ->join('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
-                    ->where('class_teachers.academic_yr', $customClaims)
-                    ->orderBy('class_teachers.class_id', 'ASC')
-                    ->select('class_teachers.*', 'teacher.teacher_id', 'teacher.name')
-                    ->get()
-                    ->toArray();
+            $classteachers = DB::table('class_teachers')
+                ->join('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->orderBy('class_teachers.class_id', 'ASC')
+                ->select('class_teachers.*', 'teacher.teacher_id', 'teacher.name')
+                ->get()
+                ->toArray();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $classteachers,
-                    'message' => 'Class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $classteachers,
+                'message' => 'Class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -4508,35 +4517,26 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $roles = ['T', 'L'];
+            $roles = ['T', 'L'];
 
-                $subquery = DB::table('class_teachers')
-                    ->select('teacher_id')
-                    ->where('academic_yr', $customClaims);
+            $subquery = DB::table('class_teachers')
+                ->select('teacher_id')
+                ->where('academic_yr', $customClaims);
 
-                $nonclassteachers = DB::table('teacher')
-                    ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
-                    ->whereNotIn('teacher.teacher_id', $subquery)
-                    ->whereIn('user_master.role_id', $roles)
-                    ->select('teacher.*', 'user_master.role_id')
-                    ->get()
-                    ->toArray();
+            $nonclassteachers = DB::table('teacher')
+                ->join('user_master', 'teacher.teacher_id', '=', 'user_master.reg_id')
+                ->whereNotIn('teacher.teacher_id', $subquery)
+                ->whereIn('user_master.role_id', $roles)
+                ->select('teacher.*', 'user_master.role_id')
+                ->get()
+                ->toArray();
 
-                return response()->json([
-                    'status' => 200,
-                    'data' => $nonclassteachers,
-                    'message' => 'Non class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            return response()->json([
+                'status' => 200,
+                'data' => $nonclassteachers,
+                'message' => 'Non class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -4547,45 +4547,57 @@ class NewController extends Controller
     {
         try {
             $user = $this->authenticateUser();
+            $role_id = $user->role_id;
+            $reg_id = $user->reg_id;
+
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $substituteTeacherList = DB::table('class_teacher_substitute')
-                    ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
-                    ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')
-                    ->where('class_teacher_substitute.academic_yr', $customClaims)
-                    ->select(
-                        'class_teacher_substitute.*',
-                        'main_teacher.name as class_teacher_name',
-                        'sub_teacher.name as substitute_teacher_name'
-                    )
-                    ->get();
-                foreach ($substituteTeacherList as $substituteTeacher) {
-                    $class = DB::table('class_teachers')
-                        ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
-                        ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
-                        ->where('class_teachers.teacher_id', $substituteTeacher->class_teacher_id)
-                        ->where('class_teachers.academic_yr', $customClaims)
-                        ->select('class.class_id', 'section.section_id', 'class.name as classname', 'section.name as sectionname')
-                        ->first();
-                    $substituteTeacher->class_id = $class->class_id ?? null;
-                    $substituteTeacher->classname = $class->classname ?? null;
-                    $substituteTeacher->section_id = $class->section_id ?? null;
-                    $substituteTeacher->sectionname = $class->sectionname ?? null;
-                }
-                return response()->json([
-                    'status' => 200,
-                    'data' => $substituteTeacherList,
-                    'message' => 'Substitute class teachers list!',
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the getting of department list.',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
+
+            $substituteTeacherList = DB::table('class_teacher_substitute')
+                ->join('teacher as main_teacher', 'main_teacher.teacher_id', '=', 'class_teacher_substitute.class_teacher_id')
+                ->join('teacher as sub_teacher', 'sub_teacher.teacher_id', '=', 'class_teacher_substitute.teacher_id')
+                ->where('class_teacher_substitute.academic_yr', $customClaims)
+                ->select(
+                    'class_teacher_substitute.*',
+                    'main_teacher.name as class_teacher_name',
+                    'sub_teacher.name as substitute_teacher_name'
+                )
+                ->get();
+
+            foreach ($substituteTeacherList as $substituteTeacher) {
+                $class = DB::table('class_teachers')
+                    ->join('class', 'class.class_id', '=', 'class_teachers.class_id')
+                    ->join('section', 'section.section_id', '=', 'class_teachers.section_id')
+                    ->where('class_teachers.teacher_id', $substituteTeacher->class_teacher_id)
+                    ->where('class_teachers.academic_yr', $customClaims)
+                    ->select('class.class_id', 'section.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->first();
+                $substituteTeacher->class_id = $class->class_id ?? null;
+                $substituteTeacher->classname = $class->classname ?? null;
+                $substituteTeacher->section_id = $class->section_id ?? null;
+                $substituteTeacher->sectionname = $class->sectionname ?? null;
             }
+
+            $response = [];
+
+            if ($role_id == 'T') {
+                $today = Carbon::today()->toDateString();  // yyyy-mm-dd
+                foreach ($substituteTeacherList as $substituteTeacher) {
+                    if (
+                        $substituteTeacher->teacher_id == $reg_id &&
+                        Carbon::parse($substituteTeacher->end_date)->gte($today) &&
+                        Carbon::parse($substituteTeacher->start_date)->lte($today)
+                    ) {
+                        $response[] = $substituteTeacher;
+                    }
+                }
+            }
+
+            return response()->json([
+                'status' => 200,
+                'data' => $role_id == 'T' ? $response : $substituteTeacherList,
+                'message' => 'Substitute class teachers list!',
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);

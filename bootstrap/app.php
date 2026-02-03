@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'school.db' => \App\Http\Middleware\ConnectSchoolDatabase::class,
+            'prevent.impersonation.abuse' => \App\Http\Middleware\PreventImpersonationAbuse::class,
+            'impersonation.readonly' => \App\Http\Middleware\ImpersonationReadOnly::class,
         ]);
 
         //

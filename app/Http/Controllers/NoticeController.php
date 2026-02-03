@@ -2019,30 +2019,21 @@ class NoticeController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            if ($user->role_id == 'A' || $user->role_id == 'U' || $user->role_id == 'M') {
-                $results = DB::table('subjects_on_report_card as a')
-                    ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
-                    ->distinct()
-                    ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
-                    ->where('a.class_id', '=', $class_id)
-                    ->where('a.academic_yr', '=', $customClaims)
-                    ->orderBy('a.class_id', 'asc')
-                    ->orderBy('b.sequence', 'asc')
-                    ->get();
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'List of Subjects',
-                    'data' => $results,
-                    'success' => true
-                ]);
-            } else {
-                return response()->json([
-                    'status' => 401,
-                    'message' => 'This User Doesnot have Permission for the Saving of Data',
-                    'data' => $user->role_id,
-                    'success' => false
-                ]);
-            }
+            $results = DB::table('subjects_on_report_card as a')
+                ->select('a.sub_rc_master_id', 'b.name', 'a.subject_type')
+                ->distinct()
+                ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
+                ->where('a.class_id', '=', $class_id)
+                ->where('a.academic_yr', '=', $customClaims)
+                ->orderBy('a.class_id', 'asc')
+                ->orderBy('b.sequence', 'asc')
+                ->get();
+            return response()->json([
+                'status' => 200,
+                'message' => 'List of Subjects',
+                'data' => $results,
+                'success' => true
+            ]);
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
@@ -2790,7 +2781,9 @@ class NoticeController extends Controller
                                                     ELSE department.name 
                                                 END as dept_name"),
                         DB::raw('GROUP_CONCAT(DISTINCT teachernames.name ORDER BY teachernames.name SEPARATOR ", ") as teacher_names'),
-                        DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count')
+                        DB::raw('COUNT(CASE WHEN redington_webhook_details.sms_sent = "N" THEN 1 END) as failed_sms_count'),
+                        DB::raw('COALESCE(redington_webhook_details.sms_sent, "") as sms_sent'),
+                        DB::raw('COALESCE(redington_webhook_details.status, "") as whatsapp_status'),
                     )
                     ->join('teacher', 'staff_notice.created_by', '=', 'teacher.teacher_id')
                     ->leftJoin('teacher as teachernames', function ($join) {
