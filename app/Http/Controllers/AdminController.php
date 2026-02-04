@@ -15915,6 +15915,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'c.name',
                 's.name'
             )
+            ->orderBy('c.class_id')
+            ->orderBy('s.section_id')
             ->get();
         return response()->json([
             'status' => true,
