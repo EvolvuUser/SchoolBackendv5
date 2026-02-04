@@ -1563,4 +1563,37 @@ class TeacherDashboardController extends Controller
             'data' => $cards
         ]);
     }
+
+    public function getTeacherLateCountMonthly(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $teacher_id = JWTAuth::getPayload()->get('reg_id');
+        $latecount = DB::select(
+            "
+                SELECT COUNT(*) AS late_days
+                FROM (
+                    SELECT DATE(ta.punch_time) AS attendance_date
+                    FROM teacher t
+                    JOIN teacher_category tc ON t.tc_id = tc.tc_id
+                    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id
+                    JOIN late_time lt ON lt.tc_id = t.tc_id
+                    WHERE 
+                        t.isDelete = 'N'
+                        AND tc.teaching = 'Y'
+                        AND t.teacher_id = ?
+                        AND ta.punch_time >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                        AND ta.punch_time <  DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
+                    GROUP BY DATE(ta.punch_time), t.tc_id
+                    HAVING MIN(TIME(ta.punch_time)) > MAX(lt.late_time)
+                ) AS late_days_table
+                ",
+            [$teacher_id]
+        );
+        return response()->json([
+            'status' => 200,
+            'message' => 'Late days in month.',
+            'data' => $latecount,
+            'success' => true
+        ]);
+    }
 }
