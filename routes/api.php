@@ -1415,6 +1415,9 @@
             // API for sending whatsapp messsages to teacher Dev Name - Manish Kumar Sharma 02-02-2026
             Route::post('send_messagesforteacher', [AdminController::class, 'sendMessagesForTeacher']);
 
+            // Used in teacher app for the dashboard Dev Name - Manish Kumar Sharma 04-02-2026
+            Route::get('get_teacherlatecountmonthly', [TeacherDashboardController::class, 'getTeacherLateCountMonthly']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
