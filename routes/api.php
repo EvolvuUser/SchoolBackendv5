@@ -1418,6 +1418,26 @@
             // Used in teacher app for the dashboard Dev Name - Manish Kumar Sharma 04-02-2026
             Route::get('get_teacherlatecountmonthly', [TeacherDashboardController::class, 'getTeacherLateCountMonthly']);
 
+            // Library Report - Mahima 03-02-2026
+            // Book Report
+            Route::get('/library/get_books_report', [LibraryController::class, 'booksReport']);
+
+            // Locationwise Book report
+            Route::get('/library/get_all_racks', [LibraryController::class, 'getAllRacks']);
+            Route::get('/library/get_locationwise_book_report', [LibraryController::class, 'locationWiseBookReport']);
+
+            // Books added in library
+            Route::get('/library/get_books_added_report', [LibraryController::class, 'booksAddedReport']);
+            Route::get('/library/get_source_of_book', [LibraryController::class, 'getSourceOfBooks']);
+
+            // Books Issued  Report
+            Route::get('/library/book_issued_report', [LibraryController::class, 'getBooksIssueReport']);
+
+            // Books Non Retured Report
+            Route::get('/library/book_non_return_report', [LibraryController::class, 'getBookNotReturnReport']);
+
+            // Books Issued history report
+            Route::get('/library/book_issued_history_report', [LibraryController::class, 'issuedBooksHistory']);
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
