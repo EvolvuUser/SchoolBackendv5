@@ -3360,7 +3360,7 @@ class LibraryController extends Controller
                 $location_of_book_req_val = str_replace("'", "\'", $rack) . '/' . $shelf;
             }
 
-            $query = DB::select("SELECT a.,b. FROM book as a join book_copies as b on a.book_id = b.book_id where replace(a.location_of_book,' ','') LIKE replace('$location_of_book_req_val',' ','') order by b.copy_id");  // where condition
+            $query = DB::select("SELECT a.*,b.* FROM book as a join book_copies as b on a.book_id = b.book_id where replace(a.location_of_book,' ','') LIKE replace('$location_of_book_req_val',' ','') order by b.copy_id");  // where condition
 
             return response()->json([
                 'status' => 200,
