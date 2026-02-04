@@ -15867,80 +15867,60 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $academicYear = JWTAuth::getPayload()->get('academic_year');
         $date = $request->query('date', now()->toDateString());
 
-        // ---------- Fetch Classes ----------
-        $classes = DB::table('class')
-            ->select('class_id')
-            ->where('academic_yr', $academicYear)
+        $notMarkedSub = DB::table('class as c')
+            ->join('section as s', 's.class_id', '=', 'c.class_id')
+            ->leftJoin('attendance as a', function ($join) use ($date) {
+                $join
+                    ->on('a.class_id', '=', 'c.class_id')
+                    ->on('a.section_id', '=', 's.section_id')
+                    ->whereBetween('a.only_date', [
+                        $date . ' 00:00:00',
+                        $date . ' 23:59:59'
+                    ]);
+            })
+            ->where('c.academic_yr', $academicYear)
+            ->whereNull('a.class_id')
+            ->select('c.class_id', 's.section_id');
+        $list = DB::table('class_teachers as ct')
+            ->joinSub($notMarkedSub, 'nm', function ($join) {
+                $join
+                    ->on('nm.class_id', '=', 'ct.class_id')
+                    ->on('nm.section_id', '=', 'ct.section_id');
+            })
+            ->join('teacher as t', 't.teacher_id', '=', 'ct.teacher_id')
+            ->join('class as c', 'c.class_id', '=', 'ct.class_id')
+            ->join('section as s', 's.section_id', '=', 'ct.section_id')
+            ->leftJoin('redington_webhook_details as rwd', function ($join) use ($date) {
+                $join
+                    ->on('rwd.stu_teacher_id', '=', 't.teacher_id')
+                    ->where('rwd.message_type', 'attendance_not_marked')
+                    ->whereBetween('rwd.created_at', [
+                        $date . ' 00:00:00',
+                        $date . ' 23:59:59'
+                    ]);
+            })
+            ->select(
+                't.teacher_id',
+                't.name as teacher_name',
+                't.employee_id',
+                'c.name as class_name',
+                's.name as section_name',
+                DB::raw("COALESCE(MAX(rwd.sms_sent), '') as sms_sent"),
+                DB::raw("COALESCE(MAX(rwd.status), '') as whatsapp_status")
+            )
+            ->groupBy(
+                't.teacher_id',
+                't.name',
+                't.employee_id',
+                'c.name',
+                's.name'
+            )
             ->get();
-
-        // ---------- Preload Sections ----------
-        $sectionsByClass = DB::table('section')
-            ->select('section_id', 'class_id')
-            ->get()
-            ->groupBy('class_id');
-
-        $notMarkedCount = 0;
-        $totalClasses = 0;
-
-        $notMarkedData = [];
-        foreach ($classes as $class) {
-            foreach ($sectionsByClass[$class->class_id] ?? [] as $section) {
-                $exists = DB::table('attendance')
-                    ->where('class_id', $class->class_id)
-                    ->where('section_id', $section->section_id)
-                    ->whereDate('only_date', $date)
-                    ->exists();
-                if (!$exists) {
-                    $notMarkedData[] = ['class_id' => $class->class_id, 'section_id' => $section->section_id];
-                    $notMarkedCount++;
-                }
-                $totalClasses++;
-            }
-        }
-
-        // Find out listing
-        $list = [];
-        foreach ($notMarkedData as $nmd) {
-            $class_id = $nmd['class_id'];
-            $section_id = $nmd['section_id'];
-
-            $data = DB::table('class_teachers')
-                ->leftJoin('teacher', 'teacher.teacher_id', '=', 'class_teachers.teacher_id')
-                ->leftJoin('class', 'class.class_id', '=', 'class_teachers.class_id')
-                ->leftJoin('section', 'section.section_id', '=', 'class_teachers.section_id')
-                ->leftJoin('redington_webhook_details as rwd', function ($join) use ($date) {
-                    $join
-                        ->on('rwd.stu_teacher_id', '=', 'teacher.teacher_id')
-                        ->whereRaw('rwd.webhook_id = (
-                            SELECT MAX(webhook_id)
-                            FROM redington_webhook_details
-                            WHERE stu_teacher_id = teacher.teacher_id
-                            AND message_type = ?
-                            AND DATE(created_at) = ?
-                        )', ['attendance_not_marked', $date]);
-                })
-                ->where('class_teachers.class_id', $class_id)
-                ->where('class_teachers.section_id', $section_id)
-                ->select(
-                    'teacher.teacher_id',
-                    'teacher.name as teacher_name',
-                    'teacher.employee_id',
-                    'class.name as class_name',
-                    'section.name as section_name',
-                    DB::raw("COALESCE(rwd.sms_sent, '') as sms_sent"),
-                    DB::raw("COALESCE(rwd.status, '') as whatsapp_status")
-                )
-                ->first();
-
-            $list[] = $data;
-        }
-
         return response()->json([
             'status' => true,
             'date' => $date,
             'AttendanceNotMarkedList' => $list,
             'AttendanceNotMarkedCount' => count($list),
-            'TotalClassesCount' => $totalClasses,
         ]);
     }
 
