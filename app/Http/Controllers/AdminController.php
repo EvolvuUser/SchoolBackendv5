@@ -14614,7 +14614,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // ---------- Present Students ----------
             $presentCounts = DB::table('attendance')
                 ->select('class_id', 'section_id', DB::raw('COUNT(*) as present'))
-                ->where('attendance_status', 1)
+                ->where('attendance_status', 0)
                 ->where('only_date', $date)
                 ->where('academic_yr', $academicYear)
                 ->groupBy('class_id', 'section_id')
@@ -15915,6 +15915,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'c.name',
                 's.name'
             )
+            ->orderBy('c.class_id')
+            ->orderBy('s.section_id')
             ->get();
         return response()->json([
             'status' => true,
