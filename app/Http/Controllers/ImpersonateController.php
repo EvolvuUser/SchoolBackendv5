@@ -156,16 +156,14 @@ class ImpersonateController extends Controller
 
     public function getRoles() {
         try {
+            $payload = JWTAuth::getPayload();
             $user = $this->authenticateUser();
 
             // get all the teachers 
-            $data = DB::table('user_master')
-            ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
+            $data = DB::table('role_master')
             ->select(
-                'user_master.role_id',
-            )
-            ->distinct()
-            ->where('user_master.isDelete' , 'N')->get();
+                'role_master.role_id', 'role_master.name'
+            )->where('is_active' , 'Y')->where('role_id' , '!=' , 'U')->get();
 
             return response()->json([
                 'data' => $data,
