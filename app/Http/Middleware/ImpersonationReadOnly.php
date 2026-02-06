@@ -31,7 +31,7 @@ class ImpersonationReadOnly
             // ]);
 
             // Block write methods
-            if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'])) {
+            if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS', 'POST'])) {
                 // write to impersonation_blocked_actions
 
                 // DB::table('impersonation_blocked_actions')->insert([
