@@ -24,22 +24,22 @@ class ImpersonationReadOnly
         if ($payload->get('impersonation') === true) {
 
             // Write to impersonation_route_logs 
-            DB::table('impersonation_route_logs')->insert([
-                'impersonation_session_id' => $payload->get('isid'),
-                'method' => $request->method(),
-                'route' => $request->path(),
-            ]);
+            // DB::table('impersonation_route_logs')->insert([
+            //     'impersonation_session_id' => $payload->get('isid'),
+            //     'method' => $request->method(),
+            //     'route' => $request->path(),
+            // ]);
 
             // Block write methods
             if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'])) {
                 // write to impersonation_blocked_actions
 
-                DB::table('impersonation_blocked_actions')->insert([
-                    'impersonation_session_id' => $payload->get('isid'),
-                    'method' => $request->method(),
-                    'route' => $request->path(),
-                    'reason' => 'WRITE_BLOCKED'
-                ]);
+                // DB::table('impersonation_blocked_actions')->insert([
+                //     'impersonation_session_id' => $payload->get('isid'),
+                //     'method' => $request->method(),
+                //     'route' => $request->path(),
+                //     'reason' => 'WRITE_BLOCKED'
+                // ]);
 
                 return response()->json([
                     'success' => false,
