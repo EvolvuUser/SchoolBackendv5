@@ -129,6 +129,7 @@ class AuthController extends Controller
                     $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
                     $schoolName = Setting::where('active', 'Y')->first()->institute_name;
                     $settings = DB::table('school_settings')->where('is_active', 'Y')->first();
+
                     $settings_new = Setting::where('active', 'Y')->first();
                     $customClaims = [
                         'role_id' => $user->role_id,
