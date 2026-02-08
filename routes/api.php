@@ -5,6 +5,7 @@
     use App\Http\Controllers\AuthController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
+    use App\Http\Controllers\DashboardController;
     use App\Http\Controllers\HscController;
     use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
@@ -1438,6 +1439,7 @@
 
             // Books Issued history report
             Route::get('/library/book_issued_history_report', [LibraryController::class, 'issuedBooksHistory']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
@@ -1528,6 +1530,7 @@
 
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('send_pending_messages_whatsapp', [NewController::class, 'sendPendingMessagesWhatsapp']);
+    Route::get('get_dashboardstructure', [DashboardController::class, 'getDashboardStructure']);
 
     // Example of retrieving authenticated user information
     Route::get('/user', function (Request $request) {
