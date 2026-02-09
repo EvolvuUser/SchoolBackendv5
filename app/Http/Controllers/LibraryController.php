@@ -3748,4 +3748,62 @@ class LibraryController extends Controller
             'data' => $data
         ]);
     }
+
+
+    public function getIssuedBooksMonthly(Request $request)
+    {
+        try {
+            $monthYear = $request->input('month_year'); // format: YYYY-MM
+
+            // Student issued books
+            $studentQuery = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'b.name as classname',
+                    'c.name as secname'
+                )
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('student', 'a.member_id', '=', 'student.student_id')
+                ->join('class as b', 'student.class_id', '=', 'b.class_id')
+                ->join('section as c', 'student.section_id', '=', 'c.section_id')
+                ->where('a.member_type', 'S')
+                ->where('a.issue_date', 'like', $monthYear . '-%');
+
+            // Teacher issued books
+            $teacherQuery = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    'teacher.name as first_name',
+                    DB::raw('NULL as mid_name'),
+                    DB::raw('NULL as last_name'),
+                    DB::raw('NULL as classname'),
+                    DB::raw('NULL as secname')
+                )
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('teacher', 'a.member_id', '=', 'teacher.teacher_id')
+                ->where('a.member_type', 'T')
+                ->where('a.issue_date', 'like', $monthYear . '-%');
+
+            // UNION + ORDER BY
+            $data = $studentQuery
+                ->unionAll($teacherQuery)
+                ->orderBy('issue_date', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
