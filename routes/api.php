@@ -1440,6 +1440,12 @@
             // Books Issued history report
             Route::get('/library/book_issued_history_report', [LibraryController::class, 'issuedBooksHistory']);
 
+            // Books Iussed Monthly Report
+            Route::get('/library/book_issued_monthly_report', [LibraryController::class, 'getIssuedBooksMonthly']);
+
+
+
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
