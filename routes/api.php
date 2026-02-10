@@ -1431,7 +1431,7 @@
             Route::get('/library/get_books_added_report', [LibraryController::class, 'booksAddedReport']);
             Route::get('/library/get_source_of_book', [LibraryController::class, 'getSourceOfBooks']);
 
-            // Books Issued  Report
+            // Books Issued  Report 04-02-2026
             Route::get('/library/book_issued_report', [LibraryController::class, 'getBooksIssueReport']);
 
             // Books Non Retured Report
@@ -1444,6 +1444,18 @@
             Route::get('/library/book_issued_monthly_report', [LibraryController::class, 'getIssuedBooksMonthly']);
 
 
+            // Mahima 10-02-2026
+            // Subscription Reminder Report
+            Route::get('/subscription/reminder', [LibraryController::class, 'subscriptionReminderReport']);
+
+            // Periodicals Non Received Reminder
+            Route::get('/periodicals/reminder', [LibraryController::class, 'periodicalNotReceivedReminder']);
+
+            // Book Return Pending 
+            Route::get('/book_return_pending', [LibraryController::class, 'pendingOverdueBooks']);
+
+            // Library Dashboard count 
+            Route::get('/library/dashboard', [libraryController::class, 'libraryDashboard']);
 
 
             // Testing

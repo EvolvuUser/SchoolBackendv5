@@ -3749,7 +3749,6 @@ class LibraryController extends Controller
         ]);
     }
 
-
     public function getIssuedBooksMonthly(Request $request)
     {
         try {
@@ -3805,5 +3804,225 @@ class LibraryController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function subscriptionReminderReport()
+    {
+        $data = DB::table('subscription as s')
+            ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+            ->where('s.status', 'Active')
+            ->whereDate('s.to_date', '<', Carbon::now()->addDays(7))
+            ->select(
+                's.*',
+                'p.*',
+            )
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
+        ]);
+    }
+
+    public function periodicalNotReceivedReminder(Request $request)
+    {
+        $periodicalId = $request->periodical_id;
+
+        $query = DB::table('periodicals as a')
+            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+            ->where('b.status', 'Active')
+            ->whereDate('d.receive_by_date', '<', Carbon::today())
+            ->where('d.status', '!=', 'Received');
+
+        // Optional periodical filter
+        if (!empty($periodicalId)) {
+            $query->where('a.periodical_id', $periodicalId);
+        }
+
+        $data = $query->select(
+            'a.*',
+            'b.*',
+            'c.*',
+            'd.*'
+        )->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
+        ]);
+    }
+
+    public function pendingOverdueBooks()
+    {
+        $data = DB::table('issue_return as ir')
+            ->join('book as b', 'b.book_id', '=', 'ir.book_id')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->select(
+                'ir.*',
+                'b.*'
+            )
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
+        ]);
+    }
+
+
+
+    // public function libraryDashboard(Request $request)
+    // {
+    //     $periodicalId = $request->periodical_id;
+
+    //     /**  Subscription Expiry Count */
+    //     $subscriptionExpiry = [
+    //         'count' => DB::table('subscription')
+    //             ->where('status', 'Active')
+    //             ->whereDate('to_date', '<', Carbon::today()->addDays(7))
+    //             ->count()
+    //     ];
+
+    //     /**  Periodical Not Received Count */
+    //     $periodicalNotReceivedQuery = DB::table('periodicals as a')
+    //         ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+    //         ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+    //         ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+    //         ->where('b.status', 'Active')
+    //         ->whereDate('d.receive_by_date', '<', Carbon::today())
+    //         ->where('d.status', '!=', 'Received');
+
+    //     if (!empty($periodicalId)) {
+    //         $periodicalNotReceivedQuery->where('a.periodical_id', $periodicalId);
+    //     }
+
+    //     $periodicalNotReceived = [
+    //         'count' => $periodicalNotReceivedQuery->count()
+    //     ];
+
+    //     // Pending Book return
+    //     $bookReturnPending = [
+    //         'count' => DB::table('issue_return as ir')
+    //             ->whereDate('ir.due_date', '<', Carbon::today())
+    //             ->where(function ($query) {
+    //                 $query->whereNull('ir.return_date')
+    //                     ->orWhere('ir.return_date', '0000-00-00');
+    //             })
+    //             ->count()
+    //     ];
+
+    //     // Total books and Available Books
+    //     $totalBooks = [
+    //         'count' => DB::table('book_copies')->count()
+    //     ];
+
+    //     $availableBooks = [
+    //         'count' => DB::table('book_copies')
+    //             ->where('status', 'A') // Available
+    //             ->count()
+    //     ];
+
+    //     // Periodicals count
+    //     $periodicalsCount = [
+    //         'count' => DB::table('periodicals')->count()
+    //     ];
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'subscription_expiry' => $subscriptionExpiry,
+    //         'periodical_not_received' => $periodicalNotReceived,
+    //         'book_return_pending'      => $bookReturnPending,
+    //         'total_books'              => $totalBooks,
+    //         'available_books'          => $availableBooks,
+    //         'peridocals'               => $periodicalsCount
+    //     ]);
+    // }
+
+    public function libraryDashboard(Request $request)
+    {
+        $periodicalId = $request->periodical_id;
+
+        /** Subscription Expiry (Next 7 Days) */
+        $subscriptionExpiryCount = DB::table('subscription')
+            ->where('status', 'Active')
+            ->whereDate('to_date', '<', Carbon::today()->addDays(7))
+            ->count();
+
+        /** Periodical Not Received */
+        $periodicalNotReceivedQuery = DB::table('periodicals as a')
+            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+            ->where('b.status', 'Active')
+            ->whereDate('d.receive_by_date', '<', Carbon::today())
+            ->where('d.status', '!=', 'Received');
+
+        if (!empty($periodicalId)) {
+            $periodicalNotReceivedQuery->where('a.periodical_id', $periodicalId);
+        }
+
+        $periodicalNotReceivedCount = $periodicalNotReceivedQuery->count();
+
+        /** Pending Book Returns */
+        $pendingBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+
+        /** Books Count */
+        $totalBooksCount = DB::table('book_copies')->count();
+
+        $availableBooksCount = DB::table('book_copies')
+            ->where('status', 'A')
+            ->count();
+
+        /** Periodicals Count */
+        $periodicalsCount = DB::table('periodicals')->count();
+
+        /** Library Members Count */
+        $memberCounts = DB::table('library_member')
+            ->select('member_type', DB::raw('COUNT(*) as total'))
+            ->groupBy('member_type')
+            ->get();
+
+        $studentCount = 0;
+        $teacherCount = 0;
+
+        foreach ($memberCounts as $row) {
+            if ($row->member_type === 'S') {
+                $studentCount = $row->total;
+            } elseif ($row->member_type === 'T') {
+                $teacherCount = $row->total;
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'counts' => [
+                // 'db_name' => DB::connection()->getDatabaseName(),
+                // 'host'    => DB::connection()->getConfig('host'),
+                'subscription_expiry'     => $subscriptionExpiryCount,
+                'periodical_not_received' => $periodicalNotReceivedCount,
+                'book_return_pending'     => $pendingBookReturnCount,
+
+                'total_books'             => $totalBooksCount,
+                'available_books'         => $availableBooksCount,
+
+                'periodicals'             => $periodicalsCount,
+
+                'student_members'         => $studentCount,
+                'teacher_members'         => $teacherCount
+
+            ]
+        ]);
     }
 }
