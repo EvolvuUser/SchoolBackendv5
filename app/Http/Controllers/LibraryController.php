@@ -3823,12 +3823,14 @@ class LibraryController extends Controller
     //         'data'   => $data
     //     ]);
     // }
+
+
     public function subscriptionReminderReport()
     {
         $data = DB::table('subscription as s')
             ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
             ->where('s.status', 'Active')
-            ->whereRaw('DATE_SUB(s.to_date, INTERVAL 7 DAY) < CURDATE()')
+            ->whereRaw('s.to_date', 'to_date-7 < CURDATE()')
             ->select(
                 's.*',
                 'p.*'
