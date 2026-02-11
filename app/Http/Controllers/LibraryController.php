@@ -3830,11 +3830,8 @@ class LibraryController extends Controller
         $data = DB::table('subscription as s')
             ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
             ->where('s.status', 'Active')
-            ->whereRaw('s.to_date', 'to_date-7 < CURDATE()')
-            ->select(
-                's.*',
-                'p.*'
-            )
+            ->whereRaw('s.to_date - 7 < CURDATE()')
+            ->select('s.*', 'p.*')
             ->get();
 
         return response()->json([
@@ -3842,6 +3839,7 @@ class LibraryController extends Controller
             'data'   => $data
         ]);
     }
+
 
 
     public function periodicalNotReceivedReminder(Request $request)
