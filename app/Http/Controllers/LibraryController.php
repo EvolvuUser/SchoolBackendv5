@@ -3806,15 +3806,32 @@ class LibraryController extends Controller
         }
     }
 
+    // public function subscriptionReminderReport()
+    // {
+    //     $data = DB::table('subscription as s')
+    //         ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+    //         ->where('s.status', 'Active')
+    //         ->whereDate('s.to_date', '<', Carbon::now()->addDays(7))
+    //         ->select(
+    //             's.*',
+    //             'p.*',
+    //         )
+    //         ->get();
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'data'   => $data
+    //     ]);
+    // }
     public function subscriptionReminderReport()
     {
         $data = DB::table('subscription as s')
             ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
             ->where('s.status', 'Active')
-            ->whereDate('s.to_date', '<', Carbon::now()->addDays(7))
+            ->whereRaw('DATE_SUB(s.to_date, INTERVAL 7 DAY) < CURDATE()')
             ->select(
                 's.*',
-                'p.*',
+                'p.*'
             )
             ->get();
 
@@ -3823,6 +3840,7 @@ class LibraryController extends Controller
             'data'   => $data
         ]);
     }
+
 
     public function periodicalNotReceivedReminder(Request $request)
     {
@@ -3874,8 +3892,6 @@ class LibraryController extends Controller
             'data'   => $data
         ]);
     }
-
-
 
     // public function libraryDashboard(Request $request)
     // {
