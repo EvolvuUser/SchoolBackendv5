@@ -3901,15 +3901,20 @@ class LibraryController extends Controller
             $query = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->whereDate('a.due_date', '<', Carbon::today())
+                ->where(function ($query) {
+                    $query->whereNull('a.return_date')
+                        ->orWhere('a.return_date', '0000-00-00');
+                })
 
                 ->leftJoin('student', function ($join) {
                     $join->on('a.member_id', '=', 'student.student_id')
-                        ->where('a.m_type', '=', 'S');
+                        ->where('a.member_type', '=', 'S');
                 })
 
                 ->leftJoin('teacher', function ($join) {
                     $join->on('a.member_id', '=', 'teacher.teacher_id')
-                        ->where('a.m_type', '=', 'T');
+                        ->where('a.member_type', '=', 'T');
                 })
 
                 ->select(
@@ -3918,21 +3923,21 @@ class LibraryController extends Controller
 
                     DB::raw("
                     CASE 
-                        WHEN a.m_type = 'S' THEN student.first_name
-                        WHEN a.m_type = 'T' THEN teacher.name
+                        WHEN a.member_type = 'S' THEN student.first_name
+                        WHEN a.member_type = 'T' THEN teacher.name
                     END as first_name
                 "),
 
                     DB::raw("
                     CASE 
-                        WHEN a.m_type = 'S' THEN student.mid_name
+                        WHEN a.member_type = 'S' THEN student.mid_name
                         ELSE NULL
                     END as mid_name
                 "),
 
                     DB::raw("
                     CASE 
-                        WHEN a.m_type = 'S' THEN student.last_name
+                        WHEN a.member_type = 'S' THEN student.last_name
                         ELSE NULL
                     END as last_name
                 ")
