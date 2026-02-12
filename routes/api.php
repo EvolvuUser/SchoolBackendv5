@@ -1443,7 +1443,6 @@
             // Books Iussed Monthly Report
             Route::get('/library/book_issued_monthly_report', [LibraryController::class, 'getIssuedBooksMonthly']);
 
-
             // Mahima 10-02-2026
             // Subscription Reminder Report
             Route::get('/subscription/reminder', [LibraryController::class, 'subscriptionReminderReport']);
@@ -1451,12 +1450,14 @@
             // Periodicals Non Received Reminder
             Route::get('/periodicals/reminder', [LibraryController::class, 'periodicalNotReceivedReminder']);
 
-            // Book Return Pending 
+            // Book Return Pending
             Route::get('/book_return_pending', [LibraryController::class, 'pendingOverdueBooks']);
 
-            // Library Dashboard count 
+            // Library Dashboard count
             Route::get('/library/dashboard', [libraryController::class, 'libraryDashboard']);
 
+            // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
+            Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {

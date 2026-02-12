@@ -4894,4 +4894,100 @@ class ReportController extends Controller
             'data' => $response
         ]);
     }
+
+    public function getSubjectsHSCSubjectGroupwiseReport(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+        // Mandatory fields validation
+        $request->validate([
+            'class_id' => 'required',
+            'subject_group_id' => 'required',
+        ]);
+
+        $class_id = $request->input('class_id');
+        $subject_group_id = $request->input('subject_group_id');
+        $optional_subject_id = $request->input('optional_subject_id');  // optional
+
+        $query = DB::table('student AS stud')
+            ->leftJoin('subjects_higher_secondary_studentwise AS shs', 'shs.student_id', '=', 'stud.student_id')
+            ->leftJoin('subject_group AS grp', 'shs.sub_group_id', '=', 'grp.sub_group_id')
+            ->leftJoin('subject_group_details AS grpd', 'grp.sub_group_id', '=', 'grpd.sub_group_id')
+            ->leftJoin('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
+            ->leftJoin('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
+            ->leftJoin('stream', 'grp.stream_id', '=', 'stream.stream_id')
+            ->where('stud.class_id', $class_id)
+            ->where('stud.academic_yr', $customClaims)
+            ->where('grp.sub_group_id', $subject_group_id);
+
+        // Optional filter
+        if (!empty($optional_subject_id)) {
+            $query->where('shs.opt_subject_id', $optional_subject_id);
+        }
+
+        $getsubjecthsc = $query
+            ->select(
+                'stud.roll_no',
+                'stud.first_name',
+                'stud.mid_name',
+                'stud.last_name',
+                'stud.student_id',
+                'shsm.name as subject_name',
+                'shsm.subject_type',
+                'stream.stream_name',
+                'shs_op.name as optional_sub_name'
+            )
+            ->orderBy('stud.student_id')
+            ->orderBy('stud.roll_no', 'asc')
+            ->get()
+            ->groupBy('student_id');
+
+        $formattedSubjects = [];
+
+        foreach ($getsubjecthsc as $student_id => $subjects) {
+            $regularSubjects = [];
+            $optionalSubjects = [];
+
+            $studentDetails = [
+                'student_id' => $student_id,
+                'first_name' => $subjects[0]->first_name,
+                'mid_name' => $subjects[0]->mid_name,
+                'last_name' => $subjects[0]->last_name,
+                'roll_no' => $subjects[0]->roll_no,
+                'stream_name' => $subjects[0]->stream_name,
+            ];
+
+            foreach ($subjects as $subject) {
+                // Regular Subjects
+                if (!empty($subject->subject_name)) {
+                    $regularSubjects[] = [
+                        'subject_name' => $subject->subject_name
+                    ];
+                }
+
+                // Optional Subjects (avoid duplicate)
+                if (!empty($subject->optional_sub_name) &&
+                        !in_array($subject->optional_sub_name, array_column($optionalSubjects, 'subject_name'))) {
+                    $optionalSubjects[] = [
+                        'subject_name' => $subject->optional_sub_name
+                    ];
+                }
+            }
+
+            $formattedSubjects[] = array_merge($studentDetails, [
+                'subjects' => $regularSubjects,
+                'optional_subjects' => $optionalSubjects
+            ]);
+        }
+        usort($formattedSubjects, function ($a, $b) {
+            return (int) $a['roll_no'] <=> (int) $b['roll_no'];
+        });
+        return response([
+            'status' => 200,
+            'data' => $formattedSubjects,
+            'message' => 'Subject HSC Studentwise Report',
+            'success' => true
+        ]);
+    }
 }
