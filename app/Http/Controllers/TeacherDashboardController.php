@@ -1390,6 +1390,7 @@ class TeacherDashboardController extends Controller
 
         /** Homework Card */
         $today = Carbon::now()->toDateString();
+        $twoDaysLater = Carbon::today()->addDays(2);
         $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
         $countOfHomeworksDueToday = DB::table('homework')
             ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
@@ -1405,6 +1406,7 @@ class TeacherDashboardController extends Controller
             ->where('member_id', $teacher_id)
             ->where('member_type', 'T')
             ->where('return_date', '0000-00-00')
+            ->whereDate('due_date', '<=', $twoDaysLater)
             ->count();
         $notCreatedCount = DB::table('subject as s')
             ->selectRaw("
