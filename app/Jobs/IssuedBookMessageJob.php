@@ -42,16 +42,24 @@ class IssuedBookMessageJob implements ShouldQueue
         $issueDate    = $this->data['issue_date'];
         $dueDate      = $this->data['due_date'];
 
+
         // $member = DB::table('issue_return as a')
         //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+        //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
         //     ->where('a.member_id', $memberId)
-        //     ->select('b.phone_no', 'b.email_id', 'a.member_id')
+        //     ->select(
+        //         'b.phone_no',
+        //         'b.email_id',
+        //         'a.member_id',
+        //         'c.book_title'
+        //     )
         //     ->first();
 
         $member = DB::table('issue_return as a')
             ->join('contact_details as b', 'a.member_id', '=', 'b.id')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
             ->where('a.member_id', $memberId)
+            ->where('a.copy_id', $copyId)   // IMPORTANT
             ->select(
                 'b.phone_no',
                 'b.email_id',
@@ -59,6 +67,7 @@ class IssuedBookMessageJob implements ShouldQueue
                 'c.book_title'
             )
             ->first();
+
 
 
 
