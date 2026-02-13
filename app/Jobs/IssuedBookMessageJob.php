@@ -42,11 +42,24 @@ class IssuedBookMessageJob implements ShouldQueue
         $issueDate    = $this->data['issue_date'];
         $dueDate      = $this->data['due_date'];
 
+        // $member = DB::table('issue_return as a')
+        //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+        //     ->where('a.member_id', $memberId)
+        //     ->select('b.phone_no', 'b.email_id', 'a.member_id')
+        //     ->first();
+
         $member = DB::table('issue_return as a')
             ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+            ->join('book as c', 'a.book_id', '=', 'c.book_id')
             ->where('a.member_id', $memberId)
-            ->select('b.phone_no', 'b.email_id', 'a.member_id')
+            ->select(
+                'b.phone_no',
+                'b.email_id',
+                'a.member_id',
+                'c.book_title'
+            )
             ->first();
+
 
 
         if (!$member || !$member->phone_no) {
@@ -62,7 +75,8 @@ class IssuedBookMessageJob implements ShouldQueue
             $result = app(WhatsAppService::class)->sendTextMessage(
                 $member->phone_no,
                 'emergency_message',
-                ['Library Member,' . $copyId]
+                ['Member, ' . $member->book_title . ' book has been issued']
+
             );
 
             // Insert webhook log
@@ -74,19 +88,20 @@ class IssuedBookMessageJob implements ShouldQueue
                 DB::table('redington_webhook_details')->insert([
                     'wa_id' => null,
                     'phone_no' => $member->phone_no,
-                    'member_id' => $memberId,
-                    'copy_id' => $copyId,
+                    'stu_teacher_id' => $memberId,
+                    'notice_id' => $copyId,
                     'message_type' => 'bookissued',
                     'status' => 'failed',
                     'sms_sent' => 'N',
                     'created_at' => now()
+
                 ]);
             } else {
                 DB::table('redington_webhook_details')->insert([
                     'wa_id' => $result['messages'][0]['id'] ?? null,
                     'phone_no' => $result['contacts'][0]['input'] ?? $member->phone_no,
-                    'member_id' => $memberId,
-                    'copy_id' => $copyId,
+                    'stu_teacher_id' => $memberId,
+                    'notice_id' => $copyId,
                     'message_type' => 'bookissued',
                     'created_at' => now()
                 ]);
@@ -101,13 +116,13 @@ class IssuedBookMessageJob implements ShouldQueue
                 $failed = DB::table('redington_webhook_details')
                     ->where('message_type', 'bookissued')
                     ->where('status', 'failed')
-                    ->where('copy_id', $copyId)
+                    ->where('notice_id', $copyId)
                     ->where('sms_sent', 'N')
                     ->first();
 
                 $sms_status = app(SmsService::class)->sendSms(
                     $member->phone_no,
-                    'Dear Library Member,' . $copyId . 'this book is issued. Login to school application for details - AceVentura',
+                    'Dear Member, ' . $member->book_title . 'has been issued. Login to school application for details - AceVentura',
                     '1107161354408119887'
                 );
 
@@ -115,22 +130,20 @@ class IssuedBookMessageJob implements ShouldQueue
 
                 if ($messagestatus === 'success') {
                     DB::table('redington_webhook_details')
-                        ->where('copy_id', $copyId)
-                        ->where('member_id', $memberId)
+                        ->where('notice_id', $copyId)
+                        ->where('stu_teacher_id', $memberId)
                         ->update(['sms_sent' => 'Y']);
                 }
 
                 NoticeSmsLog::create([
                     'sms_status' => json_encode($sms_status['data']),
-                    'member_id' => $failed->memberId,
-                    'copy_id' => $copyId,
+                    'stu_teacher_id' => $failed->memberId,
+                    'notice_id' => $copyId,
                     'phone_no' => $member->phone_no,
                     'sms_date' => Carbon::now()->format('Y/m/d')
                 ]);
             }
         }
-
-
 
         // Push notifications
         $tokens = getTokenDataParentId($memberId);
