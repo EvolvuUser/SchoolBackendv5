@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendReminderRemarkJob;
+use App\Jobs\IssuedBookMessageJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1035,10 +1036,124 @@ class LibraryController extends Controller
         }
     }
 
+    // public function issueBook(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $request->validate([
+    //         'issueddate' => 'required|date',
+    //         'copy_id' => 'required|array',
+    //         'book_id' => 'required|array',
+    //         'member_type' => 'required|string',
+    //     ]);
+
+    //     $memberType = $request->member_type;
+    //     $issueDate = date('Y-m-d', strtotime($request->issueddate));
+
+    //     // grn no
+    //     if ($request->grn_no != '') {
+    //         $student = DB::table('student')
+    //             ->where('reg_no', $request->grn_no)
+    //             ->where('academic_yr', $academic_yr)
+    //             ->first();
+
+    //         if (!$student) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Invalid GRN Number'
+    //             ], 404);
+    //         }
+
+    //         $memberId = $student->student_id;
+    //     }
+    //     // member_id
+    //     else {
+    //         $memberId = $request->member_id;
+    //     }
+
+    //     // check libarary member
+    //     $memberCheck = DB::table('library_member')
+    //         ->where('member_id', $memberId)
+    //         ->exists();
+
+    //     if (!$memberCheck) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Not a valid library member'
+    //         ], 403);
+    //     }
+
+    //     // check duplicate copy_id
+    //     if (count($request->copy_id) !== count(array_unique($request->copy_id))) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Duplicate book copies cannot be issued'
+    //         ], 422);
+    //     }
+
+    //     DB::beginTransaction();
+
+    //     try {
+    //         foreach ($request->copy_id as $i => $copyId) {
+    //             $bookId = $request->book_id[$i];
+
+    //             // calculate due date
+    //             if ($memberType == 'S') {
+    //                 $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+7 days'));
+    //             } else {
+    //                 $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+30 days'));
+    //             }
+
+    //             // new entry of issue book
+    //             DB::table('issue_return')->insert([
+    //                 'member_type' => $memberType,
+    //                 'member_id' => $memberId,
+    //                 'book_id' => $bookId,
+    //                 'copy_id' => $copyId,
+    //                 'issue_date' => $issueDate,
+    //                 'due_date' => $dueDate,
+    //             ]);
+
+    //             // update book status
+    //             DB::table('book_copies')
+    //                 ->where('copy_id', $copyId)
+    //                 ->where('book_id', $bookId)
+    //                 ->update([
+    //                     'status' => 'I'  // I = Issued
+    //                 ]);
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Books issued successfully'
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Error issuing book',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // Changed by mahima 12-02-2026  Whats app integration
     public function issueBook(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $settingsData = getSchoolSettingsData();
+        $schoolName = $settingsData->institute_name;
+        $defaultPassword = $settingsData->default_pwd;
+        $websiteUrl = $settingsData->website_url;
+        $shortName = $settingsData->short_name;
+        $whatsappIntegration = $settingsData->whatsapp_integration;
+        $smsIntegration = $settingsData->sms_integration;
+        $savepublish = 'Y';
 
         $request->validate([
             'issueddate' => 'required|date',
@@ -1092,7 +1207,6 @@ class LibraryController extends Controller
         }
 
         DB::beginTransaction();
-
         try {
             foreach ($request->copy_id as $i => $copyId) {
                 $bookId = $request->book_id[$i];
@@ -1121,6 +1235,16 @@ class LibraryController extends Controller
                     ->update([
                         'status' => 'I'  // I = Issued
                     ]);
+
+                IssuedBookMessageJob::dispatch([
+                    'member_id'     => $memberId,
+                    'member_type'   => $memberType,
+                    'book_id'       => $bookId,
+                    'copy_id'       => $copyId,
+                    'academic_year' => $academic_yr,
+                    'issue_date'    => $issueDate,
+                    'due_date'      => $dueDate,
+                ])->afterCommit();
             }
 
             DB::commit();
@@ -3967,9 +4091,6 @@ class LibraryController extends Controller
             ]);
         }
     }
-
-
-
 
     // public function libraryDashboard(Request $request)
     // {
