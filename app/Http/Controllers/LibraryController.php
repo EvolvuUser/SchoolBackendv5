@@ -3930,24 +3930,6 @@ class LibraryController extends Controller
         }
     }
 
-    // public function subscriptionReminderReport()
-    // {
-    //     $data = DB::table('subscription as s')
-    //         ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
-    //         ->where('s.status', 'Active')
-    //         ->whereDate('s.to_date', '<', Carbon::now()->addDays(7))
-    //         ->select(
-    //             's.*',
-    //             'p.*',
-    //         )
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'data'   => $data
-    //     ]);
-    // }
-
 
     public function subscriptionReminderReport()
     {
@@ -3996,26 +3978,6 @@ class LibraryController extends Controller
         ]);
     }
 
-    // public function pendingOverdueBooks()
-    // {
-    //     $data = DB::table('issue_return as ir')
-    //         ->join('book as b', 'b.book_id', '=', 'ir.book_id')
-    //         ->whereDate('ir.due_date', '<', Carbon::today())
-    //         ->where(function ($query) {
-    //             $query->whereNull('ir.return_date')
-    //                 ->orWhere('ir.return_date', '0000-00-00');
-    //         })
-    //         ->select(
-    //             'ir.*',
-    //             'b.*'
-    //         )
-    //         ->get();
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'data'   => $data
-    //     ]);
-    // }
 
     public function pendingOverdueBooks()
     {
@@ -4092,72 +4054,84 @@ class LibraryController extends Controller
         }
     }
 
-    // public function libraryDashboard(Request $request)
-    // {
-    //     $periodicalId = $request->periodical_id;
 
-    //     /**  Subscription Expiry Count */
-    //     $subscriptionExpiry = [
-    //         'count' => DB::table('subscription')
-    //             ->where('status', 'Active')
-    //             ->whereDate('to_date', '<', Carbon::today()->addDays(7))
-    //             ->count()
-    //     ];
+    public function returnBooksPendingSeperate()
+    {
+        try {
+            $this->authenticateUser();
 
-    //     /**  Periodical Not Received Count */
-    //     $periodicalNotReceivedQuery = DB::table('periodicals as a')
-    //         ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
-    //         ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
-    //         ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
-    //         ->where('b.status', 'Active')
-    //         ->whereDate('d.receive_by_date', '<', Carbon::today())
-    //         ->where('d.status', '!=', 'Received');
+            $result = DB::table('issue_return as a')
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->whereDate('a.due_date', '<', Carbon::today())
+                ->where(function ($query) {
+                    $query->whereNull('a.return_date')
+                        ->orWhere('a.return_date', '0000-00-00');
+                })
+                ->leftJoin('student', function ($join) {
+                    $join->on('a.member_id', '=', 'student.student_id')
+                        ->where('a.member_type', '=', 'S');
+                })
+                ->leftJoin('teacher', function ($join) {
+                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                        ->where('a.member_type', '=', 'T');
+                })
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.first_name
+                        WHEN a.member_type = 'T' THEN teacher.name
+                    END as first_name
+                "),
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.mid_name
+                        ELSE NULL
+                    END as mid_name
+                "),
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.last_name
+                        ELSE NULL
+                    END as last_name
+                ")
+                )
+                ->get();
 
-    //     if (!empty($periodicalId)) {
-    //         $periodicalNotReceivedQuery->where('a.periodical_id', $periodicalId);
-    //     }
+            if ($result->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No pending or overdue book records found'
+                ]);
+            }
 
-    //     $periodicalNotReceived = [
-    //         'count' => $periodicalNotReceivedQuery->count()
-    //     ];
+            // Separate Students and Staff
+            $students = $result->where('member_type', 'S')->values();
+            $staff    = $result->where('member_type', 'T')->values();
 
-    //     // Pending Book return
-    //     $bookReturnPending = [
-    //         'count' => DB::table('issue_return as ir')
-    //             ->whereDate('ir.due_date', '<', Carbon::today())
-    //             ->where(function ($query) {
-    //                 $query->whereNull('ir.return_date')
-    //                     ->orWhere('ir.return_date', '0000-00-00');
-    //             })
-    //             ->count()
-    //     ];
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Pending / overdue book report fetched successfully',
+                'data' => [
+                    'students' => $students,
+                    'staff'    => $staff
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 
-    //     // Total books and Available Books
-    //     $totalBooks = [
-    //         'count' => DB::table('book_copies')->count()
-    //     ];
 
-    //     $availableBooks = [
-    //         'count' => DB::table('book_copies')
-    //             ->where('status', 'A') // Available
-    //             ->count()
-    //     ];
 
-    //     // Periodicals count
-    //     $periodicalsCount = [
-    //         'count' => DB::table('periodicals')->count()
-    //     ];
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'subscription_expiry' => $subscriptionExpiry,
-    //         'periodical_not_received' => $periodicalNotReceived,
-    //         'book_return_pending'      => $bookReturnPending,
-    //         'total_books'              => $totalBooks,
-    //         'available_books'          => $availableBooks,
-    //         'peridocals'               => $periodicalsCount
-    //     ]);
-    // }
 
     public function libraryDashboard(Request $request)
     {
@@ -4187,6 +4161,23 @@ class LibraryController extends Controller
         /** Pending Book Returns */
         $pendingBookReturnCount = DB::table('issue_return as ir')
             ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+        $pendingStudentBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where('ir.member_type', "=", "S")
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+
+        $pendingStaffBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where('ir.member_type', "=", "T")
             ->where(function ($query) {
                 $query->whereNull('ir.return_date')
                     ->orWhere('ir.return_date', '0000-00-00');
@@ -4227,7 +4218,10 @@ class LibraryController extends Controller
                 // 'host'    => DB::connection()->getConfig('host'),
                 'subscription_expiry'     => $subscriptionExpiryCount,
                 'periodical_not_received' => $periodicalNotReceivedCount,
+
                 'book_return_pending'     => $pendingBookReturnCount,
+                'student_book_return_pending' => $pendingStudentBookReturnCount,
+                'staff_book_return_pending' => $pendingStaffBookReturnCount,
 
                 'total_books'             => $totalBooksCount,
                 'available_books'         => $availableBooksCount,

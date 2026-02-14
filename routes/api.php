@@ -1454,7 +1454,10 @@
             Route::get('/book_return_pending', [LibraryController::class, 'pendingOverdueBooks']);
 
             // Library Dashboard count
-            Route::get('/library/dashboard', [libraryController::class, 'libraryDashboard']);
+            Route::get('/library/dashboard', [LibraryController::class, 'libraryDashboard']);
+
+            // Book pending count for student and staff seperate
+            Route::get('/book_return_pending_seperate', [LibraryController::class, 'returnBooksPendingSeperate']);
 
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
