@@ -914,6 +914,7 @@ class LibraryController extends Controller
     {
         $memberId = $request->input('member_id');
         $grn_no = $request->input('grn_no');
+        $mtype = $request->input('member_type');
 
         if (!$memberId && !$grn_no) {
             return response()->json([
@@ -923,6 +924,18 @@ class LibraryController extends Controller
         }
 
         $issuedBooks = null;
+
+        // $memberExists = DB::table('library_member')
+        //     ->where('member_id', $memberId)
+        //     ->where('member_type', $mtype)
+        //     ->exists();
+
+        // if (!$memberExists) {
+        //     return response()->json([
+        //         'status'  => false,
+        //         'message' => 'This is not a library member'
+        //     ], 404);
+        // }
 
         if ($memberId) {
             $issuedBooks = DB::table('book_copies as d')
@@ -940,8 +953,8 @@ class LibraryController extends Controller
                     'd.status'
                 )
                 ->where('a.member_id', $memberId)
-                ->where('d.status', 'I')  // Book is issued
-                ->where('a.return_date', '0000-00-00')  // Not returned yet
+                ->where('d.status', 'I')
+                ->where('a.return_date', '0000-00-00')
                 ->get();
         } else if ($grn_no) {
             $issuedBooks = DB::table('book_copies as d')
@@ -967,18 +980,19 @@ class LibraryController extends Controller
                 ->get();
         }
 
-        if (count($issuedBooks) == 0) {
-            return response()->json([
-                'status' => false,
-                'message' => 'This is not a library member',
-            ], 404);
-        }
+        // if (count($issuedBooks) == 0) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'This is not a library member',
+        //     ], 404);
+        // }
 
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
         ], 200);
     }
+
 
     public function getBookByAccession(Request $request)
     {
