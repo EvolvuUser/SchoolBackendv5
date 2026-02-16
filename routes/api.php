@@ -1462,6 +1462,11 @@
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
 
+            // Agewise Divisionwise Student Report 
+            Route::get('/get_agewisereport/{academic_year}', [ReportController::class, 'getAgewiseStudentReport']);
+
+
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
