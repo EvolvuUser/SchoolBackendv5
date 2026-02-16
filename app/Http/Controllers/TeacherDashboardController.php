@@ -41,8 +41,14 @@ class TeacherDashboardController extends Controller
 
             /* ---------------- CLASSES ---------------- */
             $classes = DB::table('subject')
-                ->select('subject.class_id', 'subject.section_id', 'subject.sm_id', 'class.name as class_name', 'section.name as section_name',
-                    'subject_master.name as subject_name')
+                ->select(
+                    'subject.class_id',
+                    'subject.section_id',
+                    'subject.sm_id',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'subject_master.name as subject_name'
+                )
                 ->leftJoin('class', 'class.class_id', '=', 'subject.class_id')
                 ->leftJoin('section', 'section.section_id', '=', 'subject.section_id')
                 ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
@@ -159,6 +165,32 @@ class TeacherDashboardController extends Controller
                     ->exists();
             }
 
+
+            // Library book reminder
+            $today = Carbon::today();
+
+            $libraryBookReturnReminders = DB::table('issue_return as ir')
+                ->join('book as b', 'ir.book_id', '=', 'b.book_id')
+                ->where('ir.member_id', $teacher_id)
+                ->where('ir.academic_year', $academic_yr)
+                ->where('ir.due_date', '<', $today)
+                ->where(function ($query) {
+                    $query->where('ir.return_date', '0000-00-00')
+                        ->orWhereNull('ir.return_date');
+                })
+                ->select(
+                    'ir.issue_id',
+                    'ir.book_id',
+                    'ir.due_date',
+                    'ir.issue_date',
+                    'ir.return_date',
+                    'b.book_title',
+                    'b.author',
+                    'b.publisher'
+                )
+                ->get();
+
+
             /* ---------------- RESPONSE ---------------- */
             return response()->json([
                 'status' => true,
@@ -168,6 +200,7 @@ class TeacherDashboardController extends Controller
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
                     'isAttendanceMarked' => $isAttendanceMarked,
                     'isClassTeacher' => $isClassTeacher,
+                    'libraryBookReturn' => $libraryBookReturnReminders,
                 ]
             ], 200);
         } catch (\Throwable $e) {
