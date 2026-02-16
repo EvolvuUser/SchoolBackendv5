@@ -162,13 +162,15 @@ class ReportController extends Controller
                 $admissionreport = DB::table('online_admission_form')
                     ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
                     ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                    ->select('online_admission_form.*',
+                    ->select(
+                        'online_admission_form.*',
                         'online_admfee.form_id',
                         'online_admfee.status',
                         'online_admfee.payment_date',
                         'online_admfee.OrderId',
                         'class.name as classname',
-                        'online_admfee.Trnx_ref_no')
+                        'online_admfee.Trnx_ref_no'
+                    )
                     ->where('online_admission_form.academic_yr', $customClaims)
                     ->where('online_admfee.status', 'S')
                     ->orderBy('online_admission_form.adm_form_pk', 'ASC');
@@ -322,13 +324,15 @@ class ReportController extends Controller
             $admissionreport = DB::table('online_admission_form')
                 ->join('online_admfee', 'online_admission_form.form_id', '=', 'online_admfee.form_id')
                 ->join('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                ->select('online_admission_form.*',
+                ->select(
+                    'online_admission_form.*',
                     'online_admfee.form_id',
                     'online_admfee.status',
                     'online_admfee.payment_date',
                     'online_admfee.OrderId',
                     'class.name as classname',
-                    'online_admfee.Trnx_ref_no')
+                    'online_admfee.Trnx_ref_no'
+                )
                 ->where('online_admission_form.academic_yr', $customClaims)
                 ->where('online_admfee.status', 'S')
                 ->orderBy('online_admission_form.adm_form_pk', 'ASC');
@@ -3758,9 +3762,13 @@ class ReportController extends Controller
                     ['s.academic_yr', $academicYear],
                     ['s.IsDelete', 'N']
                 ])
-                ->select('s.student_id', 's.roll_no', 's.reg_no',
+                ->select(
+                    's.student_id',
+                    's.roll_no',
+                    's.reg_no',
                     DB::raw("CONCAT(s.first_name, ' ', s.mid_name, ' ', s.last_name) as name"),
-                    DB::raw("CONCAT(s.class_id, '', s.section_id) as class_div"))
+                    DB::raw("CONCAT(s.class_id, '', s.section_id) as class_div")
+                )
                 ->distinct()
                 ->orderBy('s.roll_no')
                 ->get();
@@ -3935,9 +3943,13 @@ class ReportController extends Controller
                     ['s.academic_yr', $academicYear],
                     ['s.IsDelete', 'N']
                 ])
-                ->select('s.student_id', 's.roll_no', 's.reg_no',
+                ->select(
+                    's.student_id',
+                    's.roll_no',
+                    's.reg_no',
                     DB::raw("CONCAT(s.first_name, ' ', s.mid_name, ' ', s.last_name) as name"),
-                    DB::raw("CONCAT(s.class_id, '', s.section_id) as class_div"))
+                    DB::raw("CONCAT(s.class_id, '', s.section_id) as class_div")
+                )
                 ->distinct()
                 ->orderBy('s.roll_no')
                 ->get();
@@ -4967,8 +4979,10 @@ class ReportController extends Controller
                 }
 
                 // Optional Subjects (avoid duplicate)
-                if (!empty($subject->optional_sub_name) &&
-                        !in_array($subject->optional_sub_name, array_column($optionalSubjects, 'subject_name'))) {
+                if (
+                    !empty($subject->optional_sub_name) &&
+                    !in_array($subject->optional_sub_name, array_column($optionalSubjects, 'subject_name'))
+                ) {
                     $optionalSubjects[] = [
                         'subject_name' => $subject->optional_sub_name
                     ];
@@ -4988,6 +5002,104 @@ class ReportController extends Controller
             'data' => $formattedSubjects,
             'message' => 'Subject HSC Studentwise Report',
             'success' => true
+        ]);
+    }
+
+    // Dev Name :- Mahima Chaudhari 16-02-2026
+
+    public function getAgewiseStudentReport($academic_year)
+    {
+        // Get all classes
+        $classes = DB::table('class')
+            ->where('academic_yr', $academic_year)
+            ->orderBy('class_id', 'asc')
+            ->get();
+
+        $finalData = [];
+
+        foreach ($classes as $class) {
+
+            // Get sections of class
+            $sections = DB::table('section')
+                ->where('class_id', $class->class_id)
+                ->where('academic_yr', $academic_year)
+                ->get();
+
+            // Get distinct age groups for boys & girls
+            $maleAgeGroups = DB::table('student')
+                ->selectRaw('DISTINCT TIMESTAMPDIFF(YEAR, dob, CURDATE()) as age')
+                ->where('class_id', $class->class_id)
+                ->where('gender', 'M')
+                ->where('isDelete', 'N')
+                ->whereNotNull('dob')
+                ->orderBy('age')
+                ->pluck('age')
+                ->toArray();
+
+            $femaleAgeGroups = DB::table('student')
+                ->selectRaw('DISTINCT TIMESTAMPDIFF(YEAR, dob, CURDATE()) as age')
+                ->where('class_id', $class->class_id)
+                ->where('gender', 'F')
+                ->where('isDelete', 'N')
+                ->whereNotNull('dob')
+                ->orderBy('age')
+                ->pluck('age')
+                ->toArray();
+
+            $sectionData = [];
+
+            foreach ($sections as $section) {
+
+                // Get grouped age-wise count (both genders together)
+                $counts = DB::table('student')
+                    ->selectRaw('
+                        gender,
+                        TIMESTAMPDIFF(YEAR, dob, CURDATE()) as age,
+                        COUNT(*) as total
+                    ')
+                    ->where('class_id', $class->class_id)
+                    ->where('section_id', $section->section_id)
+                    ->where('isDelete', 'N')
+                    ->whereNotNull('dob')
+                    ->groupBy('gender', 'age')
+                    ->get();
+
+                $maleCounts = [];
+                $femaleCounts = [];
+                $maleTotal = 0;
+                $femaleTotal = 0;
+
+                foreach ($counts as $row) {
+                    if ($row->gender == 'M') {
+                        $maleCounts[$row->age] = $row->total;
+                        $maleTotal += $row->total;
+                    } else {
+                        $femaleCounts[$row->age] = $row->total;
+                        $femaleTotal += $row->total;
+                    }
+                }
+
+                $sectionData[] = [
+                    'section_name' => $class->name . '-' . $section->name,
+                    'male_counts'  => $maleCounts,
+                    'male_total'   => $maleTotal,
+                    'female_counts' => $femaleCounts,
+                    'female_total' => $femaleTotal,
+                ];
+            }
+
+            $finalData[] = [
+                'class_id' => $class->class_id,
+                'class_name' => $class->name,
+                'male_age_groups' => $maleAgeGroups,
+                'female_age_groups' => $femaleAgeGroups,
+                'sections' => $sectionData
+            ];
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $finalData
         ]);
     }
 }
