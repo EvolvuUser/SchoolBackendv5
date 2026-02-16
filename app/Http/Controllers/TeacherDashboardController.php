@@ -169,20 +169,20 @@ class TeacherDashboardController extends Controller
             // Library book reminder
             $today = Carbon::today();
 
-            $libraryBookReturnReminders = DB::table('issue_return as ir')
+            $libraryBookReturnReminders  = DB::table('issue_return as ir')
                 ->join('book as b', 'ir.book_id', '=', 'b.book_id')
                 ->where('ir.member_id', $teacher_id)
-                ->where('ir.academic_year', $academic_yr)
                 ->where('ir.due_date', '<', $today)
                 ->where(function ($query) {
                     $query->where('ir.return_date', '0000-00-00')
                         ->orWhereNull('ir.return_date');
                 })
                 ->select(
-                    'ir.issue_id',
+                    'ir.member_id',
                     'ir.book_id',
-                    'ir.due_date',
+                    'ir.copy_id',
                     'ir.issue_date',
+                    'ir.due_date',
                     'ir.return_date',
                     'b.book_title',
                     'b.author',
