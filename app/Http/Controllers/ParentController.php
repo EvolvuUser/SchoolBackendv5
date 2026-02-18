@@ -59,7 +59,7 @@ class ParentController extends Controller
                 ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
                 ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
                 ->where('student.parent_id', $user->reg_id)
-                ->where('academic_yr',$academic_yr)
+                ->where('student.academic_yr',$academic_yr)
                 ->get();
 
             return response()->json([
@@ -73,14 +73,15 @@ class ParentController extends Controller
 
         } catch (\Illuminate\Database\QueryException $e) {
 
-            Log::error('Database error in getParentDetails', [
-                'error' => $e->getMessage(),
-                'user_id' => $user->reg_id ?? null
-            ]);
+            // Log::error('Database error in getParentDetails', [
+            //     'error' => $e->getMessage(),
+            //     'user_id' => $user->reg_id ?? null
+            // ]);
 
             return response()->json([
                 'status'  => false,
-                'message' => 'Database error occurred'
+                'message' => 'Database error occurred',
+                'error' => $e->getMessage(),
             ], 500);
 
         } catch (\Exception $e) {
