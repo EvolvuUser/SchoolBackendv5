@@ -5005,7 +5005,6 @@ class ReportController extends Controller
         ]);
     }
 
-    // Dev Name :- Mahima Chaudhari 16-02-2026
 
     public function getAgewiseStudentReport($academic_year)
     {
@@ -5099,6 +5098,147 @@ class ReportController extends Controller
 
         return response()->json([
             'status' => true,
+            'data' => $finalData
+        ]);
+    }
+
+    public function getClassPercentageReport(Request $request)
+    {
+        $class_id   = $request->class_id;
+        $section_id = $request->section_id;
+        $acd_yr     = $request->academic_yr;
+
+        // dd($class_id, $section_id, $acd_yr);
+
+        //  Get Subjects (Scholastic + Compulsory + Optional)
+        $subjects = DB::table('subjects_on_report_card as a')
+            ->join('subjects_on_report_card_master as b', 'b.sub_rc_master_id', '=', 'a.sub_rc_master_id')
+            ->select('a.sub_rc_master_id', 'b.name')
+            ->whereIn('a.subject_type', ['Scholastic', 'Compulsory', 'Optional'])
+            ->where('a.class_id', $class_id)
+            ->where('a.academic_yr', $acd_yr)
+            ->orderBy('b.sequence', 'asc')
+            ->distinct()
+            ->get();
+
+        // Get Students (Same as Old CI Logic)
+        $students = DB::table('student as a')
+            ->leftJoin('parent as b', 'a.parent_id', '=', 'b.parent_id')
+            ->join('user_master as c', 'a.parent_id', '=', 'c.reg_id')
+            ->join('class as d', 'a.class_id', '=', 'd.class_id')
+            ->join('section as e', 'a.section_id', '=', 'e.section_id')
+            ->leftJoin('house as f', 'a.house', '=', 'f.house_id')
+            ->select(
+                'a.student_id',
+                'a.roll_no',
+                'a.reg_no',
+                'a.first_name',
+                'a.mid_name',
+                'a.last_name',
+                'd.name as class_name',
+                'e.name as section_name',
+                'f.house_name'
+            )
+            ->where('a.IsDelete', 'N')
+            ->where('a.academic_yr', $acd_yr)
+            ->where('a.class_id', $class_id)
+            ->where('a.section_id', $section_id)
+            ->where('c.role_id', 'P')
+            ->orderBy('a.roll_no')
+            ->orderBy('a.reg_no')
+            ->get();
+
+        // Get All Published Marks (Single Query - Optimized)
+        $allMarks = DB::table('student_marks')
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->where('academic_yr', $acd_yr)
+            ->where('publish', 'Y')
+            ->get()
+            ->groupBy(function ($item) {
+                return $item->student_id . '_' . $item->subject_id . '_' . $item->exam_id;
+            });
+
+        // Get Exams
+
+        $exams = DB::table('exam')->get()->keyBy('exam_id');
+
+        // Build Final Data
+        $finalData = [];
+
+        foreach ($students as $student) {
+
+            $studentData = [
+                'student_id'   => $student->student_id,
+                'roll_no'      => $student->roll_no,
+                'reg_no'       => $student->reg_no,
+                'class_name'   => $student->class_name,
+                'section_name' => $student->section_name,
+                'house_name'   => $student->house_name,
+                'name'         => trim(
+                    $student->first_name . ' ' .
+                        ($student->mid_name ?? '') . ' ' .
+                        $student->last_name
+                ),
+                'subjects'     => []
+            ];
+
+            foreach ($subjects as $subject) {
+
+                $subjectTotal = 0;
+                $subjectHighest = 0;
+                $examData = [];
+
+                foreach ($exams as $exam) {
+
+                    $key = $student->student_id . '_' .
+                        $subject->sub_rc_master_id . '_' .
+                        $exam->exam_id;
+
+                    if (isset($allMarks[$key])) {
+
+                        $marksRow = $allMarks[$key]->first();
+
+                        $markObtainedArray = json_decode($marksRow->mark_obtained, true) ?? [];
+                        $highestMarksArray = json_decode($marksRow->highest_marks, true) ?? [];
+
+                        $examTotal = array_sum($markObtainedArray);
+                        $examHighest = array_sum($highestMarksArray);
+
+                        $subjectTotal += $examTotal;
+                        $subjectHighest += $examHighest;
+
+                        $examData[] = [
+                            'exam_id'        => $exam->exam_id,
+                            'exam_name'      => $exam->name,
+                            'marks_obtained' => $examTotal,
+                            'highest_marks'  => $examHighest
+                        ];
+                    }
+                }
+
+                $percentage = null;
+
+                if ($subjectHighest > 0) {
+                    $percentage = round(($subjectTotal / $subjectHighest) * 100, 2);
+                }
+
+                $studentData['subjects'][] = [
+                    'subject_id'     => $subject->sub_rc_master_id,
+                    'subject_name'   => $subject->name,
+                    'exams'          => $examData,
+                    'total_marks'    => $subjectTotal,
+                    'highest_marks'  => $subjectHighest,
+                    'percentage'     => $percentage
+                ];
+            }
+
+            $finalData[] = $studentData;
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Class marks report fetched successfully',
             'data' => $finalData
         ]);
     }
