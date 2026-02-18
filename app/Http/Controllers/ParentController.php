@@ -28,6 +28,7 @@ class ParentController extends Controller
         try {
             // Authenticate User
             $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
             if (!$user) {
                 return response()->json([
@@ -58,6 +59,7 @@ class ParentController extends Controller
                 ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
                 ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
                 ->where('student.parent_id', $user->reg_id)
+                ->where('academic_yr',$academic_yr)
                 ->get();
 
             return response()->json([
