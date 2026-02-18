@@ -1468,6 +1468,9 @@
             // Teacher app api for giving the exam list
             Route::get('get_teacherclassesexams', [TeacherDashboardController::class, 'getTeacherClassExam']);
 
+            // Agewise Divisionwise Student Report
+            Route::get('/get_classpercentagereport', [ReportController::class, 'getClassPercentageReport']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
