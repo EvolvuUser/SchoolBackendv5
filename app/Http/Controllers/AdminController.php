@@ -16432,6 +16432,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $response['fees_collection'] = $this->feesCard($academicYr);
                 $response['approve_leave'] = $this->approveLeaveCard($academicYr);
                 $response['lesson_plan_summary'] = $this->lessonPlanCard($academicYr);
+            } else {
+                $response['student'] = $this->studentCard($request, $academicYr);
+                $response['staff'] = $this->staffCard($short_code);
+                $response['staff_student_bday_count'] = $this->birthdayCard($academicYr);
+                $response['fees_collection'] = $this->feesCard($academicYr);
+                $response['approve_leave'] = $this->approveLeaveCard($academicYr);
+                $response['lesson_plan_summary'] = $this->lessonPlanCard($academicYr);
             }
 
             return response()->json([
