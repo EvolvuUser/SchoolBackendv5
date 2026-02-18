@@ -16,6 +16,7 @@
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
+    use App\Http\Controllers\ParentController;
     use App\Http\Controllers\TeacherDashboardController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
@@ -1476,6 +1477,8 @@
                 $payload = JWTAuth::getPayload();
                 dd($payload->toJson());
             });
+
+            Route::get('/getparentdetails' , [ParentController::class , 'getparentdetails']);
         });
 
         // Impersonate
