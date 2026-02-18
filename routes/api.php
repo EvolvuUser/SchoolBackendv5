@@ -1462,13 +1462,13 @@
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
 
-            // Agewise Divisionwise Student Report
+            // Agewise Divisionwise Student Report Dev Name- Mahima Chaudhari 16-02-2026
             Route::get('/get_agewisereport/{academic_year}', [ReportController::class, 'getAgewiseStudentReport']);
 
             // Teacher app api for giving the exam list
             Route::get('get_teacherclassesexams', [TeacherDashboardController::class, 'getTeacherClassExam']);
 
-            // Agewise Divisionwise Student Report
+            // Class Percentage Report Dev Name- Mahima Chaudhari 17-02-2026
             Route::get('/get_classpercentagereport', [ReportController::class, 'getClassPercentageReport']);
 
             // Testing
