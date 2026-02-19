@@ -13339,7 +13339,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $formData = DB::table('online_admission_form')
                                 ->where('form_id', $form_id)->first();
                         $form_class_id = $formData->class_id;
-                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING_NUR' , $form_class_id);
+                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING' , $form_class_id);
                         if ($class_name == 'Nursery') {
                             $textmsg = str_replace(
                                 ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
