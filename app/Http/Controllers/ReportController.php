@@ -4929,6 +4929,7 @@ class ReportController extends Controller
             ->leftJoin('subject_master AS shsm', 'grpd.sm_hsc_id', '=', 'shsm.sm_id')
             ->leftJoin('subject_master AS shs_op', 'shs.opt_subject_id', '=', 'shs_op.sm_id')
             ->leftJoin('stream', 'grp.stream_id', '=', 'stream.stream_id')
+            ->leftJoin('section as div', 'stud.section_id', '=', 'div.section_id')
             ->where('stud.class_id', $class_id)
             ->where('stud.academic_yr', $customClaims)
             ->where('grp.sub_group_id', $subject_group_id);
@@ -4948,10 +4949,12 @@ class ReportController extends Controller
                 'shsm.name as subject_name',
                 'shsm.subject_type',
                 'stream.stream_name',
-                'shs_op.name as optional_sub_name'
+                'shs_op.name as optional_sub_name',
+                'div.name as division_name',
             )
             ->orderBy('stud.student_id')
             ->orderBy('stud.roll_no', 'asc')
+            ->orderBy('grpd.sm_hsc_id')
             ->get()
             ->groupBy('student_id');
 
@@ -4968,6 +4971,7 @@ class ReportController extends Controller
                 'last_name' => $subjects[0]->last_name,
                 'roll_no' => $subjects[0]->roll_no,
                 'stream_name' => $subjects[0]->stream_name,
+                'division_name' => $subjects[0]->division_name,
             ];
 
             foreach ($subjects as $subject) {
@@ -4995,7 +4999,15 @@ class ReportController extends Controller
             ]);
         }
         usort($formattedSubjects, function ($a, $b) {
-            return (int) $a['roll_no'] <=> (int) $b['roll_no'];
+            // First sort by division (A,B,C,D)
+            $divCompare = strcmp($a['division_name'], $b['division_name']);
+
+            if ($divCompare === 0) {
+                // If same division → sort by roll number
+                return (int) $a['roll_no'] <=> (int) $b['roll_no'];
+            }
+
+            return $divCompare;
         });
         return response([
             'status' => 200,
@@ -5004,7 +5016,6 @@ class ReportController extends Controller
             'success' => true
         ]);
     }
-
 
     public function getAgewiseStudentReport($academic_year)
     {
@@ -5017,7 +5028,6 @@ class ReportController extends Controller
         $finalData = [];
 
         foreach ($classes as $class) {
-
             // Get sections of class
             $sections = DB::table('section')
                 ->where('class_id', $class->class_id)
@@ -5048,7 +5058,6 @@ class ReportController extends Controller
             $sectionData = [];
 
             foreach ($sections as $section) {
-
                 // Get grouped age-wise count (both genders together)
                 $counts = DB::table('student')
                     ->selectRaw('
@@ -5080,8 +5089,8 @@ class ReportController extends Controller
 
                 $sectionData[] = [
                     'section_name' => $class->name . '-' . $section->name,
-                    'male_counts'  => $maleCounts,
-                    'male_total'   => $maleTotal,
+                    'male_counts' => $maleCounts,
+                    'male_total' => $maleTotal,
                     'female_counts' => $femaleCounts,
                     'female_total' => $femaleTotal,
                 ];
@@ -5104,9 +5113,9 @@ class ReportController extends Controller
 
     public function getClassPercentageReport(Request $request)
     {
-        $class_id   = $request->class_id;
+        $class_id = $request->class_id;
         $section_id = $request->section_id;
-        $acd_yr     = $request->academic_yr;
+        $acd_yr = $request->academic_yr;
 
         // dd($class_id, $section_id, $acd_yr);
 
@@ -5167,36 +5176,32 @@ class ReportController extends Controller
         $finalData = [];
 
         foreach ($students as $student) {
-
             $studentData = [
-                'student_id'   => $student->student_id,
-                'roll_no'      => $student->roll_no,
-                'reg_no'       => $student->reg_no,
-                'class_name'   => $student->class_name,
+                'student_id' => $student->student_id,
+                'roll_no' => $student->roll_no,
+                'reg_no' => $student->reg_no,
+                'class_name' => $student->class_name,
                 'section_name' => $student->section_name,
-                'house_name'   => $student->house_name,
-                'name'         => trim(
-                    $student->first_name . ' ' .
-                        ($student->mid_name ?? '') . ' ' .
-                        $student->last_name
+                'house_name' => $student->house_name,
+                'name' => trim(
+                    $student->first_name . ' '
+                    . ($student->mid_name ?? '') . ' '
+                    . $student->last_name
                 ),
-                'subjects'     => []
+                'subjects' => []
             ];
 
             foreach ($subjects as $subject) {
-
                 $subjectTotal = 0;
                 $subjectHighest = 0;
                 $examData = [];
 
                 foreach ($exams as $exam) {
-
-                    $key = $student->student_id . '_' .
-                        $subject->sub_rc_master_id . '_' .
-                        $exam->exam_id;
+                    $key = $student->student_id . '_'
+                        . $subject->sub_rc_master_id . '_'
+                        . $exam->exam_id;
 
                     if (isset($allMarks[$key])) {
-
                         $marksRow = $allMarks[$key]->first();
 
                         $markObtainedArray = json_decode($marksRow->mark_obtained, true) ?? [];
@@ -5209,10 +5214,10 @@ class ReportController extends Controller
                         $subjectHighest += $examHighest;
 
                         $examData[] = [
-                            'exam_id'        => $exam->exam_id,
-                            'exam_name'      => $exam->name,
+                            'exam_id' => $exam->exam_id,
+                            'exam_name' => $exam->name,
                             'marks_obtained' => $examTotal,
-                            'highest_marks'  => $examHighest
+                            'highest_marks' => $examHighest
                         ];
                     }
                 }
@@ -5224,12 +5229,12 @@ class ReportController extends Controller
                 }
 
                 $studentData['subjects'][] = [
-                    'subject_id'     => $subject->sub_rc_master_id,
-                    'subject_name'   => $subject->name,
-                    'exams'          => $examData,
-                    'total_marks'    => $subjectTotal,
-                    'highest_marks'  => $subjectHighest,
-                    'percentage'     => $percentage
+                    'subject_id' => $subject->sub_rc_master_id,
+                    'subject_name' => $subject->name,
+                    'exams' => $examData,
+                    'total_marks' => $subjectTotal,
+                    'highest_marks' => $subjectHighest,
+                    'percentage' => $percentage
                 ];
             }
 
