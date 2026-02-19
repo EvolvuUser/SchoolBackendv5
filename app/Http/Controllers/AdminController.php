@@ -13455,32 +13455,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             DB::beginTransaction();
 
-            // foreach ($form_ids as $form_id) {
-
-            //     // Skip empty values (same as CI logic)
-            //     if (empty($form_id)) {
-            //         continue;
-            //     }
-
-            //     // Update admission form status
-            //     DB::table('online_admission_form')
-            //         ->where('form_id', $form_id)
-            //         ->update([
-            //             'admission_form_status' => 'Verified'
-            //         ]);
-
-            //     // Email block (keep as it is)
-            //     // $father_emailid=$this->OnlineAdmission_model->get_father_emailid_from_formid($form_id);
-
-            //     // $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
-            //     // $this->send_email($textmsg,"SACS-Admission Details",$father_emailid);
-            // }
-            // if($short_name == 'HSCS') {
-            //     $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>Holy Spirit Convent School";
-            // } else {
-            //     $textmsg ="Dear Parent,<br/><br/> Your ward's admission form and documents are verified.<br/><br/>Regards,<br/>St. Arnolds Central School";
-            // }
-
             $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL');
 
             $emailData = [
@@ -13495,7 +13469,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         'admission_form_status' => 'Verified'
                     ]);
                 $father_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('f_email');
-                $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('m_email');
+                $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('m_emailid');
                 smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
                 smart_mail($mother_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
             }
