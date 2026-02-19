@@ -1472,13 +1472,16 @@
             // Class Percentage Report Dev Name- Mahima Chaudhari 17-02-2026
             Route::get('/get_classpercentagereport', [ReportController::class, 'getClassPercentageReport']);
 
+            // Customized Student Report Dev Name - Mahima Chaudhari 19-02-2026
+            Route::get('/get_customizedstudentreport', [ReportController::class, 'customizedStudentReport']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
                 dd($payload->toJson());
             });
 
-            Route::get('/getparentdetails' , [ParentController::class , 'getparentdetails']);
+            Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
         });
 
         // Impersonate
