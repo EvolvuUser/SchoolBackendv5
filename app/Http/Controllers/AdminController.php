@@ -14378,7 +14378,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'nullable|integer',
             ]);
 
-            $exists = DB::table('email_templates')->where('key', $request->key)->exists();
+            $exists = DB::table('email_templates')->where('key', $request->key)->where('class_id' , $request->class_id)->exists();
 
             if ($exists) {
                 return response()->json([
