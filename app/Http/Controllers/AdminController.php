@@ -12918,7 +12918,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'doc_type' => $file->doc_type,
                             'file_name' => $file->image_name,
                             'extension' => $extension,
-                            'is_image' => in_array($extension, $allowedImageExt),
+                            'is_image' => true,
                             'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
                             'file_url' => $codeigniter_app_url
                                 . 'uploads/admission_form/'
