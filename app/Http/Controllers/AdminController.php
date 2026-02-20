@@ -12881,23 +12881,55 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null;
             }
 
-            $docTypes = [
-                '9R',
-                'AC',
-                'BC',
-                'BP',
-                'CC',
-                'FA',
-                'FP',
-                'MA',
-                'MB',
-                'MC',
-                'MP',
-                'PS',
-                'RC',
-                'TC',
-                'PC'
-            ];
+            // $docTypes = [
+            //     '9R',
+            //     'AC',
+            //     'BC',
+            //     'BP',
+            //     'CC',
+            //     'FA',
+            //     'FP',
+            //     'MA',
+            //     'MB',
+            //     'MC',
+            //     'MP',
+            //     'PS',
+            //     'RC',
+            //     'TC',
+            //     'PC'
+            // ];
+
+            // $allowedImageExt = ['gif', 'png', 'jpg', 'jpeg'];
+
+            // $globalVariables = App::make('global_variables');
+            // $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            // $attachments = [];
+
+            // foreach ($docTypes as $docType) {
+            //     $files = DB::table('admission_upload_detail')
+            //         ->where('form_id', $form_id)
+            //         ->where('doc_type', $docType)
+            //         ->get()
+            //         ->map(function ($file) use ($allowedImageExt, $codeigniter_app_url) {
+            //             $extension = strtolower(pathinfo($file->image_name, PATHINFO_EXTENSION));
+
+            //             return [
+            //                 'id' => $file->id ?? null,
+            //                 'doc_type' => $file->doc_type,
+            //                 'file_name' => $file->image_name,
+            //                 'extension' => $extension,
+            //                 'is_image' => true,
+            //                 'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
+            //                 'file_url' => $codeigniter_app_url
+            //                     . 'uploads/admission_form/'
+            //                     . $file->form_id . '/'
+            //                     . $file->image_name,
+            //             ];
+            //         });
+
+            //     $attachments[$docType] = $files;
+            // }
 
             $allowedImageExt = ['gif', 'png', 'jpg', 'jpeg'];
 
@@ -12906,29 +12938,27 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $attachments = [];
 
-            foreach ($docTypes as $docType) {
-                $files = DB::table('admission_upload_detail')
-                    ->where('form_id', $form_id)
-                    ->where('doc_type', $docType)
-                    ->get()
-                    ->map(function ($file) use ($allowedImageExt, $codeigniter_app_url) {
-                        $extension = strtolower(pathinfo($file->image_name, PATHINFO_EXTENSION));
+            // Fetch all uploads for this form_id at once
+            $files = DB::table('admission_upload_detail')
+                ->where('form_id', $form_id)
+                ->get();
 
-                        return [
-                            'id' => $file->id ?? null,
-                            'doc_type' => $file->doc_type,
-                            'file_name' => $file->image_name,
-                            'extension' => $extension,
-                            'is_image' => true,
-                            'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
-                            'file_url' => $codeigniter_app_url
-                                . 'uploads/admission_form/'
-                                . $file->form_id . '/'
-                                . $file->image_name,
-                        ];
-                    });
+            foreach ($files as $file) {
 
-                $attachments[$docType] = $files;
+                $extension = strtolower(pathinfo($file->image_name, PATHINFO_EXTENSION));
+
+                $attachments[$file->doc_type][] = [
+                    'id' => $file->id ?? null,
+                    'doc_type' => $file->doc_type,
+                    'file_name' => $file->image_name,
+                    'extension' => $extension,
+                    'is_image' => true,
+                    'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
+                    'file_url' => $codeigniter_app_url
+                        . 'uploads/admission_form/'
+                        . $file->form_id . '/'
+                        . $file->image_name,
+                ];
             }
 
             return response()->json([
