@@ -12895,7 +12895,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'MP',
                 'PS',
                 'RC',
-                'TC'
+                'TC',
+                'PC'
             ];
 
             $allowedImageExt = ['gif', 'png', 'jpg', 'jpeg'];
