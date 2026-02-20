@@ -14311,12 +14311,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     }
 
     // Admission email module
-    public function AdmissionEmailIndex()
+    public function AdmissionEmailIndex(Request $request)
     {
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $academic_year = $request->query('academic_year') ?? JWTAuth::getPayload()->get('academic_year');
             if ($payload->get('role_id') != 'A') {
                 return response()->json(['status' => false, 'message' => 'You are not allowd to access this resource'], 400);
             }
