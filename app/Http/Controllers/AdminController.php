@@ -14534,12 +14534,27 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return $template->body;
         }
 
-        // Default bodies
         $defaultBodies = [
-            'INTERVIEW_SCHEDULING' => 'Dear Candidate, your interview has been scheduled. Date: INTERVIEW_DATE, Time: TIME_FROM - TIME_TO',
-            'VERIFICATION_SUCCESSFULL' => 'Your verification has been completed successfully.',
-            'ADDMISSION_APPROVED' => 'Congratulations! Your admission has been approved.'
-        ];
+            'INTERVIEW_SCHEDULING' => 
+                'Dear Candidate,<br><br>
+                We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
+                <strong>Date:</strong> INTERVIEW_DATE<br>
+                <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
+                Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
+                Best regards.',
+
+            'VERIFICATION_SUCCESSFULL' => 
+                'Dear Candidate,<br><br>
+                We are pleased to inform you that your verification process has been completed successfully.<br><br>
+                If you require any further assistance, please feel free to contact us.<br><br>
+                Best regards.',
+
+            'ADDMISSION_APPROVED' => 
+                'Dear Candidate,<br><br>
+                Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
+                Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
+                Best regards.'
+        ];        
 
         $defaultBody = $defaultBodies[$key] ?? 'Default email content.';
 
