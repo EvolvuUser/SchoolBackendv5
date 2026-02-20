@@ -14536,7 +14536,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         // Default bodies
         $defaultBodies = [
-            'INTERVIEW_SCHEDULING' => 'Dear Candidate, your interview has been scheduled.',
+            'INTERVIEW_SCHEDULING' => 'Dear Candidate, your interview has been scheduled. Date: INTERVIEW_DATE, Time: TIME_FROM - TIME_TO',
             'VERIFICATION_SUCCESSFULL' => 'Your verification has been completed successfully.',
             'ADDMISSION_APPROVED' => 'Congratulations! Your admission has been approved.'
         ];
