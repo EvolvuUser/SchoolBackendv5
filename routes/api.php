@@ -12,6 +12,7 @@
     use App\Http\Controllers\LoginController;
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\NoticeController;
+    use App\Http\Controllers\GuideNavigationController;
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
@@ -1482,6 +1483,9 @@
             });
 
             Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
+
+            Route::get('/menus' , [GuideNavigationController::class , 'menus']);
+            Route::post('/help-guides/create' , [GuideNavigationController::class , 'createHelpGuides']);
         });
 
         // Impersonate
