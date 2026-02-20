@@ -13297,45 +13297,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $father_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('f_email');
                         $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('m_emailid');
 
-                        // $from = 'supportsacs@aceventura.in';
-                        // $cc='school@arnoldcentralschool.org';
-
-                        // if($class_name=="Nursery") {
-
-                        //     if($shortname == 'HSCS') {
-                        //         $textmsg ="Dear Parent,<br/><br/> As a part of the admission procedure, your ward's interview has been scheduled on ".$interview_date." from " . $time_from_12hr . " to " . $time_to_12hr . ".<br/><br/>Regards,<br/>
-                        // 		Holy Spirit Convent School";
-                        //     } else {
-                        //         $textmsg ="Respected Parents,<br/> Your child's form is shortlisted for the verification of the documents as well as the physical verification of the student. Hence, you are requested to kindly come to our Pre-primary block on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . ".<br><br> We expect, (preferably) both the parents along with the student and all the necessary original document to kindly come to the Pre-primary block and meet the concerned staff there.<br/><br/> *PS : THIS IS ONLY FOR THE SELECTED FORMS.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Nursery, Pune";
-                        //     }
-
-                        //     $emailData = [
-                        //         'subject' => 'Inviting For Verification for Nursery Admission',
-                        //         'textmsg' => $textmsg,
-                        //     ];
-                        //     // smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                        //     // smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-
-                        // } elseif($class_name=="11") {
-                        //     if($shortname == 'HSCS') {
-                        //         $textmsg = "No-body created";
-                        //     } else {
-                        //         $textmsg ="Dear Student,<br/><br/> Thank you for choosing St. Arnold's Central School, Pune, for your future Grade XI and XII Education in CBSE Board. We have received your online form.<br/><br/>As per the instructions, you are requested to visit the school office on ".$interview_date." between " . $time_from_12hr . " to " . $time_to_12hr . " for the verification of documents and for a short interview. Therefore, you could bring along your <b>Class IX report card</b> or <b>Class X, Term-1/Preparatory Marks card</b> (any of these available originals) for the verification.<br/><br/> We also expect at least one of the parent too, to be present for the verification of document and interview as well.<br/><br/> Looking forward seeing you on the scheduled time.<br/><br/>Thank you<br/><br/>Regards,<br/>(Admission Team)<br/>St. Arnold's Central School, Pune";
-                        //     }
-
-                        //     $emailData = [
-                        //         'subject' => 'Inviting For Verification for Class 11 Admission',
-                        //         'textmsg' => $textmsg,
-                        //     ];
-                        //     // smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                        //     // smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                        // }
-
-                        // directly get the value from the database and send to father and mother
-                        // $interview_date;
-                        // $time_from_12hr;
-                        // $time_to_12hr;
-
                         $formData = DB::table('online_admission_form')
                                 ->where('form_id', $form_ids[$i])->first();
                         $form_class_id = $formData->class_id;
@@ -14355,12 +14316,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
             if ($payload->get('role_id') != 'A') {
                 return response()->json(['status' => false, 'message' => 'You are not allowd to access this resource'], 400);
             }
             $templates = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
+                ->where('class.academic_yr' , $academic_year)
                 ->orderBy('email_templates.id', 'desc')
                 ->get();
             return response()->json([
