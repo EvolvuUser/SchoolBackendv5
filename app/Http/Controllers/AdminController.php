@@ -13301,6 +13301,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 ->where('form_id', $form_ids[$i])->first();
                         $form_class_id = $formData->class_id;
                         $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING' , $form_class_id);
+                        // if textmsg comes entry -> insert a default record in the database and use it. 
+                        
+
                         if ($class_name == 'Nursery') {
                             $textmsg = str_replace(
                                 ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
@@ -14520,9 +14523,36 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
      * VERIFICATION_SUCCESSFULL
      * ADDMISSION_APPROVED
      */
-    private function getEmailBodyByKey($key , $class_id)
+    private function getEmailBodyByKey($key, $class_id)
     {
-        return DB::table('email_templates')->where('key', $key)->where('class_id', $class_id)->value('body');
+        $template = DB::table('email_templates')
+            ->where('key', $key)
+            ->where('class_id', $class_id)
+            ->first();
+
+        if ($template) {
+            return $template->body;
+        }
+
+        // Default bodies
+        $defaultBodies = [
+            'INTERVIEW_SCHEDULING' => 'Dear Candidate, your interview has been scheduled.',
+            'VERIFICATION_SUCCESSFULL' => 'Your verification has been completed successfully.',
+            'ADDMISSION_APPROVED' => 'Congratulations! Your admission has been approved.'
+        ];
+
+        $defaultBody = $defaultBodies[$key] ?? 'Default email content.';
+
+        // Insert default template
+        DB::table('email_templates')->insert([
+            'key' => $key,
+            'class_id' => $class_id,
+            'body' => $defaultBody,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return $defaultBody;
     }
 
     public function attendanceAnalyticsGraph(Request $request)
