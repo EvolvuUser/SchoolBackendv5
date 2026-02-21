@@ -13847,7 +13847,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $formData = DB::table('online_admission_form')
                                         ->where('form_id', $form_ids[$i])->first();
                                 $form_class_id = $formData->class_id;
-                                $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED_NUR' , $form_class_id);
+                                $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
                                 if ($class_name == 'Nursery') {
                                     $subject = 'Information for Nursery admission';
                                 } else if ($class_name = '11') {
