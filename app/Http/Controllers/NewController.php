@@ -4851,6 +4851,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.event_desc',
                 'e.start_date',
                 'e.end_date',
+                'e.isDelete',
                 'e.start_time',
                 'e.end_time',
                 'e.login_type',
@@ -4889,6 +4890,7 @@ ORDER BY Z.t_remark_id DESC;");
                     'academic_yr' => $first->academic_yr,
                     'created_by' => $first->created_by,
                     'created_by_name' => $first->createdbyname,
+                    'isDelete' => $first->isDelete,
                     'failed_sms_count' => $group->sum('failed_sms_count'),
                     'classes' => $group->map(fn($item) => [
                         'class_id' => $item->class_id,
