@@ -13012,41 +13012,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $short_name = JWTAuth::getPayload()->get('short_name');
             $form_id = $request->query('form_id');
             $file_name = $request->query('file_name');
-            $files = DB::table('admission_upload_detail')
-                ->where('form_id', $form_id)
-                ->where('image_name' , $file_name)
-                ->first();
-            $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
-            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            
-            
-            // if (config('app.env') == 'dev') {
-            //     if ($short_name == "SACS") {
-            //         $basePath = config('externalapis.SACS_PATH');
-            //         $filePath = $basePath . "SACSv4test/uploads/admission_form/" . $form_id . '/' . $file_name;
-            //     } else if ($short_name == "HSCS") {
-            //         $basePath = config('externalapis.HSCS_PATH');
-            //         $filePath = $basePath . 'test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
-            //     } else {
-            //         $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
-            //     }
-            // } else if(config('app.env') == 'production') {
-            //     // for production update production path later
-            //     if ($short_name == "SACS") {
-            //         $basePath = config('externalapis.SACS_PATH');
-            //         $filePath = $basePath . 'uploads/admission_form/' . $form_id . '/' . $file_name;
-            //     } else if($short_name == "HSCS") {
-            //         $basePath = config('externalapis.HSCS_PATH');
-            //         $filePath = $basePath . 'uploads/admission_form/' . $form_id . '/' . $file_name;
-            //     } else {
-            //         $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
-            //     }
-            // } else {
-            //     return response()->json(['error' => 'Short code not implemented.' , 'env' => config('app.env'), 'short-code' => $short_name], 404);
-            // }
 
             $env = config('app.env');
             $basePath = '';
@@ -13066,11 +13031,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $filePath = $basePath . '/' . $subPath . '/' . $form_id . '/' . $file_name;
-
-            // Optional: check if file exists
-            if (!file_exists($filePath)) {
-                return response()->json(['error' => 'File not found.', 'path' => $filePath], 404);
-            }
             
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
