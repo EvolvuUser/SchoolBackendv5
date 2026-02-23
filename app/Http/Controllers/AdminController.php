@@ -13034,7 +13034,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
             return response()->json(['error' => 'File not found.'], 404);
         } catch(Exception $err) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred: ' . $err->getMessage()], 500);
         }
     }
 
