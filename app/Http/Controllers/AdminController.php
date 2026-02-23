@@ -12979,9 +12979,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'extension' => $extension,
                     'is_image' => true,
                     'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
-                    'file_url' => $codeigniter_app_url
+                    'downloadUrl' => $codeigniter_app_url
                         . 'Admission/downloadFiles?file='
-                        . urlencode($relativePath), // ⚡ URL-encode spaces and special chars
+                        . urlencode($relativePath),
+                    'file_url' => $codeigniter_app_url
+                        . 'uploads/admission_form/'
+                        . $file->form_id . '/'
+                        . $file->image_name,
                 ];
             }
 
