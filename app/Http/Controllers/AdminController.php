@@ -13008,6 +13008,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
     public function directFileDownload(Request $request) {
         try {
+            $user = $this->authenticateUser();
+            $short_name = JWTAuth::getPayload()->get('short_name');
             $form_id = $request->query('form_id');
             $file_name = $request->query('file_name');
             $files = DB::table('admission_upload_detail')
@@ -13020,11 +13022,27 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
             // config('externalapis.EVOLVU_URL')
-            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
+            if (env('APP_ENV') == 'development') {
+                if ($short_name == "SACS") {
+                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
+                } else if ($short_name == "HSCS") {
+                    $filePath = '/home/u333015459/domains/evolvu.in/public_html/holyspiritconvent/test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
+                } else {
+                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+                }
+            } else if(env('APP_ENV') == 'production') {
+                // for production update production path later
+                if ($short_name == "SACS") {
+                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
+                } else if($short_name == "HSCS") {
+                    $filePath = '/home/u333015459/domains/evolvu.in/public_html/holyspiritconvent/test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
+                } else {
+                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+                }
             } else {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+                return response()->json(['error' => 'Short code not implemented.'], 404);
             }
+            
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
                 return response()->file($filePath, [
