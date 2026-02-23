@@ -4822,7 +4822,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         $query = DB::table('events as e')
             ->join('class as c', 'e.class_id', '=', 'c.class_id')
-            ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+            ->leftjoin('teacher as t', 't.teacher_id', '=', 'e.created_by')
             ->leftJoin('redington_webhook_details as rwd', function ($join) {
                 $join
                     ->on('rwd.notice_id', '=', 'e.unq_id')
@@ -4861,7 +4861,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.created_by',
                 'e.class_id',
                 'c.name as class_name',
-                't.name as createdbyname',
+                DB::raw('IFNULL(t.name,"Aceventura") as createdbyname'),
                 DB::raw('COUNT(CASE WHEN rwd.sms_sent = "N" THEN 1 END) as failed_sms_count')
             )
             ->groupBy('e.event_id')
@@ -4913,7 +4913,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         $events = DB::table('events as e')
             ->join('class as c', 'e.class_id', '=', 'c.class_id')
-            ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+            ->leftjoin('teacher as t', 't.teacher_id', '=', 'e.created_by')
             ->where('unq_id', $unq_id)
             ->where('e.academic_yr', $customClaims)
             ->select(
@@ -4932,7 +4932,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.created_by',
                 'e.class_id',
                 'c.name as class_name',
-                't.name as createdbyname'
+                DB::raw('IFNULL(t.name,"Aceventura") as createdbyname')
             )
             ->get();
 
