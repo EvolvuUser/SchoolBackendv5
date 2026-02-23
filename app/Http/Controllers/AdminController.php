@@ -13006,6 +13006,36 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    public function directFileDownload(Request $request, $form_id , $file_name) {
+        try {
+            $files = DB::table('admission_upload_detail')
+                ->where('form_id', $form_id)
+                ->where('image_name' , $file_name)
+                ->first();
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+            // config('externalapis.EVOLVU_URL')
+            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
+            } else {
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+            }
+            if (File::exists($filePath)) {
+                $mime = File::mimeType($filePath);
+                return response()->file($filePath, [
+                    'Content-Type' => $mime,
+                    'Content-Disposition' => 'inline; filename="' . $name . '"'
+                ]);
+            }
+            return response()->json(['error' => 'File not found.'], 404);
+        } catch(Exception $err) {
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function updateApplicationStatus(Request $request, $form_id)
     {
         $status = $request->status;
