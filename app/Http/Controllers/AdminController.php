@@ -12980,7 +12980,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'is_image' => true,
                     'preview_type' => in_array($extension, $allowedImageExt) ? 'image' : 'file',
                     'downloadUrl' => $codeigniter_app_url
-                        . 'Admission/downloadFiles?file='
+                        . 'index.php/Admission/downloadFiles?file='
                         . urlencode($relativePath),
                     'file_url' => $codeigniter_app_url
                         . 'uploads/admission_form/'
