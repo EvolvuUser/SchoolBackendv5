@@ -13006,8 +13006,10 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function directFileDownload(Request $request, $form_id , $file_name) {
+    public function directFileDownload(Request $request) {
         try {
+            $form_id = $request->query('form_id');
+            $file_name = $request->query('file_name');
             $files = DB::table('admission_upload_detail')
                 ->where('form_id', $form_id)
                 ->where('image_name' , $file_name)
