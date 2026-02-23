@@ -13022,7 +13022,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
             // config('externalapis.EVOLVU_URL')
-            if (env('APP_ENV') == 'development') {
+            if (config('app.env') == 'development') {
                 if ($short_name == "SACS") {
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
                 } else if ($short_name == "HSCS") {
@@ -13030,7 +13030,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 } else {
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
                 }
-            } else if(env('APP_ENV') == 'production') {
+            } else if(config('app.env') == 'production') {
                 // for production update production path later
                 if ($short_name == "SACS") {
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
@@ -13040,7 +13040,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
                 }
             } else {
-                return response()->json(['error' => 'Short code not implemented.' , 'env' => env('APP_ENV') , 'short-code' => $short_name], 404);
+                return response()->json(['error' => 'Short code not implemented.' , 'env' => config('app.env'), 'short-code' => $short_name], 404);
             }
             
             if (File::exists($filePath)) {
