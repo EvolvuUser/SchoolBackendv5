@@ -13029,7 +13029,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $mime = File::mimeType($filePath);
                 return response()->file($filePath, [
                     'Content-Type' => $mime,
-                    'Content-Disposition' => 'inline; filename="' . $name . '"'
+                    'Content-Disposition' => 'inline; filename="' . $file_name . '"'
                 ]);
             }
             return response()->json(['error' => 'File not found.'], 404);
