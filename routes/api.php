@@ -150,8 +150,8 @@
             Route::get('/admin/applications/approval-list/', [AdminController::class, 'indexApprovalList']);
             Route::post('/admin/applications/approval-list/', [AdminController::class, 'updateApprovalList']);
 
+            Route::get('/admin/applications/file/download/' , [AdminController::class , 'directFileDownload']);
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
-            Route::get('/admin/applications/file/download' , [AdminController::class , 'directFileDownload']);
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
             Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
 
