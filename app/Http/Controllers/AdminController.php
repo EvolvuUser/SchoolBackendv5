@@ -13021,26 +13021,55 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            // config('externalapis.EVOLVU_URL')
-            if (config('app.env') == 'dev') {
-                if ($short_name == "SACS") {
-                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
-                } else if ($short_name == "HSCS") {
-                    $filePath = '/home/u333015459/domains/evolvu.in/public_html/holyspiritconvent/test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
-                } else {
-                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
-                }
-            } else if(config('app.env') == 'production') {
-                // for production update production path later
-                if ($short_name == "SACS") {
-                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
-                } else if($short_name == "HSCS") {
-                    $filePath = '/home/u333015459/domains/evolvu.in/public_html/holyspiritconvent/test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
-                } else {
-                    $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
-                }
-            } else {
-                return response()->json(['error' => 'Short code not implemented.' , 'env' => config('app.env'), 'short-code' => $short_name], 404);
+            
+            
+            // if (config('app.env') == 'dev') {
+            //     if ($short_name == "SACS") {
+            //         $basePath = config('externalapis.SACS_PATH');
+            //         $filePath = $basePath . "SACSv4test/uploads/admission_form/" . $form_id . '/' . $file_name;
+            //     } else if ($short_name == "HSCS") {
+            //         $basePath = config('externalapis.HSCS_PATH');
+            //         $filePath = $basePath . 'test/hscs_test/uploads/admission_form/' . $form_id . '/' . $file_name;
+            //     } else {
+            //         $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+            //     }
+            // } else if(config('app.env') == 'production') {
+            //     // for production update production path later
+            //     if ($short_name == "SACS") {
+            //         $basePath = config('externalapis.SACS_PATH');
+            //         $filePath = $basePath . 'uploads/admission_form/' . $form_id . '/' . $file_name;
+            //     } else if($short_name == "HSCS") {
+            //         $basePath = config('externalapis.HSCS_PATH');
+            //         $filePath = $basePath . 'uploads/admission_form/' . $form_id . '/' . $file_name;
+            //     } else {
+            //         $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
+            //     }
+            // } else {
+            //     return response()->json(['error' => 'Short code not implemented.' , 'env' => config('app.env'), 'short-code' => $short_name], 404);
+            // }
+
+            $env = config('app.env');
+            $basePath = '';
+            switch ($short_name) {
+                case 'SACS':
+                    $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'SACSv4test/uploads/admission_form' : 'uploads/admission_form';
+                    break;
+                case 'HSCS':
+                    $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'test/hscs_test/uploads/admission_form' : 'uploads/admission_form';
+                    break;
+                default:
+                    $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
+                    $subPath = 'uploads/admission_form';
+                    break;
+            }
+
+            $filePath = $basePath . '/' . $subPath . '/' . $form_id . '/' . $file_name;
+
+            // Optional: check if file exists
+            if (!file_exists($filePath)) {
+                return response()->json(['error' => 'File not found.', 'path' => $filePath], 404);
             }
             
             if (File::exists($filePath)) {
