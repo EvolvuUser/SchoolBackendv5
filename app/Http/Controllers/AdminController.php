@@ -13022,7 +13022,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
             // config('externalapis.EVOLVU_URL')
-            if (config('app.env') == 'development') {
+            if (config('app.env') == 'dev') {
                 if ($short_name == "SACS") {
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/uploads/admission_form/' . $form_id . '/' . $file_name;
                 } else if ($short_name == "HSCS") {
