@@ -12983,9 +12983,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         . 'Admission/downloadFiles?file='
                         . urlencode($relativePath),
                     'file_url' => $codeigniter_app_url
-                        . 'uploads/admission_form/'
-                        . $file->form_id . '/'
-                        . $file->image_name,
+                        . 'Admission/downloadFiles?file='
+                        . urlencode($relativePath),
                 ];
             }
 
