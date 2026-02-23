@@ -4893,7 +4893,7 @@ ORDER BY Z.t_remark_id DESC;");
                     'classes' => $group->map(fn($item) => [
                         'class_id' => $item->class_id,
                         'class_name' => $item->class_name,
-                    ])->unique('class_id')->values()
+                    ])->unique('class_id')->sortBy('class_id')->values()
                 ];
             })
             ->sortByDesc('latest_event_id')
@@ -4956,7 +4956,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'classes' => $group->map(fn($item) => [
                     'class_id' => $item->class_id,
                     'class_name' => $item->class_name,
-                ])->unique('class_id')->values()
+                ])->unique('class_id')->sortBy('class_id')->values()
             ];
         })->values();
         return response()->json([
