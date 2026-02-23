@@ -13040,7 +13040,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/uploads/admission_form/' . $form_id . '/' . $file_name;
                 }
             } else {
-                return response()->json(['error' => 'Short code not implemented.'], 404);
+                return response()->json(['error' => 'Short code not implemented.' , 'env' => env('APP_ENV') , 'short-code' => $short_name], 404);
             }
             
             if (File::exists($filePath)) {
