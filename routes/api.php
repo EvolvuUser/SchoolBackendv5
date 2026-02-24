@@ -150,7 +150,7 @@
             Route::get('/admin/applications/approval-list/', [AdminController::class, 'indexApprovalList']);
             Route::post('/admin/applications/approval-list/', [AdminController::class, 'updateApprovalList']);
 
-            Route::get('/admin/applications/file/download/' , [AdminController::class , 'directFileDownload']);
+            Route::get('/admin/applications/file/download/', [AdminController::class, 'directFileDownload']);
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
             Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
@@ -1478,6 +1478,9 @@
 
             // Worldline All Orders report Dev Name - Mahima Chaudhari 23-02-2026
             Route::get('/get_worldline_all_orders', [ReportController::class, 'getWorldlineAllOrderIdsReport']);
+
+            // Account type API Dev Name - Mahima Chaudhari 24-02-2026
+            Route::get('/get_account_type', [ReportController::class, 'getAccountType']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
