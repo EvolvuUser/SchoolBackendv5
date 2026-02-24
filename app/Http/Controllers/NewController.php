@@ -4278,23 +4278,66 @@ ORDER BY Z.t_remark_id DESC;");
         }
     }
 
+    // old
+    // public function downloadTicketFiles(Request $request, $ticket_id, $comment_id, $name)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //         if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+    //             $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+    //         } else {
+    //             $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+    //         }
+
+    //         if (File::exists($filePath)) {
+    //             $mime = File::mimeType($filePath);
+
+    //             return response()->file($filePath, [
+    //                 'Content-Type' => $mime,
+    //                 'Content-Disposition' => 'inline; filename="' . $name . '"'
+    //             ]);
+    //         }
+
+    //         return response()->json(['error' => 'File not found.'], 404);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);  // Log the exception
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
+    // new : updated by leo
     public function downloadTicketFiles(Request $request, $ticket_id, $comment_id, $name)
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
-            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
-            } else {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+            $short_name = JWTAuth::getPayload()->get('short_name');
+            $env = config('app.env');
+
+            // Determine base path and subpath based on short_name and environment
+            switch ($short_name) {
+                case 'SACS':
+                    $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'SACSv4test/uploads/ticket' : 'uploads/ticket';
+                    break;
+                case 'HSCS':
+                    $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'test/hscs_test/uploads/ticket' : 'uploads/ticket';
+                    break;
+                default:
+                    $basePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html';
+                    $subPath = 'uploads/ticket';
+                    break;
             }
+
+            // Build full file path
+            $filePath = $basePath . '/' . $subPath . '/' . $ticket_id . '/' . $comment_id . '/' . $name;
 
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
-
                 return response()->file($filePath, [
                     'Content-Type' => $mime,
                     'Content-Disposition' => 'inline; filename="' . $name . '"'
@@ -4822,7 +4865,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         $query = DB::table('events as e')
             ->join('class as c', 'e.class_id', '=', 'c.class_id')
-            ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+            ->leftjoin('teacher as t', 't.teacher_id', '=', 'e.created_by')
             ->leftJoin('redington_webhook_details as rwd', function ($join) {
                 $join
                     ->on('rwd.notice_id', '=', 'e.unq_id')
@@ -4851,6 +4894,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.event_desc',
                 'e.start_date',
                 'e.end_date',
+                'e.isDelete',
                 'e.start_time',
                 'e.end_time',
                 'e.login_type',
@@ -4861,7 +4905,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.created_by',
                 'e.class_id',
                 'c.name as class_name',
-                't.name as createdbyname',
+                DB::raw('IFNULL(t.name,"Aceventura") as createdbyname'),
                 DB::raw('COUNT(CASE WHEN rwd.sms_sent = "N" THEN 1 END) as failed_sms_count')
             )
             ->groupBy('e.event_id')
@@ -4889,11 +4933,12 @@ ORDER BY Z.t_remark_id DESC;");
                     'academic_yr' => $first->academic_yr,
                     'created_by' => $first->created_by,
                     'created_by_name' => $first->createdbyname,
+                    'isDelete' => $first->isDelete,
                     'failed_sms_count' => $group->sum('failed_sms_count'),
                     'classes' => $group->map(fn($item) => [
                         'class_id' => $item->class_id,
                         'class_name' => $item->class_name,
-                    ])->unique('class_id')->values()
+                    ])->unique('class_id')->sortBy('class_id')->values()
                 ];
             })
             ->sortByDesc('latest_event_id')
@@ -4913,7 +4958,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         $events = DB::table('events as e')
             ->join('class as c', 'e.class_id', '=', 'c.class_id')
-            ->join('teacher as t', 't.teacher_id', '=', 'e.created_by')
+            ->leftjoin('teacher as t', 't.teacher_id', '=', 'e.created_by')
             ->where('unq_id', $unq_id)
             ->where('e.academic_yr', $customClaims)
             ->select(
@@ -4932,7 +4977,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.created_by',
                 'e.class_id',
                 'c.name as class_name',
-                't.name as createdbyname'
+                DB::raw('IFNULL(t.name,"Aceventura") as createdbyname')
             )
             ->get();
 
@@ -4956,7 +5001,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'classes' => $group->map(fn($item) => [
                     'class_id' => $item->class_id,
                     'class_name' => $item->class_name,
-                ])->unique('class_id')->values()
+                ])->unique('class_id')->sortBy('class_id')->values()
             ];
         })->values();
         return response()->json([
