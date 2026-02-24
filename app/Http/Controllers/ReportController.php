@@ -5185,8 +5185,8 @@ class ReportController extends Controller
                 'house_name' => $student->house_name,
                 'name' => trim(
                     $student->first_name . ' '
-                    . ($student->mid_name ?? '') . ' '
-                    . $student->last_name
+                        . ($student->mid_name ?? '') . ' '
+                        . $student->last_name
                 ),
                 'subjects' => []
             ];
@@ -5248,240 +5248,6 @@ class ReportController extends Controller
         ]);
     }
 
-
-    // public function customizedStudentReport(Request $request)
-    // {
-    //     try {
-
-    //         /* ---------------- LOGIN CHECK ---------------- */
-    //         $loginType = $request->login_type;
-    //         $academicYear = $request->academic_yr;
-
-
-    //         if (!$request->class_id || !$academicYear) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Class and Academic Year are required'
-    //             ]);
-    //         }
-
-    //         /* ---------------- SPLIT class_id^section_id ---------------- */
-    //         if (!str_contains($request->class_id, '^')) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Invalid class format'
-    //             ]);
-    //         }
-
-    //         list($class_id, $section_id) = explode('^', $request->class_id);
-
-    //         /* ---------------- GET CLASS & SECTION NAME ---------------- */
-    //         $className = DB::table('class')
-    //             ->where('class_id', $class_id)
-    //             ->value('name');
-
-    //         $sectionName = DB::table('section')
-    //             ->where('section_id', $section_id)
-    //             ->value('name');
-
-    //         /* ---------------- GET STUDENTS ---------------- */
-    //         $students = DB::table('student as a')
-    //             ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
-    //             ->where('a.isDelete', 'N')
-    //             ->where('a.class_id', $class_id)
-    //             ->where('a.section_id', $section_id)
-    //             ->where('a.academic_yr', $academicYear)
-    //             ->orderBy('a.roll_no')
-    //             ->orderByRaw('CAST(a.reg_no AS UNSIGNED)')
-    //             ->select('a.*', 'b.father_name')
-    //             ->get();
-
-    //         $finalData = [];
-
-    //         foreach ($students as $student) {
-
-    //             /* -------- STUDENT FULL NAME -------- */
-    //             $nameParts = [];
-
-    //             if (!empty($student->first_name) && $student->first_name != 'No Data')
-    //                 $nameParts[] = $student->first_name;
-
-    //             if (!empty($student->mid_name) && $student->mid_name != 'No Data')
-    //                 $nameParts[] = $student->mid_name;
-
-    //             if (!empty($student->last_name) && $student->last_name != 'No Data')
-    //                 $nameParts[] = $student->last_name;
-
-    //             $fullName = implode(' ', $nameParts);
-
-    //             /* -------- PREVIOUS YEAR STUDENT ID -------- */
-    //             $prevId = null;
-
-    //             if ($student->prev_year_student_id != 0) {
-
-    //                 $prevId = DB::table('student')
-    //                     ->where('isDelete', 'N')
-    //                     ->where('academic_yr', $academicYear)
-    //                     ->where('student_id', $student->prev_year_student_id)
-    //                     ->value('student_id');
-    //             } else {
-
-    //                 $prevId = DB::table('student')
-    //                     ->where('isDelete', 'N')
-    //                     ->where('academic_yr', $academicYear)
-    //                     ->where('parent_id', $student->parent_id)
-    //                     ->where(function ($q) use ($student) {
-    //                         $q->where('first_name', $student->first_name)
-    //                             ->orWhere('reg_no', $student->reg_no);
-    //                     })
-    //                     ->value('student_id');
-    //             }
-
-    //             /* -------- GET CLASS NAME FOR PERCENT -------- */
-    //             $class = DB::table('student as s')
-    //                 ->join('class as c', 's.class_id', '=', 'c.class_id')
-    //                 ->where('s.student_id', $student->student_id)
-    //                 ->value('c.name');
-
-    //             /* -------- CALCULATE PERCENTAGE -------- */
-    //             $percentQuery = DB::table('student_marks as sm')
-    //                 ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-    //                 ->whereColumn('sm.class_id', 'sb.class_id')
-    //                 ->where('sb.subject_type', 'Scholastic')
-    //                 ->where('sm.publish', 'Y')
-    //                 ->where('sm.student_id', $student->student_id);
-
-    //             if ($class == '9') {
-    //                 $percentQuery->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-    //                     ->where('e.name', 'like', 'Final%');
-    //             }
-
-    //             $percentage = $percentQuery
-    //                 ->selectRaw('ROUND(SUM(sm.total_marks) / SUM(sm.highest_total_marks) * 100,2) as total_percent')
-    //                 ->groupBy('sm.student_id')
-    //                 ->value('total_percent');
-
-    //             $finalData[] = [
-    //                 'student_id' => $student->student_id,
-    //                 'roll_no' => $student->roll_no,
-    //                 'reg_no' => $student->reg_no,
-    //                 'student_name' => $fullName,
-    //                 'father_name' => $student->father_name,
-    //                 'previous_year_student_id' => $prevId,
-    //                 'percentage' => $percentage
-    //             ];
-    //         }
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'class_name' => $className,
-    //             'section_name' => $sectionName,
-    //             'academic_year' => $academicYear,
-    //             'total_students' => count($finalData),
-    //             'students' => $finalData
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => $e->getMessage()
-    //         ]);
-    //     }
-    // }
-
-    // public function customizedStudentReport(Request $request)
-    // {
-    //     try {
-
-    //         /* ---------------- VALIDATION ---------------- */
-    //         $request->validate([
-    //             'class_id'      => 'required',
-    //             'section_id'    => 'required',
-    //             'academic_year' => 'required'
-    //         ]);
-
-    //         $class_id     = $request->class_id;
-    //         $section_id   = $request->section_id;
-    //         $academicYear = $request->academic_year; // ✅ fixed name
-
-    //         /* ---------------- GET CLASS & SECTION NAME ---------------- */
-    //         $className = DB::table('class')
-    //             ->where('class_id', $class_id)
-    //             ->value('name');
-
-    //         $sectionName = DB::table('section')
-    //             ->where('section_id', $section_id)
-    //             ->value('name');
-
-    //         /* ---------------- GET STUDENTS ---------------- */
-    //         $students = DB::table('student as a')
-    //             ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
-    //             ->leftJoin('class as c', 'a.class_id', '=', 'c.class_id')
-    //             ->where('a.isDelete', 'N')
-    //             ->where('a.class_id', $class_id)
-    //             ->where('a.section_id', $section_id)
-    //             ->where('a.academic_yr', $academicYear)
-    //             ->orderBy('a.roll_no')
-    //             ->orderByRaw('CAST(a.reg_no AS UNSIGNED)')
-    //             ->select('a.*', 'b.father_name', 'c.name as class_name')
-    //             ->get();
-
-    //         $finalData = [];
-
-    //         foreach ($students as $student) {
-
-    //             /* -------- FULL NAME -------- */
-    //             $fullName = trim(
-    //                 ($student->first_name != 'No Data' ? $student->first_name : '') . ' ' .
-    //                     ($student->mid_name != 'No Data' ? $student->mid_name : '') . ' ' .
-    //                     ($student->last_name != 'No Data' ? $student->last_name : '')
-    //             );
-
-    //             /* -------- PERCENTAGE -------- */
-    //             $percentQuery = DB::table('student_marks as sm')
-    //                 ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-    //                 ->whereColumn('sm.class_id', 'sb.class_id')
-    //                 ->where('sb.subject_type', 'Scholastic')
-    //                 ->where('sm.publish', 'Y')
-    //                 ->where('sm.student_id', $student->student_id);
-
-    //             if ($student->class_name == '9') {
-    //                 $percentQuery->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-    //                     ->where('e.name', 'like', 'Final%');
-    //             }
-
-    //             $percentage = $percentQuery
-    //                 ->selectRaw('ROUND(SUM(sm.total_marks) / NULLIF(SUM(sm.highest_total_marks),0) * 100,2) as total_percent')
-    //                 ->value('total_percent');
-
-    //             $finalData[] = [
-    //                 'student_id' => $student->student_id,
-    //                 'roll_no' => $student->roll_no,
-    //                 'reg_no' => $student->reg_no,
-    //                 'student_name' => $fullName,
-    //                 'father_name' => $student->father_name,
-    //                 'previous_year_student_id' => $student->prev_year_student_id,
-    //                 'percentage' => $percentage ?? 0  // ✅ prevent null
-    //             ];
-    //         }
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'class_id' => $class_id,
-    //             'section_id' => $section_id,
-    //             'class_name' => $className,
-    //             'section_name' => $sectionName,
-    //             'academic_year' => $academicYear,
-    //             'total_students' => $students->count(),
-    //             'students' => $finalData
-    //         ], 200);
-    //     } catch (\Exception $e) {
-
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     public function customizedStudentReport(Request $request)
     {
@@ -5570,6 +5336,69 @@ class ReportController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getWorldlineAllOrderIdsReport(Request $request)
+    {
+        try {
+
+            $student_id   = $request->query('student_id');
+            $order_id     = $request->query('order_id');
+            $account_type = $request->query('account_type');
+            $academic_yr  = $request->query('academic_yr');
+            $from_date    = $request->query('from_date');
+            $to_date      = $request->query('to_date');
+
+            // Format Dates
+            $from_date = $from_date ? date('Y-m-d', strtotime($from_date)) : null;
+            $to_date   = $to_date ? date('Y-m-d', strtotime($to_date)) : null;
+
+            // Get Parent ID
+            $parent_id = null;
+            if (!empty($student_id)) {
+                $parent_id = DB::table('student')
+                    ->where('student_id', $student_id)
+                    ->value('parent_id');
+            }
+
+            // Build Query
+            $query = DB::table('worldline_payment_details')
+                ->where('academic_yr', $academic_yr);
+
+            if (!empty($account_type)) {
+                $query->where('Account_type', $account_type);
+            }
+
+            if (!empty($order_id)) {
+                $query->where('OrderId', $order_id);
+            }
+
+            if (!empty($from_date)) {
+                $query->whereDate('Trnx_date', '>=', $from_date);
+            }
+
+            if (!empty($to_date)) {
+                $query->whereDate('Trnx_date', '<=', $to_date);
+            }
+
+            if (!empty($parent_id)) {
+                $query->where('reg_id', $parent_id);
+            }
+
+            $results = $query->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Worldline All Order Id report fetched successfully',
+                'data' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

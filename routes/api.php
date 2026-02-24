@@ -1476,6 +1476,9 @@
             // Customized Student Report Dev Name - Mahima Chaudhari 19-02-2026
             Route::get('/get_customizedstudentreport', [ReportController::class, 'customizedStudentReport']);
 
+            // Worldline All Orders report Dev Name - Mahima Chaudhari 23-02-2026
+            Route::get('/get_worldline_all_orders', [ReportController::class, 'getWorldlineAllOrderIdsReport']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
