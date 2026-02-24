@@ -5402,4 +5402,24 @@ class ReportController extends Controller
             ], 500);
         }
     }
+
+    public function getAccountType(Request $request)
+    {
+        try {
+            $query = DB::table('bank_account_name');
+            $result = $query->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => "Back account name fetch successfully.",
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
