@@ -13399,34 +13399,34 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 ->where('form_id', $form_ids[$i])->first();
                         $form_class_id = $formData->class_id;
                         $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING' , $form_class_id);
-                        // if textmsg comes entry -> insert a default record in the database and use it. 
-                        
+                        // if ($class_name == 'Nursery') {
+                            
+                        // } else if ($class_name == '11') {
+                        //     $textmsg = str_replace(
+                        //         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+                        //         [$interview_date, $time_from_12hr, $time_to_12hr],
+                        //         $textmsg
+                        //     );
+                        //     $emailData = [
+                        //         'subject' => 'Inviting For Verification for Class 11 Admission',
+                        //         'textmsg' => $textmsg,
+                        //     ];
+                        //     smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                        //     smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+                        // }
 
-                        if ($class_name == 'Nursery') {
-                            $textmsg = str_replace(
-                                ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
-                                [$interview_date, $time_from_12hr, $time_to_12hr],
-                                $textmsg
-                            );
-                            $emailData = [
-                                'subject' => 'Inviting For Verification for Nursery Admission',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($father_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                            smart_mail($mother_emailid, 'Inviting For Verification for Nursery Admission', 'emails.parentUserEmail', $emailData);
-                        } else if ($class_name == '11') {
-                            $textmsg = str_replace(
-                                ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
-                                [$interview_date, $time_from_12hr, $time_to_12hr],
-                                $textmsg
-                            );
-                            $emailData = [
-                                'subject' => 'Inviting For Verification for Class 11 Admission',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                            smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                        }
+                        $textmsg = str_replace(
+                            ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+                            [$interview_date, $time_from_12hr, $time_to_12hr],
+                            $textmsg
+                        );
+                        $emailData = [
+                            'subject' => 'Inviting For Verification for Admission',
+                            'textmsg' => $textmsg,
+                        ];
+                        smart_mail($father_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
+                        smart_mail($mother_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
+
                     } else {
                         DB::table('online_admission_form')
                             ->where('form_id', $form_ids[$i])
@@ -13542,8 +13542,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                 $father_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('f_email');
                 $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('m_emailid');
-                smart_mail($father_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
-                smart_mail($mother_emailid, 'SACS-Admission Details', 'emails.parentUserEmail', $emailData);
+                smart_mail($father_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
+                smart_mail($mother_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
             }
 
             DB::commit();
@@ -13820,17 +13820,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     ->where('form_id', $form_id)->first();
                             $form_class_id = $formData->class_id;
                             $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                            if ($class_name == 'Nursery') {
-                                $subject = 'Information for Nursery admission';
-                            } else if ($class_name == '11') {
-                                $subject = 'Information for Class 11 admission';
-                            }
                             $emailData = [
                                 'subject' => $short_name . ' - ' . $subject,
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
+                            smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
+                            smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
 
                         } else {
                             $parent_id = '';
@@ -14413,17 +14408,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                             ->where('form_id', $form_ids[$i])->first();
                                     $form_class_id = $formData->class_id;
                                     $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                                    if ($class_name == 'Nursery') {
-                                        $subject = 'Information for Nursery admission';
-                                    } else if ($class_name = '11') {
-                                        $subject = 'Information for Class 11 admission';
-                                    }
                                     $emailData = [
                                         'subject' => $short_name . ' - ' . $subject,
                                         'textmsg' => $textmsg,
                                     ];
-                                    smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                                    smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
+                                    smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
+                                    smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
                                 }
                             }
                         } elseif ($parent_id != '') {
@@ -14505,22 +14495,16 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     ->where('form_id', $form_id)->first();
                             $form_class_id = $formData->class_id;
                             $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                            if ($class_name == 'Nursery') {
-                                $subject = 'Information for Nursery admission';
-                            } else if ($class_name = '11') {
-                                $subject = 'Information for Class 11 admission';
-                            }
                             $emailData = [
                                 'subject' => $short_name . ' - ' . $subject,
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
+                            smart_mail($fmail, $short_name.' - '."Admission Approved", 'emails.parentUserEmail', $emailData);
+                            smart_mail($mmail,  $short_name.' - '."Admission Approved" , 'emails.parentUserEmail', $emailData);
                         }
                     }
                 }
             }
-            
             return response()->json([
                 'status' => true,
                 'message' => 'Forms are successfully approved.!!!',
