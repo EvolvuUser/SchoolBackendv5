@@ -14044,8 +14044,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                             'subject' => $short_name . ' - ' . $subject,
                                             'textmsg' => $textmsg,
                                         ];
-                                        smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                                        smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
+                                        smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
+                                        smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
                                     }
                                 }
                             } elseif ($parent_id != '') {
