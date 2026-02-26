@@ -1482,6 +1482,9 @@
             // Account type API Dev Name - Mahima Chaudhari 24-02-2026
             Route::get('/get_account_type', [ReportController::class, 'getAccountType']);
 
+            // All Addmission form report Dev Name- Mahima Chaudhari 26-02-2026
+            Route::get('/get_all_admission_form_report', [ReportController::class, 'getAllAdmissionFormList']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
