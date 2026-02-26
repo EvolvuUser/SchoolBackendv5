@@ -5427,9 +5427,9 @@ class ReportController extends Controller
     {
         try {
 
-            $class_id = $request->class_id;
-            $status   = $request->status;
-            $academic_yr   = $request->academic_yr;
+            $class_id    = $request->class_id;
+            $status      = $request->status;
+            $academic_yr = $request->academic_yr;
 
             if (!$academic_yr) {
                 return response()->json([
@@ -5445,7 +5445,10 @@ class ReportController extends Controller
                     'c.interview_time_from',
                     'c.interview_time_to',
                     'd.name as class_name',
+                    'f.OrderId'
                 )
+
+                // Latest Interview Schedule
                 ->leftJoin(
                     DB::raw('(SELECT MAX(oadm_int_schedule_id) as max_id, form_id 
                           FROM online_adm_interview_schedule 
@@ -5454,6 +5457,7 @@ class ReportController extends Controller
                     '=',
                     'a.form_id'
                 )
+
                 ->leftJoin(
                     'online_adm_interview_schedule as c',
                     'c.oadm_int_schedule_id',
@@ -5461,11 +5465,18 @@ class ReportController extends Controller
                     't1.max_id'
                 )
                 ->leftJoin(
+                    'online_admfee as f',
+                    'f.form_id',
+                    '=',
+                    'a.form_id'
+                )
+                ->leftJoin(
                     'class as d',
                     'd.class_id',
                     '=',
                     'a.class_id'
                 )
+
                 ->where('a.academic_yr', $academic_yr);
 
             // Optional class filter
