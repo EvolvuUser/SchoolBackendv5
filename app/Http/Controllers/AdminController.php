@@ -14496,7 +14496,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $form_class_id = $formData->class_id;
                             $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
                             $emailData = [
-                                'subject' => $short_name . ' - ' . $subject,
+                                'subject' => $short_name . ' - ',
                                 'textmsg' => $textmsg,
                             ];
                             smart_mail($fmail, $short_name.' - '."Admission Approved", 'emails.parentUserEmail', $emailData);
