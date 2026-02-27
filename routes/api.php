@@ -1460,6 +1460,7 @@
 
             // Book pending count for student and staff seperate
             Route::get('/book_return_pending_seperate', [LibraryController::class, 'returnBooksPendingSeperate']);
+            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
 
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
