@@ -4145,8 +4145,6 @@ class LibraryController extends Controller
         }
     }
 
-
-
     public function returnBooksPendingWhatsapp(Request $request)
     {
         $user = $this->authenticateUser();
