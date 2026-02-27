@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendReminderRemarkJob;
 use App\Jobs\IssuedBookMessageJob;
+use App\Jobs\ReturnPendingBookJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -4145,6 +4146,27 @@ class LibraryController extends Controller
     }
 
 
+
+    public function returnBooksPendingWhatsapp(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $members = $request->input('member_id');
+        $message = $request->input('message');
+        $schoolsettings = getSchoolSettingsData();
+        $whatsappintegration = $schoolsettings->whatsapp_integration;
+        $smsintegration = $schoolsettings->sms_integration;
+
+        if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+            ReturnPendingBookJob::dispatch($members, $message);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Messages for return pending book.',
+            'success' => true
+        ]);
+    }
 
 
     public function libraryDashboard(Request $request)
