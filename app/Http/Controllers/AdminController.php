@@ -13417,7 +13417,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                         $textmsg = str_replace(
                             ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
-                            [$interview_date, $time_from_12hr, $time_to_12hr],
+                            [
+                                $interview_date ?? '',
+                                $time_from_12hr ?? '',
+                                $time_to_12hr ?? ''
+                            ],
                             $textmsg
                         );
                         $emailData = [
