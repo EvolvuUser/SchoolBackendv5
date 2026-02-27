@@ -13339,10 +13339,17 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $interview_date = $request->input('interview_date');
             $form_ids = $request->input('form_ids');
 
-            if (!empty($interview_date)) {
-                $interview_time_from = $request->input('interview_time_from');
-                $interview_time_to = $request->input('interview_time_to');
+            $interview_time_from = $request->input('interview_time_from');
+            $interview_time_to   = $request->input('interview_time_to');
+
+            $time_from_12hr = '';
+            $time_to_12hr   = '';
+
+            if (!empty($interview_time_from)) {
                 $time_from_12hr = Carbon::createFromFormat('H:i', $interview_time_from)->format('h:i A');
+            }
+
+            if (!empty($interview_time_to)) {
                 $time_to_12hr = Carbon::createFromFormat('H:i', $interview_time_to)->format('h:i A');
             }
 
