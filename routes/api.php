@@ -1491,6 +1491,9 @@
             // Send Mail subscription Reminder 28-02-2026
             Route::post('/subscription/reminder/mail', [LibraryController::class, 'subscriptionReminderMail']);
 
+            // Send Mail periodicals Reminder 28-02-2026
+            Route::post('/periodicals/reminder/mail', [LibraryController::class, 'periodicalReminderMail']);
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
