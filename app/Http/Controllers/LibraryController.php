@@ -4041,6 +4041,109 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function periodicalReminderMail(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+    //     $periodicalsIds = $request->input('periodicalId');
+    //     $message = $request->input('message');
+
+    //     foreach ($periodicalsIds as $subId) {
+
+    //         $periodicals = DB::table('periodicals as a')
+    //             ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+    //             ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+    //             ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+    //             ->where('d.subscription_issue_id', $subId)
+    //             ->first();
+
+    //         dd($periodicals);
+
+    //         if (!$periodicals) {
+    //             continue;
+    //         }
+
+    //         $email = $periodicals->email_ids ?? null;
+    //         $title = $periodicals->title ?? null;
+    //         $subscriptionNo = $subscription->subscription_issue_id ?? null;
+
+    //         if ($email && $title && $subscriptionNo) {
+
+    //             $subject = "Periodicals Reminder :- {$title} - {$subscriptionNo}";
+
+    //             $mailData = [
+    //                 'subject' => $subject,
+    //                 'textmsg' => $message,
+    //             ];
+
+    //             smart_mail(
+    //                 $email,
+    //                 $subject,
+    //                 'emails.subscription_reminder',
+    //                 $mailData
+    //             );
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Periodicals reminder emails sent successfully.',
+    //         'success' => true
+    //     ]);
+    // }
+
+    public function periodicalReminderMail(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+        $periodicalsIds = $request->input('periodicalId');
+        $message = $request->input('message');
+
+        foreach ($periodicalsIds as $subId) {
+
+            $periodicals = DB::table('periodicals as a')
+                ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+                ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+                ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+                ->where('d.subscription_issue_id', $subId)
+                ->select('a.*', 'b.*', 'c.*', 'd.*')
+                ->first();
+
+            if (!$periodicals) {
+                continue;
+            }
+
+            $email = $periodicals->email_ids ?? null;
+            $title = $periodicals->title ?? null;
+            $subscriptionNo = $periodicals->subscription_issue_id ?? null;
+
+            if ($email && $title && $subscriptionNo) {
+
+                $subject = "Periodicals Reminder :- {$title} - {$subscriptionNo}";
+
+                $mailData = [
+                    'subject' => $subject,
+                    'textmsg' => $message,
+                ];
+
+                smart_mail(
+                    $email,
+                    $subject,
+                    'emails.subscription_reminder',
+                    $mailData
+                );
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Periodicals reminder emails sent successfully.',
+            'success' => true
+        ]);
+    }
+
 
     public function pendingOverdueBooks()
     {
