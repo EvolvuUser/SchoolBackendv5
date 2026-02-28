@@ -1460,7 +1460,6 @@
 
             // Book pending count for student and staff seperate
             Route::get('/book_return_pending_seperate', [LibraryController::class, 'returnBooksPendingSeperate']);
-            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
 
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
@@ -1485,6 +1484,13 @@
 
             // All Addmission form report Dev Name- Mahima Chaudhari 26-02-2026
             Route::get('/get_all_admission_form_report', [ReportController::class, 'getAllAdmissionFormList']);
+
+            // Send Whats app message return book pending  27-02-2026
+            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
+
+            // Send Mail subscription Reminder 28-02-2026
+            Route::post('/subscription/reminder/mail', [LibraryController::class, 'subscriptionReminderMail']);
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
