@@ -12864,8 +12864,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                . $sibling_student->mid_name . ' '
-                                . $sibling_student->last_name
+                                    . $sibling_student->mid_name . ' '
+                                    . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -12962,8 +12962,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // }
 
             $files = DB::table('admission_upload_detail')
-            ->where('form_id', $form_id)
-            ->get();
+                ->where('form_id', $form_id)
+                ->get();
 
             foreach ($files as $file) {
 
@@ -13006,7 +13006,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function directFileDownload(Request $request) {
+    public function directFileDownload(Request $request)
+    {
         try {
             $user = $this->authenticateUser();
             $short_name = JWTAuth::getPayload()->get('short_name');
@@ -13031,7 +13032,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $filePath = $basePath . '/' . $subPath . '/' . $form_id . '/' . $file_name;
-            
+
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
                 return response()->file($filePath, [
@@ -13040,7 +13041,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
             return response()->json(['error' => 'File not found.'], 404);
-        } catch(Exception $err) {
+        } catch (Exception $err) {
             return response()->json(['error' => 'An error occurred: ' . $err->getMessage()], 500);
         }
     }
@@ -13403,11 +13404,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('m_emailid');
 
                         $formData = DB::table('online_admission_form')
-                                ->where('form_id', $form_ids[$i])->first();
+                            ->where('form_id', $form_ids[$i])->first();
                         $form_class_id = $formData->class_id;
-                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING' , $form_class_id);
+                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING', $form_class_id);
                         // if ($class_name == 'Nursery') {
-                            
+
                         // } else if ($class_name == '11') {
                         //     $textmsg = str_replace(
                         //         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
@@ -13437,7 +13438,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ];
                         smart_mail($father_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
                         smart_mail($mother_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
-
                     } else {
                         DB::table('online_admission_form')
                             ->where('form_id', $form_ids[$i])
@@ -13531,7 +13531,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             DB::beginTransaction();
 
-            
+
 
             foreach ($form_ids as $form_id) {
                 DB::table('online_admission_form')
@@ -13544,7 +13544,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     ->where('form_id', $form_id)->first();
                 $form_class_id = $formData->class_id;
 
-                $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL' , $form_class_id);
+                $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL', $form_class_id);
 
                 $emailData = [
                     'subject' => $short_name . '-Admission Details',
@@ -13657,7 +13657,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($defaultPassword == null) {
                 $passwordCode = $short_name == 'HSCS' ? 'hscs' : 'arnolds';
             }
-            if($short_name == 'HSCS') {
+            if ($short_name == 'HSCS') {
                 for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
                     if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
                         continue;
@@ -13721,7 +13721,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
 
                         // START 
-                        if($sibling_student_id!= 0) {
+                        if ($sibling_student_id != 0) {
                             $parent = DB::table('student')
                                 ->select('parent_id')
                                 ->where('student_id', $sibling_student_id)
@@ -13777,8 +13777,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             if ($student_id_new) {
 
                                 DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->update(['student_id' => $student_id_new]);
+                                    ->where('form_id', $form_id)
+                                    ->update(['student_id' => $student_id_new]);
 
                                 $password = bcrypt('arnolds');
                                 $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
@@ -13828,16 +13828,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             }
 
                             $formData = DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)->first();
+                                ->where('form_id', $form_id)->first();
                             $form_class_id = $formData->class_id;
-                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
+                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
                             $emailData = [
                                 'subject' => $short_name . ' - ',
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
-
+                            smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+                            smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
                         } else {
                             $parent_id = '';
                             if (!is_null($f_mobile)) {
@@ -13878,31 +13877,31 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 ]);
 
                                 if ($parent_id) {
-                                    if ($f_mobile==null || $f_mobile=='null' || trim($f_mobile)=="" || trim($f_mobile)=="''"){
-										if($m_mobile==null || $m_mobile=='null' || trim($m_mobile)=="" || trim($m_mobile)=="''"){
-											if ($last_name!='null' && $father_name!='null'){
-												$user_id=str_replace(" ","",$father_name).$last_name;
-											}elseif ($last_name!='null'){
-												$user_id=str_replace(" ","",$last_name);
-											}elseif ($father_name!='null'){
-												$user_id=str_replace(" ","",$father_name);
-											}
-										}else{
-											//echo "4";
-											$user_id=$m_mobile;
-										}
-									} else {
-										//echo "5"; 
-										$user_id=$f_mobile;
-									}
+                                    if ($f_mobile == null || $f_mobile == 'null' || trim($f_mobile) == "" || trim($f_mobile) == "''") {
+                                        if ($m_mobile == null || $m_mobile == 'null' || trim($m_mobile) == "" || trim($m_mobile) == "''") {
+                                            if ($last_name != 'null' && $father_name != 'null') {
+                                                $user_id = str_replace(" ", "", $father_name) . $last_name;
+                                            } elseif ($last_name != 'null') {
+                                                $user_id = str_replace(" ", "", $last_name);
+                                            } elseif ($father_name != 'null') {
+                                                $user_id = str_replace(" ", "", $father_name);
+                                            }
+                                        } else {
+                                            //echo "4";
+                                            $user_id = $m_mobile;
+                                        }
+                                    } else {
+                                        //echo "5"; 
+                                        $user_id = $f_mobile;
+                                    }
 
-                                    $user_id=str_replace("''","",$user_id);
-									$name="";
-									if ($father_name<>'null'){
-										$name=$father_name;
-									}else{
-										$name=$mother_name;
-									}
+                                    $user_id = str_replace("''", "", $user_id);
+                                    $name = "";
+                                    if ($father_name <> 'null') {
+                                        $name = $father_name;
+                                    } else {
+                                        $name = $mother_name;
+                                    }
 
                                     $password = bcrypt($passwordCode);
 
@@ -13990,7 +13989,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                             DB::table('online_admission_form')
                                                 ->where('form_id', $form_id)
                                                 ->update(['student_id' => $student_id_new]);
-                                            
+
                                             $password = $passwordCode;
                                             $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
 
@@ -14043,9 +14042,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                             $fmail = str_replace("'", '', $f_email);
                                         }
                                         $formData = DB::table('online_admission_form')
-                                                ->where('form_id', $form_ids[$i])->first();
+                                            ->where('form_id', $form_ids[$i])->first();
                                         $form_class_id = $formData->class_id;
-                                        $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
+                                        $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
                                         if ($class_name == 'Nursery') {
                                             $subject = 'Information for Nursery admission';
                                         } else if ($class_name = '11') {
@@ -14055,8 +14054,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                             'subject' => $short_name . ' - ' . $subject,
                                             'textmsg' => $textmsg,
                                         ];
-                                        smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                                        smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
+                                        smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+                                        smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
                                     }
                                 }
                             } elseif ($parent_id != '') {
@@ -14108,8 +14107,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 if ($student_id_new) {
 
                                     DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)
-                                    ->update(['student_id' => $student_id_new]);
+                                        ->where('form_id', $form_id)
+                                        ->update(['student_id' => $student_id_new]);
 
                                     $password = bcrypt('arnolds');
                                     $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
@@ -14159,9 +14158,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 }
 
                                 $formData = DB::table('online_admission_form')
-                                        ->where('form_id', $form_id)->first();
+                                    ->where('form_id', $form_id)->first();
                                 $form_class_id = $formData->class_id;
-                                $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
+                                $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
                                 if ($class_name == 'Nursery') {
                                     $subject = 'Information for Nursery admission';
                                 } else if ($class_name = '11') {
@@ -14171,8 +14170,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     'subject' => $short_name . ' - ' . $subject,
                                     'textmsg' => $textmsg,
                                 ];
-                                smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                                smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
+                                smart_mail($fmail, $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
+                                smart_mail($mmail,  $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
                             }
                         }
                         // END
@@ -14386,7 +14385,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                         DB::table('online_admission_form')
                                             ->where('form_id', $form_id)
                                             ->update(['student_id' => $student_id_new]);
-                                        
+
                                         $password = $passwordCode;
                                         $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
 
@@ -14416,15 +14415,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                         $fmail = str_replace("'", '', $f_email);
                                     }
                                     $formData = DB::table('online_admission_form')
-                                            ->where('form_id', $form_ids[$i])->first();
+                                        ->where('form_id', $form_ids[$i])->first();
                                     $form_class_id = $formData->class_id;
-                                    $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
+                                    $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
                                     $emailData = [
                                         'subject' => $short_name,
                                         'textmsg' => $textmsg,
                                     ];
-                                    smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                                    smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
+                                    smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+                                    smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
                                 }
                             }
                         } elseif ($parent_id != '') {
@@ -14476,8 +14475,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             if ($student_id_new) {
 
                                 DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->update(['student_id' => $student_id_new]);
+                                    ->where('form_id', $form_id)
+                                    ->update(['student_id' => $student_id_new]);
 
                                 $password = bcrypt('arnolds');
                                 $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
@@ -14503,15 +14502,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             }
 
                             $formData = DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)->first();
+                                ->where('form_id', $form_id)->first();
                             $form_class_id = $formData->class_id;
-                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
+                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
                             $emailData = [
                                 'subject' => $short_name . ' - ',
                                 'textmsg' => $textmsg,
                             ];
-                            smart_mail($fmail, $short_name.' - '."Admission Approved", 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '."Admission Approved" , 'emails.parentUserEmail', $emailData);
+                            smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+                            smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
                         }
                     }
                 }
@@ -14755,7 +14754,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //     if ($mmail) smart_mail($mmail, "$short_name - $subject", 'emails.parentUserEmail', $emailData);
     // }    
 
-    
+
 
 
     // HSCS extra admission modules
@@ -15135,7 +15134,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $templates = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
-                ->where('class.academic_yr' , $academic_year)
+                ->where('class.academic_yr', $academic_year)
                 ->orderBy('email_templates.id', 'desc')
                 ->get();
             return response()->json([
@@ -15166,7 +15165,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'nullable|integer',
             ]);
 
-            $exists = DB::table('email_templates')->where('key', $request->key)->where('class_id' , $request->class_id)->exists();
+            $exists = DB::table('email_templates')->where('key', $request->key)->where('class_id', $request->class_id)->exists();
 
             if ($exists) {
                 return response()->json([
@@ -15344,26 +15343,26 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
 
         $defaultBodies = [
-            'INTERVIEW_SCHEDULING' => 
-                'Dear Candidate,<br><br>
+            'INTERVIEW_SCHEDULING' =>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
 
-            'VERIFICATION_SUCCESSFULL' => 
-                'Dear Candidate,<br><br>
+            'VERIFICATION_SUCCESSFULL' =>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
 
-            'ADDMISSION_APPROVED' => 
-                'Dear Candidate,<br><br>
+            'ADDMISSION_APPROVED' =>
+            'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
-        ];        
+        ];
 
         $defaultBody = $defaultBodies[$key] ?? 'Default email content.';
 

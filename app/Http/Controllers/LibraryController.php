@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\HTTP\Services\SmartMailer;
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendReminderRemarkJob;
 use App\Jobs\IssuedBookMessageJob;
@@ -3961,7 +3962,54 @@ class LibraryController extends Controller
         ]);
     }
 
+    public function subscriptionReminderMail(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
 
+        $subscriptionIds = $request->input('subscriptionId');
+        $message = $request->input('message');
+
+        foreach ($subscriptionIds as $subId) {
+
+            $subscription = DB::table('subscription as s')
+                ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+                ->where('s.subscription_id', $subId)
+                ->select('s.*', 'p.*')
+                ->first();
+
+            if (!$subscription) {
+                continue;
+            }
+
+            $email = $subscription->email_ids ?? null;
+            $title = $subscription->title ?? null;
+            $subscriptionNo = $subscription->subscription_no ?? null;
+
+            if ($email && $title && $subscriptionNo) {
+
+                $subject = "Subscription Reminder :- {$title} - {$subscriptionNo}";
+
+                $mailData = [
+                    'subject' => $subject,
+                    'textmsg' => $message,
+                ];
+
+                smart_mail(
+                    $email,
+                    $subject,
+                    'emails.subscription_reminder',
+                    $mailData
+                );
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Subscription reminder emails sent successfully.',
+            'success' => true
+        ]);
+    }
 
     public function periodicalNotReceivedReminder(Request $request)
     {
