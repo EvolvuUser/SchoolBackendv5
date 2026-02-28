@@ -41,8 +41,14 @@ class TeacherDashboardController extends Controller
 
             /* ---------------- CLASSES ---------------- */
             $classes = DB::table('subject')
-                ->select('subject.class_id', 'subject.section_id', 'subject.sm_id', 'class.name as class_name', 'section.name as section_name',
-                    'subject_master.name as subject_name')
+                ->select(
+                    'subject.class_id',
+                    'subject.section_id',
+                    'subject.sm_id',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'subject_master.name as subject_name'
+                )
                 ->leftJoin('class', 'class.class_id', '=', 'subject.class_id')
                 ->leftJoin('section', 'section.section_id', '=', 'subject.section_id')
                 ->leftJoin('subject_master', 'subject_master.sm_id', '=', 'subject.sm_id')
@@ -159,6 +165,31 @@ class TeacherDashboardController extends Controller
                     ->exists();
             }
 
+            // Library book reminder
+            $today = Carbon::today();
+
+            $libraryBookReturnReminders = DB::table('issue_return as ir')
+                ->join('book as b', 'ir.book_id', '=', 'b.book_id')
+                ->where('ir.member_id', $teacher_id)
+                ->where('ir.due_date', '<', $today)
+                ->where(function ($query) {
+                    $query
+                        ->where('ir.return_date', '0000-00-00')
+                        ->orWhereNull('ir.return_date');
+                })
+                ->select(
+                    'ir.member_id',
+                    'ir.book_id',
+                    'ir.copy_id',
+                    'ir.issue_date',
+                    'ir.due_date',
+                    'ir.return_date',
+                    'b.book_title',
+                    'b.author',
+                    'b.publisher'
+                )
+                ->get();
+
             /* ---------------- RESPONSE ---------------- */
             return response()->json([
                 'status' => true,
@@ -168,6 +199,7 @@ class TeacherDashboardController extends Controller
                     'incomplete_lesson_plan_for_next_week' => $incompleteLessonPlansForNextWeek,
                     'isAttendanceMarked' => $isAttendanceMarked,
                     'isClassTeacher' => $isClassTeacher,
+                    'libraryBookReturn' => $libraryBookReturnReminders,
                 ]
             ], 200);
         } catch (\Throwable $e) {
@@ -1390,6 +1422,7 @@ class TeacherDashboardController extends Controller
 
         /** Homework Card */
         $today = Carbon::now()->toDateString();
+        $twoDaysLater = Carbon::today()->addDays(2);
         $countOfHomeworksDueToday = 0;  // Placeholder for homework due today logic
         $countOfHomeworksDueToday = DB::table('homework')
             ->leftJoin('homework_comments', 'homework.homework_id', '=', 'homework_comments.homework_id')
@@ -1405,6 +1438,7 @@ class TeacherDashboardController extends Controller
             ->where('member_id', $teacher_id)
             ->where('member_type', 'T')
             ->where('return_date', '0000-00-00')
+            ->whereDate('due_date', '<=', $twoDaysLater)
             ->count();
         $notCreatedCount = DB::table('subject as s')
             ->selectRaw("
@@ -1593,6 +1627,148 @@ class TeacherDashboardController extends Controller
             'status' => 200,
             'message' => 'Late days in month.',
             'data' => $latecount,
+            'success' => true
+        ]);
+    }
+
+    public function getTeacherClassExam(Request $request)
+    {
+        $user = $this->authenticateUser();
+
+        $reg_id = JWTAuth::getPayload()->get('reg_id');
+        $acd_yr = JWTAuth::getPayload()->get('academic_year');
+
+        /** 1️⃣ Get classes teacher teaches (section used only for permission) */
+        $classMappings = DB::table('subject')
+            ->where('teacher_id', $reg_id)
+            ->where('academic_yr', $acd_yr)
+            ->select('class_id')
+            ->distinct()
+            ->get();
+
+        if ($classMappings->isEmpty()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'No classes assigned to this teacher',
+                'data' => []
+            ]);
+        }
+
+        $classIds = $classMappings->pluck('class_id');
+
+        /** 2️⃣ Fetch class-level exam timetable */
+        $rows = DB::table('exam_timetable_details as etd')
+            ->join('exam_timetable as et', 'et.exam_tt_id', '=', 'etd.exam_tt_id')
+            ->join('exam as e', 'e.exam_id', '=', 'et.exam_id')
+            ->join('class as c', 'c.class_id', '=', 'et.class_id')
+            ->whereIn('et.class_id', $classIds)
+            ->where('et.publish', 'Y')
+            ->where('et.academic_yr', $acd_yr)
+            ->orderBy('etd.date')
+            ->select(
+                'c.class_id',
+                'c.name as classname',
+                'etd.date',
+                'e.name as exam_name',
+                'etd.subject_rc_id',
+                'etd.study_leave'
+            )
+            ->get();
+
+        /** 3️⃣ Load subject master once */
+        $subjectMaster = DB::table('subject_master')
+            ->select('sm_id', 'name')
+            ->get()
+            ->keyBy('sm_id');
+
+        $teacherSections = DB::table('subject as sub')
+            ->join('section as sec', 'sec.section_id', '=', 'sub.section_id')
+            ->where('sub.teacher_id', $reg_id)
+            ->where('sub.academic_yr', $acd_yr)
+            ->select(
+                'sub.class_id',
+                'sec.section_id',
+                'sec.name as section_name'
+            )
+            ->distinct()
+            ->get()
+            ->groupBy('class_id');
+        /** 4️⃣ Group by class & expand subjects */
+        $result = $rows
+            ->groupBy(fn($row) => $row->class_id)
+            ->map(function ($classItems) use ($subjectMaster, $teacherSections) {
+                $firstClass = $classItems->first();
+
+                return [
+                    'class_id' => $firstClass->class_id,
+                    'class_name' => $firstClass->classname,
+                    // ✅ ADD SECTION INFO HERE
+                    'sections' => ($teacherSections[$firstClass->class_id] ?? collect())
+                        ->map(fn($sec) => [
+                            'section_id' => $sec->section_id,
+                            'section_name' => $sec->section_name
+                        ])
+                        ->values(),
+                    'exams' => $classItems
+                        ->groupBy(fn($row) => $row->exam_name)
+                        ->map(function ($examItems, $examName) use ($subjectMaster) {
+                            return [
+                                'exam_name' => $examName,
+                                'timetable' => $examItems
+                                    ->map(function ($row) use ($subjectMaster) {
+                                        $subjects = [];
+
+                                        if (!empty($row->subject_rc_id) && is_string($row->subject_rc_id)) {
+                                            foreach (explode(',', $row->subject_rc_id) as $rawSid) {
+                                                $rawSid = trim($rawSid);
+
+                                                /** CASE 1: Combined subject like 16/17 */
+                                                if (str_contains($rawSid, '/')) {
+                                                    $comboNames = [];
+
+                                                    foreach (explode('/', $rawSid) as $comboSid) {
+                                                        $comboSid = trim($comboSid);
+
+                                                        if (ctype_digit($comboSid) && $subjectMaster->has((int) $comboSid)) {
+                                                            $comboNames[] = $subjectMaster[(int) $comboSid]->name;
+                                                        }
+                                                    }
+
+                                                    if (!empty($comboNames)) {
+                                                        $subjects[] = [
+                                                            'subject_id' => null,
+                                                            'subject_name' => implode(' / ', $comboNames)
+                                                        ];
+                                                    }
+                                                }
+                                                /** CASE 2: Normal subject id */ elseif (ctype_digit($rawSid) && $subjectMaster->has((int) $rawSid)) {
+                                                    $subjects[] = [
+                                                        'subject_id' => (int) $rawSid,
+                                                        'subject_name' => $subjectMaster[(int) $rawSid]->name
+                                                    ];
+                                                }
+                                            }
+                                        }
+
+                                        return [
+                                            'date' => $row->date,
+                                            'study_leave' => $row->study_leave,
+                                            'subjects' => $subjects
+                                        ];
+                                    })
+                                    ->filter(fn($item) => count($item['subjects']) > 0 || $item['study_leave'] === 'Y')
+                                    ->values()
+                            ];
+                        })
+                        ->values()
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Teacher class exam timetable fetched successfully',
+            'data' => $result,
             'success' => true
         ]);
     }

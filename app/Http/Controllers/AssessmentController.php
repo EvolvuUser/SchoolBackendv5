@@ -10407,10 +10407,12 @@ class AssessmentController extends Controller
         );
 
         // Dispatch job
-        GenerateReportCardJob::dispatch(['class_name' => $class_name,
+        GenerateReportCardJob::dispatch([
+            'class_name' => $class_name,
             'class_id' => $class_id,
             'section_id' => $section_id,
-            'academic_yr' => $academic_yr]);
+            'academic_yr' => $academic_yr
+        ]);
 
         return response()->json([
             'status' => 200,

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendReminderRemarkJob;
+use App\Jobs\IssuedBookMessageJob;
+use App\Jobs\ReturnPendingBookJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -913,6 +915,7 @@ class LibraryController extends Controller
     {
         $memberId = $request->input('member_id');
         $grn_no = $request->input('grn_no');
+        $mtype = $request->input('member_type');
 
         if (!$memberId && !$grn_no) {
             return response()->json([
@@ -922,6 +925,18 @@ class LibraryController extends Controller
         }
 
         $issuedBooks = null;
+
+        // $memberExists = DB::table('library_member')
+        //     ->where('member_id', $memberId)
+        //     ->where('member_type', $mtype)
+        //     ->exists();
+
+        // if (!$memberExists) {
+        //     return response()->json([
+        //         'status'  => false,
+        //         'message' => 'This is not a library member'
+        //     ], 404);
+        // }
 
         if ($memberId) {
             $issuedBooks = DB::table('book_copies as d')
@@ -939,8 +954,8 @@ class LibraryController extends Controller
                     'd.status'
                 )
                 ->where('a.member_id', $memberId)
-                ->where('d.status', 'I')  // Book is issued
-                ->where('a.return_date', '0000-00-00')  // Not returned yet
+                ->where('d.status', 'I')
+                ->where('a.return_date', '0000-00-00')
                 ->get();
         } else if ($grn_no) {
             $issuedBooks = DB::table('book_copies as d')
@@ -966,18 +981,19 @@ class LibraryController extends Controller
                 ->get();
         }
 
-        if (count($issuedBooks) == 0) {
-            return response()->json([
-                'status' => false,
-                'message' => 'This is not a library member',
-            ], 404);
-        }
+        // if (count($issuedBooks) == 0) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'This is not a library member',
+        //     ], 404);
+        // }
 
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
         ], 200);
     }
+
 
     public function getBookByAccession(Request $request)
     {
@@ -1035,10 +1051,124 @@ class LibraryController extends Controller
         }
     }
 
+    // public function issueBook(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $request->validate([
+    //         'issueddate' => 'required|date',
+    //         'copy_id' => 'required|array',
+    //         'book_id' => 'required|array',
+    //         'member_type' => 'required|string',
+    //     ]);
+
+    //     $memberType = $request->member_type;
+    //     $issueDate = date('Y-m-d', strtotime($request->issueddate));
+
+    //     // grn no
+    //     if ($request->grn_no != '') {
+    //         $student = DB::table('student')
+    //             ->where('reg_no', $request->grn_no)
+    //             ->where('academic_yr', $academic_yr)
+    //             ->first();
+
+    //         if (!$student) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Invalid GRN Number'
+    //             ], 404);
+    //         }
+
+    //         $memberId = $student->student_id;
+    //     }
+    //     // member_id
+    //     else {
+    //         $memberId = $request->member_id;
+    //     }
+
+    //     // check libarary member
+    //     $memberCheck = DB::table('library_member')
+    //         ->where('member_id', $memberId)
+    //         ->exists();
+
+    //     if (!$memberCheck) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Not a valid library member'
+    //         ], 403);
+    //     }
+
+    //     // check duplicate copy_id
+    //     if (count($request->copy_id) !== count(array_unique($request->copy_id))) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Duplicate book copies cannot be issued'
+    //         ], 422);
+    //     }
+
+    //     DB::beginTransaction();
+
+    //     try {
+    //         foreach ($request->copy_id as $i => $copyId) {
+    //             $bookId = $request->book_id[$i];
+
+    //             // calculate due date
+    //             if ($memberType == 'S') {
+    //                 $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+7 days'));
+    //             } else {
+    //                 $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+30 days'));
+    //             }
+
+    //             // new entry of issue book
+    //             DB::table('issue_return')->insert([
+    //                 'member_type' => $memberType,
+    //                 'member_id' => $memberId,
+    //                 'book_id' => $bookId,
+    //                 'copy_id' => $copyId,
+    //                 'issue_date' => $issueDate,
+    //                 'due_date' => $dueDate,
+    //             ]);
+
+    //             // update book status
+    //             DB::table('book_copies')
+    //                 ->where('copy_id', $copyId)
+    //                 ->where('book_id', $bookId)
+    //                 ->update([
+    //                     'status' => 'I'  // I = Issued
+    //                 ]);
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Books issued successfully'
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Error issuing book',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // Changed by mahima 12-02-2026  Whats app integration
     public function issueBook(Request $request)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $settingsData = getSchoolSettingsData();
+        $schoolName = $settingsData->institute_name;
+        $defaultPassword = $settingsData->default_pwd;
+        $websiteUrl = $settingsData->website_url;
+        $shortName = $settingsData->short_name;
+        $whatsappIntegration = $settingsData->whatsapp_integration;
+        $smsIntegration = $settingsData->sms_integration;
+        $savepublish = 'Y';
 
         $request->validate([
             'issueddate' => 'required|date',
@@ -1092,7 +1222,6 @@ class LibraryController extends Controller
         }
 
         DB::beginTransaction();
-
         try {
             foreach ($request->copy_id as $i => $copyId) {
                 $bookId = $request->book_id[$i];
@@ -1121,6 +1250,16 @@ class LibraryController extends Controller
                     ->update([
                         'status' => 'I'  // I = Issued
                     ]);
+
+                IssuedBookMessageJob::dispatch([
+                    'member_id'     => $memberId,
+                    'member_type'   => $memberType,
+                    'book_id'       => $bookId,
+                    'copy_id'       => $copyId,
+                    'academic_year' => $academic_yr,
+                    'issue_date'    => $issueDate,
+                    'due_date'      => $dueDate,
+                ])->afterCommit();
             }
 
             DB::commit();
@@ -3746,6 +3885,387 @@ class LibraryController extends Controller
         return response()->json([
             'status' => true,
             'data' => $data
+        ]);
+    }
+
+    public function getIssuedBooksMonthly(Request $request)
+    {
+        try {
+            $monthYear = $request->input('month_year'); // format: YYYY-MM
+
+            // Student issued books
+            $studentQuery = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'b.name as classname',
+                    'c.name as secname'
+                )
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('student', 'a.member_id', '=', 'student.student_id')
+                ->join('class as b', 'student.class_id', '=', 'b.class_id')
+                ->join('section as c', 'student.section_id', '=', 'c.section_id')
+                ->where('a.member_type', 'S')
+                ->where('a.issue_date', 'like', $monthYear . '-%');
+
+            // Teacher issued books
+            $teacherQuery = DB::table('issue_return as a')
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    'teacher.name as first_name',
+                    DB::raw('NULL as mid_name'),
+                    DB::raw('NULL as last_name'),
+                    DB::raw('NULL as classname'),
+                    DB::raw('NULL as secname')
+                )
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('teacher', 'a.member_id', '=', 'teacher.teacher_id')
+                ->where('a.member_type', 'T')
+                ->where('a.issue_date', 'like', $monthYear . '-%');
+
+            // UNION + ORDER BY
+            $data = $studentQuery
+                ->unionAll($teacherQuery)
+                ->orderBy('issue_date', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data'   => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function subscriptionReminderReport()
+    {
+        $data = DB::table('subscription as s')
+            ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+            ->where('s.status', 'Active')
+            ->whereRaw('s.to_date - 7 < CURDATE()')
+            ->select('s.*', 'p.*')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
+        ]);
+    }
+
+
+
+    public function periodicalNotReceivedReminder(Request $request)
+    {
+        $periodicalId = $request->periodical_id;
+
+        $query = DB::table('periodicals as a')
+            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+            ->where('b.status', 'Active')
+            ->whereDate('d.receive_by_date', '<', Carbon::today())
+            ->where('d.status', '!=', 'Received');
+
+        // Optional periodical filter
+        if (!empty($periodicalId)) {
+            $query->where('a.periodical_id', $periodicalId);
+        }
+
+        $data = $query->select(
+            'a.*',
+            'b.*',
+            'c.*',
+            'd.*'
+        )->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
+        ]);
+    }
+
+
+    public function pendingOverdueBooks()
+    {
+        try {
+            $this->authenticateUser();
+
+            $query = DB::table('issue_return as a')
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->whereDate('a.due_date', '<', Carbon::today())
+                ->where(function ($query) {
+                    $query->whereNull('a.return_date')
+                        ->orWhere('a.return_date', '0000-00-00');
+                })
+
+                ->leftJoin('student', function ($join) {
+                    $join->on('a.member_id', '=', 'student.student_id')
+                        ->where('a.member_type', '=', 'S');
+                })
+
+                ->leftJoin('teacher', function ($join) {
+                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                        ->where('a.member_type', '=', 'T');
+                })
+
+                ->select(
+                    'a.*',
+                    'book.book_title',
+
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.first_name
+                        WHEN a.member_type = 'T' THEN teacher.name
+                    END as first_name
+                "),
+
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.mid_name
+                        ELSE NULL
+                    END as mid_name
+                "),
+
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.last_name
+                        ELSE NULL
+                    END as last_name
+                ")
+                );
+
+            $result = $query->get();
+
+            if ($result->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No pending or overdue book records found'
+                ]);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Pending / overdue book report fetched successfully',
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+
+    public function returnBooksPendingSeperate()
+    {
+        try {
+            $this->authenticateUser();
+
+            $result = DB::table('issue_return as a')
+                ->join('book', 'a.book_id', '=', 'book.book_id')
+                ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->whereDate('a.due_date', '<', Carbon::today())
+                ->where(function ($query) {
+                    $query->whereNull('a.return_date')
+                        ->orWhere('a.return_date', '0000-00-00');
+                })
+                ->leftJoin('student', function ($join) {
+                    $join->on('a.member_id', '=', 'student.student_id')
+                        ->where('a.member_type', '=', 'S');
+                })
+                ->leftJoin('teacher', function ($join) {
+                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                        ->where('a.member_type', '=', 'T');
+                })
+                ->select(
+                    'a.*',
+                    'book.book_title',
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.first_name
+                        WHEN a.member_type = 'T' THEN teacher.name
+                    END as first_name
+                "),
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.mid_name
+                        ELSE NULL
+                    END as mid_name
+                "),
+                    DB::raw("
+                    CASE 
+                        WHEN a.member_type = 'S' THEN student.last_name
+                        ELSE NULL
+                    END as last_name
+                ")
+                )
+                ->get();
+
+            if ($result->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No pending or overdue book records found'
+                ]);
+            }
+
+            // Separate Students and Staff
+            $students = $result->where('member_type', 'S')->values();
+            $staff    = $result->where('member_type', 'T')->values();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Pending / overdue book report fetched successfully',
+                'data' => [
+                    'students' => $students,
+                    'staff'    => $staff
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function returnBooksPendingWhatsapp(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $members = $request->input('member_id');
+        $message = $request->input('message');
+        $schoolsettings = getSchoolSettingsData();
+        $whatsappintegration = $schoolsettings->whatsapp_integration;
+        $smsintegration = $schoolsettings->sms_integration;
+
+        if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+            ReturnPendingBookJob::dispatch($members, $message);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Messages for return pending book.',
+            'success' => true
+        ]);
+    }
+
+
+    public function libraryDashboard(Request $request)
+    {
+        $periodicalId = $request->periodical_id;
+
+        /** Subscription Expiry (Next 7 Days) */
+        $subscriptionExpiryCount = DB::table('subscription')
+            ->where('status', 'Active')
+            ->whereDate('to_date', '<', Carbon::today()->addDays(7))
+            ->count();
+
+        /** Periodical Not Received */
+        $periodicalNotReceivedQuery = DB::table('periodicals as a')
+            ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+            ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+            ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+            ->where('b.status', 'Active')
+            ->whereDate('d.receive_by_date', '<', Carbon::today())
+            ->where('d.status', '!=', 'Received');
+
+        if (!empty($periodicalId)) {
+            $periodicalNotReceivedQuery->where('a.periodical_id', $periodicalId);
+        }
+
+        $periodicalNotReceivedCount = $periodicalNotReceivedQuery->count();
+
+        /** Pending Book Returns */
+        $pendingBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+        $pendingStudentBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where('ir.member_type', "=", "S")
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+
+        $pendingStaffBookReturnCount = DB::table('issue_return as ir')
+            ->whereDate('ir.due_date', '<', Carbon::today())
+            ->where('ir.member_type', "=", "T")
+            ->where(function ($query) {
+                $query->whereNull('ir.return_date')
+                    ->orWhere('ir.return_date', '0000-00-00');
+            })
+            ->count();
+
+        /** Books Count */
+        $totalBooksCount = DB::table('book_copies')->count();
+
+        $availableBooksCount = DB::table('book_copies')
+            ->where('status', 'A')
+            ->count();
+
+        /** Periodicals Count */
+        $periodicalsCount = DB::table('periodicals')->count();
+
+        /** Library Members Count */
+        $memberCounts = DB::table('library_member')
+            ->select('member_type', DB::raw('COUNT(*) as total'))
+            ->groupBy('member_type')
+            ->get();
+
+        $studentCount = 0;
+        $teacherCount = 0;
+
+        foreach ($memberCounts as $row) {
+            if ($row->member_type === 'S') {
+                $studentCount = $row->total;
+            } elseif ($row->member_type === 'T') {
+                $teacherCount = $row->total;
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'counts' => [
+                // 'db_name' => DB::connection()->getDatabaseName(),
+                // 'host'    => DB::connection()->getConfig('host'),
+                'subscription_expiry'     => $subscriptionExpiryCount,
+                'periodical_not_received' => $periodicalNotReceivedCount,
+
+                'book_return_pending'     => $pendingBookReturnCount,
+                'student_book_return_pending' => $pendingStudentBookReturnCount,
+                'staff_book_return_pending' => $pendingStaffBookReturnCount,
+
+                'total_books'             => $totalBooksCount,
+                'available_books'         => $availableBooksCount,
+
+                'periodicals'             => $periodicalsCount,
+
+                'student_members'         => $studentCount,
+                'teacher_members'         => $teacherCount
+
+            ]
         ]);
     }
 }

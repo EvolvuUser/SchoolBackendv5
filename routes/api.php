@@ -5,6 +5,7 @@
     use App\Http\Controllers\AuthController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
+    use App\Http\Controllers\DashboardController;
     use App\Http\Controllers\HscController;
     use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
@@ -15,6 +16,7 @@
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
+    use App\Http\Controllers\ParentController;
     use App\Http\Controllers\TeacherDashboardController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
@@ -148,6 +150,7 @@
             Route::get('/admin/applications/approval-list/', [AdminController::class, 'indexApprovalList']);
             Route::post('/admin/applications/approval-list/', [AdminController::class, 'updateApprovalList']);
 
+            Route::get('/admin/applications/file/download/', [AdminController::class, 'directFileDownload']);
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
             Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
@@ -1430,7 +1433,7 @@
             Route::get('/library/get_books_added_report', [LibraryController::class, 'booksAddedReport']);
             Route::get('/library/get_source_of_book', [LibraryController::class, 'getSourceOfBooks']);
 
-            // Books Issued  Report
+            // Books Issued  Report 04-02-2026
             Route::get('/library/book_issued_report', [LibraryController::class, 'getBooksIssueReport']);
 
             // Books Non Retured Report
@@ -1438,11 +1441,58 @@
 
             // Books Issued history report
             Route::get('/library/book_issued_history_report', [LibraryController::class, 'issuedBooksHistory']);
+
+            // Books Iussed Monthly Report
+            Route::get('/library/book_issued_monthly_report', [LibraryController::class, 'getIssuedBooksMonthly']);
+
+            // Mahima 10-02-2026
+            // Subscription Reminder Report
+            Route::get('/subscription/reminder', [LibraryController::class, 'subscriptionReminderReport']);
+
+            // Periodicals Non Received Reminder
+            Route::get('/periodicals/reminder', [LibraryController::class, 'periodicalNotReceivedReminder']);
+
+            // Book Return Pending
+            Route::get('/book_return_pending', [LibraryController::class, 'pendingOverdueBooks']);
+
+            // Library Dashboard count
+            Route::get('/library/dashboard', [LibraryController::class, 'libraryDashboard']);
+
+            // Book pending count for student and staff seperate
+            Route::get('/book_return_pending_seperate', [LibraryController::class, 'returnBooksPendingSeperate']);
+            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
+
+            // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
+            Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
+
+            // Agewise Divisionwise Student Report Dev Name- Mahima Chaudhari 16-02-2026
+            Route::get('/get_agewisereport/{academic_year}', [ReportController::class, 'getAgewiseStudentReport']);
+
+            // Teacher app api for giving the exam list
+            Route::get('get_teacherclassesexams', [TeacherDashboardController::class, 'getTeacherClassExam']);
+
+            // Class Percentage Report Dev Name- Mahima Chaudhari 17-02-2026
+            Route::get('/get_classpercentagereport', [ReportController::class, 'getClassPercentageReport']);
+
+            // Customized Student Report Dev Name - Mahima Chaudhari 19-02-2026
+            Route::get('/get_customizedstudentreport', [ReportController::class, 'customizedStudentReport']);
+
+            // Worldline All Orders report Dev Name - Mahima Chaudhari 23-02-2026
+            Route::get('/get_worldline_all_orders', [ReportController::class, 'getWorldlineAllOrderIdsReport']);
+
+            // Account type API Dev Name - Mahima Chaudhari 24-02-2026
+            Route::get('/get_account_type', [ReportController::class, 'getAccountType']);
+
+            // All Addmission form report Dev Name- Mahima Chaudhari 26-02-2026
+            Route::get('/get_all_admission_form_report', [ReportController::class, 'getAllAdmissionFormList']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
                 dd($payload->toJson());
             });
+
+            Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
         });
 
         // Impersonate
@@ -1528,6 +1578,7 @@
 
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('send_pending_messages_whatsapp', [NewController::class, 'sendPendingMessagesWhatsapp']);
+    Route::get('get_dashboardstructure', [DashboardController::class, 'getDashboardStructure']);
 
     // Example of retrieving authenticated user information
     Route::get('/user', function (Request $request) {
