@@ -18329,6 +18329,44 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    // public function insertHouse(Request $request)
+    // {
+    //     try {
+
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         $exists = DB::table('house')
+    //             ->where('house_name', $request->house_name)
+    //             ->where('academic_yr', $academic_year)
+    //             ->exists();
+
+    //         if ($exists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House already exists for this academic year'
+    //             ], 409);
+    //         }
+
+    //         $houseId = DB::table('house')->insertGetId([
+    //             'house_name'    => $request->house_name,
+    //             'color_code'         => $request->color,
+    //             'academic_yr' => $academic_year,
+    //         ]);
+
+    //         return response()->json([
+    //             'success'  => true,
+    //             'message'  => 'House inserted successfully',
+    //             'house_id' => $houseId
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function insertHouse(Request $request)
     {
         try {
@@ -18337,19 +18375,20 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $exists = DB::table('house')
                 ->where('house_name', $request->house_name)
+                ->where('color_code', $request->color)
                 ->where('academic_yr', $academic_year)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House already exists for this academic year'
+                    'message' => 'House with same name and color already exists for this academic year'
                 ], 409);
             }
 
             $houseId = DB::table('house')->insertGetId([
-                'house_name'    => $request->house_name,
-                'color_code'         => $request->color,
+                'house_name' => $request->house_name,
+                'color_code' => $request->color,
                 'academic_yr' => $academic_year,
             ]);
 
@@ -18371,6 +18410,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     {
         try {
 
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
             // Check house exists
             $house = DB::table('house')
                 ->where('house_id', $id)
@@ -18381,6 +18422,21 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'success' => false,
                     'message' => 'House not found'
                 ], 404);
+            }
+
+            //  Duplicate check (exclude current id)
+            $exists = DB::table('house')
+                ->where('house_name', $request->house_name)
+                ->where('color_code', $request->color_code)
+                ->where('academic_yr', $academic_year)
+                ->where('house_id', '!=', $id) // important
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House with same name and color already exists for this academic year'
+                ], 409);
             }
 
             // Check if house is used in student table
@@ -18403,7 +18459,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 200);
             } else {
 
-
                 DB::table('house')
                     ->where('house_id', $id)
                     ->update([
@@ -18424,6 +18479,64 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
+
+    // public function updateHouse(Request $request, $id)
+    // {
+    //     try {
+
+    //         // Check house exists
+    //         $house = DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->first();
+
+    //         if (!$house) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House not found'
+    //             ], 404);
+    //         }
+
+    //         // Check if house is used in student table
+    //         $isUsed = DB::table('student')
+    //             ->where('house', $id)
+    //             ->exists();
+
+    //         if ($isUsed) {
+
+    //             // Only update house_name
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House name updated successfully.'
+    //             ], 200);
+    //         } else {
+
+
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                     'color_code' => $request->color_code,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House updated successfully'
+    //             ], 200);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     public function deleteHouse($id)
     {
