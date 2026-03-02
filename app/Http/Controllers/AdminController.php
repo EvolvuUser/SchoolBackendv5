@@ -14689,7 +14689,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         $logger->info("form_id {$form_id}: emails sent to fmail={$fmail}, mmail={$mmail}");
-
                     } else {
                         $logger->info("form_id {$form_id}: non-sibling path [HSCS]");
 
@@ -14861,7 +14860,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
                                 }
                             }
-
                         } elseif ($parent_id != '') {
                             $logger->info("form_id {$form_id}: existing parent found, parent_id={$parent_id} [HSCS]");
 
@@ -14953,7 +14951,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         }
                     }
                 }
-
             } else {
                 // Non-HSCS schools
                 $logger->info("Processing SACS school: {$short_name}");
@@ -15164,7 +15161,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
                             }
                         }
-
                     } elseif ($parent_id != '') {
                         $logger->info("form_id {$form_id}: existing parent path [non-HSCS], parent_id={$parent_id}");
 
@@ -15255,7 +15251,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status'  => true,
                 'message' => 'Forms are successfully approved.!!!',
             ], 200);
-
         } catch (Exception $e) {
             Log::channel('approve_admission')->error('updateApprovalList exception', [
                 'message' => $e->getMessage(),
@@ -18303,5 +18298,174 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             'message' => 'Message job queued successfully',
             'success' => true
         ]);
+    }
+
+
+    // Mahima 02-02-2026
+    public function getAllHouses(Request $request)
+    {
+        try {
+
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $query = DB::table('house as h')
+                ->select('h.*')
+                ->where('h.academic_yr', $academic_year);
+
+            $houses = $query->orderBy('h.house_name', 'asc')->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'House data fetched successfully',
+                'data' => $houses
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function insertHouse(Request $request)
+    {
+        try {
+
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $exists = DB::table('house')
+                ->where('house_name', $request->house_name)
+                ->where('academic_yr', $academic_year)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House already exists for this academic year'
+                ], 409);
+            }
+
+            $houseId = DB::table('house')->insertGetId([
+                'house_name'    => $request->house_name,
+                'color_code'         => $request->color,
+                'academic_yr' => $academic_year,
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'House inserted successfully',
+                'house_id' => $houseId
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateHouse(Request $request, $id)
+    {
+        try {
+
+            // Check house exists
+            $house = DB::table('house')
+                ->where('house_id', $id)
+                ->first();
+
+            if (!$house) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not found'
+                ], 404);
+            }
+
+            // Check if house is used in student table
+            $isUsed = DB::table('student')
+                ->where('house', $id)
+                ->exists();
+
+            if ($isUsed) {
+
+                // Only update house_name
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->update([
+                        'house_name' => $request->house_name,
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House name updated successfully.'
+                ], 200);
+            } else {
+
+
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->update([
+                        'house_name' => $request->house_name,
+                        'color_code' => $request->color_code,
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House updated successfully'
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteHouse($id)
+    {
+        try {
+
+
+            $house = DB::table('house')
+                ->where('house_id', $id)
+                ->first();
+
+            if (!$house) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not found'
+                ], 404);
+            }
+
+            $isUsed = DB::table('student')
+                ->where('house', $id)
+                ->exists();
+
+            if ($isUsed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House cannot be deleted because it is used.'
+                ], 400);
+            }
+
+            // Delete house
+            DB::table('house')
+                ->where('house_id', $id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'House deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 }
