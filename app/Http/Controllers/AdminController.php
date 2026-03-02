@@ -14327,7 +14327,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     $err = $response->failed() ? $response->status() : null;
 
                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
-
+                                    // fail point 
                                     DB::table('contact_details')->insert([
                                         'id' => $parent_id,
                                         'phone_no' => $phone_no,
@@ -14346,7 +14346,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                         ->first();
 
                                     if ($studentOldRecord) {
-                                        $student_id_new = $studentOldRecord->studentId;
+                                        $student_id_new = $studentOldRecord->student_id;
                                     } else {
                                         $student_id_new = DB::table('student')->insertGetId([
                                             'academic_yr' => $academic_yr,
