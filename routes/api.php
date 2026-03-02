@@ -1595,6 +1595,17 @@
     })->middleware(['jwt.auth']);
 
 
-    Route::get('/test-log' , function() {
-        \Log::channel('approve_admission')->info('TEST - channel is working');
-    } );
+Route::get('/test-log', function() {
+
+    $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
+    
+    if (!file_exists($logPath)) {
+        return response("Log file not found at: {$logPath}", 404);
+    }
+
+    $contents = file_get_contents($logPath);
+    
+    return response($contents, 200, [
+        'Content-Type' => 'text/plain',
+    ]);
+});
