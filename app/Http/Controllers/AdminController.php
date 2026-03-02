@@ -18374,15 +18374,17 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             $exists = DB::table('house')
-                ->where('house_name', $request->house_name)
-                ->where('color_code', $request->color)
                 ->where('academic_yr', $academic_year)
+                ->where(function ($query) use ($request) {
+                    $query->where('house_name', $request->house_name)
+                        ->orWhere('color_code', $request->color);
+                })
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House with same name and color already exists for this academic year'
+                    'message' => 'House name or color already exists for this academic year'
                 ], 409);
             }
 
@@ -18424,18 +18426,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 404);
             }
 
-            //  Duplicate check (exclude current id)
             $exists = DB::table('house')
-                ->where('house_name', $request->house_name)
-                ->where('color_code', $request->color_code)
                 ->where('academic_yr', $academic_year)
-                ->where('house_id', '!=', $id) // important
+                ->where('house_id', '!=', $id)
+                ->where(function ($query) use ($request) {
+                    $query->where('house_name', $request->house_name)
+                        ->orWhere('color_code', $request->color_code);
+                })
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House with same name and color already exists for this academic year'
+                    'message' => 'House name or color already exists for this academic year'
                 ], 409);
             }
 
