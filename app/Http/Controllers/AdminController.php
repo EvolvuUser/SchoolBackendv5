@@ -15096,7 +15096,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $logger->info("form_id {$form_id}: form->student_id={$formRecord->student_id}, studentOldRecord=" . ($studentOldRecord ? 'found' : 'not found'));
 
                                 if ($studentOldRecord) {
-                                    // ✅ BUG FIX: was ->studentId (camelCase, always null), now ->student_id
                                     $student_id_new = $studentOldRecord->student_id;
                                     $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
                                 } else {

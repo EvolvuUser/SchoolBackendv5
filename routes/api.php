@@ -1593,3 +1593,8 @@
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['jwt.auth']);
+
+
+    Route::get('/test-log' , function() {
+        \Log::channel('approve_admission')->info('TEST - channel is working');
+    } );
