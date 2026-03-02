@@ -47,6 +47,12 @@ return [
      * |
      */
     'channels' => [
+        'approve_admission' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/approveAdmissionLog.log'),
+            'level'  => 'debug',
+            'days'   => 2,
+        ],
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', env('LOG_STACK', 'single')),
