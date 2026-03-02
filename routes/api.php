@@ -1495,6 +1495,15 @@
             Route::post('/periodicals/reminder/mail', [LibraryController::class, 'periodicalReminderMail']);
 
 
+            // House CRUD Dev Name :- Mahima Chaudhari 02-03-2026
+            Route::get('/get_all_houses', [AdminController::class, 'getAllHouses']);
+
+            Route::post('/create_house', [AdminController::class, 'insertHouse']);
+
+            Route::put('/update_house/{id}', [AdminController::class, 'updateHouse']);
+
+            Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
@@ -1595,17 +1604,17 @@
     })->middleware(['jwt.auth']);
 
 
-Route::get('/test-log', function() {
+    Route::get('/test-log', function () {
 
-    $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
-    
-    if (!file_exists($logPath)) {
-        return response("Log file not found at: {$logPath}", 404);
-    }
+        $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
 
-    $contents = file_get_contents($logPath);
-    
-    return response($contents, 200, [
-        'Content-Type' => 'text/plain',
-    ]);
-});
+        if (!file_exists($logPath)) {
+            return response("Log file not found at: {$logPath}", 404);
+        }
+
+        $contents = file_get_contents($logPath);
+
+        return response($contents, 200, [
+            'Content-Type' => 'text/plain',
+        ]);
+    });
