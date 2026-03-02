@@ -848,6 +848,55 @@ class StudentController extends Controller
         ]);
     }
 
+    // public function updateStudentDataWithFieldData(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+    //     $studentsData = $request->input('students');
+
+    //     if (!is_array($studentsData) || empty($studentsData)) {
+    //         return response()->json([
+    //             'status' => 400,
+    //             'message' => 'No student data provided',
+    //             'success' => false
+    //         ], 400);
+    //     }
+
+    //     $updatedCount = 0;
+    //     $uppercaseFields = ['first_name', 'mid_name', 'last_name', 'student_name'];
+    //     foreach ($studentsData as $student) {
+    //         $studentId = $student['student_id'] ?? null;
+    //         if (!$studentId)
+    //             continue;
+
+    //         $updateData = [];
+
+    //         foreach ($student as $field => $value) {
+    //             if (in_array($field, $uppercaseFields) && !is_null($value)) {
+    //                 $updateData[$field] = strtoupper($value);  // Convert to uppercase
+    //             } else {
+    //                 $updateData[$field] = $value;
+    //             }
+    //         }
+
+    //         if (!empty($updateData)) {
+    //             DB::table('student')
+    //                 ->where('student_id', $studentId)
+    //                 ->where('academic_yr', $academicYear)
+    //                 ->update($updateData);
+
+    //             $updatedCount++;
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => "$updatedCount students updated successfully",
+    //         'success' => true
+    //     ]);
+    // }
+
     public function updateStudentDataWithFieldData(Request $request)
     {
         $user = $this->authenticateUser();
@@ -865,16 +914,18 @@ class StudentController extends Controller
 
         $updatedCount = 0;
         $uppercaseFields = ['first_name', 'mid_name', 'last_name', 'student_name'];
+
         foreach ($studentsData as $student) {
             $studentId = $student['student_id'] ?? null;
-            if (!$studentId)
-                continue;
+            if (!$studentId) continue;
 
             $updateData = [];
 
             foreach ($student as $field => $value) {
-                if (in_array($field, $uppercaseFields) && !is_null($value)) {
-                    $updateData[$field] = strtoupper($value);  // Convert to uppercase
+                if ($field === 'house') {
+                    $updateData[$field] = intval($value); // convert house to int
+                } elseif (in_array($field, $uppercaseFields) && !is_null($value)) {
+                    $updateData[$field] = strtoupper($value);
                 } else {
                     $updateData[$field] = $value;
                 }
