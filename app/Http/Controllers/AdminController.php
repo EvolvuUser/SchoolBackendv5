@@ -14747,7 +14747,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $name     = ($father_name !== 'null') ? $father_name : $mother_name;
                                 $password = bcrypt($passwordCode);
 
-                                $usql = DB::table('user_master')->insertGetId([
+                                $usql = DB::table('user_master')->insert([
                                     'user_id'  => $user_id,
                                     'name'     => $name,
                                     'password' => $password,
@@ -15059,13 +15059,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $name     = ($father_name !== 'null') ? $father_name : $mother_name;
                             $password = bcrypt($passwordCode);
 
-                            $usql = DB::table('user_master')->insertGetId([
+                            $usql = DB::table('user_master')->insert([
                                 'user_id'  => $user_id,
                                 'name'     => $name,
                                 'password' => $password,
                                 'reg_id'   => $parent_id,
                                 'role_id'  => 'P',
                             ]);
+
                             $logger->info("form_id {$form_id}: parent user_master inserted user_id={$user_id}, usql={$usql}");
 
                             $user_id = str_replace("'", '', $user_id);
