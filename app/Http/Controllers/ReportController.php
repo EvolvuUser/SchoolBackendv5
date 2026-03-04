@@ -5445,7 +5445,9 @@ class ReportController extends Controller
                     'c.interview_time_from',
                     'c.interview_time_to',
                     'd.name as class_name',
-                    'f.OrderId'
+                    'f.OrderId',
+                    'sc.name as sibling_class_name',
+                    'ss.section_name as sibling_section_name',
                 )
 
                 // Latest Interview Schedule
