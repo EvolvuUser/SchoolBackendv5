@@ -2483,7 +2483,8 @@ class LibraryController extends Controller
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             $data = DB::table('periodicals')
-                ->get();
+            ->orderby('periodicals.periodical_id' , 'desc')  // defaults to created_at
+            ->get();
 
             return response()->json([
                 'status' => true,
@@ -2639,6 +2640,7 @@ class LibraryController extends Controller
 
             $data = DB::table('subscription')
                 ->leftJoin('periodicals', 'periodicals.periodical_id', '=', 'subscription.periodical_id')
+                ->orderby('subscription.subscription_id' , 'DESC')
                 ->get();
 
             return response()->json([
@@ -2793,7 +2795,7 @@ class LibraryController extends Controller
             if ($issues->count() > 0) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Subscription Details cannot be deleted'
+                    'message' => 'Subscription details cannot be deleted because the status is expired.'
                 ], 400);
             }
 
