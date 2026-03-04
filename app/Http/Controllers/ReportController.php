@@ -5476,7 +5476,12 @@ class ReportController extends Controller
                     '=',
                     'a.class_id'
                 )
-
+                ->leftJoin('class as sc', function ($join) {
+                    $join->on('sc.class_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', 1)"));
+                })
+                ->leftJoin('section as ss', function ($join) {
+                    $join->on('ss.section_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)"));
+                })
                 ->where('a.academic_yr', $academic_yr);
 
             // Optional class filter
