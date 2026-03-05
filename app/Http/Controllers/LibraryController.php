@@ -918,6 +918,8 @@ class LibraryController extends Controller
         $grn_no = $request->input('grn_no');
         $mtype = $request->input('member_type');
 
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+
         if (!$memberId && !$grn_no) {
             return response()->json([
                 'status' => false,
