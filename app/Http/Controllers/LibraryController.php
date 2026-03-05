@@ -948,10 +948,16 @@ class LibraryController extends Controller
                 ->where('member_type', $mtype)
                 ->exists();
 
+            $query = DB::table('library_member')
+                ->where('member_id', $memberId)
+                ->where('member_type', $mtype);
+
             if (!$memberExists) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'This is not a library member'
+                    'message' => 'This is not a library member',
+                    'query' => $query->toSql(), 
+                    'queryBinding' => $query->getBindings()
                 ], 404);
             }
 
