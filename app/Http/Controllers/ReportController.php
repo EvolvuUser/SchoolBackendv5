@@ -5538,11 +5538,13 @@ class ReportController extends Controller
                     'ss.name as sibling_section_name'
                 )
 
-
+                // =========================
+                // Latest Interview Schedule
+                // =========================
                 ->leftJoin(
                     DB::raw('(
-                    SELECT MAX(oadm_int_schedule_id) as max_id, form_id 
-                    FROM online_adm_interview_schedule 
+                    SELECT MAX(oadm_int_schedule_id) as max_id, form_id
+                    FROM online_adm_interview_schedule
                     GROUP BY form_id
                 ) as t1'),
                     't1.form_id',
@@ -5556,11 +5558,13 @@ class ReportController extends Controller
                     't1.max_id'
                 )
 
-
+                // =========================
+                // Latest Fee Record (FIXED)
+                // =========================
                 ->leftJoin(
                     DB::raw('(
-                    SELECT MAX(admfee_id) as max_fee_id, form_id 
-                    FROM online_admfee 
+                    SELECT MAX(adfees_payment_id) as max_fee_id, form_id
+                    FROM online_admfee
                     GROUP BY form_id
                 ) as t2'),
                     't2.form_id',
@@ -5569,14 +5573,12 @@ class ReportController extends Controller
                 )
                 ->leftJoin(
                     'online_admfee as f',
-                    'f.admfee_id',
+                    'f.adfees_payment_id',
                     '=',
                     't2.max_fee_id'
                 )
 
-
                 ->leftJoin('class as d', 'd.class_id', '=', 'a.class_id')
-
 
                 ->leftJoin('class as sc', function ($join) {
                     $join->on(
@@ -5595,7 +5597,7 @@ class ReportController extends Controller
 
                 ->where('a.academic_yr', $academic_yr);
 
-
+            // Optional Filters
             if (!empty($class_id)) {
                 $query->where('a.class_id', $class_id);
             }
@@ -5607,7 +5609,6 @@ class ReportController extends Controller
             }
 
             $data = $query
-                ->distinct()
                 ->orderBy('a.application_date', 'asc')
                 ->get();
 
