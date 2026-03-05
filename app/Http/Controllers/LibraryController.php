@@ -2483,8 +2483,8 @@ class LibraryController extends Controller
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             $data = DB::table('periodicals')
-            ->orderby('periodicals.periodical_id' , 'desc')  // defaults to created_at
-            ->get();
+                ->orderby('periodicals.periodical_id', 'desc')  // defaults to created_at
+                ->get();
 
             return response()->json([
                 'status' => true,
@@ -2640,7 +2640,7 @@ class LibraryController extends Controller
 
             $data = DB::table('subscription')
                 ->leftJoin('periodicals', 'periodicals.periodical_id', '=', 'subscription.periodical_id')
-                ->orderby('subscription.subscription_id' , 'DESC')
+                ->orderby('subscription.subscription_id', 'DESC')
                 ->get();
 
             return response()->json([
@@ -3415,8 +3415,12 @@ class LibraryController extends Controller
                 $query->where('book_copies.copy_id', $accession_no);
             }
 
+            // if (!empty($location_of_book)) {
+            //     $query->where('book.location_of_book', $location_of_book);
+            // }
+
             if (!empty($location_of_book)) {
-                $query->where('book.location_of_book', $location_of_book);
+                $query->where('book.location_of_book', 'like', '%' . $location_of_book . '%');
             }
 
             $books = $query->get();
