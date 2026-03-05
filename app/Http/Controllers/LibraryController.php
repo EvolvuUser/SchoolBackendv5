@@ -2888,9 +2888,17 @@ class LibraryController extends Controller
 
             $subscription_to_date = $request->input('subscription_to_date');
             $receiving_date = $request->input('receiving_date');
+            // $bimonthly_second_date = $request->input('bimonthly_second_date');
             $frequency = $request->input('frequency');
             $volume_lists = $request->input('volume');
             $issue_lists = $request->input('issue');
+
+            // if ($frequency === 'Bimonthly' && !$bimonthly_second_date) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+            //     ], 400);
+            // }
 
             if (
                 !$subscription_id ||
@@ -2956,7 +2964,18 @@ class LibraryController extends Controller
                                 $received_by_date = $year . '-' . $month . '-' . $receiving_date;
                             }
                         }
-
+                        // if ($frequency === 'Bimonthly') {
+                        //     $month = date('m', strtotime($received_by_date));
+                        //     $year = date('Y', strtotime($received_by_date));
+                        //     if ($j % 2 == 0) {
+                        //         $received_by_date = $year . '-' . $month . '-' . $bimonthly_second_date;
+                        //     } else {
+                        //         $received_by_date = date(
+                        //             'Y-m-d',
+                        //             strtotime($year . '-' . $month . '-' . $receiving_date . ' +1 month')
+                        //         );
+                        //     }
+                        // }
                         if ($frequency === 'Weekly') {
                             $received_by_date = date(
                                 'Y-m-d',
