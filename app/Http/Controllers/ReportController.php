@@ -5423,6 +5423,94 @@ class ReportController extends Controller
         }
     }
 
+    // public function getAllAdmissionFormList(Request $request)
+    // {
+    //     try {
+
+    //         $class_id    = $request->class_id;
+    //         $status      = $request->status;
+    //         $academic_yr = $request->academic_yr;
+
+    //         if (!$academic_yr) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Academic year is required'
+    //             ], 400);
+    //         }
+
+    //         $query = DB::table('online_admission_form as a')
+    //             ->select(
+    //                 'a.*',
+    //                 'c.interview_date',
+    //                 'c.interview_time_from',
+    //                 'c.interview_time_to',
+    //                 'd.name as class_name',
+    //                 'f.OrderId',
+    //                 'sc.name as sibling_class_name',
+    //                 'ss.name as sibling_section_name',
+    //             )
+    //             ->leftJoin(
+    //                 DB::raw('(SELECT MAX(oadm_int_schedule_id) as max_id, form_id 
+    //                       FROM online_adm_interview_schedule 
+    //                       GROUP BY form_id) as t1'),
+    //                 't1.form_id',
+    //                 '=',
+    //                 'a.form_id'
+    //             )
+
+    //             ->leftJoin(
+    //                 'online_adm_interview_schedule as c',
+    //                 'c.oadm_int_schedule_id',
+    //                 '=',
+    //                 't1.max_id'
+    //             )
+    //             ->leftJoin(
+    //                 'online_admfee as f',
+    //                 'f.form_id',
+    //                 '=',
+    //                 'a.form_id'
+    //             )
+    //             ->leftJoin(
+    //                 'class as d',
+    //                 'd.class_id',
+    //                 '=',
+    //                 'a.class_id'
+    //             )
+    //             ->leftJoin('class as sc', function ($join) {
+    //                 $join->on('sc.class_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', 1)"));
+    //             })
+    //             ->leftJoin('section as ss', function ($join) {
+    //                 $join->on('ss.section_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)"));
+    //             })
+    //             ->where('a.academic_yr', $academic_yr);
+
+    //         // Optional class filter
+    //         if (!empty($class_id)) {
+    //             $query->where('a.class_id', $class_id);
+    //         }
+
+    //         // Status filter
+    //         if ($status === 'S') {
+    //             $query->where('a.status', 'S');
+    //         } elseif ($status === 'NULL') {
+    //             $query->whereNull('a.status');
+    //         }
+
+    //         $data = $query->orderBy('a.application_date', 'asc')
+    //             ->get();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'data'    => $data
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function getAllAdmissionFormList(Request $request)
     {
         try {
@@ -5447,58 +5535,81 @@ class ReportController extends Controller
                     'd.name as class_name',
                     'f.OrderId',
                     'sc.name as sibling_class_name',
-                    'ss.name as sibling_section_name',
+                    'ss.name as sibling_section_name'
                 )
 
+                // =========================
                 // Latest Interview Schedule
+                // =========================
                 ->leftJoin(
-                    DB::raw('(SELECT MAX(oadm_int_schedule_id) as max_id, form_id 
-                          FROM online_adm_interview_schedule 
-                          GROUP BY form_id) as t1'),
+                    DB::raw('(
+                    SELECT MAX(oadm_int_schedule_id) as max_id, form_id
+                    FROM online_adm_interview_schedule
+                    GROUP BY form_id
+                ) as t1'),
                     't1.form_id',
                     '=',
                     'a.form_id'
                 )
-
                 ->leftJoin(
                     'online_adm_interview_schedule as c',
                     'c.oadm_int_schedule_id',
                     '=',
                     't1.max_id'
                 )
+
+                // =========================
+                // Latest Fee Record (FIXED)
+                // =========================
                 ->leftJoin(
-                    'online_admfee as f',
-                    'f.form_id',
+                    DB::raw('(
+                    SELECT MAX(adfees_payment_id) as max_fee_id, form_id
+                    FROM online_admfee
+                    GROUP BY form_id
+                ) as t2'),
+                    't2.form_id',
                     '=',
                     'a.form_id'
                 )
                 ->leftJoin(
-                    'class as d',
-                    'd.class_id',
+                    'online_admfee as f',
+                    'f.adfees_payment_id',
                     '=',
-                    'a.class_id'
+                    't2.max_fee_id'
                 )
+
+                ->leftJoin('class as d', 'd.class_id', '=', 'a.class_id')
+
                 ->leftJoin('class as sc', function ($join) {
-                    $join->on('sc.class_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', 1)"));
+                    $join->on(
+                        'sc.class_id',
+                        '=',
+                        DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', 1)")
+                    );
                 })
                 ->leftJoin('section as ss', function ($join) {
-                    $join->on('ss.section_id', '=', DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)"));
+                    $join->on(
+                        'ss.section_id',
+                        '=',
+                        DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)")
+                    );
                 })
+
                 ->where('a.academic_yr', $academic_yr);
 
-            // Optional class filter
+            // Optional Filters
             if (!empty($class_id)) {
                 $query->where('a.class_id', $class_id);
             }
 
-            // Status filter
             if ($status === 'S') {
                 $query->where('a.status', 'S');
             } elseif ($status === 'NULL') {
                 $query->whereNull('a.status');
             }
 
-            $data = $query->orderBy('a.application_date', 'asc')
+            $data = $query
+                ->orderBy('a.application_date', 'asc')
                 ->get();
 
             return response()->json([
@@ -5506,6 +5617,7 @@ class ReportController extends Controller
                 'data'    => $data
             ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
