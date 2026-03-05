@@ -916,7 +916,7 @@ class LibraryController extends Controller
     {
         $memberId = $request->input('member_id');
         $grn_no = $request->input('grn_no');
-        $mtype = $request->input('member_type');
+        $mtype = $request->input('mtype');
 
         $academicYr = JWTAuth::getPayload()->get('academic_year');
 
@@ -948,16 +948,16 @@ class LibraryController extends Controller
                 ->where('member_type', $mtype)
                 ->exists();
 
-            $query = DB::table('library_member')
-                ->where('member_id', $memberId)
-                ->where('member_type', $mtype);
+            // $query = DB::table('library_member')
+            //     ->where('member_id', $memberId)
+            //     ->where('member_type', $mtype);
 
             if (!$memberExists) {
                 return response()->json([
                     'status'  => false,
                     'message' => 'This is not a library member',
-                    'query' => $query->toSql(), 
-                    'queryBinding' => $query->getBindings()
+                    // 'query' => $query->toSql(), 
+                    // 'queryBinding' => $query->getBindings()
                 ], 404);
             }
 
