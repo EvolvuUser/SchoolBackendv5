@@ -942,6 +942,19 @@ class LibraryController extends Controller
         // }
 
         if ($memberId) {
+
+            $memberExists = DB::table('library_member')
+                ->where('member_id', $memberId)
+                ->where('member_type', $mtype)
+                ->exists();
+
+            if (!$memberExists) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'This is not a library member'
+                ], 404);
+            }
+
             $issuedBooks = DB::table('book_copies as d')
                 ->join('book as b', 'b.book_id', '=', 'd.book_id')
                 ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
@@ -967,7 +980,7 @@ class LibraryController extends Controller
             if(!$student) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'This is not a library member',
+                    'message' => 'Invalid GRN number',
                 ], 404);
             }
 
