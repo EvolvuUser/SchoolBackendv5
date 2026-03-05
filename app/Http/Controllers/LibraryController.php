@@ -960,7 +960,7 @@ class LibraryController extends Controller
                 ->get();
         } else if ($grn_no) {
 
-            $student = DB::table('student')->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0')->first();
+            $student = DB::table('student')->where('reg_no', $grn_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0')->first();
 
             if(!$student) {
                 return response()->json([
