@@ -4204,7 +4204,8 @@ class LibraryController extends Controller
 
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
-                ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                // ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
                     $query->whereNull('a.return_date')
