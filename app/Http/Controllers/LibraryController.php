@@ -959,6 +959,16 @@ class LibraryController extends Controller
                 ->where('a.return_date', '0000-00-00')
                 ->get();
         } else if ($grn_no) {
+
+            $student = DB::table('student')->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0')->first();
+
+            if(!$student) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This is not a library member',
+                ], 404);
+            }
+
             $issuedBooks = DB::table('book_copies as d')
                 ->join('book as b', 'b.book_id', '=', 'd.book_id')
                 ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
