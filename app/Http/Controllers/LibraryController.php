@@ -991,7 +991,7 @@ class LibraryController extends Controller
 
             $memberExists = DB::table('library_member')
                 ->where('member_id', $student->student_id)
-                ->where('member_type', 'Student') // adjust if your type name differs
+                ->where('member_type', 'S') // adjust if your type name differs
                 ->exists();
 
             if (!$memberExists) {
