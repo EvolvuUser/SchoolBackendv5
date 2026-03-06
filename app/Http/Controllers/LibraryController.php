@@ -941,6 +941,8 @@ class LibraryController extends Controller
         //     ], 404);
         // }
 
+        $member = null;
+
         if ($memberId) {
 
             $memberExists = DB::table('library_member')
@@ -959,6 +961,12 @@ class LibraryController extends Controller
                     // 'query' => $query->toSql(), 
                     // 'queryBinding' => $query->getBindings()
                 ], 404);
+            }
+
+            if($mtype == 'S') {
+                $member = DB::table("student")->where('student_id' , $memberId)->first();
+            } else {
+                $member = DB::table("teacher")->where('teacher_id' , $memberId)->first();
             }
 
             $issuedBooks = DB::table('book_copies as d')
@@ -995,10 +1003,12 @@ class LibraryController extends Controller
                 ], 404);
             }
 
-            $memberExists = DB::table('library_member')
-                ->where('member_id', $student->reg_no)
-                ->where('member_type', 'S') // adjust if your type name differs
-                ->exists();
+            $memberExists = DB::table('student')
+            ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
+            ->where('library_member.member_type', 'S')
+            ->where('library_member.status', 'A')
+            ->where('student.student_id' , $student->student_id)
+            ->where('student.academic_year' , $academicYr);
 
             if (!$memberExists) {
                 return response()->json([
@@ -1006,6 +1016,8 @@ class LibraryController extends Controller
                     'message' => 'This is not a library member'
                 ], 404);
             }
+
+            $member = $student;
 
             $issuedBooks = DB::table('book_copies as d')
                 ->join('book as b', 'b.book_id', '=', 'd.book_id')
@@ -1040,6 +1052,7 @@ class LibraryController extends Controller
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
+            'member'=> $member, 
         ], 200);
     }
 
