@@ -1460,7 +1460,6 @@
 
             // Book pending count for student and staff seperate
             Route::get('/book_return_pending_seperate', [LibraryController::class, 'returnBooksPendingSeperate']);
-            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
 
             // HSC Students report for hscs Dev Name-Manish Kumar Sharma 12-02-2026
             Route::get('get_subjectshscsubjectgroupwisereport', [ReportController::class, 'getSubjectsHSCSubjectGroupwiseReport']);
@@ -1485,6 +1484,25 @@
 
             // All Addmission form report Dev Name- Mahima Chaudhari 26-02-2026
             Route::get('/get_all_admission_form_report', [ReportController::class, 'getAllAdmissionFormList']);
+
+            // Send Whats app message return book pending  27-02-2026
+            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
+
+            // Send Mail subscription Reminder 28-02-2026
+            Route::post('/subscription/reminder/mail', [LibraryController::class, 'subscriptionReminderMail']);
+
+            // Send Mail periodicals Reminder 28-02-2026
+            Route::post('/periodicals/reminder/mail', [LibraryController::class, 'periodicalReminderMail']);
+
+
+            // House CRUD Dev Name :- Mahima Chaudhari 02-03-2026
+            Route::get('/get_all_houses', [AdminController::class, 'getAllHouses']);
+
+            Route::post('/create_house', [AdminController::class, 'insertHouse']);
+
+            Route::put('/update_house/{id}', [AdminController::class, 'updateHouse']);
+
+            Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
@@ -1584,3 +1602,19 @@
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['jwt.auth']);
+
+
+    Route::get('/test-log', function () {
+
+        $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
+
+        if (!file_exists($logPath)) {
+            return response("Log file not found at: {$logPath}", 404);
+        }
+
+        $contents = file_get_contents($logPath);
+
+        return response($contents, 200, [
+            'Content-Type' => 'text/plain',
+        ]);
+    });

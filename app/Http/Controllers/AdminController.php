@@ -12864,8 +12864,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                . $sibling_student->mid_name . ' '
-                                . $sibling_student->last_name
+                                    . $sibling_student->mid_name . ' '
+                                    . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -12962,8 +12962,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // }
 
             $files = DB::table('admission_upload_detail')
-            ->where('form_id', $form_id)
-            ->get();
+                ->where('form_id', $form_id)
+                ->get();
 
             foreach ($files as $file) {
 
@@ -13006,7 +13006,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function directFileDownload(Request $request) {
+    public function directFileDownload(Request $request)
+    {
         try {
             $user = $this->authenticateUser();
             $short_name = JWTAuth::getPayload()->get('short_name');
@@ -13031,7 +13032,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $filePath = $basePath . '/' . $subPath . '/' . $form_id . '/' . $file_name;
-            
+
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
                 return response()->file($filePath, [
@@ -13040,7 +13041,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
             return response()->json(['error' => 'File not found.'], 404);
-        } catch(Exception $err) {
+        } catch (Exception $err) {
             return response()->json(['error' => 'An error occurred: ' . $err->getMessage()], 500);
         }
     }
@@ -13403,11 +13404,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('m_emailid');
 
                         $formData = DB::table('online_admission_form')
-                                ->where('form_id', $form_ids[$i])->first();
+                            ->where('form_id', $form_ids[$i])->first();
                         $form_class_id = $formData->class_id;
-                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING' , $form_class_id);
+                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING', $form_class_id);
                         // if ($class_name == 'Nursery') {
-                            
+
                         // } else if ($class_name == '11') {
                         //     $textmsg = str_replace(
                         //         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
@@ -13437,7 +13438,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ];
                         smart_mail($father_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
                         smart_mail($mother_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
-
                     } else {
                         DB::table('online_admission_form')
                             ->where('form_id', $form_ids[$i])
@@ -13531,7 +13531,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             DB::beginTransaction();
 
-            
+
 
             foreach ($form_ids as $form_id) {
                 DB::table('online_admission_form')
@@ -13544,7 +13544,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     ->where('form_id', $form_id)->first();
                 $form_class_id = $formData->class_id;
 
-                $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL' , $form_class_id);
+                $textmsg = $textmsg = $this->getEmailBodyByKey('VERIFICATION_SUCCESSFULL', $form_class_id);
 
                 $emailData = [
                     'subject' => $short_name . '-Admission Details',
@@ -13645,639 +13645,1086 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     /*
      Have to update the API for sibling logic based on short code. 
      */
+    // public function updateApprovalList(Request $request)
+    // {
+    //     try {
+    //         $form_ids = $request->input('form_ids');
+    //         $class_id = $request->input('class_id');
+    //         $section_id = $request->input('section_id');
+    //         $short_name = JWTAuth::getPayload()->get('short_name');
+    //         $defaultPassword = DB::table('school_settings')->where('short_name', $short_name)->value('default_pwd');
+    //         $passwordCode = 'arnolds';
+    //         if ($defaultPassword == null) {
+    //             $passwordCode = $short_name == 'HSCS' ? 'hscs' : 'arnolds';
+    //         }
+    //         if ($short_name == 'HSCS') {
+    //             for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
+    //                 if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
+    //                     continue;
+    //                 } else {
+    //                     $form_id = $form_ids[$i];
+    //                     DB::table('online_admission_form')
+    //                         ->where('form_id', $form_id)
+    //                         ->update([
+    //                             'admission_form_status' => 'Approved'
+    //                         ]);
+
+    //                     $application_data = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+    //                     $sibling_student_id = $application_data->sibling_student_id;
+
+    //                     $father_name = $application_data->father_name;
+    //                     $f_occupation = $application_data->father_occupation;
+    //                     $f_mobile = $application_data->f_mobile;
+    //                     $f_email = $application_data->f_email;
+
+    //                     $mother_name = $application_data->mother_name;
+    //                     $m_occupation = $application_data->mother_occupation;
+    //                     $m_mobile = $application_data->m_mobile;
+    //                     $m_emailid = $application_data->m_emailid;
+
+    //                     $father_adhar_no = $application_data->f_aadhar_no;
+    //                     $mother_adhar_no = $application_data->m_aadhar_no;
+
+    //                     $f_qualification = $application_data->f_qualification;
+    //                     $m_qualification = $application_data->m_qualification;
+
+    //                     $academic_yr = $application_data->academic_yr;
+
+    //                     $first_name = $application_data->first_name;
+    //                     $mid_name = $application_data->mid_name;
+    //                     $last_name = $application_data->last_name;
+
+    //                     $dob = $application_data->dob;
+    //                     $gender = $application_data->gender;
+    //                     $application_date = $application_data->application_date;
+
+    //                     $religion = $application_data->religion;
+    //                     $caste = $application_data->caste;
+    //                     $category = $application_data->category;
+    //                     $nationality = $application_data->nationality;
+
+    //                     $sms_sending_phone_no = $application_data->sms_sending_phone_no;
+
+    //                     $class_id = $application_data->class_id;
+    //                     $mother_tongue = $application_data->mother_tongue;
+    //                     $sub_caste = $application_data->subcaste;
+
+    //                     $perm_address = $application_data->perm_address;
+    //                     $city = $application_data->city;
+    //                     $state = $application_data->state;
+    //                     $pincode = $application_data->pincode;
+
+    //                     $stud_aadhar = $application_data->stud_aadhar;
+    //                     $blood_group = $application_data->blood_group;
+    //                     $birth_place = $application_data->birth_place;
+
+    //                     $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
+    //                     // START 
+    //                     if ($sibling_student_id != 0) {
+    //                         $parent = DB::table('student')
+    //                             ->select('parent_id')
+    //                             ->where('student_id', $sibling_student_id)
+    //                             ->first();
+
+    //                         $parent_id = $parent ? $parent->parent_id : null;
+
+    //                         $formRecord = DB::table('online_admission_form')
+    //                             ->where('form_id', $form_id)
+    //                             ->first();
+
+    //                         $student_id_new = null;
+
+    //                         $studentOldRecord = DB::table('student')
+    //                             ->where('student_id', $formRecord->student_id)
+    //                             ->first();
+
+    //                         if ($studentOldRecord) {
+    //                             $student_id_new = $studentOldRecord->student_id;
+    //                         } else {
+    //                             $student_id_new = DB::table('student')->insertGetId([
+    //                                 'academic_yr' => $academic_yr,
+    //                                 'parent_id' => $parent_id,
+    //                                 'first_name' => $first_name,
+    //                                 'mid_name' => $mid_name,
+    //                                 'last_name' => $last_name,
+    //                                 'dob' => $dob,
+    //                                 'gender' => $gender,
+    //                                 'class_id' => $class_id,
+    //                                 'section_id' => $section_id,
+    //                                 'religion' => $religion,
+    //                                 'caste' => $caste,
+    //                                 'IsDelete' => 'N',
+    //                                 'isNew' => 'Y',
+    //                                 'isModify' => 'N',
+    //                                 'category' => $category,
+    //                                 'mother_tongue' => $mother_tongue,
+    //                                 'subcaste' => $sub_caste,
+    //                                 'permant_add' => $perm_address,
+    //                                 'city' => $city,
+    //                                 'state' => $state,
+    //                                 'pincode' => $pincode,
+    //                                 'stu_aadhaar_no' => $stud_aadhar,
+    //                                 'blood_group' => $blood_group,
+    //                                 'admission_date' => date('Y-m-d'),
+    //                                 'admission_class' => $class_name,
+    //                                 'birth_place' => $birth_place,
+    //                                 'nationality' => $nationality,
+    //                                 'student_name' => $first_name,
+    //                             ]);
+    //                         }
+
+    //                         if ($student_id_new) {
+
+    //                             DB::table('online_admission_form')
+    //                                 ->where('form_id', $form_id)
+    //                                 ->update(['student_id' => $student_id_new]);
+
+    //                             $password = bcrypt('arnolds');
+    //                             $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+    //                             DB::table('user_master')->insert([
+    //                                 'user_id' => $user_id1,
+    //                                 'name' => $first_name,
+    //                                 'password' => $password,
+    //                                 'reg_id' => $student_id_new,
+    //                                 'role_id' => 'S',
+    //                             ]);
+
+    //                             // fee category
+    //                             $fees_category = DB::table('fees_category_detail')
+    //                                 ->where('class_concession', $class_id)
+    //                                 ->select('fees_category_id')
+    //                                 ->first();
+
+    //                             if ($fees_category && $fees_category->fees_category_id) {
+    //                                 $fees_category_id = $fees_category->fees_category_id;
+    //                                 $fee_cat_query = DB::table('fees_student_category')
+    //                                     ->where([
+    //                                         'student_id' => $student_id_new,
+    //                                         'fees_category_id' => $fees_category_id
+    //                                     ])
+    //                                     ->count();
+    //                                 if ($fee_cat_query == 0) {
+    //                                     $fee_cat_data = [
+    //                                         'student_id' => $student_id_new,
+    //                                         'fees_category_id' => $fees_category_id,
+    //                                         'academic_yr' => $academic_yr
+    //                                     ];
+    //                                     DB::table('fees_student_category')->insert($fee_cat_data);
+    //                                 }
+    //                             }
+    //                         }
+
+    //                         $from = 'supportsacs@aceventura.in';
+    //                         $cc = 'school@arnoldcentralschool.org';
+
+    //                         if ($m_emailid != '') {
+    //                             $mmail = str_replace("'", '', $m_emailid);
+    //                         }
+
+    //                         if ($f_email != '') {
+    //                             $fmail = str_replace("'", '', $f_email);
+    //                         }
+
+    //                         $formData = DB::table('online_admission_form')
+    //                             ->where('form_id', $form_id)->first();
+    //                         $form_class_id = $formData->class_id;
+    //                         $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+    //                         $emailData = [
+    //                             'subject' => $short_name . ' - ',
+    //                             'textmsg' => $textmsg,
+    //                         ];
+    //                         smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                         smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                     } else {
+    //                         $parent_id = '';
+    //                         if (!is_null($f_mobile)) {
+    //                             $parent_id = DB::table('parent')
+    //                                 ->where('f_mobile', $f_mobile)
+    //                                 ->value('parent_id');
+    //                         }
+    //                         if (empty($parent_id) && $f_email !== null) {
+    //                             $parent_id = DB::table('user_master')
+    //                                 ->where('user_id', $f_email)
+    //                                 ->value('reg_id');
+    //                         }
+    //                         if (empty($parent_id) && $m_emailid !== null) {
+    //                             $parent_id = DB::table('user_master')
+    //                                 ->where('user_id', $m_emailid)
+    //                                 ->value('reg_id');
+    //                         }
+    //                         if (empty($parent_id) && $m_mobile !== null) {
+    //                             $parent_id = DB::table('user_master')
+    //                                 ->where('user_id', $m_mobile)
+    //                                 ->value('reg_id');
+    //                         }
+    //                         if ($parent_id == '') {
+    //                             $parent_id = DB::table('parent')->insertGetId([
+    //                                 'father_name' => $father_name,
+    //                                 'father_occupation' => $f_occupation,
+    //                                 'f_mobile' => $f_mobile,
+    //                                 'f_email' => $f_email,
+    //                                 'parent_adhar_no' => $father_adhar_no,
+    //                                 'f_qualification' => $f_qualification,
+    //                                 'mother_name' => $mother_name,
+    //                                 'mother_occupation' => $m_occupation,
+    //                                 'm_mobile' => $m_mobile,
+    //                                 'm_emailid' => $m_emailid,
+    //                                 'm_adhar_no' => $mother_adhar_no,
+    //                                 'm_qualification' => $m_qualification,
+    //                                 'IsDelete' => 'N',
+    //                             ]);
+
+    //                             if ($parent_id) {
+    //                                 if ($f_mobile == null || $f_mobile == 'null' || trim($f_mobile) == "" || trim($f_mobile) == "''") {
+    //                                     if ($m_mobile == null || $m_mobile == 'null' || trim($m_mobile) == "" || trim($m_mobile) == "''") {
+    //                                         if ($last_name != 'null' && $father_name != 'null') {
+    //                                             $user_id = str_replace(" ", "", $father_name) . $last_name;
+    //                                         } elseif ($last_name != 'null') {
+    //                                             $user_id = str_replace(" ", "", $last_name);
+    //                                         } elseif ($father_name != 'null') {
+    //                                             $user_id = str_replace(" ", "", $father_name);
+    //                                         }
+    //                                     } else {
+    //                                         //echo "4";
+    //                                         $user_id = $m_mobile;
+    //                                     }
+    //                                 } else {
+    //                                     //echo "5"; 
+    //                                     $user_id = $f_mobile;
+    //                                 }
+
+    //                                 $user_id = str_replace("''", "", $user_id);
+    //                                 $name = "";
+    //                                 if ($father_name <> 'null') {
+    //                                     $name = $father_name;
+    //                                 } else {
+    //                                     $name = $mother_name;
+    //                                 }
+
+    //                                 $password = bcrypt($passwordCode);
+
+    //                                 $usql = DB::table('user_master')->insertGetId([
+    //                                     'user_id' => $user_id,
+    //                                     'name' => $name,
+    //                                     'password' => $password,
+    //                                     'reg_id' => $parent_id,
+    //                                     'role_id' => 'P',
+    //                                 ]);
+
+    //                                 $user_id = str_replace("'", '', $user_id);
+
+    //                                 if ($usql) {
+    //                                     $school_id = '7';
+    //                                     $user_data = json_encode([
+    //                                         'user_id' => $user_id,
+    //                                         'school_id' => $school_id,
+    //                                     ]);
+    //                                     $evolvuUrl = config('externalapis.EVOLVU_URL');
+
+    //                                     $response = Http::withHeaders([
+    //                                         'Content-Type' => 'application/json',
+    //                                     ])->post($evolvuUrl . 'user_create_post', json_decode($user_data, true));
+
+    //                                     $token_data = $response->body();
+    //                                     $err = $response->failed() ? $response->status() : null;
+
+    //                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
+
+    //                                     DB::table('contact_details')->insert([
+    //                                         'id' => $parent_id,
+    //                                         'phone_no' => $phone_no,
+    //                                         'email_id' => $f_email,
+    //                                         'm_emailid' => $m_emailid,
+    //                                     ]);
+
+    //                                     $formRecord = DB::table('online_admission_form')
+    //                                         ->where('form_id', $form_id)
+    //                                         ->first();
+
+    //                                     $student_id_new = null;
+
+    //                                     $studentOldRecord = DB::table('student')
+    //                                         ->where('student_id', $formRecord->student_id)
+    //                                         ->first();
+
+    //                                     if ($studentOldRecord) {
+    //                                         $student_id_new = $studentOldRecord->student_id;
+    //                                     } else {
+    //                                         $student_id_new = DB::table('student')->insertGetId([
+    //                                             'academic_yr' => $academic_yr,
+    //                                             'parent_id' => $parent_id,
+    //                                             'first_name' => $first_name,
+    //                                             'mid_name' => $mid_name,
+    //                                             'last_name' => $last_name,
+    //                                             'dob' => $dob,
+    //                                             'gender' => $gender,
+    //                                             'class_id' => $class_id,
+    //                                             'section_id' => $section_id,
+    //                                             'religion' => $religion,
+    //                                             'caste' => $caste,
+    //                                             'IsDelete' => 'N',
+    //                                             'isNew' => 'Y',
+    //                                             'isModify' => 'N',
+    //                                             'category' => $category,
+    //                                             'mother_tongue' => $mother_tongue,
+    //                                             'subcaste' => $sub_caste,
+    //                                             'permant_add' => $perm_address,
+    //                                             'city' => $city,
+    //                                             'state' => $state,
+    //                                             'pincode' => $pincode,
+    //                                             'stu_aadhaar_no' => $stud_aadhar,
+    //                                             'blood_group' => $blood_group,
+    //                                             'admission_date' => date('Y-m-d'),
+    //                                             'admission_class' => $class_name,
+    //                                             'birth_place' => $birth_place,
+    //                                             'nationality' => $nationality,
+    //                                             'student_name' => $first_name,
+    //                                         ]);
+    //                                     }
+
+    //                                     if ($student_id_new) {
+
+    //                                         DB::table('online_admission_form')
+    //                                             ->where('form_id', $form_id)
+    //                                             ->update(['student_id' => $student_id_new]);
+
+    //                                         $password = $passwordCode;
+    //                                         $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+    //                                         DB::table('user_master')->insert([
+    //                                             'user_id' => $user_id1,
+    //                                             'name' => $first_name,
+    //                                             'password' => $password,
+    //                                             'reg_id' => $student_id_new,
+    //                                             'role_id' => 'S',
+    //                                         ]);
+
+    //                                         $fees_category = DB::table('fees_category_detail')
+    //                                             ->where('class_concession', $class_id)
+    //                                             ->select('fees_category_id')
+    //                                             ->first();
+
+    //                                         if ($fees_category && $fees_category->fees_category_id) {
+    //                                             $fees_category_id = $fees_category->fees_category_id;
+    //                                             $fee_cat_query = DB::table('fees_student_category')
+    //                                                 ->where([
+    //                                                     'student_id' => $student_id_new,
+    //                                                     'fees_category_id' => $fees_category_id
+    //                                                 ])
+    //                                                 ->count();
+    //                                             if ($fee_cat_query == 0) {
+    //                                                 $fee_cat_data = [
+    //                                                     'student_id' => $student_id_new,
+    //                                                     'fees_category_id' => $fees_category_id,
+    //                                                     'academic_yr' => $academic_yr
+    //                                                 ];
+    //                                                 DB::table('fees_student_category')->insert($fee_cat_data);
+    //                                             }
+    //                                         }
+    //                                     }
+
+    //                                     DB::table('online_admission_form')
+    //                                         ->where('form_id', $form_id)
+    //                                         ->update([
+    //                                             'student_id' => $student_id_new,
+    //                                         ]);
+
+    //                                     $from = 'supportsacs@aceventura.in';
+    //                                     $cc = 'school@arnoldcentralschool.org';
+
+    //                                     if ($m_emailid != '') {
+    //                                         $mmail = str_replace("'", '', $m_emailid);
+    //                                     }
+
+    //                                     if ($f_email != '') {
+    //                                         $fmail = str_replace("'", '', $f_email);
+    //                                     }
+    //                                     $formData = DB::table('online_admission_form')
+    //                                         ->where('form_id', $form_ids[$i])->first();
+    //                                     $form_class_id = $formData->class_id;
+    //                                     $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+    //                                     if ($class_name == 'Nursery') {
+    //                                         $subject = 'Information for Nursery admission';
+    //                                     } else if ($class_name = '11') {
+    //                                         $subject = 'Information for Class 11 admission';
+    //                                     }
+    //                                     $emailData = [
+    //                                         'subject' => $short_name . ' - ' . $subject,
+    //                                         'textmsg' => $textmsg,
+    //                                     ];
+    //                                     smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                                     smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                                 }
+    //                             }
+    //                         } elseif ($parent_id != '') {
+    //                             $formRecord = DB::table('online_admission_form')
+    //                                 ->where('form_id', $form_id)
+    //                                 ->first();
+
+    //                             $student_id_new = null;
+
+    //                             $studentOldRecord = DB::table('student')
+    //                                 ->where('student_id', $formRecord->student_id)
+    //                                 ->first();
+
+    //                             if ($studentOldRecord) {
+    //                                 $student_id_new = $studentOldRecord->student_id;
+    //                             } else {
+    //                                 $student_id_new = DB::table('student')->insertGetId([
+    //                                     'academic_yr' => $academic_yr,
+    //                                     'parent_id' => $parent_id,
+    //                                     'first_name' => $first_name,
+    //                                     'mid_name' => $mid_name,
+    //                                     'last_name' => $last_name,
+    //                                     'dob' => $dob,
+    //                                     'gender' => $gender,
+    //                                     'class_id' => $class_id,
+    //                                     'section_id' => $section_id,
+    //                                     'religion' => $religion,
+    //                                     'caste' => $caste,
+    //                                     'IsDelete' => 'N',
+    //                                     'isNew' => 'Y',
+    //                                     'isModify' => 'N',
+    //                                     'category' => $category,
+    //                                     'mother_tongue' => $mother_tongue,
+    //                                     'subcaste' => $sub_caste,
+    //                                     'permant_add' => $perm_address,
+    //                                     'city' => $city,
+    //                                     'state' => $state,
+    //                                     'pincode' => $pincode,
+    //                                     'stu_aadhaar_no' => $stud_aadhar,
+    //                                     'blood_group' => $blood_group,
+    //                                     'admission_date' => date('Y-m-d'),
+    //                                     'admission_class' => $class_name,
+    //                                     'birth_place' => $birth_place,
+    //                                     'nationality' => $nationality,
+    //                                     'student_name' => $first_name,
+    //                                 ]);
+    //                             }
+
+    //                             if ($student_id_new) {
+
+    //                                 DB::table('online_admission_form')
+    //                                     ->where('form_id', $form_id)
+    //                                     ->update(['student_id' => $student_id_new]);
+
+    //                                 $password = bcrypt('arnolds');
+    //                                 $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+    //                                 DB::table('user_master')->insert([
+    //                                     'user_id' => $user_id1,
+    //                                     'name' => $first_name,
+    //                                     'password' => $password,
+    //                                     'reg_id' => $student_id_new,
+    //                                     'role_id' => 'S',
+    //                                 ]);
+
+    //                                 // fee category
+    //                                 $fees_category = DB::table('fees_category_detail')
+    //                                     ->where('class_concession', $class_id)
+    //                                     ->select('fees_category_id')
+    //                                     ->first();
+
+    //                                 if ($fees_category && $fees_category->fees_category_id) {
+    //                                     $fees_category_id = $fees_category->fees_category_id;
+    //                                     $fee_cat_query = DB::table('fees_student_category')
+    //                                         ->where([
+    //                                             'student_id' => $student_id_new,
+    //                                             'fees_category_id' => $fees_category_id
+    //                                         ])
+    //                                         ->count();
+    //                                     if ($fee_cat_query == 0) {
+    //                                         $fee_cat_data = [
+    //                                             'student_id' => $student_id_new,
+    //                                             'fees_category_id' => $fees_category_id,
+    //                                             'academic_yr' => $academic_yr
+    //                                         ];
+    //                                         DB::table('fees_student_category')->insert($fee_cat_data);
+    //                                     }
+    //                                 }
+    //                             }
+
+    //                             $from = 'supportsacs@aceventura.in';
+    //                             $cc = 'school@arnoldcentralschool.org';
+
+    //                             if ($m_emailid != '') {
+    //                                 $mmail = str_replace("'", '', $m_emailid);
+    //                             }
+
+    //                             if ($f_email != '') {
+    //                                 $fmail = str_replace("'", '', $f_email);
+    //                             }
+
+    //                             $formData = DB::table('online_admission_form')
+    //                                 ->where('form_id', $form_id)->first();
+    //                             $form_class_id = $formData->class_id;
+    //                             $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+    //                             if ($class_name == 'Nursery') {
+    //                                 $subject = 'Information for Nursery admission';
+    //                             } else if ($class_name = '11') {
+    //                                 $subject = 'Information for Class 11 admission';
+    //                             }
+    //                             $emailData = [
+    //                                 'subject' => $short_name . ' - ' . $subject,
+    //                                 'textmsg' => $textmsg,
+    //                             ];
+    //                             smart_mail($fmail, $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
+    //                             smart_mail($mmail,  $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
+    //                         }
+    //                     }
+    //                     // END
+    //                 }
+    //             }
+    //         } else {
+    //             for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
+    //                 if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
+    //                     continue;
+    //                 } else {
+    //                     $form_id = $form_ids[$i];
+    //                     DB::table('online_admission_form')
+    //                         ->where('form_id', $form_id)
+    //                         ->update([
+    //                             'admission_form_status' => 'Approved'
+    //                         ]);
+
+    //                     $application_data = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+    //                     $sibling_student_id = $application_data->sibling_student_id;
+
+    //                     $father_name = $application_data->father_name;
+    //                     $f_occupation = $application_data->father_occupation;
+    //                     $f_mobile = $application_data->f_mobile;
+    //                     $f_email = $application_data->f_email;
+
+    //                     $mother_name = $application_data->mother_name;
+    //                     $m_occupation = $application_data->mother_occupation;
+    //                     $m_mobile = $application_data->m_mobile;
+    //                     $m_emailid = $application_data->m_emailid;
+
+    //                     $father_adhar_no = $application_data->f_aadhar_no;
+    //                     $mother_adhar_no = $application_data->m_aadhar_no;
+
+    //                     $f_qualification = $application_data->f_qualification;
+    //                     $m_qualification = $application_data->m_qualification;
+
+    //                     $academic_yr = $application_data->academic_yr;
+
+    //                     $first_name = $application_data->first_name;
+    //                     $mid_name = $application_data->mid_name;
+    //                     $last_name = $application_data->last_name;
+
+    //                     $dob = $application_data->dob;
+    //                     $gender = $application_data->gender;
+    //                     $application_date = $application_data->application_date;
+
+    //                     $religion = $application_data->religion;
+    //                     $caste = $application_data->caste;
+    //                     $category = $application_data->category;
+    //                     $nationality = $application_data->nationality;
+
+    //                     $sms_sending_phone_no = $application_data->sms_sending_phone_no;
+
+    //                     $class_id = $application_data->class_id;
+    //                     $mother_tongue = $application_data->mother_tongue;
+    //                     $sub_caste = $application_data->subcaste;
+
+    //                     $perm_address = $application_data->perm_address;
+    //                     $city = $application_data->city;
+    //                     $state = $application_data->state;
+    //                     $pincode = $application_data->pincode;
+
+    //                     $stud_aadhar = $application_data->stud_aadhar;
+    //                     $blood_group = $application_data->blood_group;
+    //                     $birth_place = $application_data->birth_place;
+
+    //                     $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
+    //                     $parent_id = '';
+    //                     if (!is_null($f_mobile)) {
+    //                         $parent_id = DB::table('parent')
+    //                             ->where('f_mobile', $f_mobile)
+    //                             ->value('parent_id');
+    //                     }
+    //                     if (empty($parent_id) && $f_email !== null) {
+    //                         $parent_id = DB::table('user_master')
+    //                             ->where('user_id', $f_email)
+    //                             ->value('reg_id');
+    //                     }
+    //                     if (empty($parent_id) && $m_emailid !== null) {
+    //                         $parent_id = DB::table('user_master')
+    //                             ->where('user_id', $m_emailid)
+    //                             ->value('reg_id');
+    //                     }
+    //                     if (empty($parent_id) && $m_mobile !== null) {
+    //                         $parent_id = DB::table('user_master')
+    //                             ->where('user_id', $m_mobile)
+    //                             ->value('reg_id');
+    //                     }
+    //                     if ($parent_id == '') {
+    //                         $parent_id = DB::table('parent')->insertGetId([
+    //                             'father_name' => $father_name,
+    //                             'father_occupation' => $f_occupation,
+    //                             'f_mobile' => $f_mobile,
+    //                             'f_email' => $f_email,
+    //                             'parent_adhar_no' => $father_adhar_no,
+    //                             'f_qualification' => $f_qualification,
+    //                             'mother_name' => $mother_name,
+    //                             'mother_occupation' => $m_occupation,
+    //                             'm_mobile' => $m_mobile,
+    //                             'm_emailid' => $m_emailid,
+    //                             'm_adhar_no' => $mother_adhar_no,
+    //                             'm_qualification' => $m_qualification,
+    //                             'IsDelete' => 'N',
+    //                         ]);
+
+    //                         if ($parent_id) {
+    //                             if (is_null($f_email) || $f_email === 'null' || trim($f_email) === '' || trim($f_email) === "''") {
+    //                                 if (is_null($m_emailid) || $m_emailid === 'null' || trim($m_emailid) === '' || trim($m_emailid) === "''") {
+    //                                     if ($last_name !== 'null' && $father_name !== 'null') {
+    //                                         $user_id = str_replace(' ', '', $father_name) . $last_name;
+    //                                     } elseif ($last_name !== 'null') {
+    //                                         $user_id = str_replace(' ', '', $last_name);
+    //                                     } elseif ($father_name !== 'null') {
+    //                                         $user_id = str_replace(' ', '', $father_name);
+    //                                     }
+    //                                 } else {
+    //                                     $user_id = $m_emailid;
+    //                                 }
+    //                             } else {
+    //                                 $user_id = $f_email;
+    //                             }
+
+    //                             $user_id = str_replace("''", '', $user_id);
+
+    //                             $name = ($father_name !== 'null') ? $father_name : $mother_name;
+
+    //                             $password = bcrypt($passwordCode);
+
+    //                             $usql = DB::table('user_master')->insertGetId([
+    //                                 'user_id' => $user_id,
+    //                                 'name' => $name,
+    //                                 'password' => $password,
+    //                                 'reg_id' => $parent_id,
+    //                                 'role_id' => 'P',
+    //                             ]);
+
+    //                             $user_id = str_replace("'", '', $user_id);
+
+    //                             if ($usql) {
+    //                                 $school_id = '1';
+    //                                 $user_data = json_encode([
+    //                                     'user_id' => $user_id,
+    //                                     'school_id' => $school_id,
+    //                                 ]);
+    //                                 $evolvuUrl = config('externalapis.EVOLVU_URL');
+
+    //                                 $response = Http::withHeaders([
+    //                                     'Content-Type' => 'application/json',
+    //                                 ])->post($evolvuUrl . 'user_create_post', json_decode($user_data, true));
+
+    //                                 $token_data = $response->body();
+    //                                 $err = $response->failed() ? $response->status() : null;
+
+    //                                 $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
+    //                                 // fail point 
+    //                                 DB::table('contact_details')->insert([
+    //                                     'id' => $parent_id,
+    //                                     'phone_no' => $phone_no,
+    //                                     'email_id' => $f_email,
+    //                                     'm_emailid' => $m_emailid,
+    //                                 ]);
+
+    //                                 $formRecord = DB::table('online_admission_form')
+    //                                     ->where('form_id', $form_id)
+    //                                     ->first();
+
+    //                                 $student_id_new = null;
+
+    //                                 $studentOldRecord = DB::table('student')
+    //                                     ->where('student_id', $formRecord->student_id)
+    //                                     ->first();
+
+    //                                 if ($studentOldRecord) {
+    //                                     $student_id_new = $studentOldRecord->student_id;
+    //                                 } else {
+    //                                     $student_id_new = DB::table('student')->insertGetId([
+    //                                         'academic_yr' => $academic_yr,
+    //                                         'parent_id' => $parent_id,
+    //                                         'first_name' => $first_name,
+    //                                         'mid_name' => $mid_name,
+    //                                         'last_name' => $last_name,
+    //                                         'dob' => $dob,
+    //                                         'gender' => $gender,
+    //                                         'class_id' => $class_id,
+    //                                         'section_id' => $section_id,
+    //                                         'religion' => $religion,
+    //                                         'caste' => $caste,
+    //                                         'IsDelete' => 'N',
+    //                                         'isNew' => 'Y',
+    //                                         'isModify' => 'N',
+    //                                         'category' => $category,
+    //                                         'mother_tongue' => $mother_tongue,
+    //                                         'subcaste' => $sub_caste,
+    //                                         'permant_add' => $perm_address,
+    //                                         'city' => $city,
+    //                                         'state' => $state,
+    //                                         'pincode' => $pincode,
+    //                                         'stu_aadhaar_no' => $stud_aadhar,
+    //                                         'blood_group' => $blood_group,
+    //                                         'admission_date' => date('Y-m-d'),
+    //                                         'admission_class' => $class_name,
+    //                                         'birth_place' => $birth_place,
+    //                                         'nationality' => $nationality,
+    //                                         'student_name' => $first_name,
+    //                                     ]);
+    //                                 }
+
+    //                                 if ($student_id_new) {
+
+    //                                     DB::table('online_admission_form')
+    //                                         ->where('form_id', $form_id)
+    //                                         ->update(['student_id' => $student_id_new]);
+
+    //                                     $password = $passwordCode;
+    //                                     $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+    //                                     DB::table('user_master')->insert([
+    //                                         'user_id' => $user_id1,
+    //                                         'name' => $first_name,
+    //                                         'password' => $password,
+    //                                         'reg_id' => $student_id_new,
+    //                                         'role_id' => 'S',
+    //                                     ]);
+    //                                 }
+
+    //                                 DB::table('online_admission_form')
+    //                                     ->where('form_id', $form_id)
+    //                                     ->update([
+    //                                         'student_id' => $student_id_new,
+    //                                     ]);
+
+    //                                 $from = 'supportsacs@aceventura.in';
+    //                                 $cc = 'school@arnoldcentralschool.org';
+
+    //                                 if ($m_emailid != '') {
+    //                                     $mmail = str_replace("'", '', $m_emailid);
+    //                                 }
+
+    //                                 if ($f_email != '') {
+    //                                     $fmail = str_replace("'", '', $f_email);
+    //                                 }
+    //                                 $formData = DB::table('online_admission_form')
+    //                                     ->where('form_id', $form_ids[$i])->first();
+    //                                 $form_class_id = $formData->class_id;
+    //                                 $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+    //                                 $emailData = [
+    //                                     'subject' => $short_name,
+    //                                     'textmsg' => $textmsg,
+    //                                 ];
+    //                                 smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                                 smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                             }
+    //                         }
+    //                     } elseif ($parent_id != '') {
+    //                         $formRecord = DB::table('online_admission_form')
+    //                             ->where('form_id', $form_id)
+    //                             ->first();
+
+    //                         $student_id_new = null;
+
+    //                         $studentOldRecord = DB::table('student')
+    //                             ->where('student_id', $formRecord->student_id)
+    //                             ->first();
+
+    //                         if ($studentOldRecord) {
+    //                             $student_id_new = $studentOldRecord->student_id;
+    //                         } else {
+    //                             $student_id_new = DB::table('student')->insertGetId([
+    //                                 'academic_yr' => $academic_yr,
+    //                                 'parent_id' => $parent_id,
+    //                                 'first_name' => $first_name,
+    //                                 'mid_name' => $mid_name,
+    //                                 'last_name' => $last_name,
+    //                                 'dob' => $dob,
+    //                                 'gender' => $gender,
+    //                                 'class_id' => $class_id,
+    //                                 'section_id' => $section_id,
+    //                                 'religion' => $religion,
+    //                                 'caste' => $caste,
+    //                                 'IsDelete' => 'N',
+    //                                 'isNew' => 'Y',
+    //                                 'isModify' => 'N',
+    //                                 'category' => $category,
+    //                                 'mother_tongue' => $mother_tongue,
+    //                                 'subcaste' => $sub_caste,
+    //                                 'permant_add' => $perm_address,
+    //                                 'city' => $city,
+    //                                 'state' => $state,
+    //                                 'pincode' => $pincode,
+    //                                 'stu_aadhaar_no' => $stud_aadhar,
+    //                                 'blood_group' => $blood_group,
+    //                                 'admission_date' => date('Y-m-d'),
+    //                                 'admission_class' => $class_name,
+    //                                 'birth_place' => $birth_place,
+    //                                 'nationality' => $nationality,
+    //                                 'student_name' => $first_name,
+    //                             ]);
+    //                         }
+
+    //                         if ($student_id_new) {
+
+    //                             DB::table('online_admission_form')
+    //                                 ->where('form_id', $form_id)
+    //                                 ->update(['student_id' => $student_id_new]);
+
+    //                             $password = bcrypt('arnolds');
+    //                             $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+
+    //                             DB::table('user_master')->insert([
+    //                                 'user_id' => $user_id1,
+    //                                 'name' => $first_name,
+    //                                 'password' => $password,
+    //                                 'reg_id' => $student_id_new,
+    //                                 'role_id' => 'S',
+    //                             ]);
+    //                         }
+
+    //                         $from = 'supportsacs@aceventura.in';
+    //                         $cc = 'school@arnoldcentralschool.org';
+
+    //                         if ($m_emailid != '') {
+    //                             $mmail = str_replace("'", '', $m_emailid);
+    //                         }
+
+    //                         if ($f_email != '') {
+    //                             $fmail = str_replace("'", '', $f_email);
+    //                         }
+
+    //                         $formData = DB::table('online_admission_form')
+    //                             ->where('form_id', $form_id)->first();
+    //                         $form_class_id = $formData->class_id;
+    //                         $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+    //                         $emailData = [
+    //                             'subject' => $short_name . ' - ',
+    //                             'textmsg' => $textmsg,
+    //                         ];
+    //                         smart_mail($fmail, $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                         smart_mail($mmail,  $short_name . ' - ' . "Admission Approved", 'emails.parentUserEmail', $emailData);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Forms are successfully approved.!!!',
+    //         ], 200);
+    //     } catch (Exception $e) {
+    //         // dd($e);
+    //         return response()->json([
+    //             'status' => false,
+    //             'errorMessage' => $e->getMessage(),
+    //             'errorLine' => $e->getLine(),
+    //         ], 500);
+    //     }
+    // }
+
     public function updateApprovalList(Request $request)
     {
+        $logger = Log::channel('approve_admission');
+
         try {
-            $form_ids = $request->input('form_ids');
-            $class_id = $request->input('class_id');
+            $form_ids   = $request->input('form_ids');
+            $class_id   = $request->input('class_id');
             $section_id = $request->input('section_id');
             $short_name = JWTAuth::getPayload()->get('short_name');
-            $defaultPassword = DB::table('school_settings')->where('short_name', $short_name)->value('default_pwd');
+
+            $logger->info('updateApprovalList started', [
+                'short_name' => $short_name,
+                'form_ids'   => $form_ids,
+                'class_id'   => $class_id,
+                'section_id' => $section_id,
+            ]);
+
+            $defaultPassword = DB::table('school_settings')
+                ->where('short_name', $short_name)
+                ->value('default_pwd');
+
             $passwordCode = 'arnolds';
             if ($defaultPassword == null) {
                 $passwordCode = $short_name == 'HSCS' ? 'hscs' : 'arnolds';
             }
-            if($short_name == 'HSCS') {
+
+            if ($short_name == 'HSCS') {
+                $logger->info('Processing HSCS school');
                 for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
                     if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
                         continue;
-                    } else {
-                        $form_id = $form_ids[$i];
-                        DB::table('online_admission_form')
-                            ->where('form_id', $form_id)
-                            ->update([
-                                'admission_form_status' => 'Approved'
-                            ]);
+                    }
 
-                        $application_data = DB::table('online_admission_form')->where('form_id', $form_id)->first();
-                        $sibling_student_id = $application_data->sibling_student_id;
+                    $form_id = $form_ids[$i];
+                    $logger->info("Processing form_id: {$form_id} [HSCS]");
 
-                        $father_name = $application_data->father_name;
-                        $f_occupation = $application_data->father_occupation;
-                        $f_mobile = $application_data->f_mobile;
-                        $f_email = $application_data->f_email;
+                    DB::table('online_admission_form')
+                        ->where('form_id', $form_id)
+                        ->update(['admission_form_status' => 'Approved']);
 
-                        $mother_name = $application_data->mother_name;
-                        $m_occupation = $application_data->mother_occupation;
-                        $m_mobile = $application_data->m_mobile;
-                        $m_emailid = $application_data->m_emailid;
+                    $application_data   = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                    $sibling_student_id = $application_data->sibling_student_id;
+                    $father_name        = $application_data->father_name;
+                    $f_occupation       = $application_data->father_occupation;
+                    $f_mobile           = $application_data->f_mobile;
+                    $f_email            = $application_data->f_email;
+                    $mother_name        = $application_data->mother_name;
+                    $m_occupation       = $application_data->mother_occupation;
+                    $m_mobile           = $application_data->m_mobile;
+                    $m_emailid          = $application_data->m_emailid;
+                    $father_adhar_no    = $application_data->f_aadhar_no;
+                    $mother_adhar_no    = $application_data->m_aadhar_no;
+                    $f_qualification    = $application_data->f_qualification;
+                    $m_qualification    = $application_data->m_qualification;
+                    $academic_yr        = $application_data->academic_yr;
+                    $first_name         = $application_data->first_name;
+                    $mid_name           = $application_data->mid_name;
+                    $last_name          = $application_data->last_name;
+                    $dob                = $application_data->dob;
+                    $gender             = $application_data->gender;
+                    $application_date   = $application_data->application_date;
+                    $religion           = $application_data->religion;
+                    $caste              = $application_data->caste;
+                    $category           = $application_data->category;
+                    $nationality        = $application_data->nationality;
+                    $sms_sending_phone_no = $application_data->sms_sending_phone_no;
+                    $class_id           = $application_data->class_id;
+                    $mother_tongue      = $application_data->mother_tongue;
+                    $sub_caste          = $application_data->subcaste;
+                    $perm_address       = $application_data->perm_address;
+                    $city               = $application_data->city;
+                    $state              = $application_data->state;
+                    $pincode            = $application_data->pincode;
+                    $stud_aadhar        = $application_data->stud_aadhar;
+                    $blood_group        = $application_data->blood_group;
+                    $birth_place        = $application_data->birth_place;
+                    $class_name         = DB::table('class')->where('class_id', $class_id)->value('name');
 
-                        $father_adhar_no = $application_data->f_aadhar_no;
-                        $mother_adhar_no = $application_data->m_aadhar_no;
+                    if ($sibling_student_id != 0) {
+                        $logger->info("form_id {$form_id}: sibling path, sibling_student_id={$sibling_student_id}");
 
-                        $f_qualification = $application_data->f_qualification;
-                        $m_qualification = $application_data->m_qualification;
+                        $parent     = DB::table('student')->select('parent_id')->where('student_id', $sibling_student_id)->first();
+                        $parent_id  = $parent ? $parent->parent_id : null;
+                        $formRecord = DB::table('online_admission_form')->where('form_id', $form_id)->first();
 
-                        $academic_yr = $application_data->academic_yr;
+                        $student_id_new    = null;
+                        $studentOldRecord  = DB::table('student')->where('student_id', $formRecord->student_id)->first();
 
-                        $first_name = $application_data->first_name;
-                        $mid_name = $application_data->mid_name;
-                        $last_name = $application_data->last_name;
-
-                        $dob = $application_data->dob;
-                        $gender = $application_data->gender;
-                        $application_date = $application_data->application_date;
-
-                        $religion = $application_data->religion;
-                        $caste = $application_data->caste;
-                        $category = $application_data->category;
-                        $nationality = $application_data->nationality;
-
-                        $sms_sending_phone_no = $application_data->sms_sending_phone_no;
-
-                        $class_id = $application_data->class_id;
-                        $mother_tongue = $application_data->mother_tongue;
-                        $sub_caste = $application_data->subcaste;
-
-                        $perm_address = $application_data->perm_address;
-                        $city = $application_data->city;
-                        $state = $application_data->state;
-                        $pincode = $application_data->pincode;
-
-                        $stud_aadhar = $application_data->stud_aadhar;
-                        $blood_group = $application_data->blood_group;
-                        $birth_place = $application_data->birth_place;
-
-                        $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
-
-                        // START 
-                        if($sibling_student_id!= 0) {
-                            $parent = DB::table('student')
-                                ->select('parent_id')
-                                ->where('student_id', $sibling_student_id)
-                                ->first();
-
-                            $parent_id = $parent ? $parent->parent_id : null;
-
-                            $formRecord = DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->first();
-
-                            $student_id_new = null;
-
-                            $studentOldRecord = DB::table('student')
-                                ->where('student_id', $formRecord->student_id)
-                                ->first();
-
-                            if ($studentOldRecord) {
-                                $student_id_new = $studentOldRecord->student_id;
-                            } else {
-                                $student_id_new = DB::table('student')->insertGetId([
-                                    'academic_yr' => $academic_yr,
-                                    'parent_id' => $parent_id,
-                                    'first_name' => $first_name,
-                                    'mid_name' => $mid_name,
-                                    'last_name' => $last_name,
-                                    'dob' => $dob,
-                                    'gender' => $gender,
-                                    'class_id' => $class_id,
-                                    'section_id' => $section_id,
-                                    'religion' => $religion,
-                                    'caste' => $caste,
-                                    'IsDelete' => 'N',
-                                    'isNew' => 'Y',
-                                    'isModify' => 'N',
-                                    'category' => $category,
-                                    'mother_tongue' => $mother_tongue,
-                                    'subcaste' => $sub_caste,
-                                    'permant_add' => $perm_address,
-                                    'city' => $city,
-                                    'state' => $state,
-                                    'pincode' => $pincode,
-                                    'stu_aadhaar_no' => $stud_aadhar,
-                                    'blood_group' => $blood_group,
-                                    'admission_date' => date('Y-m-d'),
-                                    'admission_class' => $class_name,
-                                    'birth_place' => $birth_place,
-                                    'nationality' => $nationality,
-                                    'student_name' => $first_name,
-                                ]);
-                            }
-
-                            if ($student_id_new) {
-
-                                DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->update(['student_id' => $student_id_new]);
-
-                                $password = bcrypt('arnolds');
-                                $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
-                                DB::table('user_master')->insert([
-                                    'user_id' => $user_id1,
-                                    'name' => $first_name,
-                                    'password' => $password,
-                                    'reg_id' => $student_id_new,
-                                    'role_id' => 'S',
-                                ]);
-
-                                // fee category
-                                $fees_category = DB::table('fees_category_detail')
-                                    ->where('class_concession', $class_id)
-                                    ->select('fees_category_id')
-                                    ->first();
-
-                                if ($fees_category && $fees_category->fees_category_id) {
-                                    $fees_category_id = $fees_category->fees_category_id;
-                                    $fee_cat_query = DB::table('fees_student_category')
-                                        ->where([
-                                            'student_id' => $student_id_new,
-                                            'fees_category_id' => $fees_category_id
-                                        ])
-                                        ->count();
-                                    if ($fee_cat_query == 0) {
-                                        $fee_cat_data = [
-                                            'student_id' => $student_id_new,
-                                            'fees_category_id' => $fees_category_id,
-                                            'academic_yr' => $academic_yr
-                                        ];
-                                        DB::table('fees_student_category')->insert($fee_cat_data);
-                                    }
-                                }
-                            }
-
-                            $from = 'supportsacs@aceventura.in';
-                            $cc = 'school@arnoldcentralschool.org';
-
-                            if ($m_emailid != '') {
-                                $mmail = str_replace("'", '', $m_emailid);
-                            }
-
-                            if ($f_email != '') {
-                                $fmail = str_replace("'", '', $f_email);
-                            }
-
-                            $formData = DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)->first();
-                            $form_class_id = $formData->class_id;
-                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                            $emailData = [
-                                'subject' => $short_name . ' - ',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
-
+                        if ($studentOldRecord) {
+                            $student_id_new = $studentOldRecord->student_id;
+                            $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
                         } else {
-                            $parent_id = '';
-                            if (!is_null($f_mobile)) {
-                                $parent_id = DB::table('parent')
-                                    ->where('f_mobile', $f_mobile)
-                                    ->value('parent_id');
-                            }
-                            if (empty($parent_id) && $f_email !== null) {
-                                $parent_id = DB::table('user_master')
-                                    ->where('user_id', $f_email)
-                                    ->value('reg_id');
-                            }
-                            if (empty($parent_id) && $m_emailid !== null) {
-                                $parent_id = DB::table('user_master')
-                                    ->where('user_id', $m_emailid)
-                                    ->value('reg_id');
-                            }
-                            if (empty($parent_id) && $m_mobile !== null) {
-                                $parent_id = DB::table('user_master')
-                                    ->where('user_id', $m_mobile)
-                                    ->value('reg_id');
-                            }
-                            if ($parent_id == '') {
-                                $parent_id = DB::table('parent')->insertGetId([
-                                    'father_name' => $father_name,
-                                    'father_occupation' => $f_occupation,
-                                    'f_mobile' => $f_mobile,
-                                    'f_email' => $f_email,
-                                    'parent_adhar_no' => $father_adhar_no,
-                                    'f_qualification' => $f_qualification,
-                                    'mother_name' => $mother_name,
-                                    'mother_occupation' => $m_occupation,
-                                    'm_mobile' => $m_mobile,
-                                    'm_emailid' => $m_emailid,
-                                    'm_adhar_no' => $mother_adhar_no,
-                                    'm_qualification' => $m_qualification,
-                                    'IsDelete' => 'N',
-                                ]);
+                            $student_id_new = DB::table('student')->insertGetId([
+                                'academic_yr'    => $academic_yr,
+                                'parent_id'      => $parent_id,
+                                'first_name'     => $first_name,
+                                'mid_name'       => $mid_name,
+                                'last_name'      => $last_name,
+                                'dob'            => $dob,
+                                'gender'         => $gender,
+                                'class_id'       => $class_id,
+                                'section_id'     => $section_id,
+                                'religion'       => $religion,
+                                'caste'          => $caste,
+                                'IsDelete'       => 'N',
+                                'isNew'          => 'Y',
+                                'isModify'       => 'N',
+                                'category'       => $category,
+                                'mother_tongue'  => $mother_tongue,
+                                'subcaste'       => $sub_caste,
+                                'permant_add'    => $perm_address,
+                                'city'           => $city,
+                                'state'          => $state,
+                                'pincode'        => $pincode,
+                                'stu_aadhaar_no' => $stud_aadhar,
+                                'blood_group'    => $blood_group,
+                                'admission_date' => date('Y-m-d'),
+                                'admission_class' => $class_name,
+                                'birth_place'    => $birth_place,
+                                'nationality'    => $nationality,
+                                'student_name'   => $first_name,
+                            ]);
+                            $logger->info("form_id {$form_id}: new student inserted, student_id={$student_id_new}");
+                        }
 
-                                if ($parent_id) {
-                                    if ($f_mobile==null || $f_mobile=='null' || trim($f_mobile)=="" || trim($f_mobile)=="''"){
-										if($m_mobile==null || $m_mobile=='null' || trim($m_mobile)=="" || trim($m_mobile)=="''"){
-											if ($last_name!='null' && $father_name!='null'){
-												$user_id=str_replace(" ","",$father_name).$last_name;
-											}elseif ($last_name!='null'){
-												$user_id=str_replace(" ","",$last_name);
-											}elseif ($father_name!='null'){
-												$user_id=str_replace(" ","",$father_name);
-											}
-										}else{
-											//echo "4";
-											$user_id=$m_mobile;
-										}
-									} else {
-										//echo "5"; 
-										$user_id=$f_mobile;
-									}
+                        if ($student_id_new) {
+                            DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
 
-                                    $user_id=str_replace("''","",$user_id);
-									$name="";
-									if ($father_name<>'null'){
-										$name=$father_name;
-									}else{
-										$name=$mother_name;
-									}
+                            $password  = bcrypt('arnolds');
+                            $user_id1  = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+                            DB::table('user_master')->insert([
+                                'user_id'  => $user_id1,
+                                'name'     => $first_name,
+                                'password' => $password,
+                                'reg_id'   => $student_id_new,
+                                'role_id'  => 'S',
+                            ]);
+                            $logger->info("form_id {$form_id}: user_master inserted for student user_id={$user_id1}");
 
-                                    $password = bcrypt($passwordCode);
-
-                                    $usql = DB::table('user_master')->insertGetId([
-                                        'user_id' => $user_id,
-                                        'name' => $name,
-                                        'password' => $password,
-                                        'reg_id' => $parent_id,
-                                        'role_id' => 'P',
-                                    ]);
-
-                                    $user_id = str_replace("'", '', $user_id);
-
-                                    if ($usql) {
-                                        $school_id = '7';
-                                        $user_data = json_encode([
-                                            'user_id' => $user_id,
-                                            'school_id' => $school_id,
-                                        ]);
-                                        $evolvuUrl = config('externalapis.EVOLVU_URL');
-
-                                        $response = Http::withHeaders([
-                                            'Content-Type' => 'application/json',
-                                        ])->post($evolvuUrl . 'user_create_post', json_decode($user_data, true));
-
-                                        $token_data = $response->body();
-                                        $err = $response->failed() ? $response->status() : null;
-
-                                        $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
-
-                                        DB::table('contact_details')->insert([
-                                            'id' => $parent_id,
-                                            'phone_no' => $phone_no,
-                                            'email_id' => $f_email,
-                                            'm_emailid' => $m_emailid,
-                                        ]);
-
-                                        $formRecord = DB::table('online_admission_form')
-                                            ->where('form_id', $form_id)
-                                            ->first();
-
-                                        $student_id_new = null;
-
-                                        $studentOldRecord = DB::table('student')
-                                            ->where('student_id', $formRecord->student_id)
-                                            ->first();
-
-                                        if ($studentOldRecord) {
-                                            $student_id_new = $studentOldRecord->student_id;
-                                        } else {
-                                            $student_id_new = DB::table('student')->insertGetId([
-                                                'academic_yr' => $academic_yr,
-                                                'parent_id' => $parent_id,
-                                                'first_name' => $first_name,
-                                                'mid_name' => $mid_name,
-                                                'last_name' => $last_name,
-                                                'dob' => $dob,
-                                                'gender' => $gender,
-                                                'class_id' => $class_id,
-                                                'section_id' => $section_id,
-                                                'religion' => $religion,
-                                                'caste' => $caste,
-                                                'IsDelete' => 'N',
-                                                'isNew' => 'Y',
-                                                'isModify' => 'N',
-                                                'category' => $category,
-                                                'mother_tongue' => $mother_tongue,
-                                                'subcaste' => $sub_caste,
-                                                'permant_add' => $perm_address,
-                                                'city' => $city,
-                                                'state' => $state,
-                                                'pincode' => $pincode,
-                                                'stu_aadhaar_no' => $stud_aadhar,
-                                                'blood_group' => $blood_group,
-                                                'admission_date' => date('Y-m-d'),
-                                                'admission_class' => $class_name,
-                                                'birth_place' => $birth_place,
-                                                'nationality' => $nationality,
-                                                'student_name' => $first_name,
-                                            ]);
-                                        }
-
-                                        if ($student_id_new) {
-
-                                            DB::table('online_admission_form')
-                                                ->where('form_id', $form_id)
-                                                ->update(['student_id' => $student_id_new]);
-                                            
-                                            $password = $passwordCode;
-                                            $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
-                                            DB::table('user_master')->insert([
-                                                'user_id' => $user_id1,
-                                                'name' => $first_name,
-                                                'password' => $password,
-                                                'reg_id' => $student_id_new,
-                                                'role_id' => 'S',
-                                            ]);
-
-                                            $fees_category = DB::table('fees_category_detail')
-                                                ->where('class_concession', $class_id)
-                                                ->select('fees_category_id')
-                                                ->first();
-
-                                            if ($fees_category && $fees_category->fees_category_id) {
-                                                $fees_category_id = $fees_category->fees_category_id;
-                                                $fee_cat_query = DB::table('fees_student_category')
-                                                    ->where([
-                                                        'student_id' => $student_id_new,
-                                                        'fees_category_id' => $fees_category_id
-                                                    ])
-                                                    ->count();
-                                                if ($fee_cat_query == 0) {
-                                                    $fee_cat_data = [
-                                                        'student_id' => $student_id_new,
-                                                        'fees_category_id' => $fees_category_id,
-                                                        'academic_yr' => $academic_yr
-                                                    ];
-                                                    DB::table('fees_student_category')->insert($fee_cat_data);
-                                                }
-                                            }
-                                        }
-
-                                        DB::table('online_admission_form')
-                                            ->where('form_id', $form_id)
-                                            ->update([
-                                                'student_id' => $student_id_new,
-                                            ]);
-
-                                        $from = 'supportsacs@aceventura.in';
-                                        $cc = 'school@arnoldcentralschool.org';
-
-                                        if ($m_emailid != '') {
-                                            $mmail = str_replace("'", '', $m_emailid);
-                                        }
-
-                                        if ($f_email != '') {
-                                            $fmail = str_replace("'", '', $f_email);
-                                        }
-                                        $formData = DB::table('online_admission_form')
-                                                ->where('form_id', $form_ids[$i])->first();
-                                        $form_class_id = $formData->class_id;
-                                        $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                                        if ($class_name == 'Nursery') {
-                                            $subject = 'Information for Nursery admission';
-                                        } else if ($class_name = '11') {
-                                            $subject = 'Information for Class 11 admission';
-                                        }
-                                        $emailData = [
-                                            'subject' => $short_name . ' - ' . $subject,
-                                            'textmsg' => $textmsg,
-                                        ];
-                                        smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                                        smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
-                                    }
+                            $fees_category = DB::table('fees_category_detail')->where('class_concession', $class_id)->select('fees_category_id')->first();
+                            if ($fees_category && $fees_category->fees_category_id) {
+                                $fees_category_id = $fees_category->fees_category_id;
+                                $fee_cat_query    = DB::table('fees_student_category')->where(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id])->count();
+                                if ($fee_cat_query == 0) {
+                                    DB::table('fees_student_category')->insert(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id, 'academic_yr' => $academic_yr]);
+                                    $logger->info("form_id {$form_id}: fees_student_category inserted");
                                 }
-                            } elseif ($parent_id != '') {
-                                $formRecord = DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)
-                                    ->first();
-
-                                $student_id_new = null;
-
-                                $studentOldRecord = DB::table('student')
-                                    ->where('student_id', $formRecord->student_id)
-                                    ->first();
-
-                                if ($studentOldRecord) {
-                                    $student_id_new = $studentOldRecord->student_id;
-                                } else {
-                                    $student_id_new = DB::table('student')->insertGetId([
-                                        'academic_yr' => $academic_yr,
-                                        'parent_id' => $parent_id,
-                                        'first_name' => $first_name,
-                                        'mid_name' => $mid_name,
-                                        'last_name' => $last_name,
-                                        'dob' => $dob,
-                                        'gender' => $gender,
-                                        'class_id' => $class_id,
-                                        'section_id' => $section_id,
-                                        'religion' => $religion,
-                                        'caste' => $caste,
-                                        'IsDelete' => 'N',
-                                        'isNew' => 'Y',
-                                        'isModify' => 'N',
-                                        'category' => $category,
-                                        'mother_tongue' => $mother_tongue,
-                                        'subcaste' => $sub_caste,
-                                        'permant_add' => $perm_address,
-                                        'city' => $city,
-                                        'state' => $state,
-                                        'pincode' => $pincode,
-                                        'stu_aadhaar_no' => $stud_aadhar,
-                                        'blood_group' => $blood_group,
-                                        'admission_date' => date('Y-m-d'),
-                                        'admission_class' => $class_name,
-                                        'birth_place' => $birth_place,
-                                        'nationality' => $nationality,
-                                        'student_name' => $first_name,
-                                    ]);
-                                }
-
-                                if ($student_id_new) {
-
-                                    DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)
-                                    ->update(['student_id' => $student_id_new]);
-
-                                    $password = bcrypt('arnolds');
-                                    $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
-                                    DB::table('user_master')->insert([
-                                        'user_id' => $user_id1,
-                                        'name' => $first_name,
-                                        'password' => $password,
-                                        'reg_id' => $student_id_new,
-                                        'role_id' => 'S',
-                                    ]);
-
-                                    // fee category
-                                    $fees_category = DB::table('fees_category_detail')
-                                        ->where('class_concession', $class_id)
-                                        ->select('fees_category_id')
-                                        ->first();
-
-                                    if ($fees_category && $fees_category->fees_category_id) {
-                                        $fees_category_id = $fees_category->fees_category_id;
-                                        $fee_cat_query = DB::table('fees_student_category')
-                                            ->where([
-                                                'student_id' => $student_id_new,
-                                                'fees_category_id' => $fees_category_id
-                                            ])
-                                            ->count();
-                                        if ($fee_cat_query == 0) {
-                                            $fee_cat_data = [
-                                                'student_id' => $student_id_new,
-                                                'fees_category_id' => $fees_category_id,
-                                                'academic_yr' => $academic_yr
-                                            ];
-                                            DB::table('fees_student_category')->insert($fee_cat_data);
-                                        }
-                                    }
-                                }
-
-                                $from = 'supportsacs@aceventura.in';
-                                $cc = 'school@arnoldcentralschool.org';
-
-                                if ($m_emailid != '') {
-                                    $mmail = str_replace("'", '', $m_emailid);
-                                }
-
-                                if ($f_email != '') {
-                                    $fmail = str_replace("'", '', $f_email);
-                                }
-
-                                $formData = DB::table('online_admission_form')
-                                        ->where('form_id', $form_id)->first();
-                                $form_class_id = $formData->class_id;
-                                $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                                if ($class_name == 'Nursery') {
-                                    $subject = 'Information for Nursery admission';
-                                } else if ($class_name = '11') {
-                                    $subject = 'Information for Class 11 admission';
-                                }
-                                $emailData = [
-                                    'subject' => $short_name . ' - ' . $subject,
-                                    'textmsg' => $textmsg,
-                                ];
-                                smart_mail($fmail, $short_name.' - '.$subject, 'emails.parentUserEmail', $emailData);
-                                smart_mail($mmail,  $short_name.' - '.$subject , 'emails.parentUserEmail', $emailData);
                             }
                         }
-                        // END
-                    }
-                }
-            } else {
-                for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
-                    if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
-                        continue;
+
+                        $mmail = ($m_emailid != '') ? str_replace("'", '', $m_emailid) : '';
+                        $fmail = ($f_email != '')   ? str_replace("'", '', $f_email)   : '';
+                        $formData      = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                        $form_class_id = $formData->class_id;
+                        $textmsg       = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+                        $emailData     = ['subject' => $short_name . ' - ', 'textmsg' => $textmsg];
+
+                        smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        $logger->info("form_id {$form_id}: emails sent to fmail={$fmail}, mmail={$mmail}");
                     } else {
-                        $form_id = $form_ids[$i];
-                        DB::table('online_admission_form')
-                            ->where('form_id', $form_id)
-                            ->update([
-                                'admission_form_status' => 'Approved'
-                            ]);
-
-                        $application_data = DB::table('online_admission_form')->where('form_id', $form_id)->first();
-                        $sibling_student_id = $application_data->sibling_student_id;
-
-                        $father_name = $application_data->father_name;
-                        $f_occupation = $application_data->father_occupation;
-                        $f_mobile = $application_data->f_mobile;
-                        $f_email = $application_data->f_email;
-
-                        $mother_name = $application_data->mother_name;
-                        $m_occupation = $application_data->mother_occupation;
-                        $m_mobile = $application_data->m_mobile;
-                        $m_emailid = $application_data->m_emailid;
-
-                        $father_adhar_no = $application_data->f_aadhar_no;
-                        $mother_adhar_no = $application_data->m_aadhar_no;
-
-                        $f_qualification = $application_data->f_qualification;
-                        $m_qualification = $application_data->m_qualification;
-
-                        $academic_yr = $application_data->academic_yr;
-
-                        $first_name = $application_data->first_name;
-                        $mid_name = $application_data->mid_name;
-                        $last_name = $application_data->last_name;
-
-                        $dob = $application_data->dob;
-                        $gender = $application_data->gender;
-                        $application_date = $application_data->application_date;
-
-                        $religion = $application_data->religion;
-                        $caste = $application_data->caste;
-                        $category = $application_data->category;
-                        $nationality = $application_data->nationality;
-
-                        $sms_sending_phone_no = $application_data->sms_sending_phone_no;
-
-                        $class_id = $application_data->class_id;
-                        $mother_tongue = $application_data->mother_tongue;
-                        $sub_caste = $application_data->subcaste;
-
-                        $perm_address = $application_data->perm_address;
-                        $city = $application_data->city;
-                        $state = $application_data->state;
-                        $pincode = $application_data->pincode;
-
-                        $stud_aadhar = $application_data->stud_aadhar;
-                        $blood_group = $application_data->blood_group;
-                        $birth_place = $application_data->birth_place;
-
-                        $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+                        $logger->info("form_id {$form_id}: non-sibling path [HSCS]");
 
                         $parent_id = '';
                         if (!is_null($f_mobile)) {
-                            $parent_id = DB::table('parent')
-                                ->where('f_mobile', $f_mobile)
-                                ->value('parent_id');
+                            $parent_id = DB::table('parent')->where('f_mobile', $f_mobile)->value('parent_id');
                         }
                         if (empty($parent_id) && $f_email !== null) {
-                            $parent_id = DB::table('user_master')
-                                ->where('user_id', $f_email)
-                                ->value('reg_id');
+                            $parent_id = DB::table('user_master')->where('user_id', $f_email)->value('reg_id');
                         }
                         if (empty($parent_id) && $m_emailid !== null) {
-                            $parent_id = DB::table('user_master')
-                                ->where('user_id', $m_emailid)
-                                ->value('reg_id');
+                            $parent_id = DB::table('user_master')->where('user_id', $m_emailid)->value('reg_id');
                         }
                         if (empty($parent_id) && $m_mobile !== null) {
-                            $parent_id = DB::table('user_master')
-                                ->where('user_id', $m_mobile)
-                                ->value('reg_id');
+                            $parent_id = DB::table('user_master')->where('user_id', $m_mobile)->value('reg_id');
                         }
+
+                        $logger->info("form_id {$form_id}: resolved parent_id={$parent_id}");
+
                         if ($parent_id == '') {
                             $parent_id = DB::table('parent')->insertGetId([
-                                'father_name' => $father_name,
+                                'father_name'       => $father_name,
                                 'father_occupation' => $f_occupation,
-                                'f_mobile' => $f_mobile,
-                                'f_email' => $f_email,
-                                'parent_adhar_no' => $father_adhar_no,
-                                'f_qualification' => $f_qualification,
-                                'mother_name' => $mother_name,
+                                'f_mobile'          => $f_mobile,
+                                'f_email'           => $f_email,
+                                'parent_adhar_no'   => $father_adhar_no,
+                                'f_qualification'   => $f_qualification,
+                                'mother_name'       => $mother_name,
                                 'mother_occupation' => $m_occupation,
-                                'm_mobile' => $m_mobile,
-                                'm_emailid' => $m_emailid,
-                                'm_adhar_no' => $mother_adhar_no,
-                                'm_qualification' => $m_qualification,
-                                'IsDelete' => 'N',
+                                'm_mobile'          => $m_mobile,
+                                'm_emailid'         => $m_emailid,
+                                'm_adhar_no'        => $mother_adhar_no,
+                                'm_qualification'   => $m_qualification,
+                                'IsDelete'          => 'N',
                             ]);
+                            $logger->info("form_id {$form_id}: new parent inserted, parent_id={$parent_id}");
 
                             if ($parent_id) {
                                 if (is_null($f_email) || $f_email === 'null' || trim($f_email) === '' || trim($f_email) === "''") {
@@ -14296,236 +14743,527 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                     $user_id = $f_email;
                                 }
 
-                                $user_id = str_replace("''", '', $user_id);
-
-                                $name = ($father_name !== 'null') ? $father_name : $mother_name;
-
+                                $user_id  = str_replace("''", '', $user_id);
+                                $name     = ($father_name !== 'null') ? $father_name : $mother_name;
                                 $password = bcrypt($passwordCode);
 
-                                $usql = DB::table('user_master')->insertGetId([
-                                    'user_id' => $user_id,
-                                    'name' => $name,
+                                $usql = DB::table('user_master')->insert([
+                                    'user_id'  => $user_id,
+                                    'name'     => $name,
                                     'password' => $password,
-                                    'reg_id' => $parent_id,
-                                    'role_id' => 'P',
+                                    'reg_id'   => $parent_id,
+                                    'role_id'  => 'P',
                                 ]);
+                                $logger->info("form_id {$form_id}: parent user_master inserted, user_id={$user_id}, usql={$usql}");
 
                                 $user_id = str_replace("'", '', $user_id);
 
                                 if ($usql) {
-                                    $school_id = '1';
-                                    $user_data = json_encode([
-                                        'user_id' => $user_id,
-                                        'school_id' => $school_id,
-                                    ]);
+                                    $school_id = '7';
                                     $evolvuUrl = config('externalapis.EVOLVU_URL');
-
-                                    $response = Http::withHeaders([
-                                        'Content-Type' => 'application/json',
-                                    ])->post($evolvuUrl . 'user_create_post', json_decode($user_data, true));
-
-                                    $token_data = $response->body();
+                                    $response  = Http::withHeaders(['Content-Type' => 'application/json'])
+                                        ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
                                     $err = $response->failed() ? $response->status() : null;
+                                    $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
 
                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
-
                                     DB::table('contact_details')->insert([
-                                        'id' => $parent_id,
-                                        'phone_no' => $phone_no,
-                                        'email_id' => $f_email,
+                                        'id'        => $parent_id,
+                                        'phone_no'  => $phone_no,
+                                        'email_id'  => $f_email,
                                         'm_emailid' => $m_emailid,
                                     ]);
 
-                                    $formRecord = DB::table('online_admission_form')
-                                        ->where('form_id', $form_id)
-                                        ->first();
+                                    $formRecord       = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                                    $student_id_new   = null;
+                                    $studentOldRecord = DB::table('student')->where('student_id', $formRecord->student_id)->first();
 
-                                    $student_id_new = null;
-
-                                    $studentOldRecord = DB::table('student')
-                                        ->where('student_id', $formRecord->student_id)
-                                        ->first();
+                                    $logger->info("form_id {$form_id}: checking existing student, form->student_id={$formRecord->student_id}");
 
                                     if ($studentOldRecord) {
-                                        $student_id_new = $studentOldRecord->studentId;
+                                        // ✅ BUG FIX: was ->studentId (wrong), now ->student_id (correct)
+                                        $student_id_new = $studentOldRecord->student_id;
+                                        $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
                                     } else {
+                                        $logger->info("form_id {$form_id}: no existing student found, inserting new student");
                                         $student_id_new = DB::table('student')->insertGetId([
-                                            'academic_yr' => $academic_yr,
-                                            'parent_id' => $parent_id,
-                                            'first_name' => $first_name,
-                                            'mid_name' => $mid_name,
-                                            'last_name' => $last_name,
-                                            'dob' => $dob,
-                                            'gender' => $gender,
-                                            'class_id' => $class_id,
-                                            'section_id' => $section_id,
-                                            'religion' => $religion,
-                                            'caste' => $caste,
-                                            'IsDelete' => 'N',
-                                            'isNew' => 'Y',
-                                            'isModify' => 'N',
-                                            'category' => $category,
-                                            'mother_tongue' => $mother_tongue,
-                                            'subcaste' => $sub_caste,
-                                            'permant_add' => $perm_address,
-                                            'city' => $city,
-                                            'state' => $state,
-                                            'pincode' => $pincode,
+                                            'academic_yr'    => $academic_yr,
+                                            'parent_id'      => $parent_id,
+                                            'first_name'     => $first_name,
+                                            'mid_name'       => $mid_name,
+                                            'last_name'      => $last_name,
+                                            'dob'            => $dob,
+                                            'gender'         => $gender,
+                                            'class_id'       => $class_id,
+                                            'section_id'     => $section_id,
+                                            'religion'       => $religion,
+                                            'caste'          => $caste,
+                                            'IsDelete'       => 'N',
+                                            'isNew'          => 'Y',
+                                            'isModify'       => 'N',
+                                            'category'       => $category,
+                                            'mother_tongue'  => $mother_tongue,
+                                            'subcaste'       => $sub_caste,
+                                            'permant_add'    => $perm_address,
+                                            'city'           => $city,
+                                            'state'          => $state,
+                                            'pincode'        => $pincode,
                                             'stu_aadhaar_no' => $stud_aadhar,
-                                            'blood_group' => $blood_group,
+                                            'blood_group'    => $blood_group,
                                             'admission_date' => date('Y-m-d'),
                                             'admission_class' => $class_name,
-                                            'birth_place' => $birth_place,
-                                            'nationality' => $nationality,
-                                            'student_name' => $first_name,
+                                            'birth_place'    => $birth_place,
+                                            'nationality'    => $nationality,
+                                            'student_name'   => $first_name,
                                         ]);
+                                        $logger->info("form_id {$form_id}: new student inserted, student_id={$student_id_new}");
                                     }
 
                                     if ($student_id_new) {
+                                        DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
 
-                                        DB::table('online_admission_form')
-                                            ->where('form_id', $form_id)
-                                            ->update(['student_id' => $student_id_new]);
-                                        
                                         $password = $passwordCode;
                                         $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
                                         DB::table('user_master')->insert([
-                                            'user_id' => $user_id1,
-                                            'name' => $first_name,
+                                            'user_id'  => $user_id1,
+                                            'name'     => $first_name,
                                             'password' => $password,
-                                            'reg_id' => $student_id_new,
-                                            'role_id' => 'S',
+                                            'reg_id'   => $student_id_new,
+                                            'role_id'  => 'S',
                                         ]);
+                                        $logger->info("form_id {$form_id}: student user_master inserted user_id={$user_id1}");
+
+                                        $fees_category = DB::table('fees_category_detail')->where('class_concession', $class_id)->select('fees_category_id')->first();
+                                        if ($fees_category && $fees_category->fees_category_id) {
+                                            $fees_category_id = $fees_category->fees_category_id;
+                                            $fee_cat_query    = DB::table('fees_student_category')->where(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id])->count();
+                                            if ($fee_cat_query == 0) {
+                                                DB::table('fees_student_category')->insert(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id, 'academic_yr' => $academic_yr]);
+                                                $logger->info("form_id {$form_id}: fees_student_category inserted");
+                                            }
+                                        }
+                                    } else {
+                                        $logger->error("form_id {$form_id}: student_id_new is null after insert/lookup — student NOT created");
                                     }
 
-                                    DB::table('online_admission_form')
-                                        ->where('form_id', $form_id)
-                                        ->update([
-                                            'student_id' => $student_id_new,
-                                        ]);
+                                    DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
 
-                                    $from = 'supportsacs@aceventura.in';
-                                    $cc = 'school@arnoldcentralschool.org';
-
-                                    if ($m_emailid != '') {
-                                        $mmail = str_replace("'", '', $m_emailid);
-                                    }
-
-                                    if ($f_email != '') {
-                                        $fmail = str_replace("'", '', $f_email);
-                                    }
-                                    $formData = DB::table('online_admission_form')
-                                            ->where('form_id', $form_ids[$i])->first();
+                                    $mmail = ($m_emailid != '') ? str_replace("'", '', $m_emailid) : '';
+                                    $fmail = ($f_email != '')   ? str_replace("'", '', $f_email)   : '';
+                                    $formData      = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->first();
                                     $form_class_id = $formData->class_id;
-                                    $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                                    $emailData = [
-                                        'subject' => $short_name,
-                                        'textmsg' => $textmsg,
-                                    ];
-                                    smart_mail($fmail, $short_name.' - '. "Admission Approved", 'emails.parentUserEmail', $emailData);
-                                    smart_mail($mmail,  $short_name.' - '. "Admission Approved" , 'emails.parentUserEmail', $emailData);
+                                    $textmsg       = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+                                    $emailData     = ['subject' => $short_name, 'textmsg' => $textmsg];
+
+                                    smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                                    smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                                    $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
                                 }
                             }
                         } elseif ($parent_id != '') {
-                            $formRecord = DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->first();
+                            $logger->info("form_id {$form_id}: existing parent found, parent_id={$parent_id} [HSCS]");
 
-                            $student_id_new = null;
-
-                            $studentOldRecord = DB::table('student')
-                                ->where('student_id', $formRecord->student_id)
-                                ->first();
+                            $formRecord       = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                            $student_id_new   = null;
+                            $studentOldRecord = DB::table('student')->where('student_id', $formRecord->student_id)->first();
 
                             if ($studentOldRecord) {
                                 $student_id_new = $studentOldRecord->student_id;
+                                $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
                             } else {
                                 $student_id_new = DB::table('student')->insertGetId([
-                                    'academic_yr' => $academic_yr,
-                                    'parent_id' => $parent_id,
-                                    'first_name' => $first_name,
-                                    'mid_name' => $mid_name,
-                                    'last_name' => $last_name,
-                                    'dob' => $dob,
-                                    'gender' => $gender,
-                                    'class_id' => $class_id,
-                                    'section_id' => $section_id,
-                                    'religion' => $religion,
-                                    'caste' => $caste,
-                                    'IsDelete' => 'N',
-                                    'isNew' => 'Y',
-                                    'isModify' => 'N',
-                                    'category' => $category,
-                                    'mother_tongue' => $mother_tongue,
-                                    'subcaste' => $sub_caste,
-                                    'permant_add' => $perm_address,
-                                    'city' => $city,
-                                    'state' => $state,
-                                    'pincode' => $pincode,
+                                    'academic_yr'    => $academic_yr,
+                                    'parent_id'      => $parent_id,
+                                    'first_name'     => $first_name,
+                                    'mid_name'       => $mid_name,
+                                    'last_name'      => $last_name,
+                                    'dob'            => $dob,
+                                    'gender'         => $gender,
+                                    'class_id'       => $class_id,
+                                    'section_id'     => $section_id,
+                                    'religion'       => $religion,
+                                    'caste'          => $caste,
+                                    'IsDelete'       => 'N',
+                                    'isNew'          => 'Y',
+                                    'isModify'       => 'N',
+                                    'category'       => $category,
+                                    'mother_tongue'  => $mother_tongue,
+                                    'subcaste'       => $sub_caste,
+                                    'permant_add'    => $perm_address,
+                                    'city'           => $city,
+                                    'state'          => $state,
+                                    'pincode'        => $pincode,
                                     'stu_aadhaar_no' => $stud_aadhar,
-                                    'blood_group' => $blood_group,
+                                    'blood_group'    => $blood_group,
                                     'admission_date' => date('Y-m-d'),
                                     'admission_class' => $class_name,
-                                    'birth_place' => $birth_place,
-                                    'nationality' => $nationality,
-                                    'student_name' => $first_name,
+                                    'birth_place'    => $birth_place,
+                                    'nationality'    => $nationality,
+                                    'student_name'   => $first_name,
                                 ]);
+                                $logger->info("form_id {$form_id}: new student inserted, student_id={$student_id_new}");
                             }
 
                             if ($student_id_new) {
-
-                                DB::table('online_admission_form')
-                                ->where('form_id', $form_id)
-                                ->update(['student_id' => $student_id_new]);
+                                DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
 
                                 $password = bcrypt('arnolds');
                                 $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
-
                                 DB::table('user_master')->insert([
-                                    'user_id' => $user_id1,
-                                    'name' => $first_name,
+                                    'user_id'  => $user_id1,
+                                    'name'     => $first_name,
                                     'password' => $password,
-                                    'reg_id' => $student_id_new,
-                                    'role_id' => 'S',
+                                    'reg_id'   => $student_id_new,
+                                    'role_id'  => 'S',
                                 ]);
+                                $logger->info("form_id {$form_id}: student user_master inserted user_id={$user_id1}");
+
+                                $fees_category = DB::table('fees_category_detail')->where('class_concession', $class_id)->select('fees_category_id')->first();
+                                if ($fees_category && $fees_category->fees_category_id) {
+                                    $fees_category_id = $fees_category->fees_category_id;
+                                    $fee_cat_query    = DB::table('fees_student_category')->where(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id])->count();
+                                    if ($fee_cat_query == 0) {
+                                        DB::table('fees_student_category')->insert(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id, 'academic_yr' => $academic_yr]);
+                                    }
+                                }
+                            } else {
+                                $logger->error("form_id {$form_id}: student_id_new is null — student NOT created [HSCS existing parent]");
                             }
 
-                            $from = 'supportsacs@aceventura.in';
-                            $cc = 'school@arnoldcentralschool.org';
-
-                            if ($m_emailid != '') {
-                                $mmail = str_replace("'", '', $m_emailid);
-                            }
-
-                            if ($f_email != '') {
-                                $fmail = str_replace("'", '', $f_email);
-                            }
-
-                            $formData = DB::table('online_admission_form')
-                                    ->where('form_id', $form_id)->first();
+                            $mmail = ($m_emailid != '') ? str_replace("'", '', $m_emailid) : '';
+                            $fmail = ($f_email != '')   ? str_replace("'", '', $f_email)   : '';
+                            $formData      = DB::table('online_admission_form')->where('form_id', $form_id)->first();
                             $form_class_id = $formData->class_id;
-                            $textmsg = $this->getEmailBodyByKey('ADDMISSION_APPROVED' , $form_class_id);
-                            $emailData = [
-                                'subject' => $short_name . ' - ',
-                                'textmsg' => $textmsg,
-                            ];
-                            smart_mail($fmail, $short_name.' - '."Admission Approved", 'emails.parentUserEmail', $emailData);
-                            smart_mail($mmail,  $short_name.' - '."Admission Approved" , 'emails.parentUserEmail', $emailData);
+                            $textmsg       = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+
+                            if ($class_name == 'Nursery') {
+                                $subject = 'Information for Nursery admission';
+                            } elseif ($class_name == '11') {  // ✅ Note: original had assignment = not comparison ==
+                                $subject = 'Information for Class 11 admission';
+                            } else {
+                                $subject = 'Admission Approved';
+                            }
+
+                            $emailData = ['subject' => $short_name . ' - ' . $subject, 'textmsg' => $textmsg];
+                            smart_mail($fmail, $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
+                            smart_mail($mmail, $short_name . ' - ' . $subject, 'emails.parentUserEmail', $emailData);
+                            $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
                         }
                     }
                 }
+            } else {
+                // Non-HSCS schools
+                $logger->info("Processing SACS school: {$short_name}");
+
+                for ($i = 0, $j = 1; $i < count($form_ids); $i++, $j++) {
+                    if ($form_ids[$i] == '' || $form_ids[$i] == NULL) {
+                        continue;
+                    }
+
+                    $form_id = $form_ids[$i];
+                    $logger->info("Processing form_id: {$form_id} [non-HSCS]");
+
+                    DB::table('online_admission_form')
+                        ->where('form_id', $form_id)
+                        ->update(['admission_form_status' => 'Approved']);
+
+                    $application_data     = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                    $sibling_student_id   = $application_data->sibling_student_id;
+                    $father_name          = $application_data->father_name;
+                    $f_occupation         = $application_data->father_occupation;
+                    $f_mobile             = $application_data->f_mobile;
+                    $f_email              = $application_data->f_email;
+                    $mother_name          = $application_data->mother_name;
+                    $m_occupation         = $application_data->mother_occupation;
+                    $m_mobile             = $application_data->m_mobile;
+                    $m_emailid            = $application_data->m_emailid;
+                    $father_adhar_no      = $application_data->f_aadhar_no;
+                    $mother_adhar_no      = $application_data->m_aadhar_no;
+                    $f_qualification      = $application_data->f_qualification;
+                    $m_qualification      = $application_data->m_qualification;
+                    $academic_yr          = $application_data->academic_yr;
+                    $first_name           = $application_data->first_name;
+                    $mid_name             = $application_data->mid_name;
+                    $last_name            = $application_data->last_name;
+                    $dob                  = $application_data->dob;
+                    $gender               = $application_data->gender;
+                    $religion             = $application_data->religion;
+                    $caste                = $application_data->caste;
+                    $category             = $application_data->category;
+                    $nationality          = $application_data->nationality;
+                    $sms_sending_phone_no = $application_data->sms_sending_phone_no;
+                    $class_id             = $application_data->class_id;
+                    $mother_tongue        = $application_data->mother_tongue;
+                    $sub_caste            = $application_data->subcaste;
+                    $perm_address         = $application_data->perm_address;
+                    $city                 = $application_data->city;
+                    $state                = $application_data->state;
+                    $pincode              = $application_data->pincode;
+                    $stud_aadhar          = $application_data->stud_aadhar;
+                    $blood_group          = $application_data->blood_group;
+                    $birth_place          = $application_data->birth_place;
+                    $class_name           = DB::table('class')->where('class_id', $class_id)->value('name');
+
+                    $parent_id = '';
+                    if (!is_null($f_mobile)) {
+                        $parent_id = DB::table('parent')->where('f_mobile', $f_mobile)->value('parent_id');
+                    }
+                    if (empty($parent_id) && $f_email !== null) {
+                        $parent_id = DB::table('user_master')->where('user_id', $f_email)->value('reg_id');
+                    }
+                    if (empty($parent_id) && $m_emailid !== null) {
+                        $parent_id = DB::table('user_master')->where('user_id', $m_emailid)->value('reg_id');
+                    }
+                    if (empty($parent_id) && $m_mobile !== null) {
+                        $parent_id = DB::table('user_master')->where('user_id', $m_mobile)->value('reg_id');
+                    }
+
+                    $logger->info("form_id {$form_id}: resolved parent_id={$parent_id}");
+
+                    if ($parent_id == '') {
+                        $parent_id = DB::table('parent')->insertGetId([
+                            'father_name'       => $father_name,
+                            'father_occupation' => $f_occupation,
+                            'f_mobile'          => $f_mobile,
+                            'f_email'           => $f_email,
+                            'parent_adhar_no'   => $father_adhar_no,
+                            'f_qualification'   => $f_qualification,
+                            'mother_name'       => $mother_name,
+                            'mother_occupation' => $m_occupation,
+                            'm_mobile'          => $m_mobile,
+                            'm_emailid'         => $m_emailid,
+                            'm_adhar_no'        => $mother_adhar_no,
+                            'm_qualification'   => $m_qualification,
+                            'IsDelete'          => 'N',
+                        ]);
+                        $logger->info("form_id {$form_id}: new parent inserted, parent_id={$parent_id}");
+
+                        if ($parent_id) {
+                            if (is_null($f_email) || $f_email === 'null' || trim($f_email) === '' || trim($f_email) === "''") {
+                                if (is_null($m_emailid) || $m_emailid === 'null' || trim($m_emailid) === '' || trim($m_emailid) === "''") {
+                                    if ($last_name !== 'null' && $father_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $father_name) . $last_name;
+                                    } elseif ($last_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $last_name);
+                                    } elseif ($father_name !== 'null') {
+                                        $user_id = str_replace(' ', '', $father_name);
+                                    }
+                                } else {
+                                    $user_id = $m_emailid;
+                                }
+                            } else {
+                                $user_id = $f_email;
+                            }
+
+                            $user_id  = str_replace("''", '', $user_id);
+                            $name     = ($father_name !== 'null') ? $father_name : $mother_name;
+                            $password = bcrypt($passwordCode);
+
+                            $usql = DB::table('user_master')->insert([
+                                'user_id'  => $user_id,
+                                'name'     => $name,
+                                'password' => $password,
+                                'reg_id'   => $parent_id,
+                                'role_id'  => 'P',
+                            ]);
+
+                            $logger->info("form_id {$form_id}: parent user_master inserted user_id={$user_id}, usql={$usql}");
+
+                            $user_id = str_replace("'", '', $user_id);
+
+                            if ($usql) {
+                                $school_id = '1';
+                                $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                $response  = Http::withHeaders(['Content-Type' => 'application/json'])
+                                    ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                $err = $response->failed() ? $response->status() : null;
+                                $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+
+                                $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
+                                DB::table('contact_details')->insert([
+                                    'id'        => $parent_id,
+                                    'phone_no'  => $phone_no,
+                                    'email_id'  => $f_email,
+                                    'm_emailid' => $m_emailid,
+                                ]);
+
+                                $formRecord       = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                                $student_id_new   = null;
+                                $studentOldRecord = DB::table('student')->where('student_id', $formRecord->student_id)->first();
+
+                                $logger->info("form_id {$form_id}: form->student_id={$formRecord->student_id}, studentOldRecord=" . ($studentOldRecord ? 'found' : 'not found'));
+
+                                if ($studentOldRecord) {
+                                    $student_id_new = $studentOldRecord->student_id;
+                                    $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
+                                } else {
+                                    $logger->info("form_id {$form_id}: inserting new student record");
+                                    $student_id_new = DB::table('student')->insertGetId([
+                                        'academic_yr'    => $academic_yr,
+                                        'parent_id'      => $parent_id,
+                                        'first_name'     => $first_name,
+                                        'mid_name'       => $mid_name,
+                                        'last_name'      => $last_name,
+                                        'dob'            => $dob,
+                                        'gender'         => $gender,
+                                        'class_id'       => $class_id,
+                                        'section_id'     => $section_id,
+                                        'religion'       => $religion,
+                                        'caste'          => $caste,
+                                        'IsDelete'       => 'N',
+                                        'isNew'          => 'Y',
+                                        'isModify'       => 'N',
+                                        'category'       => $category,
+                                        'mother_tongue'  => $mother_tongue,
+                                        'subcaste'       => $sub_caste,
+                                        'permant_add'    => $perm_address,
+                                        'city'           => $city,
+                                        'state'          => $state,
+                                        'pincode'        => $pincode,
+                                        'stu_aadhaar_no' => $stud_aadhar,
+                                        'blood_group'    => $blood_group,
+                                        'admission_date' => date('Y-m-d'),
+                                        'admission_class' => $class_name,
+                                        'birth_place'    => $birth_place,
+                                        'nationality'    => $nationality,
+                                        'student_name'   => $first_name,
+                                    ]);
+                                    $logger->info("form_id {$form_id}: new student inserted, student_id={$student_id_new}");
+                                }
+
+                                if ($student_id_new) {
+                                    DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
+
+                                    $password = $passwordCode;
+                                    $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+                                    DB::table('user_master')->insert([
+                                        'user_id'  => $user_id1,
+                                        'name'     => $first_name,
+                                        'password' => $password,
+                                        'reg_id'   => $student_id_new,
+                                        'role_id'  => 'S',
+                                    ]);
+                                    $logger->info("form_id {$form_id}: student user_master inserted user_id={$user_id1}");
+                                } else {
+                                    $logger->error("form_id {$form_id}: student_id_new is null — student NOT created [non-HSCS new parent]");
+                                }
+
+                                DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
+
+                                $mmail = ($m_emailid != '') ? str_replace("'", '', $m_emailid) : '';
+                                $fmail = ($f_email != '')   ? str_replace("'", '', $f_email)   : '';
+                                $formData      = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->first();
+                                $form_class_id = $formData->class_id;
+                                $textmsg       = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+                                $emailData     = ['subject' => $short_name, 'textmsg' => $textmsg];
+
+                                smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                                smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                                $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
+                            }
+                        }
+                    } elseif ($parent_id != '') {
+                        $logger->info("form_id {$form_id}: existing parent path [non-HSCS], parent_id={$parent_id}");
+
+                        $formRecord       = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                        $student_id_new   = null;
+                        $studentOldRecord = DB::table('student')->where('student_id', $formRecord->student_id)->first();
+
+                        if ($studentOldRecord) {
+                            $student_id_new = $studentOldRecord->student_id;
+                            $logger->info("form_id {$form_id}: existing student found, student_id={$student_id_new}");
+                        } else {
+                            $student_id_new = DB::table('student')->insertGetId([
+                                'academic_yr'    => $academic_yr,
+                                'parent_id'      => $parent_id,
+                                'first_name'     => $first_name,
+                                'mid_name'       => $mid_name,
+                                'last_name'      => $last_name,
+                                'dob'            => $dob,
+                                'gender'         => $gender,
+                                'class_id'       => $class_id,
+                                'section_id'     => $section_id,
+                                'religion'       => $religion,
+                                'caste'          => $caste,
+                                'IsDelete'       => 'N',
+                                'isNew'          => 'Y',
+                                'isModify'       => 'N',
+                                'category'       => $category,
+                                'mother_tongue'  => $mother_tongue,
+                                'subcaste'       => $sub_caste,
+                                'permant_add'    => $perm_address,
+                                'city'           => $city,
+                                'state'          => $state,
+                                'pincode'        => $pincode,
+                                'stu_aadhaar_no' => $stud_aadhar,
+                                'blood_group'    => $blood_group,
+                                'admission_date' => date('Y-m-d'),
+                                'admission_class' => $class_name,
+                                'birth_place'    => $birth_place,
+                                'nationality'    => $nationality,
+                                'student_name'   => $first_name,
+                            ]);
+                            $logger->info("form_id {$form_id}: new student inserted, student_id={$student_id_new}");
+                        }
+
+                        if ($student_id_new) {
+                            DB::table('online_admission_form')->where('form_id', $form_id)->update(['student_id' => $student_id_new]);
+
+                            $password = bcrypt('arnolds');
+                            $user_id1 = 'S' . str_pad($student_id_new, 4, '0', STR_PAD_LEFT);
+                            DB::table('user_master')->insert([
+                                'user_id'  => $user_id1,
+                                'name'     => $first_name,
+                                'password' => $password,
+                                'reg_id'   => $student_id_new,
+                                'role_id'  => 'S',
+                            ]);
+                            $logger->info("form_id {$form_id}: student user_master inserted user_id={$user_id1}");
+
+                            $fees_category = DB::table('fees_category_detail')->where('class_concession', $class_id)->select('fees_category_id')->first();
+                            if ($fees_category && $fees_category->fees_category_id) {
+                                $fees_category_id = $fees_category->fees_category_id;
+                                $fee_cat_query    = DB::table('fees_student_category')->where(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id])->count();
+                                if ($fee_cat_query == 0) {
+                                    DB::table('fees_student_category')->insert(['student_id' => $student_id_new, 'fees_category_id' => $fees_category_id, 'academic_yr' => $academic_yr]);
+                                }
+                            }
+                        } else {
+                            $logger->error("form_id {$form_id}: student_id_new is null — student NOT created [non-HSCS existing parent]");
+                        }
+
+                        $mmail = ($m_emailid != '') ? str_replace("'", '', $m_emailid) : '';
+                        $fmail = ($f_email != '')   ? str_replace("'", '', $f_email)   : '';
+                        $formData      = DB::table('online_admission_form')->where('form_id', $form_id)->first();
+                        $form_class_id = $formData->class_id;
+                        $textmsg       = $this->getEmailBodyByKey('ADDMISSION_APPROVED', $form_class_id);
+                        $emailData     = ['subject' => $short_name . ' - ', 'textmsg' => $textmsg];
+
+                        smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
+                    }
+                }
             }
+
+            $logger->info('updateApprovalList completed successfully');
+
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Forms are successfully approved.!!!',
             ], 200);
         } catch (Exception $e) {
-            // dd($e);
+            Log::channel('approve_admission')->error('updateApprovalList exception', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
-                'status' => false,
+                'status'       => false,
                 'errorMessage' => $e->getMessage(),
-                'errorLine' => $e->getLine(),
+                'errorLine'    => $e->getLine(),
             ], 500);
         }
     }
@@ -14755,7 +15493,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //     if ($mmail) smart_mail($mmail, "$short_name - $subject", 'emails.parentUserEmail', $emailData);
     // }    
 
-    
+
 
 
     // HSCS extra admission modules
@@ -15135,7 +15873,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $templates = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
-                ->where('class.academic_yr' , $academic_year)
+                ->where('class.academic_yr', $academic_year)
                 ->orderBy('email_templates.id', 'desc')
                 ->get();
             return response()->json([
@@ -15166,7 +15904,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'nullable|integer',
             ]);
 
-            $exists = DB::table('email_templates')->where('key', $request->key)->where('class_id' , $request->class_id)->exists();
+            $exists = DB::table('email_templates')->where('key', $request->key)->where('class_id', $request->class_id)->exists();
 
             if ($exists) {
                 return response()->json([
@@ -15344,26 +16082,26 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
 
         $defaultBodies = [
-            'INTERVIEW_SCHEDULING' => 
-                'Dear Candidate,<br><br>
+            'INTERVIEW_SCHEDULING' =>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
 
-            'VERIFICATION_SUCCESSFULL' => 
-                'Dear Candidate,<br><br>
+            'VERIFICATION_SUCCESSFULL' =>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
 
-            'ADDMISSION_APPROVED' => 
-                'Dear Candidate,<br><br>
+            'ADDMISSION_APPROVED' =>
+            'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
-        ];        
+        ];
 
         $defaultBody = $defaultBodies[$key] ?? 'Default email content.';
 
@@ -17561,5 +18299,290 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             'message' => 'Message job queued successfully',
             'success' => true
         ]);
+    }
+
+
+    // Mahima 02-02-2026
+    public function getAllHouses(Request $request)
+    {
+        try {
+
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $query = DB::table('house as h')
+                ->select('h.*')
+                ->where('h.academic_yr', $academic_year);
+
+            $houses = $query->orderBy('h.house_name', 'asc')->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'House data fetched successfully',
+                'data' => $houses
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // public function insertHouse(Request $request)
+    // {
+    //     try {
+
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         $exists = DB::table('house')
+    //             ->where('house_name', $request->house_name)
+    //             ->where('academic_yr', $academic_year)
+    //             ->exists();
+
+    //         if ($exists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House already exists for this academic year'
+    //             ], 409);
+    //         }
+
+    //         $houseId = DB::table('house')->insertGetId([
+    //             'house_name'    => $request->house_name,
+    //             'color_code'         => $request->color,
+    //             'academic_yr' => $academic_year,
+    //         ]);
+
+    //         return response()->json([
+    //             'success'  => true,
+    //             'message'  => 'House inserted successfully',
+    //             'house_id' => $houseId
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function insertHouse(Request $request)
+    {
+        try {
+
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $exists = DB::table('house')
+                ->where('academic_yr', $academic_year)
+                ->where(function ($query) use ($request) {
+                    $query->where('house_name', $request->house_name)
+                        ->orWhere('color_code', $request->color);
+                })
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House name or color already exists for this academic year'
+                ], 409);
+            }
+
+            $houseId = DB::table('house')->insertGetId([
+                'house_name' => $request->house_name,
+                'color_code' => $request->color,
+                'academic_yr' => $academic_year,
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'House inserted successfully',
+                'house_id' => $houseId
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateHouse(Request $request, $id)
+    {
+        try {
+
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            // Check house exists
+            $house = DB::table('house')
+                ->where('house_id', $id)
+                ->first();
+
+            if (!$house) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not found'
+                ], 404);
+            }
+
+            $exists = DB::table('house')
+                ->where('academic_yr', $academic_year)
+                ->where('house_id', '!=', $id)
+                ->where(function ($query) use ($request) {
+                    $query->where('house_name', $request->house_name)
+                        ->orWhere('color_code', $request->color_code);
+                })
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House name or color already exists for this academic year'
+                ], 409);
+            }
+
+            // Check if house is used in student table
+            $isUsed = DB::table('student')
+                ->where('house', $id)
+                ->exists();
+
+            if ($isUsed) {
+
+                // Only update house_name
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->update([
+                        'house_name' => $request->house_name,
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House name updated successfully.'
+                ], 200);
+            } else {
+
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->update([
+                        'house_name' => $request->house_name,
+                        'color_code' => $request->color_code,
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House updated successfully'
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // public function updateHouse(Request $request, $id)
+    // {
+    //     try {
+
+    //         // Check house exists
+    //         $house = DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->first();
+
+    //         if (!$house) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House not found'
+    //             ], 404);
+    //         }
+
+    //         // Check if house is used in student table
+    //         $isUsed = DB::table('student')
+    //             ->where('house', $id)
+    //             ->exists();
+
+    //         if ($isUsed) {
+
+    //             // Only update house_name
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House name updated successfully.'
+    //             ], 200);
+    //         } else {
+
+
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                     'color_code' => $request->color_code,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House updated successfully'
+    //             ], 200);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error'   => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function deleteHouse($id)
+    {
+        try {
+
+
+            $house = DB::table('house')
+                ->where('house_id', $id)
+                ->first();
+
+            if (!$house) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not found'
+                ], 404);
+            }
+
+            $isUsed = DB::table('student')
+                ->where('house', $id)
+                ->exists();
+
+            if ($isUsed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House cannot be deleted because it is used.'
+                ], 400);
+            }
+
+            // Delete house
+            DB::table('house')
+                ->where('house_id', $id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'House deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 }
