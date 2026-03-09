@@ -1010,7 +1010,7 @@ class LibraryController extends Controller
             ->where('library_member.member_type', 'S')
             ->where('library_member.status', 'A')
             ->where('student.student_id' , $student->student_id)
-            ->where('student.academic_year' , $academicYr);
+            ->where('student.academic_yr' , $academicYr)->exists();
 
             if (!$memberExists) {
                 return response()->json([
