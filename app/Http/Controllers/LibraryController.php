@@ -3055,14 +3055,19 @@ class LibraryController extends Controller
                         //     }
                         // }
                         if ($frequency === 'Bimonthly') {
+
                             $month = date('m', strtotime($received_by_date));
-                            $year = date('Y', strtotime($received_by_date));
+                            $year  = date('Y', strtotime($received_by_date));
+
                             if ($j % 2 == 0) {
-                                $received_by_date = $year . '-' . $month . '-' . $bimonthly_second_date;
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($year . '-' . $month . '-' . str_pad($bimonthly_second_date, 2, '0', STR_PAD_LEFT))
+                                );
                             } else {
                                 $received_by_date = date(
                                     'Y-m-d',
-                                    strtotime($year . '-' . $month . '-' . $receiving_date . ' +1 month')
+                                    strtotime($year . '-' . $month . '-' . str_pad($receiving_date, 2, '0', STR_PAD_LEFT) . ' +1 month')
                                 );
                             }
                         }
