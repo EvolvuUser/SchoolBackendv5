@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\HTTP\Services\SmartMailer;
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendReminderRemarkJob;
 use App\Jobs\IssuedBookMessageJob;
+use App\Jobs\ReturnPendingBookJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -125,7 +127,9 @@ class LibraryController extends Controller
     // 1) GET /api/category-group
     public function index()
     {
-        $rows = DB::table('category_group')->orderBy('category_group_name')->get();
+        $rows = DB::table('category_group')
+        ->orderBy('category_group_id', 'DESC')
+        ->get();
         return response()->json($rows, 200);
     }
 
@@ -914,7 +918,9 @@ class LibraryController extends Controller
     {
         $memberId = $request->input('member_id');
         $grn_no = $request->input('grn_no');
-        $mtype = $request->input('member_type');
+        $mtype = $request->input('mtype');
+
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
 
         if (!$memberId && !$grn_no) {
             return response()->json([
@@ -937,7 +943,34 @@ class LibraryController extends Controller
         //     ], 404);
         // }
 
+        $member = null;
+
         if ($memberId) {
+
+            $memberExists = DB::table('library_member')
+                ->where('member_id', $memberId)
+                ->where('member_type', $mtype)
+                ->exists();
+
+            // $query = DB::table('library_member')
+            //     ->where('member_id', $memberId)
+            //     ->where('member_type', $mtype);
+
+            if (!$memberExists) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'This is not a library member',
+                    // 'query' => $query->toSql(), 
+                    // 'queryBinding' => $query->getBindings()
+                ], 404);
+            }
+
+            if($mtype == 'S') {
+                $member = DB::table("student")->where('student_id' , $memberId)->first();
+            } else {
+                $member = DB::table("teacher")->where('teacher_id' , $memberId)->first();
+            }
+
             $issuedBooks = DB::table('book_copies as d')
                 ->join('book as b', 'b.book_id', '=', 'd.book_id')
                 ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
@@ -957,6 +990,37 @@ class LibraryController extends Controller
                 ->where('a.return_date', '0000-00-00')
                 ->get();
         } else if ($grn_no) {
+
+            $student = DB::table('student')
+                ->where('reg_no', $grn_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0')
+                ->first();
+
+            if (!$student) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid GRN number',
+                ], 404);
+            }
+
+            $memberExists = DB::table('student')
+            ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
+            ->where('library_member.member_type', 'S')
+            ->where('library_member.status', 'A')
+            ->where('student.student_id' , $student->student_id)
+            ->where('student.academic_yr' , $academicYr)->exists();
+
+            if (!$memberExists) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'This is not a library member'
+                ], 404);
+            }
+
+            $member = $student;
+
             $issuedBooks = DB::table('book_copies as d')
                 ->join('book as b', 'b.book_id', '=', 'd.book_id')
                 ->join('issue_return as a', 'a.copy_id', '=', 'd.copy_id')
@@ -990,6 +1054,7 @@ class LibraryController extends Controller
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
+            'member'=> $member, 
         ], 200);
     }
 
@@ -2481,6 +2546,7 @@ class LibraryController extends Controller
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             $data = DB::table('periodicals')
+                ->orderby('periodicals.periodical_id', 'desc')  // defaults to created_at
                 ->get();
 
             return response()->json([
@@ -2599,6 +2665,14 @@ class LibraryController extends Controller
         try {
             $this->authenticateUser();
 
+            // Check if a subscription exists for this periodical. If yes, do not allow deletion.
+            if (DB::table('subscription')->where('periodical_id', $id)->exists()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The periodical cannot be deleted because a subscription already exists for it.',
+                ], 409);
+            }
+
             $deleted = DB::table('periodicals')
                 ->where('periodical_id', $id)
                 ->delete();
@@ -2637,6 +2711,7 @@ class LibraryController extends Controller
 
             $data = DB::table('subscription')
                 ->leftJoin('periodicals', 'periodicals.periodical_id', '=', 'subscription.periodical_id')
+                ->orderby('subscription.subscription_id', 'DESC')
                 ->get();
 
             return response()->json([
@@ -2673,7 +2748,19 @@ class LibraryController extends Controller
             $from_date = date('Y-m-d', strtotime($request->from_date));
             $to_date = date('Y-m-d', strtotime($request->to_date));
             $receiving_date = $request->input('receiving_date');
+            $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = 'Active';
+
+            $periodical = DB::table('periodicals')->where('periodical_id',$periodical_id)->first();
+
+            $frequency = $periodical->frequency;
+
+            if ($frequency == 'Bimonthly' && !$bimonthly_second_date) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+                ], 400);
+            }
 
             if (!$periodical_id || !$from_date || !$to_date || !$receiving_date) {
                 return response()->json([
@@ -2692,6 +2779,7 @@ class LibraryController extends Controller
                 'to_date' => $to_date,
                 'status' => $status,
                 'receiving_date' => $receiving_date,
+                'bimonthly_second_date' => $bimonthly_second_date,
             ]);
 
             return response()->json([
@@ -2791,7 +2879,7 @@ class LibraryController extends Controller
             if ($issues->count() > 0) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Subscription Details cannot be deleted'
+                    'message' => 'Subscription details cannot be deleted because the status is expired.'
                 ], 400);
             }
 
@@ -2884,9 +2972,22 @@ class LibraryController extends Controller
 
             $subscription_to_date = $request->input('subscription_to_date');
             $receiving_date = $request->input('receiving_date');
+            // $bimonthly_second_date = $request->input('bimonthly_second_date');
             $frequency = $request->input('frequency');
             $volume_lists = $request->input('volume');
             $issue_lists = $request->input('issue');
+
+            // if ($frequency === 'Bimonthly' && !$bimonthly_second_date) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+            //     ], 400);
+            // }
+
+            $subscription = DB::table('subscription')->where('subscription_id' , $subscription_id) 
+            ->first();
+
+            $bimonthly_second_date = $subscription->bimonthly_second_date;
 
             if (
                 !$subscription_id ||
@@ -2895,7 +2996,8 @@ class LibraryController extends Controller
                 !$receiving_date ||
                 !$frequency ||
                 !$volume_lists ||
-                !$issue_lists
+                !$issue_lists || 
+                !$bimonthly_second_date
             ) {
                 return response()->json([
                     'status' => false,
@@ -2940,19 +3042,35 @@ class LibraryController extends Controller
                             );
                         }
 
-                        if ($frequency === 'Bimonthly') {
-                            $received_by_date = date(
-                                'Y-m-d',
-                                strtotime('+15 day', strtotime($received_by_date))
-                            );
+                        // if ($frequency === 'Bimonthly') {
+                        //     $received_by_date = date(
+                        //         'Y-m-d',
+                        //         strtotime('+15 day', strtotime($received_by_date))
+                        //     );
 
-                            if ($j % 2 != 0) {
-                                $month = date('m', strtotime($received_by_date));
-                                $year = date('Y', strtotime($received_by_date));
-                                $received_by_date = $year . '-' . $month . '-' . $receiving_date;
+                        //     if ($j % 2 != 0) {
+                        //         $month = date('m', strtotime($received_by_date));
+                        //         $year = date('Y', strtotime($received_by_date));
+                        //         $received_by_date = $year . '-' . $month . '-' . $receiving_date;
+                        //     }
+                        // }
+                        if ($frequency === 'Bimonthly') {
+
+                            $month = date('m', strtotime($received_by_date));
+                            $year  = date('Y', strtotime($received_by_date));
+
+                            if ($j % 2 == 0) {
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($year . '-' . $month . '-' . str_pad($bimonthly_second_date, 2, '0', STR_PAD_LEFT))
+                                );
+                            } else {
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($year . '-' . $month . '-' . str_pad($receiving_date, 2, '0', STR_PAD_LEFT) . ' +1 month')
+                                );
                             }
                         }
-
                         if ($frequency === 'Weekly') {
                             $received_by_date = date(
                                 'Y-m-d',
@@ -3411,8 +3529,12 @@ class LibraryController extends Controller
                 $query->where('book_copies.copy_id', $accession_no);
             }
 
+            // if (!empty($location_of_book)) {
+            //     $query->where('book.location_of_book', $location_of_book);
+            // }
+
             if (!empty($location_of_book)) {
-                $query->where('book.location_of_book', $location_of_book);
+                $query->where('book.location_of_book', 'like', '%' . $location_of_book . '%');
             }
 
             $books = $query->get();
@@ -3960,7 +4082,55 @@ class LibraryController extends Controller
         ]);
     }
 
+    public function subscriptionReminderMail(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
 
+        $subscriptionIds = $request->input('subscriptionId');
+        $message = $request->input('message');
+
+        foreach ($subscriptionIds as $subId) {
+
+            $subscription = DB::table('subscription as s')
+                ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+                ->where('s.subscription_id', $subId)
+                ->select('s.*', 'p.*')
+                ->first();
+
+            if (!$subscription) {
+                continue;
+            }
+
+            $email = $subscription->email_ids ?? null;
+            $title = $subscription->title ?? null;
+            $subscriptionNo = $subscription->subscription_no ?? null;
+
+            if ($email && $title && $subscriptionNo) {
+
+                $subject = "Subscription Reminder ";
+                // :- {$title} - {$subscriptionNo}";
+
+                $mailData = [
+                    'subject' => $subject,
+                    'textmsg' => $message,
+                ];
+
+                smart_mail(
+                    $email,
+                    $subject,
+                    'emails.subscription_reminder',
+                    $mailData
+                );
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Subscription reminder emails sent successfully.',
+            'success' => true
+        ]);
+    }
 
     public function periodicalNotReceivedReminder(Request $request)
     {
@@ -3989,6 +4159,59 @@ class LibraryController extends Controller
         return response()->json([
             'status' => true,
             'data'   => $data
+        ]);
+    }
+
+
+    public function periodicalReminderMail(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+        $periodicalsIds = $request->input('periodicalId');
+        $message = $request->input('message');
+
+        foreach ($periodicalsIds as $subId) {
+
+            $periodicals = DB::table('periodicals as a')
+                ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
+                ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
+                ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
+                ->where('d.subscription_issue_id', $subId)
+                ->select('a.*', 'b.*', 'c.*', 'd.*')
+                ->first();
+
+            if (!$periodicals) {
+                continue;
+            }
+
+            $email = $periodicals->email_ids ?? null;
+            $title = $periodicals->title ?? null;
+            $subscriptionNo = $periodicals->subscription_issue_id ?? null;
+
+            if ($email && $title && $subscriptionNo) {
+
+                $subject = "Periodicals Reminder ";
+                // :- {$title} - {$subscriptionNo}";
+
+                $mailData = [
+                    'subject' => $subject,
+                    'textmsg' => $message,
+                ];
+
+                smart_mail(
+                    $email,
+                    $subject,
+                    'emails.subscription_reminder',
+                    $mailData
+                );
+            }
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Periodicals reminder emails sent successfully.',
+            'success' => true
         ]);
     }
 
@@ -4076,7 +4299,8 @@ class LibraryController extends Controller
 
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
-                ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                // ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
+                ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
                     $query->whereNull('a.return_date')
@@ -4144,7 +4368,26 @@ class LibraryController extends Controller
         }
     }
 
+    public function returnBooksPendingWhatsapp(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $members = $request->input('member_id');
+        $message = $request->input('message');
+        $schoolsettings = getSchoolSettingsData();
+        $whatsappintegration = $schoolsettings->whatsapp_integration;
+        $smsintegration = $schoolsettings->sms_integration;
 
+        if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
+            ReturnPendingBookJob::dispatch($members, $message);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Messages for return pending book.',
+            'success' => true
+        ]);
+    }
 
 
     public function libraryDashboard(Request $request)

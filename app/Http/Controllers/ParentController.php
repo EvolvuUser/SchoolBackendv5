@@ -49,6 +49,8 @@ class ParentController extends Controller
                 ], 404);
             }
 
+            $userMaster = DB::table('user_master')->where('reg_id' , $user->reg_id)->first();
+
             // Fetch Children
             $children = DB::table('student')
                 ->select(
@@ -67,7 +69,8 @@ class ParentController extends Controller
                 'message' => 'Parent details fetched successfully',
                 'data' => [
                     'parent' => $parent,
-                    'children' => $children
+                    'children' => $children,
+                    'userMaster' => $userMaster,
                 ]
             ], 200);
 

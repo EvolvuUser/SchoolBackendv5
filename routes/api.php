@@ -151,6 +151,7 @@
             Route::get('/admin/applications/approval-list/', [AdminController::class, 'indexApprovalList']);
             Route::post('/admin/applications/approval-list/', [AdminController::class, 'updateApprovalList']);
 
+            Route::get('/admin/applications/file/download/', [AdminController::class, 'directFileDownload']);
             Route::get('/admin/applications/{form_id}', [AdminController::class, 'showApplication']);
             Route::get('/admin/applications/{form_id}/files', [AdminController::class, 'listApplicationFiles']);
             Route::patch('/admin/applications/{form_id}/status', [AdminController::class, 'updateApplicationStatus']);
@@ -1476,6 +1477,34 @@
             // Customized Student Report Dev Name - Mahima Chaudhari 19-02-2026
             Route::get('/get_customizedstudentreport', [ReportController::class, 'customizedStudentReport']);
 
+            // Worldline All Orders report Dev Name - Mahima Chaudhari 23-02-2026
+            Route::get('/get_worldline_all_orders', [ReportController::class, 'getWorldlineAllOrderIdsReport']);
+
+            // Account type API Dev Name - Mahima Chaudhari 24-02-2026
+            Route::get('/get_account_type', [ReportController::class, 'getAccountType']);
+
+            // All Addmission form report Dev Name- Mahima Chaudhari 26-02-2026
+            Route::get('/get_all_admission_form_report', [ReportController::class, 'getAllAdmissionFormList']);
+
+            // Send Whats app message return book pending  27-02-2026
+            Route::post('/book_return_pending_wp_message', [LibraryController::class, 'returnBooksPendingWhatsapp']);
+
+            // Send Mail subscription Reminder 28-02-2026
+            Route::post('/subscription/reminder/mail', [LibraryController::class, 'subscriptionReminderMail']);
+
+            // Send Mail periodicals Reminder 28-02-2026
+            Route::post('/periodicals/reminder/mail', [LibraryController::class, 'periodicalReminderMail']);
+
+
+            // House CRUD Dev Name :- Mahima Chaudhari 02-03-2026
+            Route::get('/get_all_houses', [AdminController::class, 'getAllHouses']);
+
+            Route::post('/create_house', [AdminController::class, 'insertHouse']);
+
+            Route::put('/update_house/{id}', [AdminController::class, 'updateHouse']);
+
+            Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
@@ -1577,3 +1606,19 @@
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['jwt.auth']);
+
+
+    Route::get('/test-log', function () {
+
+        $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
+
+        if (!file_exists($logPath)) {
+            return response("Log file not found at: {$logPath}", 404);
+        }
+
+        $contents = file_get_contents($logPath);
+
+        return response($contents, 200, [
+            'Content-Type' => 'text/plain',
+        ]);
+    });
