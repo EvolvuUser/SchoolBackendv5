@@ -2664,7 +2664,7 @@ class LibraryController extends Controller
             $this->authenticateUser();
 
             // Check if a subscription exists for this periodical. If yes, do not allow deletion.
-            if (DB::table('subscription')->where('periodical_id', $periodical_id)->exists()) {
+            if (DB::table('subscription')->where('periodical_id', $id)->exists()) {
                 return response()->json([
                     'status' => false,
                     'message' => 'The periodical cannot be deleted because a subscription already exists for it.',
