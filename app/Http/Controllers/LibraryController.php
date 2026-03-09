@@ -2828,7 +2828,19 @@ class LibraryController extends Controller
             $from_date = $request->input('from_date') ? date('Y-m-d', strtotime($request->input('from_date'))) : $subscription->from_date;
             $to_date = $request->input('to_date') ? date('Y-m-d', strtotime($request->input('to_date'))) : $subscription->to_date;
             $receiving_date = $request->input('receiving_date') ?? $subscription->receiving_date;
+            $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = $request->input('status') ?? $subscription->status;
+
+            $periodical = DB::table('periodicals')->where('periodical_id',$subscription->periodical_id)->first();
+
+            $frequency = $periodical->frequency;
+
+            if ($frequency == 'Bimonthly' && !$bimonthly_second_date) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+                ], 400);
+            }
 
             $updated = DB::table('subscription')
                 ->where('subscription_id', $subscription_id)
@@ -2836,6 +2848,7 @@ class LibraryController extends Controller
                     'from_date' => $from_date,
                     'to_date' => $to_date,
                     'receiving_date' => $receiving_date,
+                    'bimonthly_second_date' => $bimonthly_second_date,
                     'status' => $status,
                 ]);
 
