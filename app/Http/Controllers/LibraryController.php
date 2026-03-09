@@ -127,7 +127,7 @@ class LibraryController extends Controller
     // 1) GET /api/category-group
     public function index()
     {
-        $rows = DB::table('category_group')->orderBy('category_group_name')->get();
+        $rows = DB::table('category_group')->orderBy('category_group_name')->get()->orderBy('category_group_id' , 'DESC');
         return response()->json($rows, 200);
     }
 
