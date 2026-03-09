@@ -1513,6 +1513,15 @@
 
             Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
 
+            // Impersonate
+            // ########################
+            // Dynamic Flash
+            // ########################
+            // ------------------------- Tables Used
+            /*
+            * help_guides - To store start , end.
+            */
+            // -------------------------
             Route::get('/menus' , [GuideNavigationController::class , 'menus']);
             Route::post('/help-guides/create' , [GuideNavigationController::class , 'createHelpGuides']);
         });
