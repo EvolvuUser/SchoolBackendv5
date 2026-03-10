@@ -15770,6 +15770,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'required|integer',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
+                'age_start_date' => 'nullable|date',
+                'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
             ]);
 
@@ -15781,6 +15783,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'end_date' => $request->input('end_date')
                     ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
+                    : null,
+                'age_start_date' => $request->input('age_start_date')
+                    ? Carbon::parse($request->input('age_start_date'))->format('Y-m-d')
+                    : null,
+                'age_end_date' => $request->input('age_end_date')
+                    ? Carbon::parse($request->input('age_end_date'))->format('Y-m-d')
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
