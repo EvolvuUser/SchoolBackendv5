@@ -1513,13 +1513,14 @@
 
             Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
 
-            // Impersonate
+            // Dynamic Flash Cards
             // ########################
-            // Dynamic Flash
+            // Dynamic Flash Cards
             // ########################
             // ------------------------- Tables Used
             /*
-            * help_guides - To store start , end.
+            * help_guides - To store meta 
+            * help_guide_steps - To store the actual steps
             */
             // -------------------------
             Route::get('/menus' , [GuideNavigationController::class , 'menus']);
