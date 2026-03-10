@@ -26,8 +26,15 @@ class ReturnPendingBookJob implements ShouldQueue
         $this->message   = $message;
     }
 
+
     public function handle(): void
     {
+        // \Log::info('ReturnPendingBookJob running', [
+        //     'members' => $this->members,
+        //     'message' => $this->message
+        // ]);
+
+
         // $members = DB::table('issue_return as a')
         //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
         //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
