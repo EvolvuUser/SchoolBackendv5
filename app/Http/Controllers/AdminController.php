@@ -15781,17 +15781,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'start_date' => $request->input('start_date')
                     ? Carbon::parse($request->input('start_date'))->format('Y-m-d')
                     : null,
-                'end_date' => $request->input('end_date')
-                    ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
-                    : null,
                 'age_start_date' => $request->input('age_start_date')
                     ? Carbon::parse($request->input('age_start_date'))->format('Y-m-d')
                     : null,
                 'age_end_date' => $request->input('age_end_date')
                     ? Carbon::parse($request->input('age_end_date'))->format('Y-m-d')
                     : null,
+                'end_date' => $request->input('end_date')
+                    ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
+                    : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
+                'academic_yr' => $academic_year,  // adjust if using JWT
             ];
 
             // 🔍 Check record exists
