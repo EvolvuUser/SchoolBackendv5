@@ -15563,8 +15563,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'required|integer',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
-                'age_start_date' => 'nullable',
-                'age_end_date' => 'nullable',
+                'age_start_date' => 'nullable|date',
+                'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
             ]);
 
@@ -15770,8 +15770,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'required|integer',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
-                'age_start_date' => 'nullable',
-                'age_end_date' => 'nullable',
+                'age_start_date' => 'nullable|date',
+                'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
             ]);
 
