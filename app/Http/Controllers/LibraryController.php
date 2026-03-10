@@ -1010,7 +1010,7 @@ class LibraryController extends Controller
             ->where('library_member.member_type', 'S')
             ->where('library_member.status', 'A')
             ->where('student.student_id' , $student->student_id)
-            ->where('student.academic_year' , $academicYr);
+            ->where('student.academic_yr' , $academicYr)->exists();
 
             if (!$memberExists) {
                 return response()->json([
@@ -2748,7 +2748,19 @@ class LibraryController extends Controller
             $from_date = date('Y-m-d', strtotime($request->from_date));
             $to_date = date('Y-m-d', strtotime($request->to_date));
             $receiving_date = $request->input('receiving_date');
+            $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = 'Active';
+
+            $periodical = DB::table('periodicals')->where('periodical_id',$periodical_id)->first();
+
+            $frequency = $periodical->frequency;
+
+            if ($frequency == 'Bimonthly' && !$bimonthly_second_date) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+                ], 400);
+            }
 
             if (!$periodical_id || !$from_date || !$to_date || !$receiving_date) {
                 return response()->json([
@@ -2767,6 +2779,7 @@ class LibraryController extends Controller
                 'to_date' => $to_date,
                 'status' => $status,
                 'receiving_date' => $receiving_date,
+                'bimonthly_second_date' => $bimonthly_second_date,
             ]);
 
             return response()->json([
@@ -2815,7 +2828,19 @@ class LibraryController extends Controller
             $from_date = $request->input('from_date') ? date('Y-m-d', strtotime($request->input('from_date'))) : $subscription->from_date;
             $to_date = $request->input('to_date') ? date('Y-m-d', strtotime($request->input('to_date'))) : $subscription->to_date;
             $receiving_date = $request->input('receiving_date') ?? $subscription->receiving_date;
+            $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = $request->input('status') ?? $subscription->status;
+
+            $periodical = DB::table('periodicals')->where('periodical_id',$subscription->periodical_id)->first();
+
+            $frequency = $periodical->frequency;
+
+            if ($frequency == 'Bimonthly' && !$bimonthly_second_date) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'bimonthly_second_date is required for Bimonthly frequency'
+                ], 400);
+            }
 
             $updated = DB::table('subscription')
                 ->where('subscription_id', $subscription_id)
@@ -2823,6 +2848,7 @@ class LibraryController extends Controller
                     'from_date' => $from_date,
                     'to_date' => $to_date,
                     'receiving_date' => $receiving_date,
+                    'bimonthly_second_date' => $bimonthly_second_date,
                     'status' => $status,
                 ]);
 
@@ -2971,6 +2997,11 @@ class LibraryController extends Controller
             //     ], 400);
             // }
 
+            $subscription = DB::table('subscription')->where('subscription_id' , $subscription_id) 
+            ->first();
+
+            $bimonthly_second_date = $subscription->bimonthly_second_date;
+
             if (
                 !$subscription_id ||
                 !$volume_start_dates ||
@@ -2978,7 +3009,8 @@ class LibraryController extends Controller
                 !$receiving_date ||
                 !$frequency ||
                 !$volume_lists ||
-                !$issue_lists
+                !$issue_lists || 
+                !$bimonthly_second_date
             ) {
                 return response()->json([
                     'status' => false,
@@ -3023,30 +3055,35 @@ class LibraryController extends Controller
                             );
                         }
 
-                        if ($frequency === 'Bimonthly') {
-                            $received_by_date = date(
-                                'Y-m-d',
-                                strtotime('+15 day', strtotime($received_by_date))
-                            );
-
-                            if ($j % 2 != 0) {
-                                $month = date('m', strtotime($received_by_date));
-                                $year = date('Y', strtotime($received_by_date));
-                                $received_by_date = $year . '-' . $month . '-' . $receiving_date;
-                            }
-                        }
                         // if ($frequency === 'Bimonthly') {
-                        //     $month = date('m', strtotime($received_by_date));
-                        //     $year = date('Y', strtotime($received_by_date));
-                        //     if ($j % 2 == 0) {
-                        //         $received_by_date = $year . '-' . $month . '-' . $bimonthly_second_date;
-                        //     } else {
-                        //         $received_by_date = date(
-                        //             'Y-m-d',
-                        //             strtotime($year . '-' . $month . '-' . $receiving_date . ' +1 month')
-                        //         );
+                        //     $received_by_date = date(
+                        //         'Y-m-d',
+                        //         strtotime('+15 day', strtotime($received_by_date))
+                        //     );
+
+                        //     if ($j % 2 != 0) {
+                        //         $month = date('m', strtotime($received_by_date));
+                        //         $year = date('Y', strtotime($received_by_date));
+                        //         $received_by_date = $year . '-' . $month . '-' . $receiving_date;
                         //     }
                         // }
+                        if ($frequency === 'Bimonthly') {
+
+                            $month = date('m', strtotime($received_by_date));
+                            $year  = date('Y', strtotime($received_by_date));
+
+                            if ($j % 2 == 0) {
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($year . '-' . $month . '-' . str_pad($bimonthly_second_date, 2, '0', STR_PAD_LEFT))
+                                );
+                            } else {
+                                $received_by_date = date(
+                                    'Y-m-d',
+                                    strtotime($year . '-' . $month . '-' . str_pad($receiving_date, 2, '0', STR_PAD_LEFT) . ' +1 month')
+                                );
+                            }
+                        }
                         if ($frequency === 'Weekly') {
                             $received_by_date = date(
                                 'Y-m-d',

@@ -15503,24 +15503,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $academic_year = JWTAuth::getPayload()->get('academic_year');
         $role = $user->role_id;
 
-        if (in_array($role, ['A', 'U', 'M', 'P'])) {
-            $data = DB::table('new_admission_class as a')
-                ->leftJoin('class', 'class.class_id', '=', 'a.class_id')
-                ->select('a.*', 'class.name as class_name')
-                ->where('a.academic_yr', $academic_year)
-                ->orderBy('a.class_id', 'ASC')
-                ->get();
+        $data = DB::table('new_admission_class as a')
+            ->leftJoin('class', 'class.class_id', '=', 'a.class_id')
+            ->select('a.*', 'class.name as class_name')
+            ->where('a.academic_yr', $academic_year)
+            ->orderBy('a.class_id', 'ASC')
+            ->get();
 
-            return response()->json([
-                'status' => true,
-                'data' => $data
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => "You don't have access to this resource"
-            ], 405);
-        }
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ], 200);
+
     }
 
     public function getAdmissionClassesNotCreated(Request $request)
@@ -15569,6 +15563,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'required|integer',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
+                'age_start_date' => 'nullable|date',
+                'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
             ]);
 
@@ -15577,6 +15573,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => $request->input('class_id'),
                 'start_date' => $request->input('start_date')
                     ? Carbon::parse($request->input('start_date'))->format('Y-m-d')
+                    : null,
+                'age_start_date' => $request->input('age_start_date')
+                    ? Carbon::parse($request->input('age_start_date'))->format('Y-m-d')
+                    : null,
+                'age_end_date' => $request->input('age_end_date')
+                    ? Carbon::parse($request->input('age_end_date'))->format('Y-m-d')
                     : null,
                 'end_date' => $request->input('end_date')
                     ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
@@ -15768,6 +15770,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'class_id' => 'required|integer',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date',
+                'age_start_date' => 'nullable|date',
+                'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
             ]);
 
@@ -15777,11 +15781,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'start_date' => $request->input('start_date')
                     ? Carbon::parse($request->input('start_date'))->format('Y-m-d')
                     : null,
+                'age_start_date' => $request->input('age_start_date')
+                    ? Carbon::parse($request->input('age_start_date'))->format('Y-m-d')
+                    : null,
+                'age_end_date' => $request->input('age_end_date')
+                    ? Carbon::parse($request->input('age_end_date'))->format('Y-m-d')
+                    : null,
                 'end_date' => $request->input('end_date')
                     ? Carbon::parse($request->input('end_date'))->format('Y-m-d')
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
+                'academic_yr' => $academic_year,  // adjust if using JWT
             ];
 
             // 🔍 Check record exists
