@@ -28,6 +28,76 @@ class ReturnPendingBookJob implements ShouldQueue
 
     public function handle(): void
     {
+        // $members = DB::table('issue_return as a')
+        //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
+        //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+        //     ->leftJoin('student as s', function ($join) {
+        //         $join->on('a.member_id', '=', 's.student_id')
+        //             ->where('a.member_type', 'S');
+        //     })
+        //     ->leftJoin('teacher as t', function ($join) {
+        //         $join->on('a.member_id', '=', 't.teacher_id')
+        //             ->where('a.member_type', 'T');
+        //     })
+        //     ->whereIn('a.member_id', $this->members)
+        //     ->whereDate('a.due_date', '<', now())
+        //     ->where(function ($query) {
+        //         $query->whereNull('a.return_date')
+        //             ->orWhere('a.return_date', '0000-00-00');
+        //     })
+        //     ->select(
+        //         'a.member_id',
+        //         'a.copy_id',
+        //         'b.phone_no',
+        //         'c.book_title',
+        //         DB::raw("COALESCE(s.first_name, t.name) as member_name")
+        //     )
+        //     ->get();
+
+        // $schoolSettings = getSchoolSettingsData();
+        // $wamids = [];
+
+        // foreach ($members as $member) {
+
+        //     if (!$member->phone_no) {
+        //         continue;
+        //     }
+
+        //     $finalMessage = $member->member_name . ', ' .
+        //         $member->book_title . ' ' .
+        //         ($this->message ?? 'yet not returned.');
+
+        //     // WhatsApp
+        //     if ($schoolSettings->whatsapp_integration === 'Y') {
+
+        //         $response = app(WhatsAppService::class)->sendTextMessage(
+        //             $member->phone_no,
+        //             'emergency_message',
+        //             [$finalMessage]
+        //         );
+
+        //         if (!isset($response['code'])) {
+
+        //             $wamid = $response['messages'][0]['id'] ?? null;
+
+        //             if ($wamid) {
+        //                 $wamids[] = $wamid;
+
+        //                 DB::table('redington_webhook_details')->insert([
+        //                     'wa_id' => $wamid,
+        //                     'phone_no' => $member->phone_no,
+        //                     'stu_teacher_id' => $member->member_id,
+        //                     'notice_id' => $member->copy_id,
+        //                     'message_type' => 'returnBookPending',
+        //                     'created_at' => now()
+        //                 ]);
+        //             }
+        //         }
+        //     }
+        // }
+
+        // sleep(20);
+
         $members = DB::table('issue_return as a')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
             ->join('contact_details as b', 'a.member_id', '=', 'b.id')
@@ -57,17 +127,28 @@ class ReturnPendingBookJob implements ShouldQueue
         $schoolSettings = getSchoolSettingsData();
         $wamids = [];
 
-        foreach ($members as $member) {
+        // GROUP BY MEMBER
+        $groupedMembers = $members->groupBy(function ($item) {
+            return $item->member_id . '_' . $item->phone_no;
+        });
+
+        foreach ($groupedMembers as $group) {
+
+            $member = $group->first();
 
             if (!$member->phone_no) {
                 continue;
             }
 
-            $finalMessage = $member->member_name . ', ' .
-                $member->book_title . ' ' .
-                ($this->message ?? 'yet not returned.');
+            // collect book titles
+            $bookTitles = $group->pluck('book_title')->implode(', ');
 
-            // ✅ WhatsApp
+            $finalMessage = $member->member_name . ', ' .
+                'Please return the following books: ' .
+                $bookTitles . '. ' .
+                ($this->message ?? '');
+
+            // WhatsApp
             if ($schoolSettings->whatsapp_integration === 'Y') {
 
                 $response = app(WhatsAppService::class)->sendTextMessage(
@@ -83,14 +164,17 @@ class ReturnPendingBookJob implements ShouldQueue
                     if ($wamid) {
                         $wamids[] = $wamid;
 
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $wamid,
-                            'phone_no' => $member->phone_no,
-                            'stu_teacher_id' => $member->member_id,
-                            'notice_id' => $member->copy_id,
-                            'message_type' => 'returnBookPending',
-                            'created_at' => now()
-                        ]);
+                        foreach ($group as $book) {
+
+                            DB::table('redington_webhook_details')->insert([
+                                'wa_id' => $wamid,
+                                'phone_no' => $member->phone_no,
+                                'stu_teacher_id' => $member->member_id,
+                                'notice_id' => $book->copy_id,
+                                'message_type' => 'returnBookPending',
+                                'created_at' => now()
+                            ]);
+                        }
                     }
                 }
             }
@@ -98,7 +182,7 @@ class ReturnPendingBookJob implements ShouldQueue
 
         sleep(20);
 
-        // ✅ SMS Fallback
+        //  SMS Fallback
         if ($schoolSettings->sms_integration === 'Y' && !empty($wamids)) {
 
             $failedMessages = DB::table('redington_webhook_details')
