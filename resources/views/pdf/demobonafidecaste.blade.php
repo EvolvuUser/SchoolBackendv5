@@ -8,7 +8,7 @@
     padding: 0;
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/bonafide.jpg');
+    background-image: url('https://sms.evolvu.in/public/democharacter_certificate.png');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
@@ -32,7 +32,7 @@
 		<br>
 	    
     <div style="width:95%;margin-top:20%;;text-align:center;display: inline-block">
-	    	<img src="url('http://103.159.85.174/SchoolBackendv5/public/bonafide.jpg')"  class="image_thumbnail studimg" width="100" height="100" style="padding-left: 70%;"/>
+	    	<img src="url('http://103.159.85.174/SchoolBackendv5/public/democharacter_certificate.png')"  class="image_thumbnail studimg" width="100" height="100" style="padding-left: 70%;"/>
         <table width="100%" border="0">
             <tr>
 		    <td width="10%"></td>
@@ -45,7 +45,6 @@
                 <td width="10%"></td>
 		    <td width="" colspan="4">This is to certify <?php echo $data->stud_name; ?> was a student of [SCHOOL NAME] in class <?php echo $data->class_division; ?> for the academic session <?php echo $data->academic_yr; ?> .as per the school record her details are as follows</td>
         </tr>
-	    
         </table>
         
      <table width="100%" border="0" style="border-collapse: collapse;">
@@ -68,7 +67,6 @@
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 7px;">Nationality</td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 7px;"><?php echo $data->nationality; ?></td>
-			
 	    </tr>
 	    <tr>
 			<td></td>
@@ -94,19 +92,16 @@
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">Birth Place</td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;"><?php echo $data->birth_place; ?></td>
-			
 	    </tr>
 		<tr>
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">Date of Birth</td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;"><?php echo date_format(date_create($data->dob), 'd-m-Y') . ' ( ' . $data->dob_words . ')'; ?></td>
-			
 	    </tr>
         <tr>
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">Previous School And Class</td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;"><?php echo $data->prev_school_class; ?></td>
-			
 	    </tr>
        	<tr>
 			<td></td>
@@ -114,7 +109,6 @@
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;"><?php echo date_format(date_create($data->admission_date), 'd-m-Y'); ?>
 			</td>
 	    </tr>
-       
         <tr>
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">In which class and when was he/she was learning from</td>
@@ -129,7 +123,6 @@
 			<td></td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;">Behaviour</td>
 			<td align="left" style="border-top:1px solid black;border-left:1px solid black;border-bottom:1px solid black;border-right:1px solid black;padding: 5px;"><?php echo $data->behaviour; ?></td>
-			
 	    </tr>
 		<tr>
 			<td></td>
