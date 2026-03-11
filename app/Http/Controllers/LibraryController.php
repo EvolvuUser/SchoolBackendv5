@@ -3289,7 +3289,7 @@ class LibraryController extends Controller
                 ->where('b.status', 'Active')
                 ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
                 ->where('d.status', '!=', 'Received')
-                ->orderby('d.date_received' , 'desc');
+                ->orderby('d.receive_by_date' , 'desc');
 
             // apply condition only if periodical_id is passed
             if (!empty($periodical_id)) {
