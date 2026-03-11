@@ -3736,7 +3736,7 @@ class LibraryController extends Controller
                 ->when($sourceOfBook, function ($query) use ($sourceOfBook) {
                     $query->where('book_copies.source_of_book', 'LIKE', '%' . trim($sourceOfBook) . '%');
                 })
-                ->orderBy('book_copies.added_date', 'ASC')
+                ->orderBy('book_copies.added_date', 'DESC')
                 ->get();
 
             if ($books->isEmpty()) {
