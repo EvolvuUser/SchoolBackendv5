@@ -1543,8 +1543,12 @@ class AdminController extends Controller
                 $validatedData['academic_qual'] = implode(',', $validatedData['academic_qual']);
             }
 
-            $teacherid = DB::table('teacher')->select('teacher_id')->orderBy('teacher_id', 'DESC')->first();
-            $incrementid = $teacherid->teacher_id + 1;
+            $teacherid = DB::table('teacher')
+                ->select('teacher_id')
+                ->orderBy('teacher_id', 'DESC')
+                ->first();
+
+            $incrementid = $teacherid ? $teacherid->teacher_id + 1 : 1;
 
             // Check if teacher_image_name is null or empty and skip image-saving process if true
             if ($request->input('teacher_image_name') === 'null') {
