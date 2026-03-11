@@ -243,6 +243,26 @@ class CertificateController extends Controller
             // Load a view and pass the data to it
             $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
         } else {
+            $data = [
+                'stud_name' => $request->stud_name,
+                'father_name' => $request->father_name,
+                'class_division' => $request->class_division,
+                'dob' => $request->dob,
+                'dob_words' => $request->dob_words,
+                'purpose' => $request->purpose,
+                'stud_id' => $request->stud_id,
+                'issue_date_bonafide' => $request->date,
+                'nationality' => $request->nationality,
+                'academic_yr' => $customClaims,
+                'IsGenerated' => 'Y',
+                'IsDeleted' => 'N',
+                'IsIssued' => 'N',
+                'generated_by' => $user->reg_id,
+            ];
+            BonafideCertificate::create($data);
+            $data = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
         }
         // Download the generated PDF
         return response()->stream(
