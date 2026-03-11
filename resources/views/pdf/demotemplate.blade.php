@@ -8,7 +8,7 @@
     padding: 0;
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/bonafide.jpg');
+    background-image: url('https://sms.evolvu.in/public/demobonafide.png');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
