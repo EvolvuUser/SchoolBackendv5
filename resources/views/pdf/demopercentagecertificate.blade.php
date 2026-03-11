@@ -220,7 +220,7 @@ if ($class->name == '12') {
 
     $per = explode('.', $data->percentage);
     $per_word = numToWords($per[0]);
-    if ($per[1] != '00') {
+    if (isset($per[1]) && $per[1] != '00') {
         $per_word1 = numToWords($per[1]);
         $percentage_wrds = $per_word . ' Point ' . $per_word1;
     } else {
