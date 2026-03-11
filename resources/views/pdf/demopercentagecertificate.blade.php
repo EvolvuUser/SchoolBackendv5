@@ -159,11 +159,11 @@ if ($class->name == '12') {
             <?php endforeach; ?>
             <tr>
     		    <td width="10%"></td>
-    			<td align="left" width="40%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;"><?php echo $subject[0]->optional_sub_name; ?></td>
+    			<td align="left" width="40%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;"><?php echo $subject->first()?->optional_sub_name ?? ''; ?></td>
     			<?php
                 $marks = DB::table('percentage_marks_certificate')
                     ->where('sr_no', $data->sr_no)
-                    ->where('c_sm_id', $subject[0]->opt_subject_id)
+                    ->where('c_sm_id', $subject->first()?->opt_subject_id)
                     ->value('marks');
                 ?>
     			<td align="center" width="7%" style="border-top:1px solid black;border-left:1px solid black;border-right:1px solid black;padding-left:5%;font-size:15px;" align="center"><?php echo $marks; ?></td>
