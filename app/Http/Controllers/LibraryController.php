@@ -1744,9 +1744,9 @@ class LibraryController extends Controller
                 ->where('b.status', 'I');
 
             // keep academic year check only if provided
-            // if (!empty($acd_yr)) {
-            //     $query->where('d.academic_yr', $acd_yr);
-            // }
+            if (!empty($acd_yr)) {
+                $query->where('d.academic_yr', $acd_yr);
+            }
 
             $data = $query->first();
 
