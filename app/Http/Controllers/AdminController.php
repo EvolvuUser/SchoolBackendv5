@@ -13616,6 +13616,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'mother_email' => $mother_emailid
                         ]);
 
+                        // $cc = "school@arnoldcentralschoolpune.edu.in";
+
                         smart_mail(
                             $father_emailid,
                             'Inviting For Verification for Admission',
@@ -13629,6 +13631,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'emails.parentUserEmail',
                             $emailData
                         );
+
+                        // smart_mail(
+                        //     $cc,
+                        //     'Inviting For Verification for Admission',
+                        //     'emails.parentUserEmail',
+                        //     $emailData
+                        // );
 
                         Log::channel('approve_admission')->info("Emails sent successfully", [
                             'form_id' => $form_id
