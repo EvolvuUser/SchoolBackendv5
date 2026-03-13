@@ -13464,8 +13464,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //     }
     // }
 
-    use Carbon\Carbon;
-
     public function storeInterviewScheduling(Request $request)
     {
         try {
