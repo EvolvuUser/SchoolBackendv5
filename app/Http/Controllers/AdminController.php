@@ -13679,6 +13679,57 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    public function indexVerificationList(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Inputs
+            $religion = $request->query('religion');
+            $sibling = $request->query('sibling');
+            $form_id = $request->query('form_id');
+
+            // Build query
+            $query = DB::table('online_admission_form')
+                ->leftJoin('class', 'class.class_id', '=', 'online_admission_form.class_id')
+                ->select('online_admission_form.*', 'class.name as class_name')
+                ->where('online_admission_form.status', 'S')
+                ->where('online_admission_form.admission_form_status', 'Scheduled')
+                ->where('online_admission_form.academic_yr', $academicYear);
+
+            if (!empty($religion)) {
+                $query->where('religion', $religion);
+            }
+
+            if (!empty($sibling)) {
+                $query->where('sibling', $sibling);
+            }
+
+            if (!empty($form_id)) {
+                $query->where('form_id', $form_id);
+            }
+
+            $admissions = $query
+                ->orderBy('adm_form_pk', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $admissions
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch verification list',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function updateVerificationList(Request $request)
     {
         try {
