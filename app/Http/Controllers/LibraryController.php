@@ -1644,10 +1644,81 @@ class LibraryController extends Controller
         ];
     }
 
+    // private function getMemberDetailsUsingSearch($m_type, $member_id, $acd_yr)
+    // {
+    //     $data = null;
+    //     $member = DB::table('library_member')->where('member_id', $member_id)->first();
+
+    //     // Find out member details
+    //     if ($m_type == 'S') {
+    //         $query = DB::table('issue_return as a')
+    //             ->select(
+    //                 'a.*',
+    //                 'b.copy_id',
+    //                 'b.status',
+    //                 'd.first_name',
+    //                 'd.roll_no',
+    //                 'd.mid_name',
+    //                 'd.last_name',
+    //                 'd.class_id',
+    //                 'd.section_id',
+    //                 'd.academic_yr',
+    //                 'd.reg_no'
+    //             )
+    //             ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+    //             ->join('student as d', 'a.member_id', '=', 'd.student_id');
+
+    //         $query
+    //             ->where('a.member_id', $member->member_id)
+    //             ->where('a.member_type', $member->member_type)
+    //             ->where('a.return_date', '0000-00-00')
+    //             ->where('b.status', 'I')
+    //             ->where('d.academic_yr', $acd_yr);
+
+    //         $data = $query->first();
+    //     } else if ($m_type == 'T') {
+    //         $data = DB::table('issue_return as a')
+    //             ->select(
+    //                 'a.*',
+    //                 'b.copy_id',
+    //                 'b.status',
+    //                 'e.name'
+    //             )
+    //             ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
+    //             ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
+    //             ->where('a.member_type', $member->member_type)
+    //             ->where('a.member_id', $member->member_id)
+    //             ->where('a.return_date', '0000-00-00')
+    //             ->where('b.status', 'I')
+    //             ->first();
+    //     }
+
+    //     // Find out Book details
+    //     $query = DB::table('issue_return')
+    //         ->select(
+    //             'issue_return.*',
+    //             'book.book_title',
+    //         );
+
+    //     $query->leftJoin('book', 'book.book_id', '=', 'issue_return.book_id');
+
+    //     if (!empty($member_id)) {
+    //         $query->where('issue_return.member_id', $member_id);
+    //     }
+    //     if (!empty($m_type)) {
+    //         $query->where('issue_return.member_type', $m_type);
+    //     }
+    //     $query->where('issue_return.return_date', '0000-00-00');
+    //     $bookDetails = $query->get();
+    //     return [
+    //         'member' => $data,
+    //         'book' => $bookDetails,
+    //     ];
+    // }
+
     private function getMemberDetailsUsingSearch($m_type, $member_id, $acd_yr)
     {
         $data = null;
-        $member = DB::table('library_member')->where('member_id', $member_id)->first();
 
         // Find out member details
         if ($m_type == 'S') {
@@ -1666,16 +1737,19 @@ class LibraryController extends Controller
                     'd.reg_no'
                 )
                 ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
-                ->join('student as d', 'a.member_id', '=', 'd.student_id');
-
-            $query
-                ->where('a.member_id', $member->member_id)
-                ->where('a.member_type', $member->member_type)
+                ->join('student as d', 'a.member_id', '=', 'd.student_id')
+                ->where('a.member_id', $member_id)
+                ->where('a.member_type', $m_type)
                 ->where('a.return_date', '0000-00-00')
-                ->where('b.status', 'I')
-                ->where('d.academic_yr', $acd_yr);
+                ->where('b.status', 'I');
+
+            // keep academic year check only if provided
+            if (!empty($acd_yr)) {
+                $query->where('d.academic_yr', $acd_yr);
+            }
 
             $data = $query->first();
+
         } else if ($m_type == 'T') {
             $data = DB::table('issue_return as a')
                 ->select(
@@ -1686,8 +1760,8 @@ class LibraryController extends Controller
                 )
                 ->join('book_copies as b', 'a.copy_id', '=', 'b.copy_id')
                 ->join('teacher as e', 'a.member_id', '=', 'e.teacher_id')
-                ->where('a.member_type', $member->member_type)
-                ->where('a.member_id', $member->member_id)
+                ->where('a.member_type', $m_type)
+                ->where('a.member_id', $member_id)
                 ->where('a.return_date', '0000-00-00')
                 ->where('b.status', 'I')
                 ->first();
@@ -1698,18 +1772,14 @@ class LibraryController extends Controller
             ->select(
                 'issue_return.*',
                 'book.book_title',
-            );
+            )
+            ->leftJoin('book', 'book.book_id', '=', 'issue_return.book_id')
+            ->where('issue_return.member_id', $member_id)
+            ->where('issue_return.member_type', $m_type)
+            ->where('issue_return.return_date', '0000-00-00');
 
-        $query->leftJoin('book', 'book.book_id', '=', 'issue_return.book_id');
-
-        if (!empty($member_id)) {
-            $query->where('issue_return.member_id', $member_id);
-        }
-        if (!empty($m_type)) {
-            $query->where('issue_return.member_type', $m_type);
-        }
-        $query->where('issue_return.return_date', '0000-00-00');
         $bookDetails = $query->get();
+
         return [
             'member' => $data,
             'book' => $bookDetails,
@@ -3275,12 +3345,12 @@ class LibraryController extends Controller
             $user = $this->authenticateUser();
             $role_id = $user->role_id;
 
-            if ($role_id !== 'L') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource',
-                ], 401);
-            }
+            // if ($role_id !== 'L') {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'You are not allowed to access this resource',
+            //     ], 401);
+            // }
 
             $query = DB::table('periodicals as a')
                 ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
@@ -3288,7 +3358,8 @@ class LibraryController extends Controller
                 ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
                 ->where('b.status', 'Active')
                 ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
-                ->where('d.status', '!=', 'Received');
+                ->where('d.status', '!=', 'Received')
+                ->orderby('d.receive_by_date' , 'desc');
 
             // apply condition only if periodical_id is passed
             if (!empty($periodical_id)) {
@@ -3349,7 +3420,8 @@ class LibraryController extends Controller
                 ->join('subscription_volume as b', 'a.subscription_vol_id', '=', 'b.subscription_vol_id')
                 ->join('subscription as c', 'c.subscription_id', '=', 'b.subscription_id')
                 ->join('periodicals as d', 'c.periodical_id', '=', 'd.periodical_id')
-                ->where('a.status', 'Received');
+                ->where('a.status', 'Received')
+                ->orderby('a.receive_by_date' , 'desc');
 
             if (!empty($periodical_id)) {
                 $query->where('d.periodical_id', $periodical_id);
@@ -3457,7 +3529,8 @@ class LibraryController extends Controller
                 ->join('subscription_issues as d', 'c.subscription_vol_id', '=', 'd.subscription_vol_id')
                 ->where('b.status', 'Active')
                 ->whereDate('d.receive_by_date', '<', now()->toDateString())
-                ->where('d.status', '!=', 'Received');
+                ->where('d.status', '!=', 'Received')
+                ->orderby('d.receive_by_date' , 'desc');
 
             if (!empty($periodical_id)) {
                 $query->where('a.periodical_id', $periodical_id);
@@ -3505,6 +3578,7 @@ class LibraryController extends Controller
             $query = DB::table('book')
                 ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
                 ->join('category', 'category.category_id', '=', 'book.category_id')
+                ->orderby('book_copies.added_date' , 'desc')
                 ->select(
                     'book.*',
                     'book_copies.*',
@@ -3633,7 +3707,7 @@ class LibraryController extends Controller
                 $location_of_book_req_val = str_replace("'", "\'", $rack) . '/' . $shelf;
             }
 
-            $query = DB::select("SELECT a.*,b.* FROM book as a join book_copies as b on a.book_id = b.book_id where replace(a.location_of_book,' ','') LIKE replace('$location_of_book_req_val',' ','') order by b.copy_id");  // where condition
+            $query = DB::select("SELECT a.*,b.* FROM book as a join book_copies as b on a.book_id = b.book_id where replace(a.location_of_book,' ','') LIKE replace('$location_of_book_req_val',' ','') order by b.added_date desc");  // where condition
 
             return response()->json([
                 'status' => 200,
@@ -3732,7 +3806,7 @@ class LibraryController extends Controller
                 ->when($sourceOfBook, function ($query) use ($sourceOfBook) {
                     $query->where('book_copies.source_of_book', 'LIKE', '%' . trim($sourceOfBook) . '%');
                 })
-                ->orderBy('book_copies.copy_id', 'ASC')
+                ->orderBy('book_copies.added_date', 'DESC')
                 ->get();
 
             if ($books->isEmpty()) {
@@ -3786,6 +3860,7 @@ class LibraryController extends Controller
                         'student.mid_name',
                         'student.last_name'
                     )
+                    ->orderby('a.issue_date' , 'desc')
                     ->when($grnNo, function ($q) use ($grnNo) {
                         $q->where('student.reg_no', $grnNo);
                     })
@@ -3821,6 +3896,7 @@ class LibraryController extends Controller
                         DB::raw('NULL as classname'),
                         DB::raw('NULL as secname')
                     )
+                    ->orderby('a.issue_date' , 'desc')
                     ->when($memberId, function ($q) use ($memberId) {
                         $q->where('a.member_id', $memberId);
                     })
@@ -3883,6 +3959,7 @@ class LibraryController extends Controller
                         'student.mid_name',
                         'student.last_name'
                     )
+                    ->orderby('a.issue_date' , 'desc')
                     // NOT RETURNED CONDITION
                     ->where('a.return_date', '0000-00-00')
                     ->when($grnNo, function ($q) use ($grnNo) {
@@ -3920,6 +3997,7 @@ class LibraryController extends Controller
                         DB::raw('NULL as classname'),
                         DB::raw('NULL as secname')
                     )
+                    ->orderby('a.issue_date' , 'desc')
                     // NOT RETURNED CONDITION
                     ->where('a.return_date', '0000-00-00')
                     ->when($memberId, function ($q) use ($memberId) {
@@ -4012,7 +4090,7 @@ class LibraryController extends Controller
         } else {
             $data = $studentQuery
                 ->unionAll($teacherQuery)
-                ->orderBy('issue_date')
+                ->orderBy('issue_date' , 'desc')
                 ->get();
         }
 
@@ -4064,7 +4142,7 @@ class LibraryController extends Controller
             // UNION + ORDER BY
             $data = $studentQuery
                 ->unionAll($teacherQuery)
-                ->orderBy('issue_date', 'asc')
+                ->orderBy('issue_date', 'desc')
                 ->get();
 
             return response()->json([

@@ -88,12 +88,12 @@ return [
                 'timeout' => 300,
             ],
         ],
-        'DEMO' => [
+        'DEMONEW' => [
             'driver' => 'mysql',
-            'host' => env('DB_HOST_DEMO'),
-            'database' => env('DB_DATABASE_DEMO'),
-            'username' => env('DB_USERNAME_DEMO'),
-            'password' => env('DB_PASSWORD_DEMO'),
+            'host' => env('DB_HOST_DEMONEW'),
+            'database' => env('DB_DATABASE_DEMONEW'),
+            'username' => env('DB_USERNAME_DEMONEW'),
+            'password' => env('DB_PASSWORD_DEMONEW'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
