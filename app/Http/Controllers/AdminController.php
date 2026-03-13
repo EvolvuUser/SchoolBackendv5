@@ -13334,21 +13334,169 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
+    // public function storeInterviewScheduling(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $academicYr = JWTAuth::getPayload()->get('academic_year');
+    //         $shortname = JWTAuth::getPayload()->get('short_name');
+
+    //         $interview_date = $request->input('interview_date');
+    //         $form_ids = $request->input('form_ids');
+
+    //         $interview_time_from = $request->input('interview_time_from');
+    //         $interview_time_to   = $request->input('interview_time_to');
+
+    //         $time_from_12hr = '';
+    //         $time_to_12hr   = '';
+
+    //         if (!empty($interview_time_from)) {
+    //             $time_from_12hr = Carbon::createFromFormat('H:i', $interview_time_from)->format('h:i A');
+    //         }
+
+    //         if (!empty($interview_time_to)) {
+    //             $time_to_12hr = Carbon::createFromFormat('H:i', $interview_time_to)->format('h:i A');
+    //         }
+
+    //         if (!empty($form_ids)) {
+    //             for ($i = 0; $i < count($form_ids); $i++) {
+    //                 if (empty($form_ids[$i])) {
+    //                     continue;
+    //                 }
+
+    //                 if (!empty($interview_date)) {
+    //                     // Check if already scheduled
+    //                     $query = DB::table('online_adm_interview_schedule')
+    //                         ->where('form_id', $form_ids[$i])
+    //                         ->exists();
+
+    //                     $class_id = DB::table('online_admission_form')
+    //                         ->where('form_id', $form_ids[$i])
+    //                         ->value('class_id');
+
+    //                     $class_name = DB::table('class')
+    //                         ->where('class_id', $class_id)
+    //                         ->value('name');
+
+    //                     $data = [
+    //                         'interview_date' => Carbon::parse($interview_date)->format('Y-m-d'),
+    //                         'interview_time_from' => $interview_time_from,
+    //                         'interview_time_to' => $interview_time_to,
+    //                         'academic_yr' => $academicYr
+    //                     ];
+
+    //                     if (!$query) {
+    //                         // Insert
+    //                         $data['form_id'] = $form_ids[$i];
+    //                         DB::table('online_adm_interview_schedule')->insert($data);
+    //                     } else {
+    //                         // Update
+    //                         DB::table('online_adm_interview_schedule')
+    //                             ->where('form_id', $form_ids[$i])
+    //                             ->update($data);
+    //                     }
+
+    //                     // Update admission form status
+    //                     DB::table('online_admission_form')
+    //                         ->where('form_id', $form_ids[$i])
+    //                         ->update([
+    //                             'admission_form_status' => 'Scheduled'
+    //                         ]);
+
+    //                     // Dont remove this part keep it as it is
+    //                     $father_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('f_email');
+    //                     $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('m_emailid');
+
+    //                     $formData = DB::table('online_admission_form')
+    //                         ->where('form_id', $form_ids[$i])->first();
+    //                     $form_class_id = $formData->class_id;
+    //                     $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING', $form_class_id);
+    //                     // if ($class_name == 'Nursery') {
+
+    //                     // } else if ($class_name == '11') {
+    //                     //     $textmsg = str_replace(
+    //                     //         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+    //                     //         [$interview_date, $time_from_12hr, $time_to_12hr],
+    //                     //         $textmsg
+    //                     //     );
+    //                     //     $emailData = [
+    //                     //         'subject' => 'Inviting For Verification for Class 11 Admission',
+    //                     //         'textmsg' => $textmsg,
+    //                     //     ];
+    //                     //     smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+    //                     //     smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
+    //                     // }
+
+    //                     $textmsg = str_replace(
+    //                         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
+    //                         [
+    //                             $interview_date ?? '',
+    //                             $time_from_12hr ?? '',
+    //                             $time_to_12hr ?? ''
+    //                         ],
+    //                         $textmsg
+    //                     );
+    //                     $emailData = [
+    //                         'subject' => 'Inviting For Verification for Admission',
+    //                         'textmsg' => $textmsg,
+    //                     ];
+    //                     smart_mail($father_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
+    //                     smart_mail($mother_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
+    //                 } else {
+    //                     DB::table('online_admission_form')
+    //                         ->where('form_id', $form_ids[$i])
+    //                         ->update([
+    //                             'admission_form_status' => 'Scheduled'
+    //                         ]);
+    //                 }
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Interview scheduling updated successfully'
+    //         ], 200);
+    //     } catch (\Throwable $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    use Carbon\Carbon;
+
     public function storeInterviewScheduling(Request $request)
     {
         try {
+
+            Log::channel('approve_admission')->info("Interview Scheduling API started");
+
             $user = $this->authenticateUser();
+            Log::channel('approve_admission')->info("User authenticated", ['user' => $user]);
+
             $academicYr = JWTAuth::getPayload()->get('academic_year');
             $shortname = JWTAuth::getPayload()->get('short_name');
 
+            Log::channel('approve_admission')->info("JWT Payload", [
+                'academic_year' => $academicYr,
+                'short_name' => $shortname
+            ]);
+
             $interview_date = $request->input('interview_date');
             $form_ids = $request->input('form_ids');
-
             $interview_time_from = $request->input('interview_time_from');
-            $interview_time_to   = $request->input('interview_time_to');
+            $interview_time_to = $request->input('interview_time_to');
+
+            Log::channel('approve_admission')->info("Request Data", [
+                'interview_date' => $interview_date,
+                'form_ids' => $form_ids,
+                'time_from' => $interview_time_from,
+                'time_to' => $interview_time_to
+            ]);
 
             $time_from_12hr = '';
-            $time_to_12hr   = '';
+            $time_to_12hr = '';
 
             if (!empty($interview_time_from)) {
                 $time_from_12hr = Carbon::createFromFormat('H:i', $interview_time_from)->format('h:i A');
@@ -13359,19 +13507,30 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             if (!empty($form_ids)) {
-                for ($i = 0; $i < count($form_ids); $i++) {
-                    if (empty($form_ids[$i])) {
+
+                foreach ($form_ids as $form_id) {
+
+                    if (empty($form_id)) {
                         continue;
                     }
 
+                    Log::channel('approve_admission')->info("Processing form_id", [
+                        'form_id' => $form_id
+                    ]);
+
                     if (!empty($interview_date)) {
-                        // Check if already scheduled
-                        $query = DB::table('online_adm_interview_schedule')
-                            ->where('form_id', $form_ids[$i])
+
+                        $exists = DB::table('online_adm_interview_schedule')
+                            ->where('form_id', $form_id)
                             ->exists();
 
+                        Log::channel('approve_admission')->info("Schedule exists check", [
+                            'form_id' => $form_id,
+                            'exists' => $exists
+                        ]);
+
                         $class_id = DB::table('online_admission_form')
-                            ->where('form_id', $form_ids[$i])
+                            ->where('form_id', $form_id)
                             ->value('class_id');
 
                         $class_name = DB::table('class')
@@ -13385,47 +13544,58 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'academic_yr' => $academicYr
                         ];
 
-                        if (!$query) {
-                            // Insert
-                            $data['form_id'] = $form_ids[$i];
+                        if (!$exists) {
+
+                            Log::channel('approve_admission')->info("Inserting interview schedule", [
+                                'form_id' => $form_id,
+                                'data' => $data
+                            ]);
+
+                            $data['form_id'] = $form_id;
+
                             DB::table('online_adm_interview_schedule')->insert($data);
                         } else {
-                            // Update
+
+                            Log::channel('approve_admission')->info("Updating interview schedule", [
+                                'form_id' => $form_id
+                            ]);
+
                             DB::table('online_adm_interview_schedule')
-                                ->where('form_id', $form_ids[$i])
+                                ->where('form_id', $form_id)
                                 ->update($data);
                         }
 
-                        // Update admission form status
                         DB::table('online_admission_form')
-                            ->where('form_id', $form_ids[$i])
+                            ->where('form_id', $form_id)
                             ->update([
                                 'admission_form_status' => 'Scheduled'
                             ]);
 
+                        Log::channel('approve_admission')->info("Admission form status updated", [
+                            'form_id' => $form_id
+                        ]);
+
                         // Dont remove this part keep it as it is
-                        $father_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('f_email');
-                        $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_ids[$i])->value('m_emailid');
+                        $father_emailid = DB::table('online_admission_form')
+                            ->where('form_id', $form_id)
+                            ->value('f_email');
+
+                        $mother_emailid = DB::table('online_admission_form')
+                            ->where('form_id', $form_id)
+                            ->value('m_emailid');
+
+                        Log::channel('approve_admission')->info("Parent Emails fetched", [
+                            'father_email' => $father_emailid,
+                            'mother_email' => $mother_emailid
+                        ]);
 
                         $formData = DB::table('online_admission_form')
-                            ->where('form_id', $form_ids[$i])->first();
-                        $form_class_id = $formData->class_id;
-                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING', $form_class_id);
-                        // if ($class_name == 'Nursery') {
+                            ->where('form_id', $form_id)
+                            ->first();
 
-                        // } else if ($class_name == '11') {
-                        //     $textmsg = str_replace(
-                        //         ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
-                        //         [$interview_date, $time_from_12hr, $time_to_12hr],
-                        //         $textmsg
-                        //     );
-                        //     $emailData = [
-                        //         'subject' => 'Inviting For Verification for Class 11 Admission',
-                        //         'textmsg' => $textmsg,
-                        //     ];
-                        //     smart_mail($father_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                        //     smart_mail($mother_emailid, 'Inviting For Verification for Class 11 Admission', 'emails.parentUserEmail', $emailData);
-                        // }
+                        $form_class_id = $formData->class_id;
+
+                        $textmsg = $this->getEmailBodyByKey('INTERVIEW_SCHEDULING', $form_class_id);
 
                         $textmsg = str_replace(
                             ['INTERVIEW_DATE', 'TIME_FROM', 'TIME_TO'],
@@ -13436,81 +13606,68 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             ],
                             $textmsg
                         );
+
                         $emailData = [
                             'subject' => 'Inviting For Verification for Admission',
                             'textmsg' => $textmsg,
                         ];
-                        smart_mail($father_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
-                        smart_mail($mother_emailid, 'Inviting For Verification for Admission', 'emails.parentUserEmail', $emailData);
+
+                        Log::channel('approve_admission')->info("Sending email", [
+                            'form_id' => $form_id,
+                            'father_email' => $father_emailid,
+                            'mother_email' => $mother_emailid
+                        ]);
+
+                        smart_mail(
+                            $father_emailid,
+                            'Inviting For Verification for Admission',
+                            'emails.parentUserEmail',
+                            $emailData
+                        );
+
+                        smart_mail(
+                            $mother_emailid,
+                            'Inviting For Verification for Admission',
+                            'emails.parentUserEmail',
+                            $emailData
+                        );
+
+                        Log::channel('approve_admission')->info("Emails sent successfully", [
+                            'form_id' => $form_id
+                        ]);
+
                     } else {
+
                         DB::table('online_admission_form')
-                            ->where('form_id', $form_ids[$i])
+                            ->where('form_id', $form_id)
                             ->update([
                                 'admission_form_status' => 'Scheduled'
                             ]);
+
+                        Log::channel('approve_admission')->info("Scheduled without interview date", [
+                            'form_id' => $form_id
+                        ]);
                     }
                 }
             }
+
+            Log::channel('approve_admission')->info("Interview scheduling completed");
 
             return response()->json([
                 'status' => true,
                 'message' => 'Interview scheduling updated successfully'
             ], 200);
+
         } catch (\Throwable $e) {
+
+            Log::channel('approve_admission')->error("Interview scheduling failed", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function indexVerificationList(Request $request)
-    {
-        try {
-            // Authenticate user
-            $user = $this->authenticateUser();
-
-            // Get academic year from JWT
-            $academicYear = JWTAuth::getPayload()->get('academic_year');
-
-            // Inputs
-            $religion = $request->query('religion');
-            $sibling = $request->query('sibling');
-            $form_id = $request->query('form_id');
-
-            // Build query
-            $query = DB::table('online_admission_form')
-                ->leftJoin('class', 'class.class_id', '=', 'online_admission_form.class_id')
-                ->select('online_admission_form.*', 'class.name as class_name')
-                ->where('online_admission_form.status', 'S')
-                ->where('online_admission_form.admission_form_status', 'Scheduled')
-                ->where('online_admission_form.academic_yr', $academicYear);
-
-            if (!empty($religion)) {
-                $query->where('religion', $religion);
-            }
-
-            if (!empty($sibling)) {
-                $query->where('sibling', $sibling);
-            }
-
-            if (!empty($form_id)) {
-                $query->where('form_id', $form_id);
-            }
-
-            $admissions = $query
-                ->orderBy('adm_form_pk', 'asc')
-                ->get();
-
-            return response()->json([
-                'status' => true,
-                'data' => $admissions
-            ], 200);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to fetch verification list',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
