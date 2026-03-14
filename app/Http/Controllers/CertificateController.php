@@ -3764,6 +3764,8 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             } elseif ($shortName == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
+            } elseif($shortName == 'DEMONEW') {
+                $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             } else {
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             }
