@@ -1316,6 +1316,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.democharactercertificate', compact('data'));
             }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
