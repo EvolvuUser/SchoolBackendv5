@@ -4077,7 +4077,7 @@ class CertificateController extends Controller
                 $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
                 // Load a view and pass the data to it
 
-                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             }
 
             return response()->stream(
