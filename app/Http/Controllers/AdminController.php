@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\Cache;
 use App\Http\Services\SmsService;
 use App\Http\Services\WhatsAppService;
 use App\Jobs\SendTeacherMessageJob;
@@ -18187,6 +18187,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $role_id = $user->reg_id;
             $short_code = JWTAuth::getPayload()->get('short_name');
             $academicYr = JWTAuth::getPayload()->get('academic_year');
+            $cacheKey = "principal_dashboard_{$short_code}{$academicYr}{$role_id}";
+
+            $response = Cache::remember($cacheKey, 7200, function () use ($request, $academicYr, $short_code) {
             $response = [];
 
             if ($short_code == 'SACS') {
@@ -18212,6 +18215,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $response['approve_leave'] = $this->approveLeaveCard($academicYr);
                 $response['lesson_plan_summary'] = $this->lessonPlanCard($academicYr);
             }
+            
+            return $response;
+        });
 
             return response()->json([
                 'data' => $response,
@@ -18233,6 +18239,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $role_id = $user->role_id;
             $short_code = JWTAuth::getPayload()->get('short_code');
             $academicYr = JWTAuth::getPayload()->get('academic_year');
+             $cacheKey = "admin_dashboard_{$academicYr}{$short_code}{$role_id}";
+            $response = Cache::remember($cacheKey, 7200, function () use ($request, $academicYr, $short_code, $role_id) {
             $currentDate = Carbon::now()->toDateString();
             $response = [];
 
@@ -18502,6 +18510,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $response['ticket_count'] = $this->ticketCountCard($academicYr, $role_id);
             $response['birthday_count'] = $this->birthDayCountCard($academicYr, $role_id);
+              return $response;
+            });
 
             return response()->json([
                 'data' => $response,
