@@ -773,6 +773,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demosimplebonafide', compact('data'))->setPaper('A5', 'landscape');
             }
             // Download the generated PDF
             return response()->stream(
