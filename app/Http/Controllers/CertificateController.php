@@ -1112,6 +1112,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
