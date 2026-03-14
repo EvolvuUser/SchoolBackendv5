@@ -1687,6 +1687,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demopercentagecertificate', compact('data'));
             }
             return response()->stream(
                 function () use ($pdf) {
