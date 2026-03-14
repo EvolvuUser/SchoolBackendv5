@@ -470,6 +470,26 @@ class CertificateController extends Controller
 
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
             } else {
+                $bonafidecertificate = BonafideCertificate::find($sr_no);
+                $bonafidecertificate->stud_name = $request->stud_name;
+                $bonafidecertificate->father_name = $request->father_name;
+                $bonafidecertificate->class_division = $request->class_division;
+                $bonafidecertificate->dob = $request->dob;
+                $bonafidecertificate->dob_words = $request->dob_words;
+                $bonafidecertificate->purpose = $request->purpose;
+                $bonafidecertificate->nationality = $request->nationality;
+                $bonafidecertificate->stud_id = $request->stud_id;
+                $bonafidecertificate->issue_date_bonafide = $request->date;
+                $bonafidecertificate->update();
+
+                $data = DB::table('bonafide_certificate')
+                    ->where('sr_no', $sr_no)
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+
+                $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+
+                $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
             }
 
             return response()->stream(
