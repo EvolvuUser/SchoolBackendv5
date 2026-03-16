@@ -243,6 +243,26 @@ class CertificateController extends Controller
             // Load a view and pass the data to it
             $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
         } else {
+            $data = [
+                'stud_name' => $request->stud_name,
+                'father_name' => $request->father_name,
+                'class_division' => $request->class_division,
+                'dob' => $request->dob,
+                'dob_words' => $request->dob_words,
+                'purpose' => $request->purpose,
+                'stud_id' => $request->stud_id,
+                'issue_date_bonafide' => $request->date,
+                'nationality' => $request->nationality,
+                'academic_yr' => $customClaims,
+                'IsGenerated' => 'Y',
+                'IsDeleted' => 'N',
+                'IsIssued' => 'N',
+                'generated_by' => $user->reg_id,
+            ];
+            BonafideCertificate::create($data);
+            $data = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
         }
         // Download the generated PDF
         return response()->stream(
@@ -357,7 +377,8 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.template', compact('data'));
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
-            } else {
+            } elseif ($shortname == 'DEMONEW') {  
+                $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
             }
 
             return response()->stream(
@@ -449,6 +470,26 @@ class CertificateController extends Controller
 
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
             } else {
+                $bonafidecertificate = BonafideCertificate::find($sr_no);
+                $bonafidecertificate->stud_name = $request->stud_name;
+                $bonafidecertificate->father_name = $request->father_name;
+                $bonafidecertificate->class_division = $request->class_division;
+                $bonafidecertificate->dob = $request->dob;
+                $bonafidecertificate->dob_words = $request->dob_words;
+                $bonafidecertificate->purpose = $request->purpose;
+                $bonafidecertificate->nationality = $request->nationality;
+                $bonafidecertificate->stud_id = $request->stud_id;
+                $bonafidecertificate->issue_date_bonafide = $request->date;
+                $bonafidecertificate->update();
+
+                $data = DB::table('bonafide_certificate')
+                    ->where('sr_no', $sr_no)
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+
+                $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+
+                $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
             }
 
             return response()->stream(
@@ -561,6 +602,8 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            } else {
+                $pdf = PDF::loadView('pdf.demosimplebonafide', compact('data'))->setPaper('A5', 'landscape');
             }
 
             return response()->stream(
@@ -671,7 +714,10 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
+            } elseif ($shortname == 'DEMONEW') {
+                $pdf = PDF::loadView('pdf.demosimplebonafide', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demosimplebonafide', compact('data'));
             }
             // Download the generated PDF
             return response()->stream(
@@ -727,6 +773,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demosimplebonafide', compact('data'))->setPaper('A5', 'landscape');
             }
             // Download the generated PDF
             return response()->stream(
@@ -861,7 +908,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
             } else {
-                $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
+                $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             }
 
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
@@ -977,7 +1024,10 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
+            }  elseif ($shortname == 'DEMONEW') {
+                $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
@@ -1062,6 +1112,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             }
             $dynamicFilename = "Caste_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
@@ -1174,6 +1225,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.democharactercertificate', compact('data'))->setPaper('A4', 'landscape');
             }
 
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
@@ -1286,6 +1338,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.democharactercertificate', compact('data'));
             }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
@@ -1343,6 +1396,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscscharactercertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.democharactercertificate', compact('data'))->setPaper('A4', 'landscape');
             }
             $dynamicFilename = "Character_Certificate_$data->stud_name.pdf";
             // Download the generated PDF
@@ -1539,6 +1593,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demopercentagecertificate', compact('data'));
             }
 
             return response()->stream(
@@ -1655,6 +1710,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demopercentagecertificate', compact('data'));
             }
             return response()->stream(
                 function () use ($pdf) {
@@ -1785,6 +1841,7 @@ class CertificateController extends Controller
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscspercentagecertificate', compact('data'));
             } else {
+                $pdf = PDF::loadView('pdf.demopercentagecertificate', compact('data'));
             }
             return response()->stream(
                 function () use ($pdf) {
@@ -3612,7 +3669,7 @@ class CertificateController extends Controller
                 $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
                 // Load a view and pass the data to it
 
-                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             }
 
             return response()->stream(
@@ -3740,6 +3797,8 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             } elseif ($shortName == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
+            } elseif($shortName == 'DEMONEW') {
+                $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             } else {
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             }
@@ -4018,7 +4077,7 @@ class CertificateController extends Controller
                 $dynamicFilename = "LC_{$data->sr_no}_{$data->stud_name}_{$data->mid_name}_{$data->last_name}.pdf";
                 // Load a view and pass the data to it
 
-                $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
+                $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             }
 
             return response()->stream(

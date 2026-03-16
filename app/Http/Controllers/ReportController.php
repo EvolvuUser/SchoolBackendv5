@@ -5185,8 +5185,8 @@ class ReportController extends Controller
                 'house_name' => $student->house_name,
                 'name' => trim(
                     $student->first_name . ' '
-                    . ($student->mid_name ?? '') . ' '
-                    . $student->last_name
+                        . ($student->mid_name ?? '') . ' '
+                        . $student->last_name
                 ),
                 'subjects' => []
             ];
@@ -5246,5 +5246,293 @@ class ReportController extends Controller
             'message' => 'Class marks report fetched successfully',
             'data' => $finalData
         ]);
+    }
+
+    public function customizedStudentReport(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'class_id'      => 'required',
+                'section_id'    => 'required',
+                'academic_year' => 'required'
+            ]);
+
+            $class_id     = $request->class_id;
+            $section_id   = $request->section_id;
+            $academicYear = $request->academic_year;
+
+            /* ---------------- CLASS & SECTION ---------------- */
+            $className = DB::table('class')
+                ->where('class_id', $class_id)
+                ->value('name');
+
+            $sectionName = DB::table('section')
+                ->where('section_id', $section_id)
+                ->value('name');
+
+            /* ---------------- STUDENTS ---------------- */
+            $students = DB::table('student as a')
+                ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
+                ->leftJoin('class as c', 'a.class_id', '=', 'c.class_id')
+                ->leftJoin('section as s', 'a.section_id', '=', 's.section_id')
+                ->where('a.isDelete', 'N')
+                ->where('a.class_id', $class_id)
+                ->where('a.section_id', $section_id)
+                ->where('a.academic_yr', $academicYear)
+                ->orderBy('a.roll_no')
+                ->orderByRaw('CAST(a.reg_no AS UNSIGNED)')
+                ->select('a.*', 'b.*', 'c.name as class_name', 's.name as section_name')
+                ->get();
+
+            /* ---------------- GET ALL PERCENTAGES IN ONE QUERY ---------------- */
+            $percentages = DB::table('student_marks as sm')
+                ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                ->whereColumn('sm.class_id', 'sb.class_id')
+                ->where('sb.subject_type', 'Scholastic')
+                ->where('sm.publish', 'Y')
+                ->whereIn('sm.student_id', $students->pluck('student_id'))
+                ->groupBy('sm.student_id')
+                ->select(
+                    'sm.student_id',
+                    DB::raw('ROUND(SUM(sm.total_marks) / NULLIF(SUM(sm.highest_total_marks),0) * 100,2) as total_percent')
+                )
+                ->pluck('total_percent', 'sm.student_id');
+            // returns: [student_id => percent]
+
+            /* ---------------- FINAL DATA ---------------- */
+            $finalData = [];
+
+            foreach ($students as $student) {
+
+                $fullName = trim(
+                    ($student->first_name != 'No Data' ? $student->first_name : '') . ' ' .
+                        ($student->mid_name != 'No Data' ? $student->mid_name : '') . ' ' .
+                        ($student->last_name != 'No Data' ? $student->last_name : '')
+                );
+
+                $studentArray = (array) $student;
+
+                $studentArray['student_name'] = $fullName;
+                $studentArray['percentage'] =
+                    $percentages[$student->student_id] ?? 0;
+
+                $finalData[] = $studentArray;
+            }
+
+            return response()->json([
+                'status' => true,
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'class_name' => $className,
+                'section_name' => $sectionName,
+                'academic_year' => $academicYear,
+                'total_students' => count($finalData),
+                'students' => $finalData
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getWorldlineAllOrderIdsReport(Request $request)
+    {
+        try {
+
+            $student_id   = $request->query('student_id');
+            $order_id     = $request->query('order_id');
+            $account_type = $request->query('account_type');
+            $academic_yr  = $request->query('academic_yr');
+            $from_date    = $request->query('from_date');
+            $to_date      = $request->query('to_date');
+
+            // Format Dates
+            $from_date = $from_date ? date('Y-m-d', strtotime($from_date)) : null;
+            $to_date   = $to_date ? date('Y-m-d', strtotime($to_date)) : null;
+
+            // Get Parent ID
+            $parent_id = null;
+            if (!empty($student_id)) {
+                $parent_id = DB::table('student')
+                    ->where('student_id', $student_id)
+                    ->value('parent_id');
+            }
+
+            // Build Query
+            $query = DB::table('worldline_payment_details')
+                ->where('academic_yr', $academic_yr);
+
+            if (!empty($account_type)) {
+                $query->where('Account_type', $account_type);
+            }
+
+            if (!empty($order_id)) {
+                $query->where('OrderId', $order_id);
+            }
+
+            if (!empty($from_date)) {
+                $query->whereDate('Trnx_date', '>=', $from_date);
+            }
+
+            if (!empty($to_date)) {
+                $query->whereDate('Trnx_date', '<=', $to_date);
+            }
+
+            if (!empty($parent_id)) {
+                $query->where('reg_id', $parent_id);
+            }
+
+            $results = $query->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Worldline All Order Id report fetched successfully',
+                'data' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAccountType(Request $request)
+    {
+        try {
+            $query = DB::table('bank_account_name');
+            $result = $query->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => "Back account name fetch successfully.",
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAllAdmissionFormList(Request $request)
+    {
+        try {
+
+            $class_id    = $request->class_id;
+            $status      = $request->status;
+            $academic_yr = $request->academic_yr;
+
+            if (!$academic_yr) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Academic year is required'
+                ], 400);
+            }
+
+            $query = DB::table('online_admission_form as a')
+                ->select(
+                    'a.*',
+                    'c.interview_date',
+                    'c.interview_time_from',
+                    'c.interview_time_to',
+                    'd.name as class_name',
+                    'f.OrderId',
+                    'sc.name as sibling_class_name',
+                    'ss.name as sibling_section_name'
+                )
+
+                // =========================
+                // Latest Interview Schedule
+                // =========================
+                ->leftJoin(
+                    DB::raw('(
+                    SELECT MAX(oadm_int_schedule_id) as max_id, form_id
+                    FROM online_adm_interview_schedule
+                    GROUP BY form_id
+                ) as t1'),
+                    't1.form_id',
+                    '=',
+                    'a.form_id'
+                )
+                ->leftJoin(
+                    'online_adm_interview_schedule as c',
+                    'c.oadm_int_schedule_id',
+                    '=',
+                    't1.max_id'
+                )
+
+                // =========================
+                // Latest Fee Record (FIXED)
+                // =========================
+                ->leftJoin(
+                    DB::raw('(
+                    SELECT MAX(adfees_payment_id) as max_fee_id, form_id
+                    FROM online_admfee
+                    GROUP BY form_id
+                ) as t2'),
+                    't2.form_id',
+                    '=',
+                    'a.form_id'
+                )
+                ->leftJoin(
+                    'online_admfee as f',
+                    'f.adfees_payment_id',
+                    '=',
+                    't2.max_fee_id'
+                )
+
+                ->leftJoin('class as d', 'd.class_id', '=', 'a.class_id')
+
+                ->leftJoin('class as sc', function ($join) {
+                    $join->on(
+                        'sc.class_id',
+                        '=',
+                        DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', 1)")
+                    );
+                })
+                ->leftJoin('section as ss', function ($join) {
+                    $join->on(
+                        'ss.section_id',
+                        '=',
+                        DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)")
+                    );
+                })
+
+                ->where('a.academic_yr', $academic_yr);
+
+            // Optional Filters
+            if (!empty($class_id)) {
+                $query->where('a.class_id', $class_id);
+            }
+
+            if ($status === 'S') {
+                $query->where('a.status', 'S');
+            } elseif ($status === 'NULL') {
+                $query->whereNull('a.status');
+            }
+
+            $data = $query
+                ->orderBy('a.application_date', 'asc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data'    => $data
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

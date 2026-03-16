@@ -2144,6 +2144,7 @@ class AssessmentController extends Controller
             $query = DB::table('book')
                 ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
                 ->join('category', 'category.category_id', '=', 'book.category_id')
+                ->orderby('book_copies.added_date' , 'desc')
                 ->select(
                     'book.*',
                     'book_copies.*',

@@ -4278,23 +4278,66 @@ ORDER BY Z.t_remark_id DESC;");
         }
     }
 
+    // old
+    // public function downloadTicketFiles(Request $request, $ticket_id, $comment_id, $name)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //         if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+    //             $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+    //         } else {
+    //             $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+    //         }
+
+    //         if (File::exists($filePath)) {
+    //             $mime = File::mimeType($filePath);
+
+    //             return response()->file($filePath, [
+    //                 'Content-Type' => $mime,
+    //                 'Content-Disposition' => 'inline; filename="' . $name . '"'
+    //             ]);
+    //         }
+
+    //         return response()->json(['error' => 'File not found.'], 404);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);  // Log the exception
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
+    // new : updated by leo
     public function downloadTicketFiles(Request $request, $ticket_id, $comment_id, $name)
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
-            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
-            } else {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/uploads/ticket/' . $ticket_id . '/' . $comment_id . '/' . $name;
+            $short_name = JWTAuth::getPayload()->get('short_name');
+            $env = config('app.env');
+
+            // Determine base path and subpath based on short_name and environment
+            switch ($short_name) {
+                case 'SACS':
+                    $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'SACSv4test/uploads/ticket' : 'uploads/ticket';
+                    break;
+                case 'HSCS':
+                    $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+                    $subPath = ($env == 'dev') ? 'test/hscs_test/uploads/ticket' : 'uploads/ticket';
+                    break;
+                default:
+                    $basePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html';
+                    $subPath = 'uploads/ticket';
+                    break;
             }
+
+            // Build full file path
+            $filePath = $basePath . '/' . $subPath . '/' . $ticket_id . '/' . $comment_id . '/' . $name;
 
             if (File::exists($filePath)) {
                 $mime = File::mimeType($filePath);
-
                 return response()->file($filePath, [
                     'Content-Type' => $mime,
                     'Content-Disposition' => 'inline; filename="' . $name . '"'
@@ -4395,11 +4438,11 @@ ORDER BY Z.t_remark_id DESC;");
                 $result->smslogid = $smssent->sms_log_id ?? null;
                 $result->smssentdates = isset($result->smslogid)
                     ? DB::table('sms_log_for_outstanding_fees_details')
-                        ->select('date_sms_sent')
-                        ->where('sms_log_id', $result->smslogid)
-                        ->orderBy('date_sms_sent', 'asc')
-                        ->get()
-                        ->toArray()
+                    ->select('date_sms_sent')
+                    ->where('sms_log_id', $result->smslogid)
+                    ->orderBy('date_sms_sent', 'asc')
+                    ->get()
+                    ->toArray()
                     : null;
                 $classname = DB::table('section')
                     ->join('class', 'class.class_id', '=', 'section.class_id')
@@ -5386,7 +5429,14 @@ ORDER BY Z.t_remark_id DESC;");
 
     public function getHouseofSchool(Request $request)
     {
-        $houses = DB::table('house')->get();
+        $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+        $query = DB::table('house as h')
+            ->select('h.*')
+            ->where('h.academic_yr', $academic_year);
+
+        $houses = $query->orderBy('h.house_name', 'asc')->get();
+
         return response()->json([
             'status' => 200,
             'data' => $houses,
