@@ -4976,6 +4976,65 @@ class LibraryController extends Controller
         ]);
     }
 
+    // 16-03-2026
+
+    public function getHealthActivityReport(Request $request)
+    {
+        $student_id = $request->student_id;
+        $reg_id = $request->reg_id;
+        $academic_yr = $request->academic_yr;
+        $class_id = $request->class_id;
+        $section_id = $request->section_id;
+
+        $query = DB::table('health_activity_record')
+            ->leftJoin('student', 'health_activity_record.student_id', '=', 'student.student_id')
+            ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
+            ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+            ->select(
+                'health_activity_record.*',
+                'student.first_name',
+                'student.mid_name',
+                'student.last_name',
+                'student.class_id',
+                'student.section_id',
+                'class.name as class_name',
+                'section.name as section_name'
+            );
+
+        // Filter by student
+        if (!empty($student_id)) {
+            $query->where('health_activity_record.student_id', $student_id);
+        }
+
+        // Filter by created user and academic year
+        if (!empty($reg_id)) {
+            $query->where('health_activity_record.created_by', $reg_id);
+        }
+
+        if (!empty($academic_yr)) {
+            $query->where('health_activity_record.academic_yr', $academic_yr);
+        }
+
+        // Filter by class
+        if (!empty($class_id)) {
+            $query->where('student.class_id', $class_id);
+        }
+
+        // Filter by section
+        if (!empty($section_id)) {
+            $query->where('student.section_id', $section_id);
+        }
+
+        $data = $query->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+
+    // incomplete
     public function downloadHealthActivityPDF(Request $request)
     {
         try {

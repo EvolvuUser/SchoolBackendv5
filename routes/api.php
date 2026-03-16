@@ -1510,6 +1510,8 @@
             Route::put('/update_health_record/{student_id}', [LibraryController::class, 'updateHealthActivityRecord']);
             Route::delete('/delete_health_record/{student_id}', [LibraryController::class, 'deleteHealthActivityRecord']);
             Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
+            //  16-03-2026
+            Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
