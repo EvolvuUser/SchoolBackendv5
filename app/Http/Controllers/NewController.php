@@ -5432,8 +5432,8 @@ ORDER BY Z.t_remark_id DESC;");
         $academic_year = JWTAuth::getPayload()->get('academic_year');
 
         $query = DB::table('house as h')
-            ->select('h.*')
-            ->where('h.academic_yr', $academic_year);
+            ->select('h.*');
+        // ->where('h.academic_yr', $academic_year);
 
         $houses = $query->orderBy('h.house_name', 'asc')->get();
 
