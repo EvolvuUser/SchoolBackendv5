@@ -152,39 +152,35 @@
 }
 </style> 
 
-<?php 
+<?php
 $student_info1 = [];
-	if(isset($class_id) && isset($section_id)){
-   
- $student_info1 = get_students($class_id,$section_id,$academic_yr); 
- 
-}else {
-    $student_info1	= get_student_info($student_id,$academic_yr);
+if (isset($class_id) && isset($section_id)) {
+    $student_info1 = get_students($class_id, $section_id, $academic_yr);
+} else {
+    $student_info1 = get_student_info($student_id, $academic_yr);
 }
 
-
-$slot = count($student_info1)/10;
-$slot_no = intval($slot); // 12
+$slot = count($student_info1) / 10;
+$slot_no = intval($slot);  // 12
 $last_slot = explode('.', number_format($slot, 1))[1];
-$c= count($student_info1) - $last_slot;
+$c = count($student_info1) - $last_slot;
 
-//print_r($student_info1[0]);
-if(isset($stud_count)){
-    if($last_slot!=$stud_count){
-        for($i=$stud_count-10;$i<$stud_count;$i++){
-        $student_info[$i] =  $student_info1[$i];
+// print_r($student_info1[0]);
+if (isset($stud_count)) {
+    if ($last_slot != $stud_count) {
+        for ($i = $stud_count - 10; $i < $stud_count; $i++) {
+            $student_info[$i] = $student_info1[$i];
         }
-    }else{
-        for($i=$c;$i<count($student_info1);$i++){
-        $student_info[$i] =  $student_info1[$i];
+    } else {
+        for ($i = $c; $i < count($student_info1); $i++) {
+            $student_info[$i] = $student_info1[$i];
         }
-       
-   }
-   
-}else{
+    }
+} else {
     $student_info = $student_info1;
 }
-	foreach($student_info as $row1):?>
+foreach ($student_info as $row1):
+    ?>
 <html>
     <head>
         <meta charset="utf-16" />
@@ -198,7 +194,7 @@ if(isset($stud_count)){
 <!--				    UDISE No. - 27250504625-->
 				</td>
 				<td style="width:40%;text-align: center;">
-					<h4 >ACADEMIC SESSION <?php echo $row1['academic_yr'];?></h4>
+					<h4 >ACADEMIC SESSION <?php echo $row1['academic_yr']; ?></h4>
 					<!--<h3><font color="#000000">REPORT CARD</font></h3>-->
 				</td>
 				<td style="width:30%;text-align: left;font-size:14px;margin-left: 30px;" >
@@ -211,7 +207,7 @@ if(isset($stud_count)){
                 <td style="width:100%;text-align: left;">
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="width: 30%;word-wrap:break-word;max-width:100%">NAME OF THE STUDENT : </td>
-						<td style="width: 62%;text-align: center;"><div class="statistics_line"><?php echo $row1['first_name']." ".$row1['mid_name']." ".$row1['last_name'];?></div> </td>
+						<td style="width: 62%;text-align: center;"><div class="statistics_line"><?php echo $row1['first_name'] . ' ' . $row1['mid_name'] . ' ' . $row1['last_name']; ?></div> </td>
 <!--
 						<td style="width: 1%;"></td>
 						
@@ -223,9 +219,9 @@ if(isset($stud_count)){
                 <td>
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="margin-left: 10px;word-wrap:break-word;width:15%">ROLL NO. </td>
-						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo $row1['roll_no'];?></div></td>
+						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo $row1['roll_no']; ?></div></td>
 						<td style="margin-left: 10px;word-wrap:break-word;width:20%">ADMISSION NO. </td>
-						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo $row1['reg_no'];?></div></td>
+						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo $row1['reg_no']; ?></div></td>
                     </table>
                     
                 </td>
@@ -235,11 +231,11 @@ if(isset($stud_count)){
                 <td>
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="width: 6%;">CLASS </td>
-						<td style="width: 15%;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']);?></div></td>
+						<td style="width: 15%;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']); ?></div></td>
                         <td style="width: 8%;">SECTION </td>
-						<td style="width: 15%;text-align: center;"><div class="statistics_line"><?php echo get_section_name($row1['section_id']);?></div></td>
+						<td style="width: 15%;text-align: center;"><div class="statistics_line"><?php echo get_section_name($row1['section_id']); ?></div></td>
                         <td style="margin-left: 10px;word-wrap:break-word;width:20%">DATE OF BIRTH </td>
-						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo date_format(date_create($row1['dob']),'d-m-Y');?></div></td>
+						<td style="margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;"><div class="statistics_line"> <?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
                     </table>
                     
                 </td>
@@ -249,21 +245,21 @@ if(isset($stud_count)){
                 <td>
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="width: 1%;">ADDRESS </td>
-						<td style="width: 20%;text-align: center;"><div class="statistics_line"><?php echo $row1['permant_add'];?></div></td>
+						<td style="width: 20%;text-align: center;"><div class="statistics_line"><?php echo $row1['permant_add']; ?></div></td>
 
                     </table>
                     
                 </td>
                 
             </tr>
-            <?php $parent_info = get_parent_info($row1['parent_id']);?>
+            <?php $parent_info = get_parent_info($row1['parent_id']); ?>
             <tr>
                 <td>
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="width: 20%;">FATHER´S NAME </td>
-                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->father_name;?></div></td> 
+                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->father_name; ?></div></td> 
                          <td style="width: 15%;">MOBILE NO.</td>
-                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->f_mobile;?></div></td>
+                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->f_mobile; ?></div></td>
                     </table>
                     
                 </td>
@@ -273,9 +269,9 @@ if(isset($stud_count)){
                 <td>
                     <table class="infotd" style="width:95%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0px;" cellpadding="0" cellspacing="0">
                         <td style="width: 22%;">MOTHER´S NAME </td>
-                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->mother_name;?></div></td>
+                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->mother_name; ?></div></td>
                         <td style="width: 15%;">MOBILE NO. </td>
-                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->m_mobile;?></div></td>
+                        <td style="width:30%;;text-align: center;"><div class="statistics_line"><?php echo $parent_info[0]->m_mobile; ?></div></td>
                     </table>
                     
                 </td>
@@ -300,7 +296,7 @@ if(isset($stud_count)){
 					<tr>
 						<th style="width:30%;">A glimpse of my family (child with family photo)</th>
 						<th style="height:300px;width:70%;border: 1px solid grey;border-radius: 5px;padding:2%;" align="center" valign="middle">
-    					    <img src="{{ $codeigniter_app_url }}/uploads/family_image/<?php echo $parent_info[0]->family_image_name;?>" width="auto" height="250px" style="text-align:center;"> 
+    					    <img src="{{ $codeigniter_app_url }}/uploads/family_image/<?php echo $parent_info[0]->family_image_name; ?>" width="auto" height="250px" style="text-align:center;"> 
     					</th>
 					</tr>
 				</table>
@@ -317,62 +313,65 @@ if(isset($stud_count)){
 			
 						<tr>
 						    <th class="th" style="font-size:12px;width:25%;;text-align: center;valign:top;inline-block;padding:1%;">DOMAINS</th>
-						<?php 
-						
-						$term	=	DB::table('term')->get();
-						foreach($term as $row): 
-						    ${'reportcard_publish_term'.$row->term_id.'_value'}= get_reportcard_publish_value($row1['class_id'],$row1['section_id'],$row->term_id);//report card publish value for each term 
-						?>
-						    <th class="th" style="font-size:12px;width:10%;text-align: center;valign:top;inline-block;padding:1%;" colspan="3"><?php echo $row->name;?></th>
-						<?php endforeach;?>
+						<?php
+
+                        $term = DB::table('term')->get();
+                        foreach ($term as $row):
+                            ${'reportcard_publish_term' . $row->term_id . '_value'} = get_reportcard_publish_value($row1['class_id'], $row1['section_id'], $row->term_id);  // report card publish value for each term
+                            ?>
+						    <th class="th" style="font-size:12px;width:10%;text-align: center;valign:top;inline-block;padding:1%;" colspan="3"><?php echo $row->name; ?></th>
+						<?php endforeach; ?>
 						</tr>
 						<tr>
 						    <th class="td"></th>
-                            <?php 
-                            //$term	=	peer_assessment_parameter($row1['class_id']);
-                            $term	=	DB::table('term')->get();
-                            foreach($term as $row):
-                            //if($row['name']!='Term 2'){ ?>
+                            <?php
+                            // $term	=	peer_assessment_parameter($row1['class_id']);
+                            $term = DB::table('term')->get();
+                            foreach ($term as $row):
+                                // if($row['name']!='Term 2'){
+                                ?>
                                 <th class="td" style="font-size:10px;text-align:center;padding:2px;">Beginner</th>
                                 <th class="td" style="font-size:10px;text-align:center;padding:2px;">Progressing</th>
                                 <th class="td" style="font-size:10px;text-align:center;padding:2px;">Proficient</th>
-                                <?php                             //}
-                endforeach;?>
+                                <?php  // }
+                            endforeach;
+                            ?>
                         
                         </tr>
 
-						<?php 
-						$domain_p = get_domain_master_by_class_id($row1['class_id']);
-						$j=1; 
-						foreach($domain_p as $r){?>
+						<?php
+                        $domain_p = get_domain_master_by_class_id($row1['class_id']);
+                        $j = 1;
+                        foreach ($domain_p as $r) {
+                            ?>
 						    <tr>
 						        <!--<td></td>-->
-						        <th class="td" style="font-size:12px;padding:2px;"><b><?php echo $r->name;?></b><br><?php echo $r->description;?></th>
+						        <th class="td" style="font-size:12px;padding:2px;"><b><?php echo $r->name; ?></b><br><?php echo $r->description; ?></th>
 						        <th class="td" style="font-size:12px;padding:2px;" colspan="6"><b></th>
 						        </tr>
 						        </tr>
-						        <?php $parameters = get_parameter_by_dm_id($r->dm_id);
-                                    foreach($parameters as $p){
-                                    
+						        <?php
+                                $parameters = get_parameter_by_dm_id($r->dm_id);
+                                foreach ($parameters as $p) {
                                     ?>
 						    <tr>
 						         
 						        <!--<td></td>-->
-						        <td class="td" style="word-wrap:normal;font-size:12px;padding:2px;"><?php echo $p->parameter;?></td>
+						        <td class="td" style="word-wrap:normal;font-size:12px;padding:2px;"><?php echo $p->parameter; ?></td>
 
-                                <?php 
-                                foreach($term as $row){
-                                    $parameter_value= get_published_domain_parameter_value_by_id($row1['student_id'],$p->parameter_id,$row->term_id,$academic_yr);
-                                  
-                                ?>
-                                <td class="td" style="vertical-align:center;text-align:center;"><?php if($parameter_value=='Beginner' && ${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){ ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
-                                        <td class="td" style="vertical-align:center;text-align:center;"><?php if($parameter_value=='Progressing'  && ${'reportcard_publish_term'.$row->term_id.'_value'}){ ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
-                                        <td class="td" style="vertical-align:center;text-align:center;"><?php if($parameter_value=='Proficient'  && ${'reportcard_publish_term'.$row->term_id.'_value'}){ ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
-                                  <?php }?>
+                                <?php
+                                foreach ($term as $row) {
+                                    $parameter_value = get_published_domain_parameter_value_by_id($row1['student_id'], $p->parameter_id, $row->term_id, $academic_yr);
+
+                                    ?>
+                                <td class="td" style="vertical-align:center;text-align:center;"><?php if ($parameter_value == 'Beginner' && ${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') { ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
+                                        <td class="td" style="vertical-align:center;text-align:center;"><?php if ($parameter_value == 'Progressing' && ${'reportcard_publish_term' . $row->term_id . '_value'}) { ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
+                                        <td class="td" style="vertical-align:center;text-align:center;"><?php if ($parameter_value == 'Proficient' && ${'reportcard_publish_term' . $row->term_id . '_value'}) { ?><img height="10px" width="12px" src="{{$codeigniter_app_url}}/uploads/check.jpg" alt="Checkmark"> <?php } ?></td>
+                                  <?php } ?>
 						    </tr>
 						  
-						         <?php }?>
-						         <?php };?>
+						         <?php } ?>
+						         <?php }; ?>
         </table> 
         </div>
         <br>
@@ -387,167 +386,207 @@ if(isset($stud_count)){
 				 <td style="vertical-align:middle;text-align: center" cellpadding="0" cellspacing="0">
 					<table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <tr>
-							<?php  $term_list	=  get_published_terms($row1['class_id'],$row1['section_id']);
-							//print_r($term_list);
+							<?php
+                            $term_list = get_published_terms($row1['class_id'], $row1['section_id']);
+                            // print_r($term_list);
                             ?>
 							<th class="col-md-3 col-sm-3 col-xs-3 th" style="word-wrap: break-word;font-size:10px"><b>Scholastic Areas</b></th>
-							<?php 
-						//	$count_of_mark_headings=0;
-							foreach($term_list as $term){
-								${'general_highest_marks_array_'.$term->term_id}=array();
-								${'count_of_mark_headings_'.$term->term_id}=0;
-								//$count_of_mark_headings=0;
-								$exam_list	=	get_exams_by_class_per_term($row1['class_id'],$term->term_id,$academic_yr);
-								foreach($exam_list as $exam){
-									${'count_of_mark_headings_'.$exam->exam_id}=0;
-									$marks_headings = get_marks_heading_class($row1['class_id'],1,$exam->exam_id,$academic_yr);
-									${'general_highest_marks_json_'.$term->term_id}="{";
-									foreach($marks_headings as $mrow){
-										${'general_highest_marks_json_'.$term->term_id}=${'general_highest_marks_json_'.$term->term_id}.'"'.$mrow->marks_headings_name.'":"'.$mrow->highest_marks.'",';
-										${'count_of_mark_headings_'.$exam->exam_id}=${'count_of_mark_headings_'.$exam->exam_id}+1;
-									}
-									${'general_highest_marks_json_'.$term->term_id}=rtrim(${'general_highest_marks_json_'.$term->term_id},","); //Lija report card
-									${'general_highest_marks_json_'.$term->term_id}=${'general_highest_marks_json_'.$term->term_id}."}";
-									${'general_highest_marks_array_'.$term->term_id}=array_merge(${'general_highest_marks_array_'.$term->term_id},json_decode(${'general_highest_marks_json_'.$term->term_id},true));
-									//echo ${'general_highest_marks_json_'.$term->term_id}."<br>"; 
-									${'count_of_mark_headings_'.$term->term_id}=count(${'general_highest_marks_array_'.$term->term_id});
-									
-								}
-                            ?>
-							 <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="<?php echo ${'count_of_mark_headings_'.$term->term_id}+2;?>"><?php echo $term->name;?></th>
-                         <?php 
+							<?php
+                            //	$count_of_mark_headings=0;
+                            foreach ($term_list as $term) {
+                                ${'general_highest_marks_array_' . $term->term_id} = array();
+                                ${'count_of_mark_headings_' . $term->term_id} = 0;
+                                // $count_of_mark_headings=0;
+                                $exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $academic_yr);
+                                foreach ($exam_list as $exam) {
+                                    ${'count_of_mark_headings_' . $exam->exam_id} = 0;
+                                    $marks_headings = get_marks_heading_class($row1['class_id'], 1, $exam->exam_id, $academic_yr);
+                                    ${'general_highest_marks_json_' . $term->term_id} = '{';
+                                    foreach ($marks_headings as $mrow) {
+                                        ${'general_highest_marks_json_' . $term->term_id} = ${'general_highest_marks_json_' . $term->term_id} . '"' . $mrow->marks_headings_name . '":"' . $mrow->highest_marks . '",';
+                                        ${'count_of_mark_headings_' . $exam->exam_id} = ${'count_of_mark_headings_' . $exam->exam_id} + 1;
+                                    }
+                                    ${'general_highest_marks_json_' . $term->term_id} = rtrim(${'general_highest_marks_json_' . $term->term_id}, ',');  // Lija report card
+                                    ${'general_highest_marks_json_' . $term->term_id} = ${'general_highest_marks_json_' . $term->term_id} . '}';
+                                    ${'general_highest_marks_array_' . $term->term_id} = array_merge(${'general_highest_marks_array_' . $term->term_id}, json_decode(${'general_highest_marks_json_' . $term->term_id}, true));
+                                    // echo ${'general_highest_marks_json_'.$term->term_id}."<br>";
+                                    ${'count_of_mark_headings_' . $term->term_id} = count(${'general_highest_marks_array_' . $term->term_id});
+                                }
+                                ?>
+							 <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id} + 2; ?>"><?php echo $term->name; ?></th>
+                         <?php
                             }
-							?>
+                            ?>
 						</tr>		
 						<tr>
-							<?php  
-                            //$term_list	=	get_term($acd_yr);?>
+							<?php
+                            // $term_list	=	get_term($acd_yr);
+                            ?>
                             <td class="col-md-3 scholastictd" style="text-align:center;height:30px;">SUBJECT</th>
-							<?php 
-							   
-								foreach($term_list as $term){	
-								     ${"grand_total_marks ".$term->term_id}=0;
-									${'grand_highest_marks_'.$term->term_id}=0;
-									
-									$highest_total_marks=0;
-									if(isset(${'general_highest_marks_array_'.$term->term_id}) && ${'general_highest_marks_array_'.$term->term_id}<>null){
-										foreach (${'general_highest_marks_array_'.$term->term_id} as $key => $value){
-											if($key=='Pen Paper')
-												$value=10;
-											$highest_total_marks=$highest_total_marks+(float)$value;
-											
-											${'total_marks_'.$term->term_id.$key}=0;
-							?> 
-										<td class="col-md-1 scholastictd" style="vertical-align:middle;text-align:center;height:30px;"><?php echo $key."<br/>(".$value.")";  ?></td>
-							 <?php 		}
-										
-							 ?>
+							<?php
+
+                            foreach ($term_list as $term) {
+                                ${'grand_total_marks ' . $term->term_id} = 0;
+                                ${'grand_highest_marks_' . $term->term_id} = 0;
+
+                                $highest_total_marks = 0;
+                                if (isset(${'general_highest_marks_array_' . $term->term_id}) && ${'general_highest_marks_array_' . $term->term_id} <> null) {
+                                    foreach (${'general_highest_marks_array_' . $term->term_id} as $key => $value) {
+                                        if ($key == 'Pen Paper')
+                                            $value = 10;
+                                        $highest_total_marks = $highest_total_marks + (float) $value;
+
+                                        ${'total_marks_' . $term->term_id . $key} = 0;
+                                        ?> 
+										<td class="col-md-1 scholastictd" style="vertical-align:middle;text-align:center;height:30px;"><?php echo $key . '<br/>(' . $value . ')'; ?></td>
+							 <?php
+                                    }
+
+                                    ?>
 										<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;">Total<br/>(<?php echo $highest_total_marks; ?>)</td>
 										<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;">Grade</td>
 							 <?php
-									}else{
-							 ?>
-								        <td class="col-md-1 scholastictd"  colspan="<?php echo ${'count_of_mark_headings_'.$term->term_id}+2;?>" style="text-align:center;height:30px;"></td>
+                                } else {
+                                    ?>
+								        <td class="col-md-1 scholastictd"  colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id} + 2; ?>" style="text-align:center;height:30px;"></td>
 							        
-							<?php 
-									}
-								}
-							?>
+							<?php
+                                }
+                            }
+                            ?>
 						</tr>
 
-						<?php 
-						//$grand_highest_marks=0;
-						$sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'],$academic_yr);
-               
-						foreach($sub_list as $sub_row){?>
+						<?php
+                        // $grand_highest_marks=0;
+                        $sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'], $academic_yr);
+
+                        foreach ($sub_list as $sub_row) {
+                            ?>
 						<tr>
                              <td  class="col-md-1 scholastictd" style="text-align:center;height:30px;">  
 								<?php
-									echo $sub_row->name;
-								?>
+                                echo $sub_row->name;
+                                ?>
 							</td>
-							<?php 
-							foreach($term_list as $term){
-								$total_marks_obtained="";
-								$total_highest_marks=""; //Lija 18-03-22
-								
-								${'mark_obtained_array_'.$term->term_id}=array();
-								${'highest_marks_array_'.$term->term_id}=array();
-								$exam_list	=	get_exams_by_class_per_term($row1['class_id'],$term->term_id,$academic_yr);
-								if(isset($exam_list) && count($exam_list)>0){
-								foreach($exam_list as $exam){
-									${'marks_resultarray_'.$term->term_id}	=	get_marks($exam->exam_id,$row1['class_id'],$row1['section_id'],$sub_row->sub_rc_master_id,$student_id,$academic_yr);
-									if(isset(${'marks_resultarray_'.$term->term_id}[0])){
-										
-										
-										${'marks_obtained_json_'.$term->term_id}=${'marks_resultarray_'.$term->term_id}[0]['reportcard_marks'];
-										${'highest_marks_json_'.$term->term_id}=${'marks_resultarray_'.$term->term_id}[0]['reportcard_highest_marks']; //Lija 18-03-22
-										
-										${'mark_obtained_array_'.$term->term_id}=json_decode(${'marks_obtained_json_'.$term->term_id});
-										${'highest_marks_array_'.$term->term_id}=json_decode(${'highest_marks_json_'.$term->term_id});//Lija 18-03-22
-									    
-										if(isset(${'mark_obtained_array_'.$term->term_id}) && ${'mark_obtained_array_'.$term->term_id}<>null){
-											foreach (${'mark_obtained_array_'.$term->term_id} as $key => $value){ 
-											    if($total_marks_obtained=="")
-													$total_marks_obtained=0;
-												$total_marks_obtained=$total_marks_obtained+$value;
-												//echo "value ".$value." ";
-												${'total_marks_'.$term->term_id.$key}=${'total_marks_'.$term->term_id.$key ?? 0}+$value;
-							?> 
-												<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value;?></td>
-										<?php }
-											//Lija 18-03-22
-											 foreach (${'highest_marks_array_'.$term->term_id} as $key => $value){ 
-												if($total_highest_marks=="")
-													$total_highest_marks=0;
-												$total_highest_marks=$total_highest_marks+(float)$value;
-											  }
-										?>
+							<?php
+                            foreach ($term_list as $term) {
+                                $total_marks_obtained = '';
+                                $total_highest_marks = '';  // Lija 18-03-22
+
+                                ${'mark_obtained_array_' . $term->term_id} = array();
+                                ${'highest_marks_array_' . $term->term_id} = array();
+                                $exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $academic_yr);
+                                if (isset($exam_list) && count($exam_list) > 0) {
+                                    foreach ($exam_list as $exam) {
+                                        ${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $student_id, $academic_yr);
+                                        if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
+                                            ${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
+                                            ${'highest_marks_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_highest_marks'];  // Lija 18-03-22
+
+                                            ${'mark_obtained_array_' . $term->term_id} = json_decode(${'marks_obtained_json_' . $term->term_id}, true);
+                                            ${'highest_marks_array_' . $term->term_id} = json_decode(${'highest_marks_json_' . $term->term_id}, true);  // Lija 18-03-22
+
+                                            if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
+                                                if (${'count_of_mark_headings_' . $exam['exam_id']} == count(${'mark_obtained_array_' . $term['term_id']})) {
+                                                    // Lija 23-02-26 When count of marks heading is same
+                                                    foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+                                                        if ($total_marks_obtained == '')
+                                                            $total_marks_obtained = 0;
+                                                        $total_marks_obtained = $total_marks_obtained + $value;
+                                                        // echo "value ".$value." ";
+                                                        ${'total_marks_' . $term->term_id . $key} = ${'total_marks_' . $term->term_id . $key ?? 0} + $value;
+                                                        ?> 
+												<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
+										<?php
+                                                    }
+                                                    // Lija 18-03-22
+                                                    foreach (${'highest_marks_array_' . $term->term_id} as $key => $value) {
+                                                        if ($total_highest_marks == '')
+                                                            $total_highest_marks = 0;
+                                                        $total_highest_marks = $total_highest_marks + (float) $value;
+                                                    }
+                                                } else {
+                                                    // Lija 23-02-26 When count of marks heading is not same
+                                                    ?>
+    				                            <td style="text-align:center;cellpadding:0;cellspacing:0;border: 1px solid black;" colspan="<?php echo ${'count_of_mark_headings_' . $exam['exam_id']}; ?>">
+        											<table class="col-md-12 col-sm-12 col-xs-12" border="0" style="border: 0px solid black;cellpadding:0;cellspacing:0;" width="100%">
+        												<tr>
+        								<?php
+                                        $total_highest_marks = 0;
+                                        // var_dump(${'mark_obtained_array_'.$term['term_id']});
+                                        foreach (${'mark_obtained_array_' . $term['term_id']} as $key => $value) {
+                                            if ($value <> 'Ab')  // Lija 21-03-23
+                                                $total_highest_marks = $total_highest_marks + (float) ${'highest_marks_array_' . $term['term_id']}[$key];
+
+                                            ?>
+        													<td class=" mark_heading_td" style="vertical-align:center;text-align:center;border: 0px;"><?php echo $key . '(' . ${'highest_marks_array_' . $term['term_id']}[$key] . ')'; ?></td>
+        								<?php } ?>
+        												</tr>
+        												<tr>
+        								<?php
+                                        foreach (${'mark_obtained_array_' . $term['term_id']} as $key => $value) {
+                                            if ($value <> 'Ab')  // Lija 21-03-23
+                                                $total_marks_obtained = $total_marks_obtained + (float) $value;
+
+                                            ?>
+        													<td class=" mark_heading_td" style="vertical-align:center;text-align:center;border: 0px"><?php echo $value; ?></td>
+        								<?php
+                                        }
+                                        ?>
+        												</tr>
+        											</table>
+        										</td>
+										    <?php } ?>
+                                                ?>
 				
 										
-								<?php }else{?>
-								                <td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_'.$term->term_id}+2);?>"></td> 
-								<?php }
-							}else{
-								for($i=0;$i<${'count_of_mark_headings_'.$exam->exam_id};$i++){
-								?>
+								<?php } else { ?>
+								                <td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
+								<?php
+                                            }
+                                        } else {
+                                            for ($i = 0; $i < ${'count_of_mark_headings_' . $exam->exam_id}; $i++) {
+                                ?>
 									<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;"></td>
 							<?php
-								}
-							}
-						}?>
+                                            }
+                                        }
+                                    }
+                                    ?>
 						<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo number_format((float) $total_marks_obtained, 1); ?></td>
 									
 						<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;">
 						<?php
-							if($total_marks_obtained<>""){
-								${"grand_total_marks ".$term->term_id}=${"grand_total_marks ".$term->term_id}+$total_marks_obtained;
-								${'grand_highest_marks_'.$term->term_id}=${'grand_highest_marks_'.$term->term_id}+$total_highest_marks;//Lija 18-03-22
-							}
-							if($total_marks_obtained==""){
-								echo "";
-							}else{
-								$final_grade = "";
-								if($total_highest_marks<>0){
-									//$subject_total_marks_per_50=($total_marks_obtained*50)/$total_highest_marks;//Convert to out of 50
-									$final_grade = get_grade_based_on_marks(number_format($total_marks_obtained),'Scholastic',$row1['class_id']); 
-								}
-								
-								echo $final_grade;
-							}
-						?>
+                        if ($total_marks_obtained <> '') {
+                            ${'grand_total_marks ' . $term->term_id} = ${'grand_total_marks ' . $term->term_id} + $total_marks_obtained;
+                            ${'grand_highest_marks_' . $term->term_id} = ${'grand_highest_marks_' . $term->term_id} + $total_highest_marks;  // Lija 18-03-22
+                        }
+                        if ($total_marks_obtained == '') {
+                            echo '';
+                        } else {
+                            $final_grade = '';
+                            if ($total_highest_marks <> 0) {
+                                // $subject_total_marks_per_50=($total_marks_obtained*50)/$total_highest_marks;//Convert to out of 50
+                                $final_grade = get_grade_based_on_marks(number_format($total_marks_obtained), 'Scholastic', $row1['class_id']);
+                            }
+
+                            echo $final_grade;
+                        }
+                        ?>
 						</td>
 					<?php
-					}else{?>
-							<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_'.$term->term_id}+2);?>"></td> 
+                                } else {
+                    ?>
+							<td class="col-md-1 scholastictd"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 					<?php
-						}
-					}
-					?>
+                                }
+                            }
+                            ?>
 				
                         </tr>
-                        <?php 
-						}?>
+                        <?php
+                        }
+                        ?>
 						
 						
 				</table>
@@ -562,88 +601,84 @@ if(isset($stud_count)){
                         <table class="table-responsive" style="border:0px;width:100%" cellpadding="0" cellspacing="0">
                             <tr>
                                 <td style="vertical-align:middle;" cellpadding="0" cellspacing="0">
-								<?php  
-                                        $term_list	=	get_published_terms($row1['class_id'],$row1['section_id']);
-                                        $colspan = count($term_list)+1;
-                                        ?>
+								<?php
+                                $term_list = get_published_terms($row1['class_id'], $row1['section_id']);
+                                $colspan = count($term_list) + 1;
+                                ?>
                                        
                                 <table class="table-responsive " style="width:100%; margin-left: auto; margin-right: auto; border-spacing: 0px; background-color:white;" cellpadding="0" cellspacing="0">
                                   <tr>
-                                        <th class="th" colspan="<?php echo $colspan;?>">CO- SCHOLASTICS AREA (Graded on 5 point Scale)</th>
+                                        <th class="th" colspan="<?php echo $colspan; ?>">CO- SCHOLASTICS AREA (Graded on 5 point Scale)</th>
                                     </tr>
                                     <tr>
                                         <th class="scholastictd">Subjects</th>
-                                        <?php 
-                                        //$exam_list	=	get_exams_by_class_per_term($row1['class_id'],$term->term_id,$row1['academic_yr']);
-                                        foreach($term_list as $term){ 
-                                       ?>
-                                        <th class="scholastictd"  width=""><?php echo $term->name;?></th>
+                                        <?php
+                                        // $exam_list	=	get_exams_by_class_per_term($row1['class_id'],$term->term_id,$row1['academic_yr']);
+                                        foreach ($term_list as $term) {
+                                            ?>
+                                        <th class="scholastictd"  width=""><?php echo $term->name; ?></th>
                                          <?php
                                         }
                                         ?>
                                     </tr>
-                                    <?php 
-                                    $sub_list = get_coscholastic_subject_alloted_to_class($row1['class_id'],$row1['academic_yr']);
-                                    foreach($sub_list as $sub_row):?>
+                                    <?php
+                                    $sub_list = get_coscholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+                                    foreach ($sub_list as $sub_row):
+                                        ?>
 
                                     <tr>
-										<td  class="col-md-8 col-sm-8 col-xs-8 scholastictd" style="vertical-align:middle;text-align:center;"> <?php echo $sub_row->name;?></td>
+										<td  class="col-md-8 col-sm-8 col-xs-8 scholastictd" style="vertical-align:middle;text-align:center;"> <?php echo $sub_row->name; ?></td>
 
-									<?php 
-                                 //foreach($term_list as $term){
-                                    
-                                    //$exam_list	=	get_exam_for_which_marks_available($row1['class_id'],$row1['section_id'],$row1['student_id']);
-                                   
-                                    $coscholastic_grade="";
-                                    foreach($term_list as $term){
-										${'mark_obtained_array_'.$term->term_id}=array();
-				                        $exam_list	=	get_exams_by_class_per_term($row1['class_id'],$term->term_id,$row1['academic_yr']);
-				                        $coscholastic_grade="";
-				                        foreach($exam_list as $exam){
-				    
-                                        ${'marks_resultarray_'.$term->term_id}	=	get_marks($exam->exam_id,$row1['class_id'],$row1['section_id'],$sub_row->sub_rc_master_id,$row1['student_id'],$row1['academic_yr']);
-					
-                    					if(isset(${'marks_resultarray_'.$term->term_id}[0])){
-                    						${'marks_obtained_json_'.$term->term_id}=${'marks_resultarray_'.$term->term_id}[0]['reportcard_marks'];
-                    						${'mark_obtained_array_'.$term->term_id}=array_merge(${'mark_obtained_array_'.$term->term_id},json_decode(${'marks_obtained_json_'.$term->term_id},true));
-                    						
-                    						if(isset(${'mark_obtained_array_'.$term->term_id}) && ${'mark_obtained_array_'.$term->term_id}<>null){
-                    							
-                    							${'coscholastic_marksobtained_'.$term->term_id}=${'marks_resultarray_'.$term->term_id}[0]['total_marks'];
-                    							
-                    							${'coscholastic_highestmarks_'.$term->term_id}=${'marks_resultarray_'.$term->term_id}[0]['highest_total_marks'];
-                    
-                    							foreach (${'mark_obtained_array_'.$term->term_id} as $key => $value){
-                    								if($value=='Ab')
-                    									$coscholastic_grade="Ab";
-                    							}
-                    							if($coscholastic_grade=="Ab" && ${'coscholastic_marksobtained_'.$term->term_id}==0){
-                    								//If reportcard marks is Ab and total marks is 0 then Grade will be Ab
-                    								$coscholastic_grade="Ab";
-                    							}else{ 
-                    
-                    								$marks_per_50=(${'coscholastic_marksobtained_'.$term->term_id}*50)/${'coscholastic_highestmarks_'.$term->term_id};//Convert to out of 50
-                    
-                    								$coscholastic_grade= get_grade_based_on_marks(number_format($marks_per_50),'Co-Scholastic',$row1['class_id']); 
-                    								
-                    							 }
-                    						}
-                    					}else{
-                    					    $coscholastic_grade= "";
-                    					}
-                    					
-                    				}
-                    			?>	
-									<td class="scholastictd" style="vertical-align:middle;text-align:center;"><?php echo $coscholastic_grade;?></td>	
+									<?php
+                                    // foreach($term_list as $term){
+
+                                    // $exam_list	=	get_exam_for_which_marks_available($row1['class_id'],$row1['section_id'],$row1['student_id']);
+
+                                    $coscholastic_grade = '';
+                                    foreach ($term_list as $term) {
+                                        ${'mark_obtained_array_' . $term->term_id} = array();
+                                        $exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
+                                        $coscholastic_grade = '';
+                                        foreach ($exam_list as $exam) {
+                                            ${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
+
+                                            if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
+                                                ${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
+                                                ${'mark_obtained_array_' . $term->term_id} = array_merge(${'mark_obtained_array_' . $term->term_id}, json_decode(${'marks_obtained_json_' . $term->term_id}, true));
+
+                                                if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
+                                                    ${'coscholastic_marksobtained_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['total_marks'];
+
+                                                    ${'coscholastic_highestmarks_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['highest_total_marks'];
+
+                                                    foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+                                                        if ($value == 'Ab')
+                                                            $coscholastic_grade = 'Ab';
+                                                    }
+                                                    if ($coscholastic_grade == 'Ab' && ${'coscholastic_marksobtained_' . $term->term_id} == 0) {
+                                                        // If reportcard marks is Ab and total marks is 0 then Grade will be Ab
+                                                        $coscholastic_grade = 'Ab';
+                                                    } else {
+                                                        $marks_per_50 = (${'coscholastic_marksobtained_' . $term->term_id} * 50) / ${'coscholastic_highestmarks_' . $term->term_id};  // Convert to out of 50
+
+                                                        $coscholastic_grade = get_grade_based_on_marks(number_format($marks_per_50), 'Co-Scholastic', $row1['class_id']);
+                                                    }
+                                                }
+                                            } else {
+                                                $coscholastic_grade = '';
+                                            }
+                                        }
+                                        ?>	
+									<td class="scholastictd" style="vertical-align:middle;text-align:center;"><?php echo $coscholastic_grade; ?></td>	
                                 <?php
-									}
-                                ?>
+                                    }
+                                    ?>
                                 
                                 <?php
                                 // }
-                                 ?>
+                                ?>
                             </tr>
-                                    <?php endforeach;?>
+                                    <?php endforeach; ?>
                                 </table>
                               </td>
                     </tr>
@@ -682,83 +717,74 @@ if(isset($stud_count)){
 					<table class="table-responsive" style="border:0px;width:100%;" cellpadding="0" cellspacing="0">
                             <tr>
                                 <td style="vertical-align:middle;" cellpadding="0" cellspacing="0">
-								<?php 
-                                     $sub_list = get_activity_alloted_to_class($row1['class_id'],$row1['academic_yr']);
-									 $exam_list_s	=	get_exam_for_which_marks_available($row1['class_id'],$row1['section_id'],$row1['student_id'],'Activity');
-                                  
+								<?php
+                                $sub_list = get_activity_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+                                $exam_list_s = get_exam_for_which_marks_available($row1['class_id'], $row1['section_id'], $row1['student_id'], 'Activity');
 
-                                    foreach($sub_list as $sub_row){
-										$marks_headings_of_subject=get_marks_headings_of_subject($row1['class_id'],$sub_row['sub_rc_master_id'],$row1['academic_yr']);
-										foreach($marks_headings_of_subject as $mrow){
-											${'coscholastic_grade'.$mrow['marks_headings_name']}=array();
-										}
-										?>
+                                foreach ($sub_list as $sub_row) {
+                                    $marks_headings_of_subject = get_marks_headings_of_subject($row1['class_id'], $sub_row['sub_rc_master_id'], $row1['academic_yr']);
+                                    foreach ($marks_headings_of_subject as $mrow) {
+                                        ${'coscholastic_grade' . $mrow['marks_headings_name']} = array();
+                                    }
+                                    ?>
 								
 								
                                 <table class="table-responsive " style="width:100%; margin-left: auto; margin-right: auto; border-spacing: 0px; background-color:white;" cellpadding="0" cellspacing="0">
                                     <tr>
-                                        <th class="scholastictd" colspan="<?php echo count($exam_list_s)+1;?>"><?php echo $sub_row['name'];?></th>
+                                        <th class="scholastictd" colspan="<?php echo count($exam_list_s) + 1; ?>"><?php echo $sub_row['name']; ?></th>
                                     </tr>
                                     
 
                                    
-                                 <?php 
-								    $coscholastic_grade="";
-                                    foreach($exam_list_s as $exam){
-											
+                                 <?php
+                                    $coscholastic_grade = '';
+                                    foreach ($exam_list_s as $exam) {
+                                        ${'mark_obtained_array_' . $exam->exam_id} = array();
+                                        ${'marks_resultarray_' . $exam->exam_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row['sub_rc_master_id'], $row1['student_id'], $row1['academic_yr']);
+                                        // echo "marks ".${'marks_resultarray_'.$term->term_id}[0]."<br/>";
+                                        if (isset(${'marks_resultarray_' . $exam->exam_id}[0])) {
+                                            ${'marks_obtained_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_marks'];
+                                            ${'mark_obtained_array_' . $exam->exam_id} = array_merge(${'mark_obtained_array_' . $exam->exam_id}, json_decode(${'marks_obtained_json_' . $exam->exam_id}, true));
 
-										${'mark_obtained_array_'.$exam->exam_id}=array();
-                                        ${'marks_resultarray_'.$exam->exam_id}	=	get_marks($exam->exam_id,$row1['class_id'],$row1['section_id'],$sub_row['sub_rc_master_id'],$row1['student_id'],$row1['academic_yr']);
-                                        //echo "marks ".${'marks_resultarray_'.$term->term_id}[0]."<br/>";
-                                        if(isset(${'marks_resultarray_'.$exam->exam_id}[0])){
-                                            ${'marks_obtained_json_'.$exam->exam_id}=${'marks_resultarray_'.$exam->exam_id}[0]['reportcard_marks'];
-                                            ${'mark_obtained_array_'.$exam->exam_id}=array_merge(${'mark_obtained_array_'.$exam->exam_id},json_decode(${'marks_obtained_json_'.$exam->exam_id},true));
- 											
-                                            if(isset(${'mark_obtained_array_'.$exam->exam_id}) && ${'mark_obtained_array_'.$exam->exam_id}<>null){
-												
-												${'coscholastic_marksobtained_'.$exam->exam_id}=${'marks_resultarray_'.$exam->exam_id}[0]['total_marks'];
-											
-												${'coscholastic_highestmarks_'.$exam->exam_id}=${'marks_resultarray_'.$exam->exam_id}[0]['highest_total_marks'];
+                                            if (isset(${'mark_obtained_array_' . $exam->exam_id}) && ${'mark_obtained_array_' . $exam->exam_id} <> null) {
+                                                ${'coscholastic_marksobtained_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['total_marks'];
 
-                                                foreach (${'mark_obtained_array_'.$exam->exam_id} as $key => $value){
-												
-                                                    if($value=='Ab')
-                                                        $coscholastic_grade="Ab";
-													if($coscholastic_grade=="Ab" && $value==0){
-														//If reportcard marks is Ab and total marks is 0 then Grade will be Ab
-														$coscholastic_grade="Ab";
-													}else{ 
-														$coscholastic_grade= get_grade_based_on_marks(number_format($value),'Co-Scholastic',$row1['class_id']); 
+                                                ${'coscholastic_highestmarks_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['highest_total_marks'];
 
-													 }
-													 
-													 ${'coscholastic_grade'.$key}=array_merge(${'coscholastic_grade'.$key},array($exam['name']=>$coscholastic_grade));
+                                                foreach (${'mark_obtained_array_' . $exam->exam_id} as $key => $value) {
+                                                    if ($value == 'Ab')
+                                                        $coscholastic_grade = 'Ab';
+                                                    if ($coscholastic_grade == 'Ab' && $value == 0) {
+                                                        // If reportcard marks is Ab and total marks is 0 then Grade will be Ab
+                                                        $coscholastic_grade = 'Ab';
+                                                    } else {
+                                                        $coscholastic_grade = get_grade_based_on_marks(number_format($value), 'Co-Scholastic', $row1['class_id']);
+                                                    }
 
-												}
-
-											}
-												
+                                                    ${'coscholastic_grade' . $key} = array_merge(${'coscholastic_grade' . $key}, array($exam['name'] => $coscholastic_grade));
+                                                }
+                                            }
                                         }
                                     }
-								
-										foreach($marks_headings_of_subject as $mrow){
-											//var_dump(${'coscholastic_grade'.$mrow['marks_headings_name']});
-											//echo "<br/>";
-										?>
+
+                                    foreach ($marks_headings_of_subject as $mrow) {
+                                        // var_dump(${'coscholastic_grade'.$mrow['marks_headings_name']});
+                                        // echo "<br/>";
+                                        ?>
 												<tr>
-													<td  class="col-md-8 col-sm-8 col-xs-8 scholastictd subnamesize" style="vertical-align:middle;text-align:center;"> <?php echo $mrow['marks_headings_name'];?></td>
+													<td  class="col-md-8 col-sm-8 col-xs-8 scholastictd subnamesize" style="vertical-align:middle;text-align:center;"> <?php echo $mrow['marks_headings_name']; ?></td>
 										<?php
-											foreach($exam_list_s as $exam){
-										?>
-													<td class="scholastictd" style="vertical-align:middle;text-align:center;"><?php echo ${'coscholastic_grade'.$mrow['marks_headings_name']}[$exam['name']];?></td>
+                                        foreach ($exam_list_s as $exam) {
+                                            ?>
+													<td class="scholastictd" style="vertical-align:middle;text-align:center;"><?php echo ${'coscholastic_grade' . $mrow['marks_headings_name']}[$exam['name']]; ?></td>
 										<?php } ?>
 												 </tr>
 									<?php
-										}
-									?>
+                                    }
+                                    ?>
                                 </table>
 								<br>
-					<?php }?><br/>
+					<?php } ?><br/>
                             </td>
 						</tr>
 					</table>
@@ -776,48 +802,59 @@ if(isset($stud_count)){
                       					
 						<tr> 
                             <th class="th" style="width:40%;">Aspect</th>
-                            <?php $term	=	DB::table('term')->get();
-                            foreach($term as $row):
-                            //if($row['name']!='Term 2'){?>
-                            <th class="th" style="width:30%;"><?php echo $row->name;?></th>
-                            <?php 
-                                //}
-                            endforeach;?>
-                        </tr>
-                        <?php 
-                            $pa	=	parent_feedback_parameter($row1['class_id']);
-                            foreach($pa as $r):?>
-                            <tr>
-                                <td class="td" style="vertical-align:center;text-align:center;"><?php echo $r->parameter;?></td>
-                                <?php $term	=	DB::table('term')->get();
-                                foreach($term as $row){
+                            <?php
+                            $term = DB::table('term')->get();
+                            foreach ($term as $row):
+                                // if($row['name']!='Term 2'){
                                 ?>
+                            <th class="th" style="width:30%;"><?php echo $row->name; ?></th>
+                            <?php
+                                // }
+                            endforeach;
+                            ?>
+                        </tr>
+                        <?php
+                        $pa = parent_feedback_parameter($row1['class_id']);
+                        foreach ($pa as $r):
+                            ?>
+                            <tr>
+                                <td class="td" style="vertical-align:center;text-align:center;"><?php echo $r->parameter; ?></td>
+                                <?php
+                                $term = DB::table('term')->get();
+                                foreach ($term as $row) {
+                                    ?>
                                     <td class="td" style="vertical-align:center;text-align:center;">
                                 <?php
-                                    $parameter	= get_published_parent_feedback_parameter_value_by_id($row1['student_id'],$r->pfm_id,$row->term_id,$academic_yr);
-                                    if(${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
-                                        if($r->parameter=='How satisfied are you with his/ her study time.'){?>
+                                $parameter = get_published_parent_feedback_parameter_value_by_id($row1['student_id'], $r->pfm_id, $row->term_id, $academic_yr);
+                                if (${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
+                                    if ($r->parameter == 'How satisfied are you with his/ her study time.') {
+                                        ?>
                                         
-                                            <?php 
-                                            for($i=1;$i<=$parameter;$i++){?>
+                                            <?php
+                                            for ($i = 1; $i <= $parameter; $i++) {
+                                                ?>
     									        <img src="{{$codeigniter_app_url}}/uploads/Plain_Yellow_Star.jpg" style="width:20px;height:18px">
-    										<?php } 
-    										if($parameter==0)
-    											echo "<font size='5'>#</font>";
-    										?>
+    										<?php
+                                            }
+                                            if ($parameter == 0)
+                                                echo "<font size='5'>#</font>";
+                                            ?>
 
-                                <?php   }else{ 
-                                            echo $parameter;
-                                        }
+                                <?php
+                                    } else {
+                                        echo $parameter;
                                     }
+                                }
                                 ?>
                                 </td>
                                 <?php
-                                }?>
+                                }
+                                ?>
                             </tr>
-                        <?php 
-                                //}
-                            endforeach;?>
+                        <?php
+                            // }
+                        endforeach;
+                        ?>
                         
                      </table>
                  </td>
@@ -837,36 +874,38 @@ if(isset($stud_count)){
                       					
 						<tr> 
 						<th class="th" >Aspect</th>
-                            <?php 
-                            $term	=	DB::table('term')->get();
-                            foreach($term as $row):
-                            //if($row['name']!='Term 2'){?>
-                            <th class="th"><?php echo $row->name;?></th>
-                            <?php 
-                            endforeach;?>
+                            <?php
+                            $term = DB::table('term')->get();
+                            foreach ($term as $row):
+                                // if($row['name']!='Term 2'){
+                                ?>
+                            <th class="th"><?php echo $row->name; ?></th>
+                            <?php
+                            endforeach;
+                            ?>
                         </tr>
-                        <?php 
-                            $pa	=	peer_assessment_parameter($row1['class_id']);
-                            foreach($pa as $r):
-                            
+                        <?php
+                        $pa = peer_assessment_parameter($row1['class_id']);
+                        foreach ($pa as $r):
                             ?>
                             <tr>
-                                 <td class="td" style="vertical-align:center;text-align:center;width:40%;"><?php echo $r->parameter;?></td>
-                                 <?php 
-                                  $term	=	DB::table('term')->get();
-                                 foreach($term as $row): 
-                                 $pa = get_published_peer_assessment_parameter_value_by_id($row1['student_id'],$r->pam_id,$row->term_id,$academic_yr);
-                                 ?>
+                                 <td class="td" style="vertical-align:center;text-align:center;width:40%;"><?php echo $r->parameter; ?></td>
+                                 <?php
+                            $term = DB::table('term')->get();
+                            foreach ($term as $row):
+                                $pa = get_published_peer_assessment_parameter_value_by_id($row1['student_id'], $r->pam_id, $row->term_id, $academic_yr);
+                                ?>
                                     <td class="td" style="vertical-align:center;text-align:center;width:30%;">
-                                    <?php 
-                                    if(${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
-                                        echo $pa; 
+                                    <?php
+                                    if (${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
+                                        echo $pa;
                                     }
                                     ?></td>
-                                <?php  endforeach;?>
+                                <?php endforeach; ?>
                           </tr>
                         <?php
-                            endforeach;?>
+                        endforeach;
+                        ?>
 				</table>
 				</td>
 			</tr>
@@ -889,31 +928,38 @@ if(isset($stud_count)){
 
 						<tr> 
                             <th class="th" style="width:24%;">Aspect</th>
-                            <?php $term	=	DB::table('term')->get();
-                            foreach($term as $row):
-                            //if($row['name']!='Term 2'){?>
-                            <th class="th" style="width:30%;"><?php echo $row->name;?></th>
-                            <?php 
-                                //}
-                            endforeach;?>
+                            <?php
+                            $term = DB::table('term')->get();
+                            foreach ($term as $row):
+                                // if($row['name']!='Term 2'){
+                                ?>
+                            <th class="th" style="width:30%;"><?php echo $row->name; ?></th>
+                            <?php
+                                // }
+                            endforeach;
+                            ?>
                         </tr>
-                        <?php 
-                            $pa	=	get_self_assessment_master($row1['class_id']);
-                            foreach($pa as $r):?>
+                        <?php
+                        $pa = get_self_assessment_master($row1['class_id']);
+                        foreach ($pa as $r):
+                            ?>
                             <tr>
-                                <td class="td" style="vertical-align:center;text-align:center;"><?php echo $r->parameter;?></td>
-                                <?php $term	=	DB::table('term')->get();
-                                    foreach($term as $row):
-                                        $parameter	= get_published_self_assessment_parameter_value_by_id($row1['student_id'],$r->sam_id,$row->term_id,$academic_yr);
-                                   ?>     
+                                <td class="td" style="vertical-align:center;text-align:center;"><?php echo $r->parameter; ?></td>
+                                <?php
+                                $term = DB::table('term')->get();
+                                foreach ($term as $row):
+                                    $parameter = get_published_self_assessment_parameter_value_by_id($row1['student_id'], $r->sam_id, $row->term_id, $academic_yr);
+                                    ?>     
                                         
-                                        <td class="td" style="vertical-align:center;text-align:center;"><?php echo $parameter;?></td>
-                                        <?php 
-                                    endforeach;?>
+                                        <td class="td" style="vertical-align:center;text-align:center;"><?php echo $parameter; ?></td>
+                                        <?php
+                                endforeach;
+                                ?>
                             </tr>
-                        <?php 
-                                //}
-                            endforeach;?>
+                        <?php
+                            // }
+                        endforeach;
+                        ?>
                         
                      </table>
                  </td>
@@ -924,43 +970,53 @@ if(isset($stud_count)){
       	<table class="table-responsive scholastictable" style="width:90%;margin-left: 6%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 			<tr> 
 			    <th class="th" style="text-align: center;width:30%">Aspect</th>
-                <?php $term	=	DB::table('term')->get();
-				foreach($term as $row):
-                //if($row['name']!='Term 2'){?>
-                <th class="th" style="text-align: center;width:35%"><?php echo $row->name;?></th>
-                <?php 
-                  //  }
-                endforeach;?>
+                <?php
+                $term = DB::table('term')->get();
+                foreach ($term as $row):
+                    // if($row['name']!='Term 2'){
+                    ?>
+                <th class="th" style="text-align: center;width:35%"><?php echo $row->name; ?></th>
+                <?php
+                    //  }
+                endforeach;
+                ?>
             </tr>
             <tr>
                 <td class="td" style="text-align: center;">Height (Cm)</td> 
-                <?php $term	=	DB::table('term')->get();
-				foreach($term as $row):
-                //if($row['name']!='Term 2'){ ?>
+                <?php
+                $term = DB::table('term')->get();
+                foreach ($term as $row):
+                    // if($row['name']!='Term 2'){
+                    ?>
                 <td class="td"  style="text-align: center;">
-                    <?php 
-                    if(${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
+                    <?php
+                    if (${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
                         echo $row1['height'];
-                    }?>
+                    }
+                    ?>
                     </td> 
                 <?php
-                //}
-                endforeach;?>
+                    // }
+                endforeach;
+                ?>
             </tr>
             <tr>
                 <td class="td" style="text-align: center;">Weight (Kg)</td> 
-                <?php $term	=	DB::table('term')->get();
-				foreach($term as $row):
-                //if($row['name']!='Term 2'){ ?>
+                <?php
+                $term = DB::table('term')->get();
+                foreach ($term as $row):
+                    // if($row['name']!='Term 2'){
+                    ?>
                 <td class="td"  style="text-align: center;"> 
                 <?php
-                if(${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
+                if (${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
                     echo $row1['weight'];
                 }
                 ?></td> 
                 <?php
-                //}
-                endforeach;?>
+                    // }
+                endforeach;
+                ?>
             </tr>
         </table>
         <br>
@@ -969,64 +1025,65 @@ if(isset($stud_count)){
 			<tr> 
 			    <th class="th" style="width:30%">Aspect</th>
 				
-                <?php 
-				$date_from= getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
-				$term	=	DB::table('term')->get();
-				foreach($term as $row):
+                <?php
+                $date_from = getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
+                $term = DB::table('term')->get();
+                foreach ($term as $row):
+                    ?>
 				
-				?>
-				
-                <th class="th" style="width:35%"><?php echo $row->name;?></th>
-                <?php 
-                endforeach;?>
+                <th class="th" style="width:35%"><?php echo $row->name; ?></th>
+                <?php
+                endforeach;
+                ?>
             </tr>
             <tr>
                 <td class="td" style="text-align: center;">Total Working Days</td> 
-                <?php 
-				//$term	=	get_term();
-				foreach($term as $row):
-					if($row->name=='Term 1'){ 
-				        $date_from=getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
-						$date_to=date_format(date_create(substr($date_from,0,4)."-10-30") , 'Y-m-d') ; // Creating date to as last day of Oct;
-					}elseif($row->name=='Term 2'){
-					    $date_from=date_format(date_create(substr($date_from,0,4)."-11-01") , 'Y-m-d') ;
-						$date_to=getSettingsDataForAcademicYr($academic_yr)->academic_yr_to;
-					}		
-				?>
+                <?php
+                // $term	=	get_term();
+                foreach ($term as $row):
+                    if ($row->name == 'Term 1') {
+                        $date_from = getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
+                        $date_to = date_format(date_create(substr($date_from, 0, 4) . '-10-31'), 'Y-m-d');  // Creating date to as last day of Oct;
+                    } elseif ($row->name == 'Term 2') {
+                        $date_from = date_format(date_create(substr($date_from, 0, 4) . '-11-01'), 'Y-m-d');
+                        $date_to = getSettingsDataForAcademicYr($academic_yr)->academic_yr_to;
+                    }
+                    ?>
                 <td class="td"  style="text-align: center;">
 				    <?php
-						if(${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
-							echo get_total_workingdays_from_dailyattendance_classwise($row1['class_id'],$row1['section_id'],$date_from,$date_to,$academic_yr);
-						}
-					?>
+                    if (${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
+                        echo get_total_workingdays_from_dailyattendance_classwise($row1['class_id'], $row1['section_id'], $date_from, $date_to, $academic_yr);
+                    }
+                    ?>
 				</td> 
                 <?php
-                
-                endforeach;?>
+                endforeach;
+                ?>
             </tr>
             <tr>
                 <td class="td" style="text-align: center;">Total Attendance of the students</td> 
-                <?php //$term	=	get_term();
-				foreach($term as $row):
-				    if($row->name=='Term 1'){ 
-				        $date_from=getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
-						$date_to=date_format(date_create(substr($date_from,0,4)."-10-30") , 'Y-m-d') ; // Creating date to as last day of Oct;
-					}elseif($row->name=='Term 2'){
-					    $date_from=date_format(date_create(substr($date_from,0,4)."-11-01") , 'Y-m-d') ;
-						$date_to=getSettingsDataForAcademicYr($academic_yr)->academic_yr_to;
-					}		
-				?>
+                <?php  // $term	=	get_term();
+                foreach ($term as $row):
+                    if ($row->name == 'Term 1') {
+                        $date_from = getSettingsDataForAcademicYr($academic_yr)->academic_yr_from;
+                        $date_to = date_format(date_create(substr($date_from, 0, 4) . '-10-31'), 'Y-m-d');  // Creating date to as last day of Oct;
+                    } elseif ($row->name == 'Term 2') {
+                        $date_from = date_format(date_create(substr($date_from, 0, 4) . '-11-01'), 'Y-m-d');
+                        $date_to = getSettingsDataForAcademicYr($academic_yr)->academic_yr_to;
+                    }
+                    ?>
 					<td class="td"  style="text-align: center;">
 				        <?php
-        				    //echo "date_from ".$date_from." date_to ".$date_to."<br>";
-        					if(get_total_stu_attendance_till_a_month($row1['student_id'],$date_from,$date_to,$academic_yr)<>"" && ${'reportcard_publish_term'.$row->term_id.'_value'}=='Y'){
-        						echo get_total_stu_attendance_till_a_month($row1['student_id'],$date_from,$date_to,$academic_yr);
-        					}
-        				?>
+                        // echo "date_from ".$date_from." date_to ".$date_to."<br>";
+                        if (get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $academic_yr) <> '' && ${'reportcard_publish_term' . $row->term_id . '_value'} == 'Y') {
+                            echo get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $academic_yr);
+                        }
+                        ?>
 					
 					</td> 
                 <?php
-                 endforeach;?>
+                endforeach;
+                ?>
             </tr>
         </table>
        
@@ -1038,38 +1095,38 @@ if(isset($stud_count)){
 						<tr>
 							
 						<?php
-						//print_r($exam_list);
-						 //if(count($exam_list)>1){
-						   //$term_list	=	get_published_terms($row1['class_id'],$row1['section_id']);  
-						   //print_r($term_list);
-						?>
+                        // print_r($exam_list);
+                        // if(count($exam_list)>1){
+                        // $term_list	=	get_published_terms($row1['class_id'],$row1['section_id']);
+                        // print_r($term_list);
+                        ?>
 							<td style="text-align:left;white-space:nowrap;width: 20% !important" class="signtag"><b> Promoted To : </b></td>
 							<td style="white-space:nowrap;width:25%;margin-right:2%;text-align:center;" class="signtag"><div class="statistics_line">
-							<?php 
-    							$term_id	=	get_term_of_exam($exam_list[1]->exam_id);
-    							//print_r($term_id);
-    							echo get_promote_to_of_a_student($row1['student_id'],$term_id);
-							?>&nbsp;
+							<?php
+                            $term_id = get_term_of_exam($exam_list[1]->exam_id);
+                            // print_r($term_id);
+                            echo get_promote_to_of_a_student($row1['student_id'], $term_id);
+                            ?>&nbsp;
 							</div> 
 							</td>
 							<td style="text-align:left;white-space:nowrap;width:20%;margin-left:2%" class="signtag"> &nbsp;&nbsp;<b>Date Of Reopening :</b></td>
 							<td style="white-space:nowrap;width:25%;text-align:center;" class="signtag">
 							<div class="statistics_line">
-								<?php 
-							        $reopen_date=get_school_reopen_date($row1['class_id'],$row1['section_id']);
-									if($reopen_date<>NULL && $reopen_date<>'0000-00-00')
-										echo date_format(date_create($reopen_date),'d-m-Y');
-								?>
+								<?php
+                                $reopen_date = get_school_reopen_date($row1['class_id'], $row1['section_id']);
+                                if ($reopen_date <> NULL && $reopen_date <> '0000-00-00')
+                                    echo date_format(date_create($reopen_date), 'd-m-Y');
+                                ?>
 								&nbsp;
 							</div></td>
-					<?php //}else{?>
+					<?php // }else{ ?>
 							<!--<td style="width: auto"> </td>-->
-					<?php //}?>
+					<?php // } ?>
 						<tr>
     				</table>
 				</td>
  			</tr>
-			<?php //}?>
+			<?php // } ?>
 		</table>
 		<br>
 	<h3 style="margin-right: 68%;margin-top:14%;">Signature with date</h3>
@@ -1081,18 +1138,19 @@ if(isset($stud_count)){
                 <th class="th" style="valign:top;inline-block;text-align: center;width:25%;">Principal</th>
                 
             </tr>
-             <?php $term	=	DB::table('term')->get();
-				foreach($term as $row): ?>
+             <?php $term = DB::table('term')->get();
+    foreach ($term as $row): ?>
             <tr>
-                <td class="td"  style="text-align: center;"><?php echo $row->name;?></td> 
+                <td class="td"  style="text-align: center;"><?php echo $row->name; ?></td> 
                 <td class="td"  style="text-align: center;"></td> 
                 <td class="td"  style="text-align: center;"></td> 
                 <td class="td"  style="text-align: center;"></td> 
                 
             </tr>
             <?php
-                //}
-                endforeach;?>
+        // }
+    endforeach;
+    ?>
             
         </table>
 					<br/><br/>
@@ -1103,6 +1161,6 @@ if(isset($stud_count)){
         
 
  </html> 
-<?php endforeach;?>
+<?php endforeach; ?>
    </head>
 <body>
