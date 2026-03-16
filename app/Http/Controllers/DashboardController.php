@@ -119,7 +119,6 @@ class DashboardController extends Controller
                             'pos_y' => $widget['layout']['y'],
                             'width' => $widget['layout']['w'],
                             'height' => $widget['layout']['h'],
-                            'updated_at' => now()
                         ]
                     );
                 }
