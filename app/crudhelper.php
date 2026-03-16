@@ -91,45 +91,16 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
                 mkdir($note_id_folder, 0777, true);
             }
 
-            // for ($j = 0; $j < count($filename_str); $j++) {
-            //     $imgNameEnd = $filename_str[$j];
-            //     $uploaded_file = $destination . '/' . $imgNameEnd;
-
-            //     if (file_exists($uploaded_file)) {
-            //         $data1['file_size'] = filesize($uploaded_file);
-            //         $data1['image_name'] = $imgNameEnd;
-
-            //         DB::table('notes_detail')->insert($data1);
-            //         copy($destination . '/' . $imgNameEnd, $note_id_folder . '/' . $imgNameEnd);
-            //     }
-            // }
-
-            //change by Mahima 16-03-2026
             for ($j = 0; $j < count($filename_str); $j++) {
-
-                $imgNameEnd = trim($filename_str[$j]);
-
+                $imgNameEnd = $filename_str[$j];
                 $uploaded_file = $destination . '/' . $imgNameEnd;
-                $note_file = $note_id_folder . '/' . $imgNameEnd;
 
-                // if file exists in random_no folder
                 if (file_exists($uploaded_file)) {
-
                     $data1['file_size'] = filesize($uploaded_file);
                     $data1['image_name'] = $imgNameEnd;
 
                     DB::table('notes_detail')->insert($data1);
-
-                    copy($uploaded_file, $note_file);
-                }
-
-                // if file already exists in notes_id folder
-                elseif (file_exists($note_file)) {
-
-                    $data1['file_size'] = filesize($note_file);
-                    $data1['image_name'] = $imgNameEnd;
-
-                    DB::table('notes_detail')->insert($data1);
+                    copy($destination . '/' . $imgNameEnd, $note_id_folder . '/' . $imgNameEnd);
                 }
             }
 
