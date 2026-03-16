@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use PDF;
+
 
 class LibraryController extends Controller
 {
@@ -128,8 +130,8 @@ class LibraryController extends Controller
     public function index()
     {
         $rows = DB::table('category_group')
-        ->orderBy('category_group_id', 'DESC')
-        ->get();
+            ->orderBy('category_group_id', 'DESC')
+            ->get();
         return response()->json($rows, 200);
     }
 
@@ -965,10 +967,10 @@ class LibraryController extends Controller
                 ], 404);
             }
 
-            if($mtype == 'S') {
-                $member = DB::table("student")->where('student_id' , $memberId)->first();
+            if ($mtype == 'S') {
+                $member = DB::table("student")->where('student_id', $memberId)->first();
             } else {
-                $member = DB::table("teacher")->where('teacher_id' , $memberId)->first();
+                $member = DB::table("teacher")->where('teacher_id', $memberId)->first();
             }
 
             $issuedBooks = DB::table('book_copies as d')
@@ -1006,11 +1008,11 @@ class LibraryController extends Controller
             }
 
             $memberExists = DB::table('student')
-            ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
-            ->where('library_member.member_type', 'S')
-            ->where('library_member.status', 'A')
-            ->where('student.student_id' , $student->student_id)
-            ->where('student.academic_yr' , $academicYr)->exists();
+                ->join('library_member', 'student.student_id', '=', 'library_member.member_id')
+                ->where('library_member.member_type', 'S')
+                ->where('library_member.status', 'A')
+                ->where('student.student_id', $student->student_id)
+                ->where('student.academic_yr', $academicYr)->exists();
 
             if (!$memberExists) {
                 return response()->json([
@@ -1054,7 +1056,7 @@ class LibraryController extends Controller
         return response()->json([
             'status' => true,
             'data' => $issuedBooks,
-            'member'=> $member, 
+            'member' => $member,
         ], 200);
     }
 
@@ -1749,7 +1751,6 @@ class LibraryController extends Controller
             }
 
             $data = $query->first();
-
         } else if ($m_type == 'T') {
             $data = DB::table('issue_return as a')
                 ->select(
@@ -2821,7 +2822,7 @@ class LibraryController extends Controller
             $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = 'Active';
 
-            $periodical = DB::table('periodicals')->where('periodical_id',$periodical_id)->first();
+            $periodical = DB::table('periodicals')->where('periodical_id', $periodical_id)->first();
 
             $frequency = $periodical->frequency;
 
@@ -2901,7 +2902,7 @@ class LibraryController extends Controller
             $bimonthly_second_date = $request->input('bimonthly_second_date');
             $status = $request->input('status') ?? $subscription->status;
 
-            $periodical = DB::table('periodicals')->where('periodical_id',$subscription->periodical_id)->first();
+            $periodical = DB::table('periodicals')->where('periodical_id', $subscription->periodical_id)->first();
 
             $frequency = $periodical->frequency;
 
@@ -3067,8 +3068,8 @@ class LibraryController extends Controller
             //     ], 400);
             // }
 
-            $subscription = DB::table('subscription')->where('subscription_id' , $subscription_id) 
-            ->first();
+            $subscription = DB::table('subscription')->where('subscription_id', $subscription_id)
+                ->first();
 
             $bimonthly_second_date = $subscription->bimonthly_second_date;
 
@@ -3079,7 +3080,7 @@ class LibraryController extends Controller
                 !$receiving_date ||
                 !$frequency ||
                 !$volume_lists ||
-                !$issue_lists || 
+                !$issue_lists ||
                 !$bimonthly_second_date
             ) {
                 return response()->json([
@@ -3359,7 +3360,7 @@ class LibraryController extends Controller
                 ->where('b.status', 'Active')
                 ->where('d.receive_by_date', '<', DB::raw('CURDATE()'))
                 ->where('d.status', '!=', 'Received')
-                ->orderby('d.receive_by_date' , 'desc');
+                ->orderby('d.receive_by_date', 'desc');
 
             // apply condition only if periodical_id is passed
             if (!empty($periodical_id)) {
@@ -3421,7 +3422,7 @@ class LibraryController extends Controller
                 ->join('subscription as c', 'c.subscription_id', '=', 'b.subscription_id')
                 ->join('periodicals as d', 'c.periodical_id', '=', 'd.periodical_id')
                 ->where('a.status', 'Received')
-                ->orderby('a.receive_by_date' , 'desc');
+                ->orderby('a.receive_by_date', 'desc');
 
             if (!empty($periodical_id)) {
                 $query->where('d.periodical_id', $periodical_id);
@@ -3530,7 +3531,7 @@ class LibraryController extends Controller
                 ->where('b.status', 'Active')
                 ->whereDate('d.receive_by_date', '<', now()->toDateString())
                 ->where('d.status', '!=', 'Received')
-                ->orderby('d.receive_by_date' , 'desc');
+                ->orderby('d.receive_by_date', 'desc');
 
             if (!empty($periodical_id)) {
                 $query->where('a.periodical_id', $periodical_id);
@@ -3578,7 +3579,7 @@ class LibraryController extends Controller
             $query = DB::table('book')
                 ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
                 ->join('category', 'category.category_id', '=', 'book.category_id')
-                ->orderby('book_copies.added_date' , 'desc')
+                ->orderby('book_copies.added_date', 'desc')
                 ->select(
                     'book.*',
                     'book_copies.*',
@@ -3860,7 +3861,7 @@ class LibraryController extends Controller
                         'student.mid_name',
                         'student.last_name'
                     )
-                    ->orderby('a.issue_date' , 'desc')
+                    ->orderby('a.issue_date', 'desc')
                     ->when($grnNo, function ($q) use ($grnNo) {
                         $q->where('student.reg_no', $grnNo);
                     })
@@ -3896,7 +3897,7 @@ class LibraryController extends Controller
                         DB::raw('NULL as classname'),
                         DB::raw('NULL as secname')
                     )
-                    ->orderby('a.issue_date' , 'desc')
+                    ->orderby('a.issue_date', 'desc')
                     ->when($memberId, function ($q) use ($memberId) {
                         $q->where('a.member_id', $memberId);
                     })
@@ -3959,7 +3960,7 @@ class LibraryController extends Controller
                         'student.mid_name',
                         'student.last_name'
                     )
-                    ->orderby('a.issue_date' , 'desc')
+                    ->orderby('a.issue_date', 'desc')
                     // NOT RETURNED CONDITION
                     ->where('a.return_date', '0000-00-00')
                     ->when($grnNo, function ($q) use ($grnNo) {
@@ -3997,7 +3998,7 @@ class LibraryController extends Controller
                         DB::raw('NULL as classname'),
                         DB::raw('NULL as secname')
                     )
-                    ->orderby('a.issue_date' , 'desc')
+                    ->orderby('a.issue_date', 'desc')
                     // NOT RETURNED CONDITION
                     ->where('a.return_date', '0000-00-00')
                     ->when($memberId, function ($q) use ($memberId) {
@@ -4090,7 +4091,7 @@ class LibraryController extends Controller
         } else {
             $data = $studentQuery
                 ->unionAll($teacherQuery)
-                ->orderBy('issue_date' , 'desc')
+                ->orderBy('issue_date', 'desc')
                 ->get();
         }
 
@@ -4581,5 +4582,461 @@ class LibraryController extends Controller
 
             ]
         ]);
+    }
+
+
+    // Health Acitivity Record Dev Name - Mahima Chaudhari  14-03-2026
+    public function generateHealthActivityCsv(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|integer',
+            'section_id' => 'required|integer'
+        ]);
+
+        $class_id = $request->class_id;
+        $section_id = $request->section_id;
+
+        // dd("hello");
+
+        $students = DB::table('student')
+            ->select(
+                'student_id',
+                'first_name',
+                'mid_name',
+                'last_name'
+            )
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->orderBy('roll_no')
+            ->get();
+
+        $filename = "Health_Activity_Class_{$class_id}_Section_{$section_id}.csv";
+
+        return response()->stream(function () use ($students) {
+
+            $file = fopen('php://output', 'w');
+
+            // CSV Header
+            fputcsv($file, [
+                'Code',
+                // 'Student Name',
+                'First Name',
+                'Middle Name',
+                'Last Name',
+                'BMI',
+                'Partial Curl Up',
+                'Flex Bent Arm Hang',
+                'Sit N Reach',
+                '600m Run',
+                'Flamingo Balance Test',
+                'Shuttle Run',
+                'Sprint Dash',
+                'Standing Vertical Jump',
+                'Plate Tapping',
+                'Alternative Handwall Toss',
+                'Vision RE',
+                'Vision LE',
+                'Ears Left',
+                'Ears Right',
+                'Teeth Caries',
+                'Teeth Tonsils',
+                'Teeth Gums',
+                'Height',
+                'Weight',
+                'Hip',
+                'Waist',
+                'Pulse',
+                'BP',
+                'Posture Evaluation',
+                'STRD1 Athletics',
+                'STRD2 Health Fitness',
+                'STRD3 Sewa',
+                'Mother Weight',
+                'Mother Height',
+                'Father Weight',
+                'Father Height',
+                'Family Income',
+                'CWSN'
+            ]);
+
+            // Student rows
+            foreach ($students as $student) {
+
+                $student_name = trim(
+                    $student->first_name . ' ' .
+                        $student->mid_name . ' ' .
+                        $student->last_name
+                );
+
+                fputcsv($file, [
+                    $student->student_id,
+                    // $student_name,
+                    $student->first_name,
+                    $student->mid_name,
+                    $student->last_name
+                ]);
+            }
+
+            fclose($file);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ]);
+    }
+
+    public function uploadHealthActivityRecord(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:csv,txt|max:2048'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 422,
+                'message' => $validator->errors()->first(),
+            ]);
+        }
+
+        $file = $request->file('file');
+
+        $lines = file($file->getRealPath(), FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
+
+        if (count($lines) <= 1) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Empty CSV cannot be uploaded.',
+            ]);
+        }
+
+        $handle = fopen($file->getRealPath(), 'r');
+
+        $row = 1;
+        $errors = [];
+
+        while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+
+            if ($row == 1) {
+
+                if (trim($data[0]) != 'Code') {
+                    return response()->json([
+                        'status' => 422,
+                        'message' => 'Invalid CSV format. Please download the correct format.'
+                    ]);
+                }
+
+                $row++;
+                continue;
+            }
+
+            $student_id = isset($data[0]) ? trim($data[0]) : null;
+
+            if (!$student_id) {
+                $errors[] = "Row $row: Student Code is missing.";
+                $row++;
+                continue;
+            }
+
+            $bmi = $data[5] ?? null;
+            $partial_curl_up = $data[6] ?? null;
+            $flex_bent_arm_hang = $data[7] ?? null;
+            $sit_n_reach = $data[8] ?? null;
+            $m_run = $data[9] ?? null;
+            $flamingo_bel_test = $data[10] ?? null;
+            $shuttle_run = $data[11] ?? null;
+            $sprint_dash = $data[12] ?? null;
+            $standing_vertical_jump = $data[13] ?? null;
+            $plate_tapping = $data[14] ?? null;
+            $alternative_handwall_toss = $data[15] ?? null;
+            $vision_re = $data[16] ?? null;
+            $vision_le = $data[17] ?? null;
+            $ears_left = $data[18] ?? null;
+            $ears_right = $data[19] ?? null;
+            $teeth_caries = $data[20] ?? null;
+            $teeth_tonsils = $data[21] ?? null;
+            $teeth_gums = $data[22] ?? null;
+            $height = $data[23] ?? null;
+            $weight = $data[24] ?? null;
+            $hip = $data[25] ?? null;
+            $waist = $data[26] ?? null;
+            $pulse = $data[27] ?? null;
+            $bp = $data[28] ?? null;
+            $posture_evaluation = $data[29] ?? null;
+            $strd1 = $data[30] ?? null;
+            $strd2_health_fitness = $data[31] ?? null;
+            $strd3_sewa = $data[32] ?? null;
+            $m_weight = $data[33] ?? null;
+            $m_height = $data[34] ?? null;
+            $f_weight = $data[35] ?? null;
+            $f_height = $data[36] ?? null;
+            $family_income = $data[37] ?? null;
+            $cwsn = $data[38] ?? null;
+
+            $exists = DB::table('health_activity_record')
+                ->where('student_id', $student_id)
+                ->exists();
+
+            if ($exists) {
+
+                DB::table('health_activity_record')
+                    ->where('student_id', $student_id)
+                    ->update([
+                        'bmi' => $bmi,
+                        'partial_curl_up' => $partial_curl_up,
+                        'flex_bent_arm_hang' => $flex_bent_arm_hang,
+                        'sit_n_reach' => $sit_n_reach,
+                        '600m_run' => $m_run,
+                        'flamingo_bel_test' => $flamingo_bel_test,
+                        'shuttle_run' => $shuttle_run,
+                        'sprint_dash' => $sprint_dash,
+                        'standing_vertical_jump' => $standing_vertical_jump,
+                        'plate_tapping' => $plate_tapping,
+                        'alternative_handwall_toss' => $alternative_handwall_toss,
+                        'vision_re' => $vision_re,
+                        'vision_le' => $vision_le,
+                        'ears_left' => $ears_left,
+                        'ears_right' => $ears_right,
+                        'teeth_caries' => $teeth_caries,
+                        'teeth_tonsils' => $teeth_tonsils,
+                        'teeth_gums' => $teeth_gums,
+                        'height' => $height,
+                        'weight' => $weight,
+                        'hip' => $hip,
+                        'waist' => $waist,
+                        'pulse' => $pulse,
+                        'bp' => $bp,
+                        'posture_evaluation' => $posture_evaluation,
+                        'strd1' => $strd1,
+                        'strd2_health_fitness' => $strd2_health_fitness,
+                        'strd3_sewa' => $strd3_sewa,
+                        'm_weight' => $m_weight,
+                        'm_height' => $m_height,
+                        'f_weight' => $f_weight,
+                        'f_height' => $f_height,
+                        'family_income' => $family_income,
+                        'cwsn' => $cwsn
+                    ]);
+            } else {
+                DB::table('health_activity_record')->insert([
+                    'student_id' => $student_id,
+                    'academic_yr' => $academic_yr,
+                    'created_by' => $user->reg_id,
+                    'bmi' => $bmi,
+                    'partial_curl_up' => $partial_curl_up,
+                    'flex_bent_arm_hang' => $flex_bent_arm_hang,
+                    'sit_n_reach' => $sit_n_reach,
+                    '600m_run' => $m_run,
+                    'flamingo_bel_test' => $flamingo_bel_test,
+                    'shuttle_run' => $shuttle_run,
+                    'sprint_dash' => $sprint_dash,
+                    'standing_vertical_jump' => $standing_vertical_jump,
+                    'plate_tapping' => $plate_tapping,
+                    'alternative_handwall_toss' => $alternative_handwall_toss,
+                    'vision_re' => $vision_re,
+                    'vision_le' => $vision_le,
+                    'ears_left' => $ears_left,
+                    'ears_right' => $ears_right,
+                    'teeth_caries' => $teeth_caries,
+                    'teeth_tonsils' => $teeth_tonsils,
+                    'teeth_gums' => $teeth_gums,
+                    'height' => $height,
+                    'weight' => $weight,
+                    'hip' => $hip,
+                    'waist' => $waist,
+                    'pulse' => $pulse,
+                    'bp' => $bp,
+                    'posture_evaluation' => $posture_evaluation,
+                    'strd1' => $strd1,
+                    'strd2_health_fitness' => $strd2_health_fitness,
+                    'strd3_sewa' => $strd3_sewa,
+                    'm_weight' => $m_weight,
+                    'm_height' => $m_height,
+                    'f_weight' => $f_weight,
+                    'f_height' => $f_height,
+                    'family_income' => $family_income,
+                    'cwsn' => $cwsn
+                ]);
+            }
+
+            $row++;
+        }
+
+        fclose($handle);
+
+        if (!empty($errors)) {
+            return response()->json([
+                'status' => 422,
+                'message' => implode(', ', $errors)
+            ]);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Health Activity Records uploaded successfully',
+            'success' => true
+        ]);
+    }
+
+    public function updateHealthActivityRecord(Request $request, $student_id)
+    {
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $validated = $request->validate([
+            'bmi' => 'nullable|numeric',
+            'partial_curl_up' => 'nullable|numeric',
+            'flex_bent_arm_hang' => 'nullable|numeric',
+            'sit_n_reach' => 'nullable|numeric',
+            '600m_run' => 'nullable|string',
+            'flamingo_bel_test' => 'nullable|string',
+            'shuttle_run' => 'nullable|string',
+            'sprint_dash' => 'nullable|string',
+            'standing_vertical_jump' => 'nullable|string',
+            'plate_tapping' => 'nullable|string',
+            'alternative_handwall_toss' => 'nullable|string',
+            'vision_re' => 'nullable|string',
+            'vision_le' => 'nullable|string',
+            'ears_left' => 'nullable|string',
+            'ears_right' => 'nullable|string',
+            'teeth_caries' => 'nullable|string',
+            'teeth_tonsils' => 'nullable|string',
+            'teeth_gums' => 'nullable|string',
+            'height' => 'nullable|numeric',
+            'weight' => 'nullable|numeric',
+            'hip' => 'nullable|numeric',
+            'waist' => 'nullable|numeric',
+            'pulse' => 'nullable|string',
+            'bp' => 'nullable|string',
+            'posture_evaluation' => 'nullable|string',
+            'strd1' => 'nullable|string',
+            'strd2_health_fitness' => 'nullable|string',
+            'strd3_sewa' => 'nullable|string',
+            'm_weight' => 'nullable|numeric',
+            'm_height' => 'nullable|numeric',
+            'f_weight' => 'nullable|numeric',
+            'f_height' => 'nullable|numeric',
+            'family_income' => 'nullable|string',
+            'cwsn' => 'nullable|string'
+        ]);
+
+        $exists = DB::table('health_activity_record')
+            ->where('student_id', $student_id)
+            ->where('academic_yr', $academic_yr)
+            ->exists();
+
+        if (!$exists) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Health record not found for this student',
+                'success' => false
+            ]);
+        }
+
+        DB::table('health_activity_record')
+            ->where('student_id', $student_id)
+            ->where('academic_yr', $academic_yr)
+            ->update($validated);
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Health record updated successfully',
+            'success' => true
+        ]);
+    }
+
+    public function deleteHealthActivityRecord($student_id)
+    {
+        $user = $this->authenticateUser();
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $exists = DB::table('health_activity_record')
+            ->where('student_id', $student_id)
+            ->where('academic_yr', $academic_yr)
+            ->exists();
+
+        if (!$exists) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Health record not found',
+                'success' => false
+            ]);
+        }
+
+        DB::table('health_activity_record')
+            ->where('student_id', $student_id)
+            ->where('academic_yr', $academic_yr)
+            ->delete();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Health activity record deleted successfully',
+            'success' => true
+        ]);
+    }
+
+    public function downloadHealthActivityPDF(Request $request)
+    {
+        try {
+
+            $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+
+            $student_id = $request->student_id;
+
+            $data = DB::table('health_activity_record')
+                ->join('student', 'student.student_id', '=', 'health_activity_record.student_id')
+                ->leftJoin('parent', 'parent.parent_id', '=', 'student.parent_id')
+                ->select(
+                    'health_activity_record.*',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.class_id',
+                    'student.section_id',
+                    'parent.mother_name'
+                )
+                ->where('health_activity_record.student_id', $student_id)
+                ->where('health_activity_record.academic_yr', $academic_yr)
+                ->first();
+
+            if (!$data) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Health record not found'
+                ]);
+            }
+
+            // Choose PDF template based on school
+            if ($shortname == 'SACS') {
+                $pdf = PDF::loadView('pdf.health_activity', compact('data'));
+            } elseif ($shortname == 'HSCS') {
+                $pdf = PDF::loadView('pdf.hscs_health_activity', compact('data'));
+            } else {
+                $pdf = PDF::loadView('pdf.demo_health_activity', compact('data'));
+            }
+
+            $dynamicFilename = "Health_Activity_" . $data->first_name . "_" . $data->last_name . ".pdf";
+
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        } catch (\Exception $e) {
+
+            \Log::error($e);
+
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

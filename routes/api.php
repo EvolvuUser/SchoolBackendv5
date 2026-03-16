@@ -1503,6 +1503,14 @@
 
             Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
 
+
+            // Health Activity Record Certificates  Dev Name :- Mahima Chaudhari 14-03-26
+            Route::get('/generate_health_activity_csv', [LibraryController::class, 'generateHealthActivityCsv']);
+            Route::post('/upload_health_activity_record_from_excelsheet', [LibraryController::class, 'uploadHealthActivityRecord']);
+            Route::put('/update_health_record/{student_id}', [LibraryController::class, 'updateHealthActivityRecord']);
+            Route::delete('/delete_health_record/{student_id}', [LibraryController::class, 'deleteHealthActivityRecord']);
+            Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
