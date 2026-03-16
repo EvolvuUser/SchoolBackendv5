@@ -96,4 +96,47 @@ class DashboardController extends Controller
             'sections' => $sections
         ]);
     }
+
+    public function saveDashboardWidgets(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $dashboardId = $request->dashboard['dashboard_id'];
+
+            foreach ($request->sections as $section) {
+                $sectionId = $section['section_id'];
+
+                foreach ($section['widgets'] as $widget) {
+                    DB::table('dashboard_widgets')->updateOrInsert(
+                        [
+                            'dashboard_id' => $dashboardId,
+                            'section_id' => $sectionId,
+                            'widget_id' => $widget['dashboard_widget_id']
+                        ],
+                        [
+                            'pos_x' => $widget['layout']['x'],
+                            'pos_y' => $widget['layout']['y'],
+                            'width' => $widget['layout']['w'],
+                            'height' => $widget['layout']['h'],
+                        ]
+                    );
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Dashboard layout saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
 }
