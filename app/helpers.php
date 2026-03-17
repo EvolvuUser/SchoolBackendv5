@@ -1197,6 +1197,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'upload_date' => $upload_date,
         'doc_type_folder' => $doc_type_folder,
         'filename' => $filename,
+        'datafile' => $datafile
     ];
 
     Log::channel('upload_logs')->info("Data in upload_files" , [
