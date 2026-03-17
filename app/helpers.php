@@ -392,14 +392,26 @@ function upload_qrcode_into_folder($filename, $doc_type_folder, $base64File)
 
 function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFolder, $noticeId)
 {
+    Log::channel('upload_logs')->info('Entered upload_files_for_laravel', [
+        'filename' => $filename,
+        'upload_date' => $uploadDate,
+        'doc_type_folder' => $docTypeFolder,
+        'notice_id' => $noticeId,
+        'datafile_length' => $datafile ? strlen($datafile) : 0
+    ]);
+
     // API URL
     $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
-    $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
     $url = $codeigniter_app_url . 'index.php/AdminApi/upload_files_for_laravel';
 
-    // Prepare the data array with dynamic values
+    Log::channel('upload_logs')->info('Prepared URL', [
+        'url' => $url,
+        'short_name' => $shortName
+    ]);
+
+    // Prepare the data array
     $data = [
         'short_name' => $shortName,
         'upload_date' => $uploadDate,
@@ -409,18 +421,33 @@ function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFol
         'datafile' => $datafile,
     ];
 
-    // Send the data to the external API
-    try {
-        $response = Http::post($url, $data);  // Send the data to the external API
+    Log::channel('upload_logs')->info('Sending request to CI', [
+        'payload_keys' => array_keys($data)
+    ]);
 
-        // Check if the response is successful
+    try {
+        $response = Http::asForm()->post($url, $data);
+
+        Log::channel('upload_logs')->info('Response received', [
+            'status_code' => $response->status(),
+            'body' => $response->body()
+        ]);
+
         if ($response->successful()) {
-            return $response->json();  // Return the response as JSON
+            Log::channel('upload_logs')->info('Upload success');
+            return $response->json();
         } else {
-            return ['error' => 'Failed to upload files', 'status' => $response->status()];  // Handle errors
+            Log::channel('upload_logs')->error('Upload failed', [
+                'status_code' => $response->status(),
+                'response' => $response->body()
+            ]);
+            return ['error' => 'Failed to upload files', 'status' => $response->status()];
         }
+
     } catch (\Exception $e) {
-        // Handle any exceptions that may occur
+        Log::channel('upload_logs')->error('Exception in upload_files_for_laravel', [
+            'message' => $e->getMessage()
+        ]);
         return ['error' => $e->getMessage()];
     }
 }
