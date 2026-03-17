@@ -4601,6 +4601,7 @@ class LibraryController extends Controller
         $students = DB::table('student')
             ->select(
                 'student_id',
+                'roll_no',
                 'first_name',
                 'mid_name',
                 'last_name'
@@ -4620,6 +4621,7 @@ class LibraryController extends Controller
             fputcsv($file, [
                 'Code',
                 // 'Student Name',
+                'Roll No',
                 'First Name',
                 'Middle Name',
                 'Last Name',
@@ -4671,6 +4673,7 @@ class LibraryController extends Controller
                 fputcsv($file, [
                     $student->student_id,
                     // $student_name,
+                    $student->roll_no,
                     $student->first_name,
                     $student->mid_name,
                     $student->last_name
