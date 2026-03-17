@@ -56,123 +56,137 @@ function get_teacher_timetable_with_multiple_selection_for_teacher_app($column_n
 
 function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist = '', $random_no = null)
 {
+    Log::channel('upload_logs')->info('Entered daily_notes_create', [
+        'random_no' => $random_no,
+        'filenamelist' => $filenamelist,
+        'filelist' => $filelist,
+        'date' => $data['date'] ?? null
+    ]);
+
     if ($random_no == null) {
-        throw new InvalidArgumentException(
-            'Missing required parameters: data, str_classes, or random_no'
-        );
+        Log::channel('upload_logs')->error('Missing random_no');
+        throw new InvalidArgumentException('Missing required parameters');
     }
+
     $globalVariables = App::make('global_variables');
-    $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
     for ($i = 0; $i < count($str_classes); $i++) {
+
         $data['class_id'] = substr($str_classes[$i], 0, strpos($str_classes[$i], '^'));
         $data['section_id'] = substr($str_classes[$i], strpos($str_classes[$i], '^') + 1);
 
+        Log::channel('upload_logs')->info('Processing class', [
+            'class_id' => $data['class_id'],
+            'section_id' => $data['section_id']
+        ]);
+
         if ($filenamelist != '') {
-            // This part code is to save files coming from app
-            // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
-            // $filename_str = explode(",", $filenamelist1);
+
+            Log::channel('upload_logs')->info('Processing filenames');
 
             $filenamelist1 = str_replace(['"', '[', ']'], '', $filenamelist);
-            $filename_str = explode(',', $filenamelist1);
+            $filename_str = array_map('trim', explode(',', $filenamelist1));
+
+            Log::channel('upload_logs')->info('Parsed filenames', [
+                'filenames' => $filename_str
+            ]);
 
             $k = DB::table('notes_master')->insertGetId($data);
 
+            Log::channel('upload_logs')->info('Inserted notes_master', [
+                'notes_id' => $k
+            ]);
+
             $data1['notes_id'] = $k;
-            // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-            //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
-            // } else {
-            //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
-            // }
+
             if (str_contains($codeigniter_app_url, 'SACSv4test')) {
                 $filePath = '/home/u333015459/domains/arnolds.evolvu.in/SACSv4test/';
             } else {
                 $filePath = '/home/u333015459/domains/arnolds.evolvu.in/';
             }
+
             $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
             $note_id_folder = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $k;
 
+            Log::channel('upload_logs')->info('Paths', [
+                'destination' => $destination,
+                'note_id_folder' => $note_id_folder
+            ]);
+
             if (!file_exists($note_id_folder)) {
                 mkdir($note_id_folder, 0777, true);
+                Log::channel('upload_logs')->info('Created note_id_folder');
             }
 
             for ($j = 0; $j < count($filename_str); $j++) {
+
                 $imgNameEnd = $filename_str[$j];
                 $uploaded_file = $destination . '/' . $imgNameEnd;
 
+                Log::channel('upload_logs')->info('Checking file', [
+                    'file' => $uploaded_file,
+                    'exists' => file_exists($uploaded_file)
+                ]);
+
                 if (file_exists($uploaded_file)) {
-                    $data1['file_size'] = filesize($uploaded_file);
+
+                    $file_size = filesize($uploaded_file);
+
+                    Log::channel('upload_logs')->info('File found', [
+                        'file' => $uploaded_file,
+                        'size' => $file_size
+                    ]);
+
+                    $data1['file_size'] = $file_size;
                     $data1['image_name'] = $imgNameEnd;
 
                     DB::table('notes_detail')->insert($data1);
-                    copy($destination . '/' . $imgNameEnd, $note_id_folder . '/' . $imgNameEnd);
+
+                    copy($uploaded_file, $note_id_folder . '/' . $imgNameEnd);
+
+                    Log::channel('upload_logs')->info('File copied', [
+                        'to' => $note_id_folder . '/' . $imgNameEnd
+                    ]);
+                } else {
+                    Log::channel('upload_logs')->error('File NOT found', [
+                        'file' => $uploaded_file
+                    ]);
                 }
             }
 
             $last_value = 1 + $i;
+
             if ($last_value == count($str_classes)) {
+
+                Log::channel('upload_logs')->info('Cleanup started');
+
                 for ($j = 0; $j < count($filename_str); $j++) {
                     $imgNameEnd = $filename_str[$j];
-                    if (file_exists($destination . '/' . $imgNameEnd)) {
-                        unlink($destination . '/' . $imgNameEnd);
+                    $path = $destination . '/' . $imgNameEnd;
+
+                    if (file_exists($path)) {
+                        unlink($path);
+                        Log::channel('upload_logs')->info('Deleted temp file', ['file' => $path]);
                     }
                 }
+
                 if (file_exists($destination)) {
                     rmdir($destination);
+                    Log::channel('upload_logs')->info('Deleted temp folder', ['folder' => $destination]);
                 }
             }
+
         } else {
-            // This part code will be executed when there are no attachments in app
-            // This part of code will execute every time from web
-            if ($filelist != '') {
-                $k = DB::table('notes_master')->insertGetId($data);
-                $data1['notes_id'] = $k;
-                if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                    $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
-                } else {
-                    $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
-                }
+            Log::channel('upload_logs')->info('No filenames provided');
 
-                $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
-                $note_id_folder = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $k;
+            DB::table('notes_master')->insert($data);
 
-                if (!file_exists($note_id_folder)) {
-                    mkdir($note_id_folder, 0777, true);
-                }
-
-                for ($j = 0; $j < count($filelist); $j++) {
-                    $filename = $_FILES['userfile']['name'][$j];
-                    $uploadedFile = $destination . '/' . $filename;
-
-                    if (file_exists($uploadedFile)) {
-                        $file_size = filesize($uploadedFile);
-                        $data1['image_name'] = $filename;
-                        $data1['file_size'] = $file_size;
-                        DB::table('notes_detail')->insert($data1);
-
-                        copy($destination . '/' . $filename, $note_id_folder . '/' . $filename);
-                    }
-                }
-
-                $last_value = 1 + $i;
-                if ($last_value == count($str_classes)) {
-                    for ($j = 0; $j < count($filelist); $j++) {
-                        $imgNameEnd = $_FILES['userfile']['name'][$j];
-                        if (file_exists($destination . '/' . $imgNameEnd)) {
-                            unlink($destination . '/' . $imgNameEnd);
-                        }
-                    }
-                    if (file_exists($destination)) {
-                        rmdir($destination);
-                    }
-                }
-            } else {
-                // This part will be executed when there will no attachment from web and app
-                DB::table('notes_master')->insert($data);
-                $k = DB::getPdo()->lastInsertId();
-            }
+            Log::channel('upload_logs')->info('Inserted notes_master without files');
         }
     }
+
+    Log::channel('upload_logs')->info('daily_notes_create completed');
 
     return true;
 }
