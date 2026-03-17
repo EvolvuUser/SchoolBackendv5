@@ -9113,7 +9113,6 @@ class AssessmentController extends Controller
         $random_no = $request->input('random_no');
         Log::channel('upload_logs')->info('Parameters called' , [
             'filename' => $filename,
-            'datafile' => $datafile,
             'upload_date' => $upload_date,
             'doc_type_folder' => $doc_type_folder,
             'random_no' => $random_no,
