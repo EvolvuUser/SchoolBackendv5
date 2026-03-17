@@ -4601,6 +4601,7 @@ class LibraryController extends Controller
         $students = DB::table('student')
             ->select(
                 'student_id',
+                'roll_no',
                 'first_name',
                 'mid_name',
                 'last_name'
