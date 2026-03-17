@@ -101,9 +101,9 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
             $data1['notes_id'] = $k;
 
             if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/SACSv4test/';
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/';
             } else {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/';
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/';
             }
 
             $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
