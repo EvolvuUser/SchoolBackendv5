@@ -1183,6 +1183,7 @@ function get_open_day($exam_id)
 
 function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $random_no)
 {
+    Log::channel('upload_logs')->info('Inside upload files');
     // API URL
     $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
@@ -1199,10 +1200,17 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'datafile' => $datafile,
     ];
 
+    Log::channel('upload_logs')->info("Data in upload_files" , [
+        'url' => $url,
+        'data' => $data,
+    ]);
+
     // Send the data to the external API
     try {
         $response = Http::post($url, $data);  // Send the data to the external API
-
+        Log::channel('upload_logs')->info("Response: " , [
+            'response' => $response->json(),
+        ]);
         // Check if the response is successful
         if ($response->successful()) {
             return $response->json();  // Return the response as JSON

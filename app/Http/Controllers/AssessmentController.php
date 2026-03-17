@@ -9105,11 +9105,19 @@ class AssessmentController extends Controller
 
     public function uploadFiles(Request $request)
     {
+        Log::channel('upload_logs')->info('Upload API Called');
         $upload_date = date_format(date_create($request->input('upload_date')), 'Y-m-d');
         $datafile = $request->input('datafile');
         $filename = $request->input('filename');
         $doc_type_folder = $request->input('doc_type_folder');
         $random_no = $request->input('random_no');
+        Log::channel('upload_logs')->info('Parameters called' , [
+            'filename' => $filename,
+            'datafile' => $datafile,
+            'upload_date' => $upload_date,
+            'doc_type_folder' => $doc_type_folder,
+            'random_no' => $random_no,
+        ]);
         $uploadfiles = upload_files($filename, $datafile, $upload_date, $doc_type_folder, $random_no);
         return response()->json($uploadfiles, 200);
     }
