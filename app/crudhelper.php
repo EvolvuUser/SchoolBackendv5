@@ -79,10 +79,15 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
             $k = DB::table('notes_master')->insertGetId($data);
 
             $data1['notes_id'] = $k;
+            // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+            //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
+            // } else {
+            //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+            // }
             if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/SACSv4test/';
             } else {
-                $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/';
             }
             $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
             $note_id_folder = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $k;
