@@ -111,12 +111,12 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
             switch ($short_name) {
                 case 'SACS':
                     $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
-                    $filePath = ($env == 'dev') ? 'SACSv4test/uploads/daily_notes/' : 'uploads/daily_notes/';
+                    $filePath = ($env == 'dev') ? '/SACSv4test/uploads/daily_notes/' : '/uploads/daily_notes/';
                     $filePath = $basePath . $filePath;
                     break;
                 case 'HSCS':
                     $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
-                    $filePath = ($env == 'dev') ? 'test/hscs_test/uploads/daily_notes/' : 'uploads/daily_notes/';
+                    $filePath = ($env == 'dev') ? '/test/hscs_test/uploads/daily_notes/' : '/uploads/daily_notes/';
                     $filePath = $basePath . $filePath;
                     break;
                 default:
