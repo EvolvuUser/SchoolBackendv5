@@ -397,7 +397,6 @@ function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFol
         'upload_date' => $uploadDate,
         'doc_type_folder' => $docTypeFolder,
         'notice_id' => $noticeId,
-        'datafile_length' => $datafile ? strlen($datafile) : 0
     ]);
 
     // API URL
