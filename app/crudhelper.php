@@ -70,6 +70,8 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
 
     $globalVariables = App::make('global_variables');
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $short_name = JWTAuth::getPayload()->get('short_name');
+    $env = config('app.env');
 
     for ($i = 0; $i < count($str_classes); $i++) {
 
@@ -100,14 +102,32 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
 
             $data1['notes_id'] = $k;
 
-            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/';
-            } else {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/';
+            // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+            //     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/';
+            // } else {
+            //     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/';
+            // }
+
+            switch ($short_name) {
+                case 'SACS':
+                    $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+                    $filePath = ($env == 'dev') ? 'SACSv4test/uploads/daily_notes/' : 'uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
+                case 'HSCS':
+                    $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+                    $filePath = ($env == 'dev') ? 'test/hscs_test/uploads/daily_notes/' : 'uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
+                default:
+                    $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
+                    $filePath = 'uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
             }
 
-            $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
-            $note_id_folder = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $k;
+            $destination = $filePath . $data['date'] . '/' . $random_no;
+            $note_id_folder = $filePath . $data['date'] . '/' . $k;
 
             Log::channel('upload_logs')->info('Paths', [
                 'destination' => $destination,
