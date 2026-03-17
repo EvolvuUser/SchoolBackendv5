@@ -70,6 +70,8 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
 
     $globalVariables = App::make('global_variables');
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    $short_name = JWTAuth::getPayload()->get('short_name');
+    $env = config('app.env');
 
     for ($i = 0; $i < count($str_classes); $i++) {
 
@@ -100,14 +102,32 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
 
             $data1['notes_id'] = $k;
 
-            if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/SACSv4test/';
-            } else {
-                $filePath = '/home/u333015459/domains/arnolds.evolvu.in/';
+            // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+            //     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/SACSv4test/';
+            // } else {
+            //     $filePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html/';
+            // }
+
+            switch ($short_name) {
+                case 'SACS':
+                    $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+                    $filePath = ($env == 'dev') ? '/SACSv4test/uploads/daily_notes/' : '/uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
+                case 'HSCS':
+                    $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+                    $filePath = ($env == 'dev') ? '/test/hscs_test/uploads/daily_notes/' : '/uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
+                default:
+                    $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
+                    $filePath = '/uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
             }
 
-            $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $random_no;
-            $note_id_folder = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $k;
+            $destination = $filePath . $data['date'] . '/' . $random_no;
+            $note_id_folder = $filePath . $data['date'] . '/' . $k;
 
             Log::channel('upload_logs')->info('Paths', [
                 'destination' => $destination,
@@ -196,11 +216,33 @@ function daily_notes_edit($data, $deleted_images, $filelist, $filenamelist)
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-    if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-        $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
-    } else {
-        $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+    // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+    //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
+    // } else {
+    //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+    // }
+
+    $short_name = JWTAuth::getPayload()->get('short_name');
+    $env = config('app.env');
+
+    switch ($short_name) {
+        case 'SACS':
+            $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+            $filePath = ($env == 'dev') ? '/SACSv4test/uploads/daily_notes/' : '/uploads/daily_notes/';
+            $filePath = $basePath . $filePath;
+            break;
+        case 'HSCS':
+            $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+            $filePath = ($env == 'dev') ? '/test/hscs_test/uploads/daily_notes/' : '/uploads/daily_notes/';
+            $filePath = $basePath . $filePath;
+            break;
+        default:
+            $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
+            $filePath = '/uploads/daily_notes/';
+            $filePath = $basePath . $filePath;
+            break;
     }
+
     $k = $data['notes_id'];
 
     if ($filenamelist != '') {
@@ -209,7 +251,7 @@ function daily_notes_edit($data, $deleted_images, $filelist, $filenamelist)
             $deleted_images_string = explode(',', $deleted_images1);
 
             for ($i = 0; $i < count($deleted_images_string); $i++) {
-                $path = $filePath . 'uploads/daily_notes/' . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
+                $path = $filePath . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
                 if (file_exists($path)) {
                     unlink($path);
                 }
@@ -254,7 +296,7 @@ function daily_notes_edit($data, $deleted_images, $filelist, $filenamelist)
         $data1['notes_id'] = $data['notes_id'];
 
         if ($filelist == '') {
-            $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $data['notes_id'];
+            $destination = $filePath . $data['date'] . '/' . $data['notes_id'];
 
             for ($j = 0; $j < count($filename_str); $j++) {
                 $imgNameEnd = $filename_str[$j];
@@ -272,7 +314,7 @@ function daily_notes_edit($data, $deleted_images, $filelist, $filenamelist)
             $filelist_string = explode(',', $filelist1);
 
             for ($j = 0; $j < count($filelist_string); $j++) {
-                $destination = $filePath . 'uploads/daily_notes/' . $data['date'] . '/' . $data['notes_id'] . '/';
+                $destination = $filePath . $data['date'] . '/' . $data['notes_id'] . '/';
 
                 if (!file_exists($destination)) {
                     mkdir($destination, 0777, true);
@@ -298,7 +340,7 @@ function daily_notes_edit($data, $deleted_images, $filelist, $filenamelist)
             $deleted_images_string = explode(',', $deleted_images1);
 
             for ($i = 0; $i < count($deleted_images_string); $i++) {
-                $path = $filePath . 'uploads/daily_notes/' . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
+                $path = $filePath . date('Y-m-d', strtotime($data['date'])) . '/' . $data['notes_id'] . '/' . $deleted_images_string[$i];
                 if (file_exists($path)) {
                     unlink($path);
                 }
