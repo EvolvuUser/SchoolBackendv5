@@ -121,7 +121,7 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
                     break;
                 default:
                     $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
-                    $filePath = 'uploads/daily_notes/';
+                    $filePath = '/uploads/daily_notes/';
                     $filePath = $basePath . $filePath;
                     break;
             }
