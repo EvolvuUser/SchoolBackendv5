@@ -1202,7 +1202,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
 
     Log::channel('upload_logs')->info("Data in upload_files" , [
         'url' => $url,
-        'data' => $data,
+        // 'data' => $data,
     ]);
 
     // Send the data to the external API
