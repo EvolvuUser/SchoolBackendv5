@@ -4983,9 +4983,10 @@ class LibraryController extends Controller
 
     public function getHealthActivityReport(Request $request)
     {
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $student_id = $request->student_id;
         $reg_id = $request->reg_id;
-        $academic_yr = $request->academic_yr;
+
         $class_id = $request->class_id;
         $section_id = $request->section_id;
 
