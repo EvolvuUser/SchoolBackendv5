@@ -47,6 +47,12 @@ return [
      * |
      */
     'channels' => [
+        'upload_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/upload_logs.log'),
+            'level'  => 'debug',
+            'days'   => 2,
+        ],
         'approve_admission' => [
             'driver' => 'daily',
             'path'   => storage_path('logs/approveAdmissionLog.log'),

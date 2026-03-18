@@ -96,4 +96,67 @@ class DashboardController extends Controller
             'sections' => $sections
         ]);
     }
+
+    public function saveDashboardWidgets(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $dashboard = $request->dashboard;
+
+            $dashboardId = DB::table('dashboards')->updateOrInsert(
+                ['dashboard_id' => $dashboard['dashboard_id']],
+                [
+                    'name' => $dashboard['name'],
+                    'role' => $dashboard['role'],
+                    'is_active' => 'Y'
+                ]
+            );
+
+            $dashboardId = $dashboard['dashboard_id'];
+
+            foreach ($request->sections as $section) {
+                DB::table('dashboard_sections')->updateOrInsert(
+                    [
+                        'dashboard_section_id' => $section['section_id']
+                    ],
+                    [
+                        'dashboard_id' => $dashboardId,
+                        'section_name' => $section['section_name'],
+                        'section_order' => $section['section_order']
+                    ]
+                );
+
+                foreach ($section['widgets'] as $widget) {
+                    DB::table('dashboard_widgets')->updateOrInsert(
+                        [
+                            'dashboard_id' => $dashboardId,
+                            'section_id' => $section['section_id'],
+                            'widget_id' => $widget['dashboard_widget_id']
+                        ],
+                        [
+                            'pos_x' => $widget['layout']['x'],
+                            'pos_y' => $widget['layout']['y'],
+                            'width' => $widget['layout']['w'],
+                            'height' => $widget['layout']['h'],
+                        ]
+                    );
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Dashboard saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
 }

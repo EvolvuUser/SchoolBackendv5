@@ -1,8 +1,17 @@
 <?php
+// $class = get_class_section_of_student($student_id);
+// dd($class);
+// $class_array = explode(' ', $class);
+// $classname = $class_array[0];
+
+
 $class = get_class_section_of_student($student_id);
 // dd($class);
-$class_array = explode(' ', $class);
-$classname = $class_array[0];
+$class_array = !empty($class) ? explode(' ', $class) : [];
+// dd($class_array);
+$classname = isset($class_array[0]) ? (int)$class_array[0] : 0;
+// dd($classname);
+
 ?>
 
 
@@ -41,10 +50,14 @@ $classname = $class_array[0];
 $parent_info = get_student_parent_info($student_id, $customClaims);
 //  dd($parent_info);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
+// dd($health_activity_data);
 $class = get_class_section_of_student($student_id);
 // dd($class);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// dd($class_array);
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
+// dd($class_name);
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     // dd($student_id_array);
@@ -287,7 +300,8 @@ $health_activity_data = check_health_activity_data_exist_for_studentid($student_
 // print_r($health_activity_data);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -315,6 +329,7 @@ if ($class_name >= 1) {
             <td><b>Class 3rd</b></td>
             <td><b>Class 4th</b></td>
             <td><b>Class 5th</b></td>
+            
         </tr>
         <tr>
             <td rowspan="6">Health Components</td>
@@ -531,6 +546,8 @@ for ($j = 1; $j <= 5; $j++) {
         </tr>
     </table>
 </div>
+
+
 </html>
 <html>
 <style>
@@ -573,7 +590,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -946,7 +964,8 @@ $health_activity_data = check_health_activity_data_exist_for_studentid($student_
 $class = get_class_section_of_student($student_id);
 // dd($class);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     // dd($student_id_array);
@@ -1188,7 +1207,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -1204,6 +1224,237 @@ if ($class_name >= 1) {
 }
 if ($class_name >= 6) {
     ?>
+    {{-- Mahima  --}}
+       <div style="page-break-before:always" class="second" align="center">
+        <br><br><br>  
+    <table class="" border="1" width="80%" style="margin-top: 15%;border-spacing: 0px;border-collapse:collapse;" align="center">
+        <tr> 
+            <td><b>Fitness Component</b></td>
+            <td colspan="2"><b>Fitness Parameters</b></td>
+            <td><b>Test Name</b></td>
+            <td><b>What does it Measures</b></td>
+            <td><b>Class 1st</b></td>
+            <td><b>Class 2nd</b></td>
+            <td><b>Class 3rd</b></td>
+            <td><b>Class 4th</b></td>
+            <td><b>Class 5th</b></td>
+            
+        </tr>
+        <tr>
+            <td rowspan="6">Health Components</td>
+            <td>Body Compostion</td>
+            <td></td>
+            <td><b>BMI</b></td>
+            <td class="measures_comp">Body Mass Index of specific Age and Gender</td>
+            <?php
+            for ($j = 1; $j <= 5; $j++) {
+                ${'bmi_' . $j} = '';
+                if (isset($student_id_array_new[$j])) {
+                    if ($student_id_array_new[$j] != 0) {
+                        $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                        if (isset($health_activity_data[0])) {
+                            ${'bmi_' . $j} = $health_activity_data[0]->bmi;
+                        }
+                    }
+                }
+                ?>
+            <td class="tdalign"><?php echo (${'bmi_' . $j}); ?> </td>
+       <?php } ?>
+        </tr>        
+        <tr>
+            <td rowspan="2">Muscular Strength</td>
+            <td>Core</td>
+            <td><b>Partial Curl Up</b></td>
+            <td class="measures_comp">Abdominal Muscular Endurance</td>
+              <?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'partial_curl_up_' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'partial_curl_up_' . $j} = $health_activity_data[0]->partial_curl_up;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'partial_curl_up_' . $j}; ?></td> 
+        <?php } ?>    
+        </tr>
+        <tr>
+            <td>Upper Body</td>
+            <td><b>Flexed/Bent Arm Hang</b></td>
+            <td class="measures_comp">Muscular Endurance/ Functional Strength</td>
+    <?php for ($j = 1; $j <= 5; $j++) {
+        ${'flex_bent_arm_hang' . $j} = '';
+        if (isset($student_id_array_new[$j])) {
+            if ($student_id_array_new[$j] != 0) {
+                $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                if (isset($health_activity_data[0])) {
+                    ${'flex_bent_arm_hang' . $j} = $health_activity_data[0]->flex_bent_arm_hang;
+                }
+            }
+        } ?>
+            <td class="tdalign"><?php echo ${'flex_bent_arm_hang' . $j}; ?></td> 
+        <?php } ?>   
+        </tr>
+        <tr>
+            <td>Flexibility</td>
+            <td></td>
+            <td><b>Sit and Reach</b></td>
+            <td class="measures_comp">Measure the flexibility of lower back and hamstring muscles</td>
+               <?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'sit_n_reach' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'sit_n_reach' . $j} = $health_activity_data[0]->sit_n_reach;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'sit_n_reach' . $j}; ?></td> 
+        <?php } ?>  
+        </tr>
+        <tr>
+            <td>Endurance</td>
+            <td></td>
+            <td><b>600 Mtr Run</b></td>
+            <td class="measures_comp">Cardiovascular Fitness/ Cardiovascular Endurance</td>
+               <?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'600m_run' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'600m_run' . $j} = $health_activity_data[0]->{'600m_run'};
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'600m_run' . $j}; ?></td> 
+            <?php } ?> 
+        </tr>
+        <tr>
+            <td>Balance</td>
+            <td>Static Balance</td>
+            <td><b>Flamingo Balance Test</b></td>
+            <td class="measures_comp">Ability to balance successfully on a single leg</td>
+                  <?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'flamingo_bel_test' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'flamingo_bel_test' . $j} = $health_activity_data[0]->flamingo_bel_test;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'flamingo_bel_test' . $j}; ?></td> 
+            <?php } ?> 
+        </tr>
+        <tr>
+            <td rowspan="5">Skill Components</td>
+            <td>Ability</td>
+            <td></td>
+            <td><b>Shuttle Run</b></td>
+            <td class="measures_comp">Test of speed and agility </td>
+                    <?php
+                    for ($j = 1; $j <= 5; $j++) {
+                        ${'shuttle_run' . $j} = '';
+                        if (isset($student_id_array_new[$j])) {
+                            if ($student_id_array_new[$j] != 0) {
+                                $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                                if (isset($health_activity_data[0])) {
+                                    ${'shuttle_run' . $j} = $health_activity_data[0]->shuttle_run;
+                                }
+                            }
+                        }
+                        ?>
+            <td class="tdalign"><?php echo ${'shuttle_run' . $j}; ?></td> 
+            <?php } ?> 
+        </tr>
+        <tr>
+            <td>Speed</td>
+            <td></td>
+            <td><b>Sprint/ Dash</b></td>
+            <td class="measures_comp">Determines acceleration and Speed</td>
+            <?php for ($j = 1; $j <= 5; $j++) {
+                ${'sprint_dash' . $j} = '';
+                if (isset($student_id_array_new[$j])) {
+                    if ($student_id_array_new[$j] != 0) {
+                        $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                        if (isset($health_activity_data[0])) {
+                            ${'sprint_dash' . $j} = $health_activity_data[0]->sprint_dash;
+                        }
+                    }
+                } ?>
+                <td class="tdalign"><?php echo ${'sprint_dash' . $j}; ?></td> 
+    <?php } ?> 
+        </tr>
+        <tr>
+            <td>Power</td>
+             <td></td>
+            <td><b>Standing Vertical Jump</b></td>
+            <td class="measures_comp">Measures the Leg Muscles Power</td>
+            <?php for ($j = 1; $j <= 5; $j++) {
+                ${'standing_vertical_jump' . $j} = '';
+                if (isset($student_id_array_new[$j])) {
+                    if ($student_id_array_new[$j] != 0) {
+                        $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                        if (isset($health_activity_data[0])) {
+                            ${'standing_vertical_jump' . $j} = $health_activity_data[0]->standing_vertical_jump;
+                        }
+                    }
+                } ?>
+                <td class="tdalign"><?php echo ${'standing_vertical_jump' . $j}; ?></td> 
+    <?php } ?> 
+        </tr>
+        <tr>
+            <td>Coordination</td>
+            <td></td>
+            <td><b>Plate Tapping</b></td>
+            <td class="measures_comp">Tests speed and coordination of limb movement</td>
+            <?php for ($j = 1; $j <= 5; $j++) {
+                ${'plate_tapping' . $j} = '';
+                if (isset($student_id_array_new[$j])) {
+                    if ($student_id_array_new[$j] != 0) {
+                        $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                        if (isset($health_activity_data[0])) {
+                            ${'plate_tapping' . $j} = $health_activity_data[0]->plate_tapping;
+                        }
+                    }
+                } ?>
+                <td class="tdalign"><?php echo ${'plate_tapping' . $j}; ?></td> 
+    <?php } ?> 
+
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td><b>Alternative Hand Wall Toss Test</b></td>
+            <td class="measures_comp">Measures hand eye coordination</td>
+            <?php for ($j = 1; $j <= 5; $j++) {
+                ${'alternative_handwall_toss' . $j} = '';
+                if (isset($student_id_array_new[$j])) {
+                    if ($student_id_array_new[$j] != 0) {
+                        $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                        if (isset($health_activity_data[0])) {
+                            ${'alternative_handwall_toss' . $j} = $health_activity_data[0]->alternative_handwall_toss;
+                        }
+                    }
+                } ?>
+                <td class="tdalign"><?php echo ${'alternative_handwall_toss' . $j}; ?></td> 
+    <?php } ?> 
+
+        </tr>
+    </table>
+</div>
 <div style="page-break-before:always" class="second">
 <br><br><br>
     <table class="table-responsive" border="1" width="80%" style="margin-top: 15%;border-spacing: 0px;border-collapse:collapse;" align="center">
@@ -1481,7 +1732,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0; //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -1497,6 +1749,328 @@ if ($class_name >= 1) {
 }
 if ($class_name >= 6) {
     ?>
+
+    {{-- chnage inside this --}}
+    <div style="page-break-before:always" class="third">
+<br><br><br>
+    <table class="table-responsive col-md-12" border="1" width="80%" style="margin-top: 15%;border-spacing: 0px;border-collapse:collapse;" align="center">
+        <tr> 
+            <td><b>Components</b></td>
+            <td><b>Parameters</b></td>
+            <td><b>Class 1st</b></td>
+            <td><b>Class 2nd</b></td>
+            <td><b>Class 3rd</b></td>
+            <td><b>Class 4th</b></td>
+            <td><b>Class 5th</b></td>
+        </tr>
+        <tr>
+            <td>Vision</td>
+            <td>R.E/L.E</td>
+        <?php for ($j = 1; $j <= 5; $j++) {
+            ${'vision_re' . $j} = '';
+            ${'vision_le' . $j} = '';
+            $vision_combine = '';
+            if (isset($student_id_array_new[$j])) {
+                if ($student_id_array_new[$j] != 0) {
+                    $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                    if (isset($health_activity_data[0])) {
+                        ${'vision_re' . $j} = $health_activity_data[0]->vision_re;
+                        ${'vision_le' . $j} = $health_activity_data[0]->vision_le;
+                        if (${'vision_re' . $j} == '' && ${'vision_le' . $j} == '')
+                            $vision_combine = '';
+                        else
+                            $vision_combine = ${'vision_re' . $j} . '/' . ${'vision_le' . $j};
+                    }
+                }
+            } ?>
+            <td class="tdalign"><?php echo $vision_combine; ?></td> 
+<?php } ?> 
+        </tr>
+<!--
+        <tr>
+            <td>Left Eye</td>
+        <!?php for($j=1;$j<=5;$j++)
+        {
+            if(isset($student_id_array_new[$j])){
+                if($student_id_array_new[$j]!=0){
+                   $health_activity_data = $this->fitness_model->get_health_activity_report_for_students_by_student_id($student_id_array_new[$j]);
+                    if(isset($health_activity_data[0])){
+                        ${'vision_le'.$j} = $health_activity_data[0]['vision_le'];
+                    }else{
+                        ${'vision_le'.$j} = '';
+                    }
+                }else{
+                    ${'vision_le'.$j} = '';
+                }
+            }else{
+                ${'vision_le'.$j} = '';
+            }?>
+            <td class="tdalign"><-?php echo ${'vision_le'.$j}; ?></td> 
+<?php // } ?> 
+        </tr>
+-->
+        <tr>
+            <td>Ears</td>
+            <td>Right/Left</td> 
+    <?php for ($j = 1; $j <= 5; $j++) {
+        ${'ears_right' . $j} = '';
+        ${'ears_left' . $j} = '';
+        $ear_combine = '';
+        if (isset($student_id_array_new[$j])) {
+            if ($student_id_array_new[$j] != 0) {
+                $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                if (isset($health_activity_data[0])) {
+                    ${'ears_right' . $j} = $health_activity_data[0]->ears_right;
+                    ${'ears_left' . $j} = $health_activity_data[0]->ears_left;
+                    if (${'ears_right' . $j} == '' && ${'ears_left' . $j} == '')
+                        $ear_combine = '';
+                    else
+                        $ear_combine = ${'ears_right' . $j} . '/' . ${'ears_left' . $j};
+                }
+            }
+        } ?>
+            <td class="tdalign"><?php echo $ear_combine; ?></td> 
+<?php } ?> 
+        </tr>
+<!--
+        <tr>
+            <td>Left Ear</td>
+  <1?php for($j=1;$j<=5;$j++)
+        {
+            if(isset($student_id_array_new[$j])){
+                if($student_id_array_new[$j]!=0){
+                   $health_activity_data = $this->fitness_model->get_health_activity_report_for_students_by_student_id($student_id_array_new[$j]); 
+                    if(isset($health_activity_data[0])){
+                        ${'ears_left'.$j} = $health_activity_data[0]['ears_left'];
+                    }else{
+                        ${'ears_left'.$j} = '';
+                    }
+                }else{
+                    ${'ears_left'.$j} = '';
+                }
+            }else{
+                ${'ears_left'.$j} = '';
+            }?>
+            <td class="tdalign"><-?php echo ${'ears_left'.$j}; ?></td> 
+<-?php   } ?> 
+        </tr>
+-->
+        <tr>
+            <td rowspan="3">Teeth Occlusion</td>
+            <td>Caries</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'teeth_caries' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'teeth_caries' . $j} = $health_activity_data[0]->teeth_caries;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'teeth_caries' . $j}; ?></td> 
+<?php } ?>    
+            
+        </tr>
+        <tr>
+            <td>Tonsils</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'teeth_tonsils' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'teeth_tonsils' . $j} = $health_activity_data[0]->teeth_tonsils;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'teeth_tonsils' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td>Gums</td>
+        <?php
+        for ($j = 1; $j <= 5; $j++) {
+            ${'teeth_gums' . $j} = '';
+            if (isset($student_id_array_new[$j])) {
+                if ($student_id_array_new[$j] != 0) {
+                    $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                    if (isset($health_activity_data[0])) {
+                        ${'teeth_gums' . $j} = $health_activity_data[0]->teeth_gums;
+                    }
+                }
+            }
+            ?>
+            <td class="tdalign"><?php echo ${'teeth_gums' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td rowspan="2"><b>General Body Measurements</b></td>
+            <td>Height(cm)</td>
+    <?php
+    for ($j = 1; $j <= 5; $j++) {
+        ${'height' . $j} = '';
+        if (isset($student_id_array_new[$j])) {
+            if ($student_id_array_new[$j] != 0) {
+                $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                if (isset($health_activity_data[0])) {
+                    ${'height' . $j} = $health_activity_data[0]->height;
+                }
+            }
+        }
+        ?>
+            <td class="tdalign"><?php echo ${'height' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td>Weight(kg)</td>
+        <?php
+        for ($j = 1; $j <= 5; $j++) {
+            ${'weight' . $j} = '';
+            if (isset($student_id_array_new[$j])) {
+                if ($student_id_array_new[$j] != 0) {
+                    $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+                    if (isset($health_activity_data[0])) {
+                        ${'weight' . $j} = $health_activity_data[0]->weight;
+                    }
+                }
+            }
+            ?>
+            <td class="tdalign"><?php echo ${'weight' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td rowspan="2">Circumferences</td>
+            <td>Hip(inches)</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'hip' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'hip' . $j} = $health_activity_data[0]->hip;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'hip' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td>Waist(inches)</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'waist' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'waist' . $j} = $health_activity_data[0]->waist;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'waist' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td rowspan="2">Health Status</td>
+            <td>Pulse</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'pulse' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'pulse' . $j} = $health_activity_data[0]->pulse;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'pulse' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td>Blood Pressure</td>
+<?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'bp' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'bp' . $j} = $health_activity_data[0]->bp;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'bp' . $j}; ?></td> 
+<?php } ?> 
+        </tr>
+        <tr>
+            <td>Posture Evaluation</td>
+            <td><b>If Any:</b><br> Head Forward/Sunken Chest/Round Shoulder/ Kyphisis/Lordosis/Abdominal Ptosis/ Body Lean/ Tilted Head/ Shoulders Uneven/ Scoliosis/ Flat Feet/ Knock Knees/ Bow Legs</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'posture_evaluation' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'posture_evaluation' . $j} = $health_activity_data[0]->posture_evaluation;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'posture_evaluation' . $j}; ?></td> 
+<?php } ?>
+        </tr>
+        <tr>
+            <td rowspan="6">Sporting Activities</td>
+            <td><b><u>Strand 1</u></b><br>1. Athlethics/ Swimming<br>2. Team Game<br>3. Individual Game<br>4. Adventure Game</td>
+<?php for ($j = 1; $j <= 5; $j++) {
+    ${'strd1' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'strd1' . $j} = $health_activity_data[0]->strd1;
+            }
+        }
+    } ?>
+            <td class="tdalign"><?php echo ${'strd1' . $j}; ?></td> 
+<?php } ?>
+        </tr>
+        <tr>
+            <td><b><u>Strand 2:</u><br> Health and Fitness</b><br>(Mass PT, Yoga, Dance, Calisthenics, Jogging, Cross Country Run, Working Outs using weights/ gym equipment, Tai Chi etc).</td>
+<?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'strd2_health_fitness' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'strd2_health_fitness' . $j} = $health_activity_data[0]->strd2_health_fitness;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'strd2_health_fitness' . $j}; ?></td> 
+<?php } ?>
+        </tr>
+        <tr>
+            <td><b><u>Strand 3:</u><br> SEWA</b></td>
+<?php
+for ($j = 1; $j <= 5; $j++) {
+    ${'strd3_sewa' . $j} = '';
+    if (isset($student_id_array_new[$j])) {
+        if ($student_id_array_new[$j] != 0) {
+            $health_activity_data = check_health_activity_data_exist_for_studentid($student_id_array_new[$j]);
+            if (isset($health_activity_data[0])) {
+                ${'strd3_sewa' . $j} = $health_activity_data[0]->strd3_sewa;
+            }
+        }
+    }
+    ?>
+            <td class="tdalign"><?php echo ${'strd3_sewa' . $j}; ?></td> 
+<?php } ?>
+        </tr>
+    </table>
+</div>
 <div style="page-break-before:always" class="third">
     <br><br><br>
     <table class="table-responsive" border="1" width="80%" style="margin-top: 15%;border-spacing: 0px;border-collapse:collapse;" align="center">

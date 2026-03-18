@@ -12,11 +12,11 @@
     use App\Http\Controllers\LoginController;
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\NoticeController;
+    use App\Http\Controllers\ParentController;
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
-    use App\Http\Controllers\ParentController;
     use App\Http\Controllers\TeacherDashboardController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
@@ -1494,7 +1494,6 @@
             // Send Mail periodicals Reminder 28-02-2026
             Route::post('/periodicals/reminder/mail', [LibraryController::class, 'periodicalReminderMail']);
 
-
             // House CRUD Dev Name :- Mahima Chaudhari 02-03-2026
             Route::get('/get_all_houses', [AdminController::class, 'getAllHouses']);
 
@@ -1503,6 +1502,16 @@
             Route::put('/update_house/{id}', [AdminController::class, 'updateHouse']);
 
             Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
+
+
+            // Health Activity Record Certificates  Dev Name :- Mahima Chaudhari 14-03-26
+            Route::get('/generate_health_activity_csv', [LibraryController::class, 'generateHealthActivityCsv']);
+            Route::post('/upload_health_activity_record_from_excelsheet', [LibraryController::class, 'uploadHealthActivityRecord']);
+            Route::put('/update_health_record/{student_id}', [LibraryController::class, 'updateHealthActivityRecord']);
+            Route::delete('/delete_health_record/{student_id}', [LibraryController::class, 'deleteHealthActivityRecord']);
+            // Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
+            //  16-03-2026
+            Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
@@ -1597,15 +1606,14 @@
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('send_pending_messages_whatsapp', [NewController::class, 'sendPendingMessagesWhatsapp']);
     Route::get('get_dashboardstructure', [DashboardController::class, 'getDashboardStructure']);
+    Route::post('/save_dashboardwidgets', [DashboardController::class, 'saveDashboardWidgets']);
 
     // Example of retrieving authenticated user information
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['jwt.auth']);
 
-
     Route::get('/test-log', function () {
-
         $logPath = storage_path('logs/approveAdmissionLog-' . date('Y-m-d') . '.log');
 
         if (!file_exists($logPath)) {

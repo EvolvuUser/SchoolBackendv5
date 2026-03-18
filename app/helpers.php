@@ -392,14 +392,25 @@ function upload_qrcode_into_folder($filename, $doc_type_folder, $base64File)
 
 function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFolder, $noticeId)
 {
+    Log::channel('upload_logs')->info('Entered upload_files_for_laravel', [
+        'filename' => $filename,
+        'upload_date' => $uploadDate,
+        'doc_type_folder' => $docTypeFolder,
+        'notice_id' => $noticeId,
+    ]);
+
     // API URL
     $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
-    $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
     $url = $codeigniter_app_url . 'index.php/AdminApi/upload_files_for_laravel';
 
-    // Prepare the data array with dynamic values
+    Log::channel('upload_logs')->info('Prepared URL', [
+        'url' => $url,
+        'short_name' => $shortName
+    ]);
+
+    // Prepare the data array
     $data = [
         'short_name' => $shortName,
         'upload_date' => $uploadDate,
@@ -409,18 +420,32 @@ function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFol
         'datafile' => $datafile,
     ];
 
-    // Send the data to the external API
-    try {
-        $response = Http::post($url, $data);  // Send the data to the external API
+    Log::channel('upload_logs')->info('Sending request to CI', [
+        'payload_keys' => array_keys($data)
+    ]);
 
-        // Check if the response is successful
+    try {
+        $response = Http::asForm()->post($url, $data);
+
+        Log::channel('upload_logs')->info('Response received', [
+            'status_code' => $response->status(),
+            'body' => $response->body()
+        ]);
+
         if ($response->successful()) {
-            return $response->json();  // Return the response as JSON
+            Log::channel('upload_logs')->info('Upload success');
+            return $response->json();
         } else {
-            return ['error' => 'Failed to upload files', 'status' => $response->status()];  // Handle errors
+            Log::channel('upload_logs')->error('Upload failed', [
+                'status_code' => $response->status(),
+                'response' => $response->body()
+            ]);
+            return ['error' => 'Failed to upload files', 'status' => $response->status()];
         }
     } catch (\Exception $e) {
-        // Handle any exceptions that may occur
+        Log::channel('upload_logs')->error('Exception in upload_files_for_laravel', [
+            'message' => $e->getMessage()
+        ]);
         return ['error' => $e->getMessage()];
     }
 }
@@ -548,13 +573,34 @@ function get_student_parent_info($student_id, $acd_yr)
         ->join('section as d', 's.section_id', '=', 'd.section_id')
         ->leftJoin('house as e', 's.house', '=', 'e.house_id')
         ->where('s.student_id', $student_id)
-        ->where('s.academic_yr', '2021-2022')
+        // ->where('s.academic_yr', '2021-2022')
+        ->where('s.academic_yr', $acd_yr)
         ->where('u.role_id', 'P')
         ->select(
-            's.*', 'p.parent_id', 'p.father_name', 'p.father_occupation', 'p.f_office_add', 'p.f_office_tel',
-            'p.f_mobile', 'p.f_email', 'p.mother_occupation', 'p.m_office_add', 'p.m_office_tel',
-            'p.mother_name', 'p.m_mobile', 'p.m_emailid', 'p.parent_adhar_no', 'u.user_id',
-            'c.name as class_name', 'd.name as sec_name', 'e.house_name', 'p.m_dob', 'p.m_blood_group', 'p.f_dob', 'p.m_adhar_no', 'p.f_blood_group'
+            's.*',
+            'p.parent_id',
+            'p.father_name',
+            'p.father_occupation',
+            'p.f_office_add',
+            'p.f_office_tel',
+            'p.f_mobile',
+            'p.f_email',
+            'p.mother_occupation',
+            'p.m_office_add',
+            'p.m_office_tel',
+            'p.mother_name',
+            'p.m_mobile',
+            'p.m_emailid',
+            'p.parent_adhar_no',
+            'u.user_id',
+            'c.name as class_name',
+            'd.name as sec_name',
+            'e.house_name',
+            'p.m_dob',
+            'p.m_blood_group',
+            'p.f_dob',
+            'p.m_adhar_no',
+            'p.f_blood_group'
         )
         ->get();
 
@@ -1183,6 +1229,7 @@ function get_open_day($exam_id)
 
 function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $random_no)
 {
+    Log::channel('upload_logs')->info('Inside upload files');
     // API URL
     $shortName = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
@@ -1196,13 +1243,20 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'upload_date' => $upload_date,
         'doc_type_folder' => $doc_type_folder,
         'filename' => $filename,
-        'datafile' => $datafile,
+        'datafile' => $datafile
     ];
+
+    Log::channel('upload_logs')->info("Data in upload_files", [
+        'url' => $url,
+        // 'data' => $data,
+    ]);
 
     // Send the data to the external API
     try {
         $response = Http::post($url, $data);  // Send the data to the external API
-
+        Log::channel('upload_logs')->info("Response: ", [
+            'response' => $response->json(),
+        ]);
         // Check if the response is successful
         if ($response->successful()) {
             return $response->json();  // Return the response as JSON

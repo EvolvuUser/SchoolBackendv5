@@ -8,7 +8,7 @@
     padding: 0;
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/lc_bg.jpg');
+    background-image: url('https://sms.evolvu.in/public/demo_lc_bg.jpg');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
@@ -48,6 +48,9 @@
     </tr>
     <tr>
         <td width="5%"></td>
+        <td align="left" width="30%">
+            SARAL ID: <?php echo $data->stud_id_no; ?>
+        </td>
         <td align="center" width="30%">
             UDISE PEN: <?php echo $data->udise_pen_no; ?>
         </td>
