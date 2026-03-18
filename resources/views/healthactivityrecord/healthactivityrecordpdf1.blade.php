@@ -300,7 +300,8 @@ $health_activity_data = check_health_activity_data_exist_for_studentid($student_
 // print_r($health_activity_data);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -328,13 +329,15 @@ if ($class_name >= 1) {
             <td><b>Class 3rd</b></td>
             <td><b>Class 4th</b></td>
             <td><b>Class 5th</b></td>
-            <td><b>Class 6th</b></td>
+            {{-- Mahima --}}
+            <td><b>Class 6th</b></td> 
             <td><b>Class 7th</b></td>
             <td><b>Class 8th</b></td>
             <td><b>Class 9th</b></td>
             <td><b>Class 10th</b></td>
             <td><b>Class 11th</b></td>
             <td><b>Class 12th</b></td>
+            
         </tr>
         <tr>
             <td rowspan="6">Health Components</td>
@@ -593,7 +596,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -966,7 +970,8 @@ $health_activity_data = check_health_activity_data_exist_for_studentid($student_
 $class = get_class_section_of_student($student_id);
 // dd($class);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     // dd($student_id_array);
@@ -1208,7 +1213,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
@@ -1232,6 +1238,12 @@ if ($class_name >= 6) {
             <td colspan="2"><b>Fitness Parameters</b></td>
             <td><b>Test Name</b></td>
             <td><b>What does it Measures</b></td>
+            {{-- Mahima --}}
+            <td><b>Class 1st</b></td>
+            <td><b>Class 2nd</b></td>
+            <td><b>Class 3rd</b></td>
+            <td><b>Class 4th</b></td>
+            <td><b>Class 5th</b></td>
             <td><b>Class 6th</b></td>
             <td><b>Class 7th</b></td>
             <td><b>Class 8th</b></td>
@@ -1501,7 +1513,8 @@ $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 $class = get_class_section_of_student($student_id);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     $temp_prev_stud_id = $student_id;
