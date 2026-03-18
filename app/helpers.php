@@ -443,7 +443,6 @@ function upload_files_for_laravel($filename, $datafile, $uploadDate, $docTypeFol
             ]);
             return ['error' => 'Failed to upload files', 'status' => $response->status()];
         }
-
     } catch (\Exception $e) {
         Log::channel('upload_logs')->error('Exception in upload_files_for_laravel', [
             'message' => $e->getMessage()
@@ -575,13 +574,34 @@ function get_student_parent_info($student_id, $acd_yr)
         ->join('section as d', 's.section_id', '=', 'd.section_id')
         ->leftJoin('house as e', 's.house', '=', 'e.house_id')
         ->where('s.student_id', $student_id)
-        ->where('s.academic_yr', '2021-2022')
+        // ->where('s.academic_yr', '2021-2022')
+        ->where('s.academic_yr', $acd_yr)
         ->where('u.role_id', 'P')
         ->select(
-            's.*', 'p.parent_id', 'p.father_name', 'p.father_occupation', 'p.f_office_add', 'p.f_office_tel',
-            'p.f_mobile', 'p.f_email', 'p.mother_occupation', 'p.m_office_add', 'p.m_office_tel',
-            'p.mother_name', 'p.m_mobile', 'p.m_emailid', 'p.parent_adhar_no', 'u.user_id',
-            'c.name as class_name', 'd.name as sec_name', 'e.house_name', 'p.m_dob', 'p.m_blood_group', 'p.f_dob', 'p.m_adhar_no', 'p.f_blood_group'
+            's.*',
+            'p.parent_id',
+            'p.father_name',
+            'p.father_occupation',
+            'p.f_office_add',
+            'p.f_office_tel',
+            'p.f_mobile',
+            'p.f_email',
+            'p.mother_occupation',
+            'p.m_office_add',
+            'p.m_office_tel',
+            'p.mother_name',
+            'p.m_mobile',
+            'p.m_emailid',
+            'p.parent_adhar_no',
+            'u.user_id',
+            'c.name as class_name',
+            'd.name as sec_name',
+            'e.house_name',
+            'p.m_dob',
+            'p.m_blood_group',
+            'p.f_dob',
+            'p.m_adhar_no',
+            'p.f_blood_group'
         )
         ->get();
 
@@ -1227,7 +1247,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'datafile' => $datafile
     ];
 
-    Log::channel('upload_logs')->info("Data in upload_files" , [
+    Log::channel('upload_logs')->info("Data in upload_files", [
         'url' => $url,
         // 'data' => $data,
     ]);
@@ -1235,7 +1255,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
     // Send the data to the external API
     try {
         $response = Http::post($url, $data);  // Send the data to the external API
-        Log::channel('upload_logs')->info("Response: " , [
+        Log::channel('upload_logs')->info("Response: ", [
             'response' => $response->json(),
         ]);
         // Check if the response is successful

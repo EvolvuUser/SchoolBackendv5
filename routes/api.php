@@ -1509,7 +1509,7 @@
             Route::post('/upload_health_activity_record_from_excelsheet', [LibraryController::class, 'uploadHealthActivityRecord']);
             Route::put('/update_health_record/{student_id}', [LibraryController::class, 'updateHealthActivityRecord']);
             Route::delete('/delete_health_record/{student_id}', [LibraryController::class, 'deleteHealthActivityRecord']);
-            Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
+            // Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
             //  16-03-2026
             Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
 
