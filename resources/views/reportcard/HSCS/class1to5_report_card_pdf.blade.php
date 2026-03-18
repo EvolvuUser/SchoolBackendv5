@@ -568,6 +568,7 @@ foreach ($student_info as $row1):
         		</td>
         </tr>
 		<?php
+		$date_to = null;
 		$date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;
 		if (count($term_list) == 1) {
 			$date_to = date_format(date_create(substr($date_from, 0, 4) . '-10-31'), 'Y-m-d');  // Creating date to as last day of Oct;
