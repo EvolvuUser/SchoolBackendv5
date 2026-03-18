@@ -102,16 +102,36 @@ class DashboardController extends Controller
         DB::beginTransaction();
 
         try {
-            $dashboardId = $request->dashboard['dashboard_id'];
+            $dashboard = $request->dashboard;
+
+            $dashboardId = DB::table('dashboards')->updateOrInsert(
+                ['dashboard_id' => $dashboard['dashboard_id']],
+                [
+                    'name' => $dashboard['name'],
+                    'role' => $dashboard['role'],
+                    'is_active' => 'Y'
+                ]
+            );
+
+            $dashboardId = $dashboard['dashboard_id'];
 
             foreach ($request->sections as $section) {
-                $sectionId = $section['section_id'];
+                DB::table('dashboard_sections')->updateOrInsert(
+                    [
+                        'dashboard_section_id' => $section['section_id']
+                    ],
+                    [
+                        'dashboard_id' => $dashboardId,
+                        'section_name' => $section['section_name'],
+                        'section_order' => $section['section_order']
+                    ]
+                );
 
                 foreach ($section['widgets'] as $widget) {
                     DB::table('dashboard_widgets')->updateOrInsert(
                         [
                             'dashboard_id' => $dashboardId,
-                            'section_id' => $sectionId,
+                            'section_id' => $section['section_id'],
                             'widget_id' => $widget['dashboard_widget_id']
                         ],
                         [
@@ -128,7 +148,7 @@ class DashboardController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Dashboard layout saved successfully'
+                'message' => 'Dashboard saved successfully'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
