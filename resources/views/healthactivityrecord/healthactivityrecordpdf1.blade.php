@@ -328,6 +328,13 @@ if ($class_name >= 1) {
             <td><b>Class 3rd</b></td>
             <td><b>Class 4th</b></td>
             <td><b>Class 5th</b></td>
+            <td><b>Class 6th</b></td>
+            <td><b>Class 7th</b></td>
+            <td><b>Class 8th</b></td>
+            <td><b>Class 9th</b></td>
+            <td><b>Class 10th</b></td>
+            <td><b>Class 11th</b></td>
+            <td><b>Class 12th</b></td>
         </tr>
         <tr>
             <td rowspan="6">Health Components</td>
