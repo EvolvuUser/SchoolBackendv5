@@ -1,8 +1,17 @@
 <?php
+// $class = get_class_section_of_student($student_id);
+// dd($class);
+// $class_array = explode(' ', $class);
+// $classname = $class_array[0];
+
+
 $class = get_class_section_of_student($student_id);
 // dd($class);
-$class_array = explode(' ', $class);
-$classname = $class_array[0];
+$class_array = !empty($class) ? explode(' ', $class) : [];
+// dd($class_array);
+$classname = isset($class_array[0]) ? (int)$class_array[0] : 0;
+// dd($classname);
+
 ?>
 
 
@@ -41,10 +50,14 @@ $classname = $class_array[0];
 $parent_info = get_student_parent_info($student_id, $customClaims);
 //  dd($parent_info);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
+// dd($health_activity_data);
 $class = get_class_section_of_student($student_id);
 // dd($class);
 $class_array = explode(' ', $class);
-$class_name = $class_array[0];
+// dd($class_array);
+// $class_name = $class_array[0];
+$class_name = isset($class_array[0]) ? (int)$class_array[0] : 0;  //mahima
+// dd($class_name);
 if ($class_name >= 1) {
     $student_id_array = array($class_name => $student_id);
     // dd($student_id_array);

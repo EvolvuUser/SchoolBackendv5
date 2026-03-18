@@ -5039,67 +5039,67 @@ class LibraryController extends Controller
 
 
     // incomplete
-    public function downloadHealthActivityPDF(Request $request)
-    {
-        try {
+    // public function downloadHealthActivityPDF(Request $request)
+    // {
+    //     try {
 
-            $user = $this->authenticateUser();
-            $academic_yr = JWTAuth::getPayload()->get('academic_year');
-            $shortname = JWTAuth::getPayload()->get('short_name');
+    //         $user = $this->authenticateUser();
+    //         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+    //         $shortname = JWTAuth::getPayload()->get('short_name');
 
-            $student_id = $request->student_id;
+    //         $student_id = $request->student_id;
 
-            $data = DB::table('health_activity_record')
-                ->join('student', 'student.student_id', '=', 'health_activity_record.student_id')
-                ->leftJoin('parent', 'parent.parent_id', '=', 'student.parent_id')
-                ->select(
-                    'health_activity_record.*',
-                    'student.first_name',
-                    'student.mid_name',
-                    'student.last_name',
-                    'student.class_id',
-                    'student.section_id',
-                    'parent.mother_name'
-                )
-                ->where('health_activity_record.student_id', $student_id)
-                ->where('health_activity_record.academic_yr', $academic_yr)
-                ->first();
+    //         $data = DB::table('health_activity_record')
+    //             ->join('student', 'student.student_id', '=', 'health_activity_record.student_id')
+    //             ->leftJoin('parent', 'parent.parent_id', '=', 'student.parent_id')
+    //             ->select(
+    //                 'health_activity_record.*',
+    //                 'student.first_name',
+    //                 'student.mid_name',
+    //                 'student.last_name',
+    //                 'student.class_id',
+    //                 'student.section_id',
+    //                 'parent.mother_name'
+    //             )
+    //             ->where('health_activity_record.student_id', $student_id)
+    //             ->where('health_activity_record.academic_yr', $academic_yr)
+    //             ->first();
 
-            if (!$data) {
-                return response()->json([
-                    'status' => 404,
-                    'message' => 'Health record not found'
-                ]);
-            }
+    //         if (!$data) {
+    //             return response()->json([
+    //                 'status' => 404,
+    //                 'message' => 'Health record not found'
+    //             ]);
+    //         }
 
-            // Choose PDF template based on school
-            if ($shortname == 'SACS') {
-                $pdf = PDF::loadView('pdf.health_activity', compact('data'));
-            } elseif ($shortname == 'HSCS') {
-                $pdf = PDF::loadView('pdf.hscs_health_activity', compact('data'));
-            } else {
-                $pdf = PDF::loadView('pdf.demo_health_activity', compact('data'));
-            }
+    //         // Choose PDF template based on school
+    //         if ($shortname == 'SACS') {
+    //             $pdf = PDF::loadView('pdf.health_activity', compact('data'));
+    //         } elseif ($shortname == 'HSCS') {
+    //             $pdf = PDF::loadView('pdf.hscs_health_activity', compact('data'));
+    //         } else {
+    //             $pdf = PDF::loadView('pdf.demo_health_activity', compact('data'));
+    //         }
 
-            $dynamicFilename = "Health_Activity_" . $data->first_name . "_" . $data->last_name . ".pdf";
+    //         $dynamicFilename = "Health_Activity_" . $data->first_name . "_" . $data->last_name . ".pdf";
 
-            return response()->stream(
-                function () use ($pdf) {
-                    echo $pdf->output();
-                },
-                200,
-                [
-                    'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
-                ]
-            );
-        } catch (\Exception $e) {
+    //         return response()->stream(
+    //             function () use ($pdf) {
+    //                 echo $pdf->output();
+    //             },
+    //             200,
+    //             [
+    //                 'Content-Type' => 'application/pdf',
+    //                 'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+    //             ]
+    //         );
+    //     } catch (\Exception $e) {
 
-            \Log::error($e);
+    //         \Log::error($e);
 
-            return response()->json([
-                'error' => 'An error occurred: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'error' => 'An error occurred: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 }
