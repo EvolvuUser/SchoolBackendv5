@@ -68,7 +68,6 @@ function show_listing_of_proficiency_students(
     $max_highest_marks
 ) {
     if ($acd_yr == '2020-2021') {
-
         $query = DB::select("
             SELECT
                 v.student_id,
@@ -101,9 +100,7 @@ function show_listing_of_proficiency_students(
             ORDER BY
                 percentage DESC
         ");
-
     } else {
-
         $query = DB::select("
             SELECT
                 v.student_id,
@@ -511,4 +508,53 @@ function get_term_of_exam($exam_id)
     foreach ($res as $row) {
         return $row->term_id;
     }
+}
+
+function get_studentaboutme_master_by_class_id($class_id)
+{
+    $query = DB::select('SELECT * from allaboutme_master where class_id=' . $class_id);
+    return $query;
+}
+
+function get_allaboutme_for_student($student_id, $am_id, $acd_yr)
+{
+    $query = DB::select('select aboutme_value from student_allaboutme_details where student_id= ' . $student_id . ' and am_id=' . $am_id . " and academic_yr='" . $acd_yr . "'");
+    return $query;
+}
+
+function get_reportcard_publish_value_for_exam($class_id, $section_id, $exam_name)
+{
+    $query = DB::select('Select * from report_card_publish a, exam b where a.term_id=b.exam_id and a.class_id=' . $class_id . ' and a.section_id=' . $section_id . " and b.name='" . $exam_name . "'");
+
+    $res = $query;
+    // print_r($this->db->last_query());
+    foreach ($res as $row)
+        return $row->publish;
+}
+
+function get_term()
+{
+    $query = DB::select('SELECT * FROM term');
+    return $query;
+}
+
+function get_published_exams_of_a_class($class_id, $section_id, $acd_yr)
+{
+    $query = DB::select('SELECT DISTINCT exam.exam_id,exam.name FROM `report_card_publish` join exam on report_card_publish.term_id = exam.exam_id WHERE class_id = ' . $class_id . ' AND section_id = ' . $section_id . " AND report_card_publish.publish = 'Y' order by exam.start_date");
+    // print_r($this->db->last_query());
+    return $query;
+}
+
+function get_peer_feedback_master($class_id)
+{
+    $query = DB::select('SELECT * from peer_feedback_master where class_id=' . $class_id);
+    return $query;
+}
+
+function get_published_peer_feedback_parameter_value_by_id($student_id, $pfm_id, $term_id, $acd_yr)
+{
+    $query = DB::select('Select parameter_value from peer_feedback where student_id=' . $student_id . ' and term_id=' . $term_id . ' and pfm_id=' . $pfm_id . " and academic_yr='" . $acd_yr . "' and publish='Y'");
+    $res = $query;
+    foreach ($res as $row)
+        return $row->parameter_value;
 }
