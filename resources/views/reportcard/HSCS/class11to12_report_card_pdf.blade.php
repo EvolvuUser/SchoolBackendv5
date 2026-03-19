@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
 <style type = "text/css">
   @page {
     size: A4;
@@ -8,7 +14,7 @@
     padding: 0;
   }
     body {
-    background-image: url('<?php echo base_url(); ?>uploads/hscs_pmy.jpg');
+    background-image: url('https://sms.evolvu.in/public/reportcard/HSCS/hscs_pmy.jpg');
    -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
@@ -70,7 +76,7 @@
 </style> 
 <br>
 <?php
-$student_info = $this->crud_model->get_student_info($student_id, $acd_yr);
+$student_info = get_student_info($student_id, $academic_yr);
 foreach ($student_info as $row1):
     ?>
 <html>
@@ -81,13 +87,13 @@ foreach ($student_info as $row1):
     <div class="col-md-12">
 <div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
-        <table border="0" style="width:95%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 14%;">
+        <table border="0" style="width:87%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 14%;">
 			<tr>
 				<td style="width:30%;text-align: left;font-size:14px;" >
 					UDISE No. - 27251501213
 				</td>
 				<td style="width:40%;text-align: center;">
-					<h4 >ACADEMIC SESSION <?php echo $acd_yr; ?></h4>
+					<h4 >ACADEMIC SESSION <?php echo $academic_yr; ?></h4>
 					<h3><font color="#000000">REPORT CARD</font></h3>
 				</td>
 				<td style="width:30%;text-align: left;font-size:14px;margin-left: 30px;" >
@@ -96,7 +102,7 @@ foreach ($student_info as $row1):
 			</tr>
 		</table>
 		<br/>
-		<table border="0"  class="table-responsive" style="width:80%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 10%;" cellpadding="1" cellspacing="10">
+		<table border="0"  class="table-responsive" style="width:87%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="1" cellspacing="10">
 			<tr> 
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
@@ -118,7 +124,7 @@ foreach ($student_info as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 41%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Guardian's Name : </td>
-                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo $this->crud_model->get_parent_name($row1['parent_id']); ?></div></td>
+                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1['reg_no']; ?></div></td>
@@ -132,18 +138,18 @@ foreach ($student_info as $row1):
                         <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo $this->crud_model->get_class_name($row1['class_id']) . ' ' . $this->crud_model->get_section_name($row1['section_id']); ?></div></td>
+						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']) . ' ' . get_section_name($row1['section_id']); ?></div></td>
                     </table>
                 </td>
                 
             </tr>
 		</table>
      <br>
-		<table style="width:80%;margin-left: 6%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 22%;" cellpadding="0" cellspacing="0">
+		<table style="width:87%;margin-left: 6%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 			 <tr>
 				 <td style="text-align:center;" cellpadding="0" cellspacing="0">
 					<?php
-                    $exam_list = $this->assessment_model->get_published_exams_class9n10($row1['class_id'], $row1['section_id'], $acd_yr);
+                    $exam_list = get_published_exams_class9n10($row1['class_id'], $row1['section_id'], $academic_yr);
                     $count_of_exams = count($exam_list);
                     ?>
 					
@@ -155,9 +161,9 @@ foreach ($student_info as $row1):
 							<th class="col-md-3" style="width:25%;text-align:center;height:50px;">SUBJECT</th>
 							<?php
                             foreach ($exam_list as $exam) {
-                                ${'total_marks_' . $exam['exam_id']} = 0;
-                                ${'highest_total_marks_' . $exam['exam_id']} = 0;  // Lija 14-12-20
-                                $exam_name = (strpos($exam['name'], '(') > 0 ? substr($exam['name'], 0, strpos($exam['name'], '(')) : $exam['name']);
+                                ${'total_marks_' . $exam->exam_id} = 0;
+                                ${'highest_total_marks_' . $exam->exam_id} = 0;  // Lija 14-12-20
+                                $exam_name = (strpos($exam->name, '(') > 0 ? substr($exam->name, 0, strpos($exam->name, '(')) : $exam->name);
                                 // 42 is sibject_id of English for class 11 n 12
                                 ?> 
 										<td class="col-md-1" style="text-align:center;height:50px;"><?php echo $exam_name; ?></td>
@@ -169,46 +175,46 @@ foreach ($student_info as $row1):
 
 						<?php
 
-                        $sub_list = $this->HSC_model->get_scholastic_subject_for_which_marks_are_alloted_to_student($row1['student_id']);
+                        $sub_list = get_scholastic_subject_for_which_marks_are_alloted_to_student($row1['student_id']);
                         foreach ($sub_list as $sub_row) {
                             ?>
 						<tr>
                              <td class="col-md-3" style="width:25%;text-align:center;height:40px;"> 
 								<?php
-                                echo $sub_row['name'];
+                                echo $sub_row->name;
                                 ?>
 							</td>
 							<?php
                             foreach ($exam_list as $exam) {
-                                ${'mark_obtained_array_' . $exam['exam_id']} = array();
-                                ${'highest_marks_array_' . $exam['exam_id']} = array();
+                                ${'mark_obtained_array_' . $exam->exam_id} = array();
+                                ${'highest_marks_array_' . $exam->exam_id} = array();
                                 $marks_obtained = 0;
                                 $highest_marks = 0;
                                 // $highest_total_marks=0;
                                 // $total_marks_obtained=0;
 
-                                ${'marks_resultarray_' . $exam['exam_id']} = $this->assessment_model->get_marks($exam['exam_id'], $row1['class_id'], $row1['section_id'], $sub_row['sub_rc_master_id'], $student_id, $acd_yr);
-                                // var_dump (${'marks_resultarray_'.$exam['exam_id']})."<br/>";
-                                if (isset(${'marks_resultarray_' . $exam['exam_id']}[0])) {
-                                    ${'marks_obtained_json_' . $exam['exam_id']} = ${'marks_resultarray_' . $exam['exam_id']}[0]['reportcard_marks'];
-                                    // echo (${'marks_obtained_json_'.$exam['exam_id']}."<br/>");
-                                    ${'mark_obtained_array_' . $exam['exam_id']} = json_decode(${'marks_obtained_json_' . $exam['exam_id']}, true);
-                                    // var_dump (${'mark_obtained_array_'.$exam['exam_id']});
-                                    ${'highest_marks_json_' . $exam['exam_id']} = ${'marks_resultarray_' . $exam['exam_id']}[0]['reportcard_highest_marks'];
-                                    ${'highest_marks_array_' . $exam['exam_id']} = json_decode(${'highest_marks_json_' . $exam['exam_id']}, true);
-                                    foreach (${'mark_obtained_array_' . $exam['exam_id']} as $key => $value) {
+                                ${'marks_resultarray_' . $exam->exam_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $student_id, $academic_yr);
+                                // var_dump (${'marks_resultarray_'.$exam->exam_id})."<br/>";
+                                if (isset(${'marks_resultarray_' . $exam->exam_id}[0])) {
+                                    ${'marks_obtained_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_marks'];
+                                    // echo (${'marks_obtained_json_'.$exam->exam_id}."<br/>");
+                                    ${'mark_obtained_array_' . $exam->exam_id} = json_decode(${'marks_obtained_json_' . $exam->exam_id}, true);
+                                    // var_dump (${'mark_obtained_array_'.$exam->exam_id});
+                                    ${'highest_marks_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_highest_marks'];
+                                    ${'highest_marks_array_' . $exam->exam_id} = json_decode(${'highest_marks_json_' . $exam->exam_id}, true);
+                                    foreach (${'mark_obtained_array_' . $exam->exam_id} as $key => $value) {
                                         if ($value <> 'Ab') {
                                             if (is_numeric($value))
                                                 $marks_obtained = $marks_obtained + $value;
                                         } else {
                                             $marks_obtained = 'Ab';
                                         }
-                                        if (is_numeric(${'highest_marks_array_' . $exam['exam_id']}[$key]))
-                                            $highest_marks = $highest_marks + ${'highest_marks_array_' . $exam['exam_id']}[$key];
+                                        if (is_numeric(${'highest_marks_array_' . $exam->exam_id}[$key]))
+                                            $highest_marks = $highest_marks + ${'highest_marks_array_' . $exam->exam_id}[$key];
                                     }
                                     if ($marks_obtained <> 'Ab')  // Lija 13-10-24
-                                        ${'total_marks_' . $exam['exam_id']} = ${'total_marks_' . $exam['exam_id']} + (float) $marks_obtained;
-                                    ${'highest_total_marks_' . $exam['exam_id']} = ${'highest_total_marks_' . $exam['exam_id']} + (float) $highest_marks;
+                                        ${'total_marks_' . $exam->exam_id} = ${'total_marks_' . $exam->exam_id} + (float) $marks_obtained;
+                                    ${'highest_total_marks_' . $exam->exam_id} = ${'highest_total_marks_' . $exam->exam_id} + (float) $highest_marks;
 
                                     ?>
 									<td class="col-md-1" style="text-align:center;height:40px;">
@@ -235,7 +241,7 @@ foreach ($student_info as $row1):
 							<?php
                             foreach ($exam_list as $exam) {
                                 ?>
-								<td class="col-md-1" style="text-align:center;height:40px;"><?php echo ${'total_marks_' . $exam['exam_id']} . '/' . ${'highest_total_marks_' . $exam['exam_id']}; // Lija 14-12-20 ?></td>
+								<td class="col-md-1" style="text-align:center;height:40px;"><?php echo ${'total_marks_' . $exam->exam_id} . '/' . ${'highest_total_marks_' . $exam->exam_id}; // Lija 14-12-20 ?></td>
 							<?php } ?>
 						</tr>
 						
@@ -245,7 +251,7 @@ foreach ($student_info as $row1):
 		</table>
         
         <br/>
-		<table border="0"  class="table-responsive" style="width:82%;margin-left: 6%;margin-right: auto;margin-top:70%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+		<table border="1"  class="table-responsive" style="width:87%;margin-left: 6%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 		<tr><td>
 		<table border="1" class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;" cellpadding="0" cellspacing="0">
 			<tr>
@@ -286,3 +292,5 @@ foreach ($student_info as $row1):
 </body>
 </html> 
 <?php endforeach; ?>
+</head>
+<body>

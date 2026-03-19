@@ -10214,15 +10214,15 @@ class AssessmentController extends Controller
         } elseif ($short_name == 'HSCS') {
             switch ($class_name) {
                 case 'Nursery':
-                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case 'UKG':
-                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 case '1':
@@ -10246,8 +10246,23 @@ class AssessmentController extends Controller
                 case '10':
                     return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
-                case '11 - Science A':
-                    return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                case '11 - Science':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Commerce':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Arts':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Science':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Commerce':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Arts':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 default:
