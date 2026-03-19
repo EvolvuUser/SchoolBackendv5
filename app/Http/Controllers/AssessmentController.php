@@ -9111,7 +9111,7 @@ class AssessmentController extends Controller
         $filename = $request->input('filename');
         $doc_type_folder = $request->input('doc_type_folder');
         $random_no = $request->input('random_no');
-        Log::channel('upload_logs')->info('Parameters called' , [
+        Log::channel('upload_logs')->info('Parameters called', [
             'filename' => $filename,
             'upload_date' => $upload_date,
             'doc_type_folder' => $doc_type_folder,
@@ -10244,6 +10244,9 @@ class AssessmentController extends Controller
 
                 case '9':
                 case '10':
+                    return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Science A':
                     return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 

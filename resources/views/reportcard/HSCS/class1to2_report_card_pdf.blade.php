@@ -487,7 +487,7 @@ foreach ($student_info as $row1):
                                             ${'highest_marks_array_' . $term->term_id} = json_decode(${'highest_marks_json_' . $term->term_id}, true);  // Lija 18-03-22
 
                                             if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
-                                                if (${'count_of_mark_headings_' . $exam['exam_id']} == count(${'mark_obtained_array_' . $term['term_id']})) {
+                                                if (${'count_of_mark_headings_' . $exam->exam_id} == count(${'mark_obtained_array_' . $term->term_id})) {
                                                     // Lija 23-02-26 When count of marks heading is same
                                                     foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
                                                         if ($total_marks_obtained == '')
@@ -508,23 +508,23 @@ foreach ($student_info as $row1):
                                                 } else {
                                                     // Lija 23-02-26 When count of marks heading is not same
                                                     ?>
-    				                            <td style="text-align:center;cellpadding:0;cellspacing:0;border: 1px solid black;" colspan="<?php echo ${'count_of_mark_headings_' . $exam['exam_id']}; ?>">
+    				                            <td style="text-align:center;cellpadding:0;cellspacing:0;border: 1px solid black;" colspan="<?php echo ${'count_of_mark_headings_' . $exam->exam_id}; ?>">
         											<table class="col-md-12 col-sm-12 col-xs-12" border="0" style="border: 0px solid black;cellpadding:0;cellspacing:0;" width="100%">
         												<tr>
         								<?php
                                         $total_highest_marks = 0;
                                         // var_dump(${'mark_obtained_array_'.$term['term_id']});
-                                        foreach (${'mark_obtained_array_' . $term['term_id']} as $key => $value) {
+                                        foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
                                             if ($value <> 'Ab')  // Lija 21-03-23
-                                                $total_highest_marks = $total_highest_marks + (float) ${'highest_marks_array_' . $term['term_id']}[$key];
+                                                $total_highest_marks = $total_highest_marks + (float) ${'highest_marks_array_' . $term->term_id}[$key];
 
                                             ?>
-        													<td class=" mark_heading_td" style="vertical-align:center;text-align:center;border: 0px;"><?php echo $key . '(' . ${'highest_marks_array_' . $term['term_id']}[$key] . ')'; ?></td>
+        													<td class=" mark_heading_td" style="vertical-align:center;text-align:center;border: 0px;"><?php echo $key . '(' . ${'highest_marks_array_' . $term->term_id}[$key] . ')'; ?></td>
         								<?php } ?>
         												</tr>
         												<tr>
         								<?php
-                                        foreach (${'mark_obtained_array_' . $term['term_id']} as $key => $value) {
+                                        foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
                                             if ($value <> 'Ab')  // Lija 21-03-23
                                                 $total_marks_obtained = $total_marks_obtained + (float) $value;
 
@@ -1103,6 +1103,7 @@ foreach ($student_info as $row1):
 							<td style="text-align:left;white-space:nowrap;width: 20% !important" class="signtag"><b> Promoted To : </b></td>
 							<td style="white-space:nowrap;width:25%;margin-right:2%;text-align:center;" class="signtag"><div class="statistics_line">
 							<?php
+
                             $term_id = get_term_of_exam($exam_list[1]->exam_id);
                             // print_r($term_id);
                             echo get_promote_to_of_a_student($row1['student_id'], $term_id);
