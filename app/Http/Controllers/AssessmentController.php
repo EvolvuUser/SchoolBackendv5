@@ -10218,11 +10218,11 @@ class AssessmentController extends Controller
                     break;
 
                 case 'LKG':
-                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case 'UKG':
-                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case '1':
