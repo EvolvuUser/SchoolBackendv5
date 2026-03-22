@@ -104,12 +104,33 @@ class DashboardController extends Controller
         try {
             $dashboard = $request->dashboard;
 
-            // 1. Insert Dashboard (AUTO INCREMENT)
-            $dashboardId = DB::table('dashboards')->insertGetId([
-                'name' => $dashboard['name'],
-                'role' => $dashboard['role'],
-                'is_active' => 'Y'
-            ]);
+            // 1. Check if dashboard already exists for role
+            $existingDashboard = DB::table('dashboards')
+                ->where('role', $dashboard['role'])
+                ->first();
+
+            if ($existingDashboard) {
+                // UPDATE
+                $dashboardId = $existingDashboard->dashboard_id;
+
+                DB::table('dashboards')
+                    ->where('dashboard_id', $dashboardId)
+                    ->update([
+                        'name' => $dashboard['name'],
+                        'is_active' => 'Y'
+                    ]);
+
+                // Delete old layout
+                DB::table('dashboard_sections')->where('dashboard_id', $dashboardId)->delete();
+                DB::table('dashboard_widgets')->where('dashboard_id', $dashboardId)->delete();
+            } else {
+                // INSERT
+                $dashboardId = DB::table('dashboards')->insertGetId([
+                    'name' => $dashboard['name'],
+                    'role' => $dashboard['role'],
+                    'is_active' => 'Y'
+                ]);
+            }
 
             // 2. Insert Sections
             foreach ($request->sections as $section) {
