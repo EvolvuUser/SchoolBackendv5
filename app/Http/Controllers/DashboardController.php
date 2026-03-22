@@ -104,43 +104,32 @@ class DashboardController extends Controller
         try {
             $dashboard = $request->dashboard;
 
-            $dashboardId = DB::table('dashboards')->updateOrInsert(
-                ['dashboard_id' => $dashboard['dashboard_id']],
-                [
-                    'name' => $dashboard['name'],
-                    'role' => $dashboard['role'],
-                    'is_active' => 'Y'
-                ]
-            );
+            // 1. Insert Dashboard (AUTO INCREMENT)
+            $dashboardId = DB::table('dashboards')->insertGetId([
+                'name' => $dashboard['name'],
+                'role' => $dashboard['role'],
+                'is_active' => 'Y'
+            ]);
 
-            $dashboardId = $dashboard['dashboard_id'];
-
+            // 2. Insert Sections
             foreach ($request->sections as $section) {
-                DB::table('dashboard_sections')->updateOrInsert(
-                    [
-                        'dashboard_section_id' => $section['section_id']
-                    ],
-                    [
-                        'dashboard_id' => $dashboardId,
-                        'section_name' => $section['section_name'],
-                        'section_order' => $section['section_order']
-                    ]
-                );
+                $sectionId = DB::table('dashboard_sections')->insertGetId([
+                    'dashboard_id' => $dashboardId,
+                    'section_name' => $section['section_name'],
+                    'section_order' => $section['section_order']
+                ]);
 
+                // 3. Insert Widgets
                 foreach ($section['widgets'] as $widget) {
-                    DB::table('dashboard_widgets')->updateOrInsert(
-                        [
-                            'dashboard_id' => $dashboardId,
-                            'section_id' => $section['section_id'],
-                            'widget_id' => $widget['dashboard_widget_id']
-                        ],
-                        [
-                            'pos_x' => $widget['layout']['x'],
-                            'pos_y' => $widget['layout']['y'],
-                            'width' => $widget['layout']['w'],
-                            'height' => $widget['layout']['h'],
-                        ]
-                    );
+                    DB::table('dashboard_widgets')->insert([
+                        'dashboard_id' => $dashboardId,
+                        'section_id' => $sectionId,
+                        'widget_id' => $widget['dashboard_widget_id'],
+                        'pos_x' => $widget['layout']['x'],
+                        'pos_y' => $widget['layout']['y'],
+                        'width' => $widget['layout']['w'],
+                        'height' => $widget['layout']['h'],
+                    ]);
                 }
             }
 
@@ -148,6 +137,7 @@ class DashboardController extends Controller
 
             return response()->json([
                 'status' => true,
+                'dashboard_id' => $dashboardId,
                 'message' => 'Dashboard saved successfully'
             ]);
         } catch (\Exception $e) {
