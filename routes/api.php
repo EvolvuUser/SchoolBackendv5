@@ -1512,6 +1512,13 @@
             //  16-03-2026
             Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
 
+            // 23-03-2026
+            Route::post('/publish_health_activity_card', [LibraryController::class, 'publishHealthActivityCard']);
+            Route::get(
+                'get_health_card_publish_value/{class_id}/{section_id}',
+                [LibraryController::class, 'getHealthCardPublishValue']
+            );
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
