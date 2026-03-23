@@ -1503,7 +1503,6 @@
 
             Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
 
-
             // Health Activity Record Certificates  Dev Name :- Mahima Chaudhari 14-03-26
             Route::get('/generate_health_activity_csv', [LibraryController::class, 'generateHealthActivityCsv']);
             Route::post('/upload_health_activity_record_from_excelsheet', [LibraryController::class, 'uploadHealthActivityRecord']);
@@ -1527,6 +1526,13 @@
             });
 
             Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
+            Route::post('/save_dashboardwidgets', [DashboardController::class, 'saveDashboardWidgets']);
+            Route::post('/widget/add', [DashboardController::class, 'addWidget']);
+            Route::get('/widgets', [DashboardController::class, 'getWidgets']);
+            Route::post('/widget/update', [DashboardController::class, 'updateWidget']);
+            Route::delete('/widget/delete/{id}', [DashboardController::class, 'deleteWidget']);
+            Route::get('get_widgetstype', [DashboardController::class, 'getWidgetsType']);
+            Route::get('get_dashboards', [DashboardController::class, 'getDashboards']);
         });
 
         // Impersonate
@@ -1613,7 +1619,6 @@
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('send_pending_messages_whatsapp', [NewController::class, 'sendPendingMessagesWhatsapp']);
     Route::get('get_dashboardstructure', [DashboardController::class, 'getDashboardStructure']);
-    Route::post('/save_dashboardwidgets', [DashboardController::class, 'saveDashboardWidgets']);
 
     // Example of retrieving authenticated user information
     Route::get('/user', function (Request $request) {

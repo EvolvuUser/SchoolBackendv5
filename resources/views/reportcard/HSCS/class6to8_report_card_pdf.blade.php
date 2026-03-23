@@ -174,7 +174,6 @@ foreach ($student_info as $row1):
 				</td>
 			</tr>
 		</table>
-		<br/>
 		<table border="0"  class="table-responsive" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="1" cellspacing="10">
 			<tr> 
                 <td>
@@ -317,30 +316,64 @@ foreach ($student_info as $row1):
 											${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
 											${'highest_marks_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_highest_marks'];  // Lija 18-03-22
 
-											${'mark_obtained_array_' . $term->term_id} = json_decode(${'marks_obtained_json_' . $term->term_id});
-											${'highest_marks_array_' . $term->term_id} = json_decode(${'highest_marks_json_' . $term->term_id});  // Lija 18-03-22
+											${'mark_obtained_array_' . $term->term_id} = json_decode(${'marks_obtained_json_' . $term->term_id}, true);
+											${'highest_marks_array_' . $term->term_id} = json_decode(${'highest_marks_json_' . $term->term_id}, true);  // Lija 18-03-22
 
 											if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
-												foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
-													if ($total_marks_obtained == '')
-														$total_marks_obtained = 0;
-													$total_marks_obtained = $total_marks_obtained + $value;
-													// echo "value ".$value." ";
-													${'total_marks_' . $term->term_id . $key} = ${'total_marks_' . $term->term_id . $key} + $value;
-													?> 
-												<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
-										<?php
+												if (${'count_of_mark_headings_' . $exam->exam_id} == count(${'mark_obtained_array_' . $term->term_id})) {  // Lija 23-02-26 When count of marks heading is same
+
+													foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+														if ($total_marks_obtained == '')
+															$total_marks_obtained = 0;
+														$total_marks_obtained = $total_marks_obtained + $value;
+														// echo "value ".$value." ";
+														${'total_marks_' . $term->term_id . $key} = ${'total_marks_' . $term->term_id . $key} + $value;
+														?> 
+													<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
+											<?php
+													}
+													// Lija 18-03-22
+													foreach (${'highest_marks_array_' . $term->term_id} as $key => $value) {
+														if ($total_highest_marks == '')
+															$total_highest_marks = 0;
+														$total_highest_marks = $total_highest_marks + (float) $value;
+													}
+												} else {
+													// Lija 23-02-26 When count of marks heading is not same
+													?>
+    				                            <td style="text-align:center;cellpadding:0;cellspacing:0;border: 1px solid grey;" colspan="<?php echo ${'count_of_mark_headings_' . $exam->exam_id}; ?>">
+        											<table class="col-md-12 col-sm-12 col-xs-12" border="0" style="border: 0px;cellpadding:0;cellspacing:0;" width="100%">
+        												<tr>
+        								<?php
+										$total_highest_marks = 0;
+										// var_dump(${'mark_obtained_array_'.$term['term_id']});
+										foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+											if ($value <> 'Ab')  // Lija 21-03-23
+												$total_highest_marks = $total_highest_marks + (float) ${'highest_marks_array_' . $term->term_id}[$key];
+
+											?>
+        													<td class="td" style="vertical-align:center;text-align:center;border: 0px;height:20px;"><?php echo $key . '(' . ${'highest_marks_array_' . $term->term_id}[$key] . ')'; ?></td>
+        								<?php } ?>
+        												</tr>
+        												<tr>
+        								<?php
+										foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+											if ($value <> 'Ab')  // Lija 21-03-23
+												$total_marks_obtained = $total_marks_obtained + (float) $value;
+
+											?>
+        													<td class="td" style="vertical-align:center;text-align:center;border: 0px;height:20px;"><?php echo $value; ?></td>
+        								<?php
+										}
+										?>
+        												</tr>
+        											</table>
+        										</td>
+						
+								<?php
 												}
-												// Lija 18-03-22
-												foreach (${'highest_marks_array_' . $term->term_id} as $key => $value) {
-													if ($total_highest_marks == '')
-														$total_highest_marks = 0;
-													$total_highest_marks = $total_highest_marks + (float) $value;
-												}
+											} else {
 												?>
-				
-										
-								<?php } else { ?>
 								                <td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 								<?php
 											}
@@ -647,7 +680,7 @@ foreach ($student_info as $row1):
 						</tr>
 					</table>
 				</td>
-				<td style="width:33%;">
+				<td style="width:30%;">
 					<table class="table-responsive" width="90%" cellspacing="0">
 						<tr>
 							<th style="font-size:10px;text-align:center;" width="15%" ></th>
