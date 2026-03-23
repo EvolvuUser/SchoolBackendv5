@@ -5102,4 +5102,85 @@ class LibraryController extends Controller
     //         ], 500);
     //     }
     // }
+
+    public function publishHealthActivityCard(Request $request)
+    {
+
+        try {
+            $class_id = $request->class_id;
+            $section_id = $request->section_id;
+            $publishInput = $request->publish;
+
+            // Toggle logic (same as your CI code)
+            if ($publishInput == '') {
+                $publish = 'Y';
+            } else {
+                if ($publishInput == 'N') {
+                    $publish = 'Y';
+                } else {
+                    $publish = 'N';
+                }
+            }
+
+            $data = [
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'publish' => $publish,
+
+            ];
+
+            // Check if record exists
+            $exists = DB::table('health_activity_record_publish')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->first();
+
+            if ($exists) {
+                DB::table('health_activity_record_publish')
+                    ->where('class_id', $class_id)
+                    ->where('section_id', $section_id)
+                    ->update($data);
+            } else {
+
+                DB::table('health_activity_record_publish')->insert($data);
+            }
+
+            // Response message (same logic)
+            if ($publishInput == 'N') {
+                $message = 'Health And Activity Card published successfully.';
+            } else if ($publishInput == 'Y') {
+                $message = 'Health And Activity Card unpublished successfully.';
+            } else {
+                $message = 'Health And Activity Card unpublished successfully.';
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => $message,
+                'publish_status' => $publish
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function getHealthCardPublishValue($class_id, $section_id)
+    {
+        $data = DB::table('health_activity_record_publish')
+            ->where('class_id', $class_id)
+            ->where('section_id', $section_id)
+            ->value('publish');
+
+        if ($data === null) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'publish_value' => $data
+        ]);
+    }
 }
