@@ -13709,10 +13709,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $admissions = $query
                 ->orderBy('adm_form_pk', 'asc')
                 ->get();
-            $admissions->transform(function ($item) {
-                $item->form_id = $item->form_id . ' (' . $item->adm_form_pk . ')';
-                return $item;
-            });
 
             return response()->json([
                 'status' => true,
