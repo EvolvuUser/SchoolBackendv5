@@ -1474,9 +1474,10 @@ class TeacherDashboardController extends Controller
                     ->from('subjects_excluded_from_curriculum');
             })
             ->groupBy('s.teacher_id')
-            ->get();
+            ->first();
+
         $isLessonPlanPriorityDay = now()->isSaturday() || now()->isMonday();
-        $lessonPlanCount = $notCreatedCount[0]->pending_classes
+        $lessonPlanCount = (isset($notCreatedCount[0]) && !empty($notCreatedCount[0]->pending_classes))
             ? count(array_filter(array_map('trim', explode(',', $notCreatedCount[0]->pending_classes))))
             : 0;
         $teacherremark = DB::select("select * from(select  tr.*,0 as read_status from teachers_remark tr  join teacher  on teacher.teacher_id=tr.teachers_id where tr.remark_type='Remark' and tr.academic_yr='" . $customClaims . "' and tr.teachers_id='" . $teacher_id . "'

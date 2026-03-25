@@ -581,6 +581,7 @@ class StudentController extends Controller
                 ->where('section_id', $section_id)
                 ->where('IsDelete', 'N')
                 ->where('isPromoted', '!=', 'Y')
+                ->orderBy('roll_no', 'asc')
                 ->get();
             return response()->json([
                 'status' => 200,

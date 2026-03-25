@@ -7939,15 +7939,17 @@ class AssessmentController extends Controller
             $status = true;
         } else {
             if ($first->publish == 'Y') {
-                $message = 'Lesson Plan Template is already created and published!!!';
+                // $message = 'Lesson Plan Template is already created and published!!!';
+                $message = 'Lesson Plan Template is already created and published by another teacher.';
             } else {
-                $message = 'Lesson Plan Template is already created!!!';
+                // $message = 'Lesson Plan Template is already created!!!';
+                $message = 'Lesson Plan Template is already created by another teacher.';
             }
         }
 
-        if (!$status) {
-            $lessonplantemplate = [];
-        }
+        // if (!$status) {
+        //     $lessonplantemplate = [];
+        // }
 
         return response()->json([
             'success' => true,
