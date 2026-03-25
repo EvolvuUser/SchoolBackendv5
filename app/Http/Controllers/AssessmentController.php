@@ -7945,9 +7945,9 @@ class AssessmentController extends Controller
             }
         }
 
-        if (!$status) {
-            $lessonplantemplate = [];
-        }
+        // if (!$status) {
+        //     $lessonplantemplate = [];
+        // }
 
         return response()->json([
             'success' => true,
