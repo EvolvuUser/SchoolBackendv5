@@ -14972,12 +14972,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $user_id = str_replace("'", '', $user_id);
 
                                 if ($usql) {
-                                    $school_id = '7';
-                                    $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                    $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                        ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                    $err = $response->failed() ? $response->status() : null;
-                                    $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $resp = createUserInEvolvu($user_id);
+                                    // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                    // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                    //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                    // $err = $response->failed() ? $response->status() : null;
+                                    // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                     DB::table('contact_details')->insert([
@@ -15285,12 +15286,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $user_id = str_replace("'", '', $user_id);
 
                             if ($usql) {
-                                $school_id = '1';
-                                $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                    ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                $err = $response->failed() ? $response->status() : null;
-                                $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $resp = createUserInEvolvu($user_id);
+                                // $school_id = '1';
+                                // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                // $err = $response->failed() ? $response->status() : null;
+                                // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                 $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                 DB::table('contact_details')->insert([
