@@ -2105,6 +2105,8 @@ class AdminController extends Controller
                 $query->distinct()->where('academic_yr', $academicYr);
             }])
             ->where('academic_yr', $academicYr)
+            ->orderBy('class_id', 'ASC')
+            ->orderBy('section_id', 'ASC')
             ->get();
         return response()->json($divisions);
     }
