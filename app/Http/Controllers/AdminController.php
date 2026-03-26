@@ -14972,12 +14972,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $user_id = str_replace("'", '', $user_id);
 
                                 if ($usql) {
-                                    $school_id = '7';
-                                    $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                    $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                        ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                    $err = $response->failed() ? $response->status() : null;
-                                    $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $resp = createUserInEvolvu($user_id);
+                                    // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                    // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                    //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                    // $err = $response->failed() ? $response->status() : null;
+                                    // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                     DB::table('contact_details')->insert([
@@ -15285,12 +15286,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $user_id = str_replace("'", '', $user_id);
 
                             if ($usql) {
-                                $school_id = '1';
-                                $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                    ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                $err = $response->failed() ? $response->status() : null;
-                                $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $resp = createUserInEvolvu($user_id);
+                                // $school_id = '1';
+                                // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                // $err = $response->failed() ? $response->status() : null;
+                                // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                 $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                 DB::table('contact_details')->insert([
@@ -15715,7 +15718,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $data = DB::table('new_admission_class as a')
             ->leftJoin('class', 'class.class_id', '=', 'a.class_id')
-            ->select('a.*', 'class.name as class_name')
+            ->leftJoin('bank_account_name', 'bank_account_name.id', '=', 'a.account_id')
+            ->select('a.*', 'class.name as class_name' , 'bank_account_name.account_name')
             ->where('a.academic_yr', $academic_year)
             ->orderBy('a.class_id', 'ASC')
             ->get();
@@ -15730,35 +15734,38 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     {
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
-        $role = $user->role_id;
 
-        if (in_array($role, ['A', 'U', 'M', 'P'])) {
-            $data = DB::table('class')
-                ->select(
-                    'class.class_id',
-                    'class.name',
-                    'class.academic_yr',
-                    'class.department_id'
-                )
-                ->where('class.academic_yr', $academic_year)
-                ->whereNotIn('class.class_id', function ($query) {
-                    $query
-                        ->select('class_id')
-                        ->from('new_admission_class');
-                })
-                ->orderBy('class.class_id', 'asc')
-                ->get();
+        // $data = DB::table('class')
+        //     ->select(
+        //         'class.class_id',
+        //         'class.name',
+        //         'class.academic_yr',
+        //         'class.department_id'
+        //     )
+        //     ->where('class.academic_yr', $academic_year)
+        //     ->whereNotIn('class.class_id', function ($query) {
+        //         $query
+        //             ->select('class_id')
+        //             ->from('new_admission_class');
+        //     })
+        //     ->orderBy('class.class_id', 'asc')
+        //     ->get();
 
-            return response()->json([
-                'status' => true,
-                'data' => $data
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => "You don't have access to this resource"
-            ], 405);
-        }
+        $data = DB::table('class')
+            ->select(
+                'class.class_id',
+                'class.name',
+                'class.academic_yr',
+                'class.department_id'
+            )
+            ->where('class.academic_yr', $academic_year)
+            ->orderBy('class.class_id', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ], 200);
     }
 
     public function createAdmissionForm(Request $request)
@@ -15775,6 +15782,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'account_id' => 'required|integer',
+                'type' => 'nullable'
             ]);
 
             // ✅ Prepare data
@@ -15794,7 +15803,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,  // adjust if using JWT,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type'),
             ];
 
             // ❌ Academic year missing
@@ -15808,6 +15819,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // 🔍 Check if class already exists
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
+                ->where('type' , $data['type'])
                 ->where('academic_yr', $data['academic_yr'])
                 ->first();
 
@@ -15982,6 +15994,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'type' => 'nullable',
+                'account_id' => 'required|integer'
             ]);
 
             // 🧾 Prepare update data
@@ -16001,7 +16015,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type'),
             ];
 
             // 🔍 Check record exists
@@ -16021,6 +16037,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
                 ->where('academic_yr', $academic_year)
+                ->where('type' , $data['type'])
                 ->where('nac_id', '!=', $id)
                 ->exists();
 
@@ -16052,7 +16069,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Invalid or expired token'
             ], 401);
         } catch (\Exception $e) {
-            \Log::error('Update Admission Form Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
