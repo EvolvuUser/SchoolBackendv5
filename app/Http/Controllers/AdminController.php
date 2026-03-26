@@ -15718,7 +15718,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $data = DB::table('new_admission_class as a')
             ->leftJoin('class', 'class.class_id', '=', 'a.class_id')
-            ->select('a.*', 'class.name as class_name')
+            ->leftJoin('bank_account_name', 'bank_account_name.id', '=', 'a.account_id')
+            ->select('a.*', 'class.name as class_name' , 'bank_account_name.account_name')
             ->where('a.academic_yr', $academic_year)
             ->orderBy('a.class_id', 'ASC')
             ->get();
