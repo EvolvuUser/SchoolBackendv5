@@ -15805,7 +15805,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'publish' => $request->input('publish') ?? 'N',
                 'academic_yr' => $academic_year,  // adjust if using JWT,
                 'account_id' => $request->input('account_id'),
-                'type' => $request->input('type'),
+                'type' => $request->input('type') ?? '',
             ];
 
             // ❌ Academic year missing
@@ -16017,7 +16017,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'publish' => $request->input('publish') ?? 'N',
                 'academic_yr' => $academic_year,
                 'account_id' => $request->input('account_id'),
-                'type' => $request->input('type'),
+                'type' => $request->input('type') ?? '',
             ];
 
             // 🔍 Check record exists
