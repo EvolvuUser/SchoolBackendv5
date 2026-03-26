@@ -15778,6 +15778,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'account_id' => 'required|integer',
+                'type' => 'nullable'
             ]);
 
             // ✅ Prepare data
@@ -15797,7 +15799,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,  // adjust if using JWT,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type'),
             ];
 
             // ❌ Academic year missing
@@ -15985,6 +15989,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'type' => 'nullable',
+                'account_id' => 'required|integer'
             ]);
 
             // 🧾 Prepare update data
@@ -16004,7 +16010,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type'),
             ];
 
             // 🔍 Check record exists
@@ -16055,7 +16063,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Invalid or expired token'
             ], 401);
         } catch (\Exception $e) {
-            \Log::error('Update Admission Form Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,

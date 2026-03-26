@@ -3,7 +3,8 @@
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\AuthController;
-    use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\BankAccountController;
+use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\DashboardController;
     use App\Http\Controllers\HscController;
@@ -163,6 +164,7 @@
             Route::patch('/admin/admission-management/{id}', [AdminController::class, 'updateAdmissionForm']);
 
             Route::get('/admin/admission/classes/not-created', [AdminController::class, 'getAdmissionClassesNotCreated']);
+            Route::get('/admin/admission/bank-accounts', [BankAccountController::class , 'index']);
 
             // Admin admission email module
             Route::prefix('/admin/email-templates')->group(function () {
