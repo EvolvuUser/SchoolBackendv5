@@ -47,6 +47,7 @@ class DashboardController extends Controller
             ->where('dw.dashboard_id', $dashboard->dashboard_id)
             ->select(
                 'dw.id as dashboard_widget_id',
+                'dw.widget_id',
                 'dw.section_id',
                 'dw.pos_x',
                 'dw.pos_y',
@@ -72,6 +73,7 @@ class DashboardController extends Controller
                     ->map(function ($widget) {
                         return [
                             'dashboard_widget_id' => $widget->dashboard_widget_id,
+                            'widget_id' => $widget->widget_id,
                             'widget_key' => $widget->widget_key,
                             'widget_name' => $widget->widget_name,
                             'widget_type' => $widget->widget_type,
