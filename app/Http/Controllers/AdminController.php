@@ -15734,35 +15734,38 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     {
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
-        $role = $user->role_id;
 
-        if (in_array($role, ['A', 'U', 'M', 'P'])) {
-            $data = DB::table('class')
-                ->select(
-                    'class.class_id',
-                    'class.name',
-                    'class.academic_yr',
-                    'class.department_id'
-                )
-                ->where('class.academic_yr', $academic_year)
-                ->whereNotIn('class.class_id', function ($query) {
-                    $query
-                        ->select('class_id')
-                        ->from('new_admission_class');
-                })
-                ->orderBy('class.class_id', 'asc')
-                ->get();
+        // $data = DB::table('class')
+        //     ->select(
+        //         'class.class_id',
+        //         'class.name',
+        //         'class.academic_yr',
+        //         'class.department_id'
+        //     )
+        //     ->where('class.academic_yr', $academic_year)
+        //     ->whereNotIn('class.class_id', function ($query) {
+        //         $query
+        //             ->select('class_id')
+        //             ->from('new_admission_class');
+        //     })
+        //     ->orderBy('class.class_id', 'asc')
+        //     ->get();
 
-            return response()->json([
-                'status' => true,
-                'data' => $data
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => "You don't have access to this resource"
-            ], 405);
-        }
+        $data = DB::table('class')
+            ->select(
+                'class.class_id',
+                'class.name',
+                'class.academic_yr',
+                'class.department_id'
+            )
+            ->where('class.academic_yr', $academic_year)
+            ->orderBy('class.class_id', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ], 200);
     }
 
     public function createAdmissionForm(Request $request)
@@ -15816,6 +15819,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // 🔍 Check if class already exists
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
+                ->where('type' , $data['type'])
                 ->where('academic_yr', $data['academic_yr'])
                 ->first();
 
@@ -16033,6 +16037,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
                 ->where('academic_yr', $academic_year)
+                ->where('type' , $data['type'])
                 ->where('nac_id', '!=', $id)
                 ->exists();
 
