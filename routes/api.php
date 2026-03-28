@@ -7,7 +7,9 @@ use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\DashboardController;
-    use App\Http\Controllers\HscController;
+use App\Http\Controllers\DropdownController;
+use App\Http\Controllers\DropdownOptionController;
+use App\Http\Controllers\HscController;
     use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
     use App\Http\Controllers\LoginController;
@@ -1535,6 +1537,35 @@ use App\Http\Controllers\CertificateController;
             Route::delete('/widget/delete/{id}', [DashboardController::class, 'deleteWidget']);
             Route::get('get_widgetstype', [DashboardController::class, 'getWidgetsType']);
             Route::get('get_dashboards', [DashboardController::class, 'getDashboards']);
+
+            // ########################
+            // Master Drop Down Module
+            // ########################
+            // ------------------------- Tables Used
+            /*
+                * dropdown_master - To store module data to which the drop down belongs.
+                * dropdown_options - To store the options.
+            */
+            // --------------------------------- Routes
+                // Dropdowns
+                Route::get('/master/dropdowns', [DropdownController::class, 'index']);
+                Route::post('/master/dropdowns', [DropdownController::class, 'store']);
+                Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
+                Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
+                Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
+
+                // By code
+                Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
+                Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
+
+                // Options under dropdown
+                Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
+                Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
+
+                // Option update/delete
+                Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
+                Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
+            // --------------------------------- Routes
         });
 
         // Impersonate
