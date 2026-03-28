@@ -23,7 +23,9 @@ class DropdownOptionController extends Controller
             ->orderBy('sequence')
             ->get();
 
-        return response()->json($options);
+        return response()->json([
+            'data' => $options
+        ],200);
     }
 
     public function index(Request $request, int $id): JsonResponse

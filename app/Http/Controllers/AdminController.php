@@ -15826,7 +15826,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'A similar entry already exists'
+                    'message' => 'This class already exists'
                 ], 409);  // Conflict
             }
 
