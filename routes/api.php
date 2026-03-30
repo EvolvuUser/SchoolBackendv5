@@ -21,6 +21,7 @@ use App\Http\Controllers\HscController;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\TeacherDashboardController;
+     use App\Http\Controllers\UserController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\Route;
@@ -33,6 +34,9 @@ use App\Http\Controllers\HscController;
 
         // Protected routes
         Route::middleware(['jwt.auth', 'impersonation.readonly'])->group(function () {
+
+            Route::get('sso/user' , [UserController::class , 'getUserDetails']);
+
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
