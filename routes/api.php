@@ -1511,13 +1511,31 @@
             // Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
             //  16-03-2026
             Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
-
             // 23-03-2026
             Route::post('/publish_health_activity_card', [LibraryController::class, 'publishHealthActivityCard']);
             Route::get(
                 'get_health_card_publish_value/{class_id}/{section_id}',
                 [LibraryController::class, 'getHealthCardPublishValue']
             );
+
+            // 25-03-2026
+            Route::get('/get_health_activity_groups', [LibraryController::class, 'getHealthActivityGroups']);
+            // 26-03-2026
+            Route::post('/save_health_activity_parameter', [LibraryController::class, 'createHealthActivityParameter']);
+            Route::get('/get_health_activity_parameter_list', [LibraryController::class, 'getHealthActivityParameterList']);
+            Route::put('/update_health_activity_parameter/{id}', [LibraryController::class, 'updateHealthActivityParameter']);
+            Route::delete('/delete_health_activity_parameter/{id}', [LibraryController::class, 'deleteHealthActivityParameter']);
+
+            Route::get('/get_health_activity_group_parameter_list/{group_id}', [LibraryController::class, 'getHealthActivityParameterByGroup']);
+
+            // 27/03/2026
+            Route::get('/check_sequence_availability/{group_id}/{sequence}', [LibraryController::class, 'checkSequenceAvailability']);
+
+            // 28/03/2026
+            Route::get('/get_health_activity_last_sequence/{group_id}', [LibraryController::class, 'getLastSequenceByGroup']);
+            Route::get('/health_activity_parameter_status/{id}', [LibraryController::class, 'toggleHealthActivityParameterStatus']);
+
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {

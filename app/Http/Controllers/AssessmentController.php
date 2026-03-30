@@ -7907,13 +7907,29 @@ class AssessmentController extends Controller
         $user = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
 
+        // $lessonplantemplate = DB::select('
+        //     SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
+        //     FROM lesson_plan_template AS lpt
+        //     JOIN lesson_plan_template_details AS lptd 
+        //         ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
+        //     JOIN lesson_plan_heading AS lph 
+        //         ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
+        //     WHERE lpt.chapter_id = ?
+        //     AND lpt.subject_id = ?
+        //     AND lpt.class_id = ?
+        // ', [$chapter_id, $subject_id, $class_id]);
+
+
+        // Changed by Mahima 30-03-2026 for teacher name also show
         $lessonplantemplate = DB::select('
-            SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
+            SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id , t.name AS teacher_name
             FROM lesson_plan_template AS lpt
             JOIN lesson_plan_template_details AS lptd 
                 ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
             JOIN lesson_plan_heading AS lph 
                 ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
+            JOIN teachers AS t
+                ON t.id = lpt.reg_id
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
             AND lpt.class_id = ?

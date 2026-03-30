@@ -5183,4 +5183,855 @@ class LibraryController extends Controller
             'publish_value' => $data
         ]);
     }
+
+    public function getHealthActivityGroups()
+    {
+        try {
+            $groups = DB::table('health_activity_group')->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Health activity groups fetched successfully',
+                'data' => $groups
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // working for decimal
+    // public function createHealthActivityParameter(Request $request)
+    // {
+    //     try {
+    //         // Trim name
+    //         $name = trim($request->name);
+
+    //         // Handle group_id (default = 1)
+    //         $groupId = ($request->group_id === null ||
+    //             $request->group_id === "" ||
+    //             $request->group_id === "null")
+    //             ? 1
+    //             : $request->group_id;
+
+    //         $sequence = $request->sequence;
+
+    //         // Basic validation
+    //         if (empty($name) || empty($sequence)) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Name and sequence are required'
+    //             ], 400);
+    //         }
+
+    //         // Check duplicate name (global)
+    //         $nameExists = DB::table('health_activity_parameter')
+    //             ->where('name', $name)
+    //             ->exists();
+
+    //         if ($nameExists) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter name already exists'
+    //             ], 409);
+    //         }
+
+    //         // GET ALL EXISTING SEQUENCES FOR GROUP
+    //         $existingSequences = DB::table('health_activity_parameter')
+    //             ->where('group_id', $groupId)
+    //             ->pluck('sequence')
+    //             ->map(function ($seq) {
+    //                 return (float) $seq;
+    //             })
+    //             ->toArray();
+
+    //         $base = (int) $sequence;
+
+    //         // FILTER RELATED SEQUENCES (same base like 4, 4.01, 4.02)
+    //         $related = array_filter($existingSequences, function ($seq) use ($base) {
+    //             return floor($seq) == $base;
+    //         });
+
+    //         sort($related);
+
+    //         // GENERATE FINAL SEQUENCE
+    //         if (!in_array((float)$base, $related)) {
+    //             // base not used → use directly
+    //             $finalSequence = (string) $base;
+    //         } else {
+    //             $found = false;
+
+    //             for ($i = 1; $i <= 99; $i++) {
+    //                 $newSeq = floatval($base . '.' . str_pad($i, 2, '0', STR_PAD_LEFT));
+
+    //                 if (!in_array($newSeq, $related)) {
+    //                     $finalSequence = number_format($newSeq, 2, '.', '');
+    //                     $found = true;
+    //                     break;
+    //                 }
+    //             }
+
+    //             // If all decimals used (4.01 → 4.99)
+    //             if (!$found) {
+    //                 return response()->json([
+    //                     'status' => false,
+    //                     'message' => "All sequence numbers from {$base}.01 to {$base}.99 are already used"
+    //                 ], 409);
+    //             }
+    //         }
+
+    //         // INSERT DATA
+    //         $id = DB::table('health_activity_parameter')->insertGetId([
+    //             'name' => $name,
+    //             'group_id' => $groupId,
+    //             'sequence' => $finalSequence,
+    //         ]);
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Health activity parameter created successfully',
+    //             'data' => [
+    //                 'id' => $id,
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $finalSequence
+    //             ]
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
+    // with gap 
+    // public function createHealthActivityParameter(Request $request)
+    // {
+    //     try {
+    //         $name = trim($request->name);
+
+    //         $groupId = ($request->group_id === null ||
+    //             $request->group_id === "" ||
+    //             $request->group_id === "null")
+    //             ? 1
+    //             : $request->group_id;
+
+    //         $sequence = (int) $request->sequence;
+
+    //         // Validation
+    //         if (empty($name) || empty($sequence)) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Name and sequence are required'
+    //             ], 400);
+    //         }
+
+    //         // Check duplicate name
+    //         $nameExists = DB::table('health_activity_parameter')
+    //             ->where('name', $name)
+    //             ->exists();
+
+    //         if ($nameExists) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter name already exists'
+    //             ], 409);
+    //         }
+
+    //         DB::beginTransaction();
+
+    //         // SHIFT SEQUENCES (IMPORTANT)
+    //         DB::table('health_activity_parameter')
+    //             ->where('group_id', $groupId)
+    //             ->where('sequence', '>=', $sequence)
+    //             ->increment('sequence');
+
+    //         // INSERT NEW RECORD
+    //         $id = DB::table('health_activity_parameter')->insertGetId([
+    //             'name' => $name,
+    //             'group_id' => $groupId,
+    //             'sequence' => $sequence,
+    //             'is_active' => 'Y',
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Health activity parameter created successfully',
+    //             'data' => [
+    //                 'id' => $id,
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $sequence
+    //             ]
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function createHealthActivityParameter(Request $request)
+    {
+        try {
+            $name = trim($request->name);
+
+            $groupId = ($request->group_id === null ||
+                $request->group_id === "" ||
+                $request->group_id === "null")
+                ? 1
+                : $request->group_id;
+
+            $sequence = (int) $request->sequence;
+
+            if (empty($name) || empty($sequence)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Name and sequence are required'
+                ], 400);
+            }
+
+            // Check duplicate name
+            $nameExists = DB::table('health_activity_parameter')
+                ->where('name', $name)
+                ->exists();
+
+            if ($nameExists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter name already exists'
+                ], 409);
+            }
+
+            DB::beginTransaction();
+
+            // CHECK IF SEQUENCE EXISTS
+            $sequenceExists = DB::table('health_activity_parameter')
+                ->where('group_id', $groupId)
+                ->where('sequence', $sequence)
+                ->exists();
+
+            // SHIFT ONLY IF EXISTS
+            if ($sequenceExists) {
+                DB::table('health_activity_parameter')
+                    ->where('group_id', $groupId)
+                    ->where('sequence', '>=', $sequence)
+                    ->increment('sequence');
+            }
+
+            // INSERT
+            $id = DB::table('health_activity_parameter')->insertGetId([
+                'name' => $name,
+                'group_id' => $groupId,
+                'sequence' => $sequence,
+                'is_active' => 'Y',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Health activity parameter created successfully',
+                'data' => [
+                    'id' => $id,
+                    'name' => $name,
+                    'group_id' => $groupId,
+                    'sequence' => $sequence
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function getHealthActivityParameterList()
+    {
+        try {
+            $data = DB::table('health_activity_parameter as p')
+                ->join('health_activity_group as g', 'p.group_id', '=', 'g.id')
+                ->select(
+                    'p.id',
+                    'p.name as parameter_name',
+                    'p.group_id',
+                    'g.group_name',
+                    'p.sequence',
+                    'p.is_active'
+                )
+                ->orderBy('p.group_id')
+                ->orderBy('p.sequence')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Health activity parameter list fetched successfully',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    // update for decimal
+    // public function updateHealthActivityParameter(Request $request, $id)
+    // {
+    //     try {
+    //         $id = (int) $id;
+
+    //         $name = trim($request->name);
+
+    //         $groupId = ($request->group_id === null ||
+    //             $request->group_id === "" ||
+    //             $request->group_id === "null")
+    //             ? 1
+    //             : $request->group_id;
+
+    //         //  Normalize sequence
+    //         $sequence = number_format((float)$request->sequence, 2, '.', '');
+
+    //         // Check record exists
+    //         $existing = DB::table('health_activity_parameter')
+    //             ->where('id', $id)
+    //             ->first();
+
+    //         if (!$existing) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter not found'
+    //             ], 404);
+    //         }
+
+    //         //Check duplicate name (exclude current)
+    //         $nameExists = DB::table('health_activity_parameter')
+    //             ->where('name', $name)
+    //             ->where('id', '!=', $id)
+    //             ->exists();
+
+    //         if ($nameExists) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter name already exists'
+    //             ], 409);
+    //         }
+
+    //         // Prepare values
+    //         $currentSequence = number_format((float)$existing->sequence, 2, '.', '');
+
+    //         $floatSequence = (float)$sequence;
+    //         $isDecimal = ($floatSequence != (int)$floatSequence);
+
+    //         // =========================================================
+    //         // CASE 1: USER ENTERS DECIMAL → USE DIRECTLY
+    //         // =========================================================
+    //         if ($isDecimal) {
+
+    //             $exists = DB::table('health_activity_parameter')
+    //                 ->where('group_id', $groupId)
+    //                 ->where('sequence', $sequence)
+    //                 ->where('id', '!=', $id)
+    //                 ->exists();
+
+    //             if ($exists) {
+    //                 return response()->json([
+    //                     'status' => false,
+    //                     'message' => 'Sequence already exists'
+    //                 ], 409);
+    //             }
+
+    //             $finalSequence = $sequence;
+    //         }
+
+    //         // =========================================================
+    //         //  CASE 2: USER ENTERS INTEGER → AUTO GENERATE
+    //         // =========================================================
+    //         else {
+
+    //             $base = (int)$sequence;
+    //             $baseFormatted = number_format($base, 2, '.', '');
+
+    //             $existingSequences = DB::table('health_activity_parameter')
+    //                 ->where('group_id', $groupId)
+    //                 ->pluck('sequence')
+    //                 ->map(function ($seq) {
+    //                     return number_format((float)$seq, 2, '.', '');
+    //                 })
+    //                 ->toArray();
+
+    //             // Same base sequences
+    //             $related = array_filter($existingSequences, function ($seq) use ($base) {
+    //                 return floor((float)$seq) == $base;
+    //             });
+
+    //             sort($related);
+
+    //             // If only current exists → keep same
+    //             if (count($related) === 1 && in_array($currentSequence, $related)) {
+    //                 $finalSequence = $currentSequence;
+    //             } else {
+
+    //                 // Remove current
+    //                 $related = array_diff($related, [$currentSequence]);
+
+    //                 if (!in_array($baseFormatted, $related)) {
+    //                     $finalSequence = $baseFormatted;
+    //                 } else {
+    //                     $found = false;
+
+    //                     for ($i = 1; $i <= 99; $i++) {
+    //                         $newSeq = number_format($base + ($i / 100), 2, '.', '');
+
+    //                         if (!in_array($newSeq, $related)) {
+    //                             $finalSequence = $newSeq;
+    //                             $found = true;
+    //                             break;
+    //                         }
+    //                     }
+
+    //                     if (!$found) {
+    //                         return response()->json([
+    //                             'status' => false,
+    //                             'message' => "All sequence numbers from {$base}.01 to {$base}.99 are already used"
+    //                         ], 409);
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         // Update DB
+    //         DB::table('health_activity_parameter')
+    //             ->where('id', $id)
+    //             ->update([
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $finalSequence,
+    //             ]);
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Health activity parameter updated successfully',
+    //             'data' => [
+    //                 'id' => $id,
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $finalSequence
+    //             ]
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
+    public function updateHealthActivityParameter(Request $request, $id)
+    {
+        try {
+            $id = (int) $id;
+
+            $name = trim($request->name);
+
+            $groupId = ($request->group_id === null ||
+                $request->group_id === "" ||
+                $request->group_id === "null")
+                ? 1
+                : $request->group_id;
+
+            $newSequence = (int) $request->sequence;
+
+            // Check record exists
+            $existing = DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter not found'
+                ], 404);
+            }
+
+            // Duplicate name check
+            $nameExists = DB::table('health_activity_parameter')
+                ->where('name', $name)
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($nameExists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter name already exists'
+                ], 409);
+            }
+
+            $oldSequence = (int) $existing->sequence;
+
+            DB::beginTransaction();
+
+            // CASE 1: SAME SEQUENCE → ONLY UPDATE NAME
+
+            if ($newSequence == $oldSequence) {
+                DB::table('health_activity_parameter')
+                    ->where('id', $id)
+                    ->update([
+                        'name' => $name,
+                        'group_id' => $groupId
+                    ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Updated successfully'
+                ]);
+            }
+
+
+            // CHECK IF TARGET SEQUENCE EXISTS
+
+            $sequenceExists = DB::table('health_activity_parameter')
+                ->where('group_id', $groupId)
+                ->where('sequence', $newSequence)
+                ->where('id', '!=', $id)
+                ->exists();
+
+
+            // CASE 2: GAP EXISTS → NO SHIFT
+
+            if (!$sequenceExists) {
+
+                DB::table('health_activity_parameter')
+                    ->where('id', $id)
+                    ->update([
+                        'name' => $name,
+                        'group_id' => $groupId,
+                        'sequence' => $newSequence
+                    ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Updated successfully (gap used)'
+                ]);
+            }
+
+
+            // CASE 3: MOVE UP (e.g., 5 → 2)
+
+            if ($newSequence < $oldSequence) {
+
+                DB::table('health_activity_parameter')
+                    ->where('group_id', $groupId)
+                    ->whereBetween('sequence', [$newSequence, $oldSequence - 1])
+                    ->increment('sequence');
+            }
+
+
+            // CASE 4: MOVE DOWN (e.g., 2 → 5)
+
+            else {
+
+                DB::table('health_activity_parameter')
+                    ->where('group_id', $groupId)
+                    ->whereBetween('sequence', [$oldSequence + 1, $newSequence])
+                    ->decrement('sequence');
+            }
+
+
+            // FINAL UPDATE
+
+            DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->update([
+                    'name' => $name,
+                    'group_id' => $groupId,
+                    'sequence' => $newSequence
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteHealthActivityParameter($id)
+    {
+        try {
+            // Check if parameter exists
+            $parameter = DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->first();
+
+            if (!$parameter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter not found'
+                ], 404);
+            }
+
+            // Check if parameter is used in health_activity_record
+            $isUsed = DB::table('health_activity_record')
+                ->where('parameter_id', $id)
+                ->exists();
+
+            if ($isUsed) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter is already used in Health Activity Record'
+                ], 409);
+            }
+
+            // Delete parameter
+            DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Health activity parameter deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getHealthActivityParameterByGroup($group_id)
+    {
+        try {
+
+            // FIX: treat null as Basic Information (id = 1)
+            if ($group_id === "null" || $group_id === null || $group_id === "") {
+                $group_id = 1;
+            }
+
+            // Check group exists
+            $groupExists = DB::table('health_activity_group')
+                ->where('id', $group_id)
+                ->exists();
+
+            if (!$groupExists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Group not found'
+                ], 404);
+            }
+
+            // Fetch parameters
+            $data = DB::table('health_activity_parameter as p')
+                ->join('health_activity_group as g', 'p.group_id', '=', 'g.id')
+                ->where('p.group_id', $group_id)
+                ->select(
+                    'p.id',
+                    'p.name as parameter_name',
+                    'p.group_id',
+                    'g.group_name',
+                    'p.sequence'
+                )
+                ->orderBy('p.sequence')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Parameters fetched successfully',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function checkSequenceAvailability(Request $request)
+    {
+        try {
+            $groupId = ($request->group_id === null ||
+                $request->group_id === "" ||
+                $request->group_id === "null")
+                ? 1
+                : $request->group_id;
+
+            // normalize
+            $sequence = number_format((float)$request->sequence, 2, '.', '');
+
+            $base = (int)$sequence;
+            $baseFormatted = number_format($base, 2, '.', '');
+
+            // get all sequences
+            $existingSequences = DB::table('health_activity_parameter')
+                ->where('group_id', $groupId)
+                ->pluck('sequence')
+                ->map(function ($seq) {
+                    return number_format((float)$seq, 2, '.', '');
+                })
+                ->toArray();
+
+            // filter same base
+            $related = array_filter($existingSequences, function ($seq) use ($base) {
+                return floor((float)$seq) == $base;
+            });
+
+            sort($related);
+
+            // CASE 1: base not used
+            if (!in_array($baseFormatted, $related)) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Sequence is available',
+                    'available' => true,
+                    'suggested_sequence' => $baseFormatted
+                ]);
+            }
+
+            // CASE 2: base exists → find next
+            $found = false;
+            $nextSequence = null;
+
+            for ($i = 1; $i <= 99; $i++) {
+                $newSeq = number_format($base + ($i / 100), 2, '.', '');
+
+                if (!in_array($newSeq, $related)) {
+                    $nextSequence = $newSeq;
+                    $found = true;
+                    break;
+                }
+            }
+
+            // full
+            if (!$found) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "All sequence numbers from {$base}.01 to {$base}.99 are already used",
+                    'available' => false
+                ], 409);
+            }
+
+            //suggest next
+            return response()->json([
+                'status' => true,
+                'message' => "Sequence already exists. Next available is {$nextSequence}",
+                'available' => false,
+                'suggested_sequence' => $nextSequence
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getLastSequenceByGroup(Request $request)
+    {
+        try {
+            $groupId = ($request->group_id === null ||
+                $request->group_id === "" ||
+                $request->group_id === "null")
+                ? 1
+                : $request->group_id;
+
+            // Get max sequence
+            $lastSequence = DB::table('health_activity_parameter')
+                ->where('group_id', $groupId)
+                ->max('sequence');
+
+            return response()->json([
+                'status' => true,
+                'group_id' => $groupId,
+                'last_sequence' => $lastSequence ? (int)$lastSequence : 0
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function toggleHealthActivityParameterStatus($id)
+    {
+        try {
+            $record = DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->first();
+
+            if (!$record) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Record not found'
+                ], 404);
+            }
+
+            // Toggle logic
+            $newStatus = ($record->is_active === 'Y') ? 'N' : 'Y';
+
+            DB::table('health_activity_parameter')
+                ->where('id', $id)
+                ->update([
+                    'is_active' => $newStatus
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Status updated successfully',
+                'data' => [
+                    'id' => $id,
+                    'is_active' => $newStatus
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
