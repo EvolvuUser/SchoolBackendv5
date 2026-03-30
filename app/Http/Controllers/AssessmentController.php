@@ -7928,7 +7928,7 @@ class AssessmentController extends Controller
                 ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
             JOIN lesson_plan_heading AS lph 
                 ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
-            JOIN teachers AS t
+            JOIN teacher AS t
                 ON t.id = lpt.reg_id
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
