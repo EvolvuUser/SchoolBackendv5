@@ -8422,13 +8422,46 @@ class AssessmentController extends Controller
             ]);
         }
 
+        // $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
+
+        //     return [
+        //         'les_pln_temp_id' => $items[0]->les_pln_temp_id,
+        //         'class_id' => $items[0]->class_id,
+        //         'subject_id' => $items[0]->subject_id,
+        //         'chapter_id' => $items[0]->chapter_id,
+        //         'publish' => $items[0]->publish,
+        //         'details' => $items->map(function ($i) {
+        //             return [
+        //                 'detail_id' => $i->detail_id,
+        //                 'lesson_plan_headings_id' => $i->lesson_plan_headings_id,
+        //                 'heading_name' => $i->heading_name,
+        //                 'description' => $i->description,
+        //             ];
+        //         })->values(),
+        //     ];
+        // })->values();
+
+        // Changed by Mahima 30-03-2026
+
         $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
+
+            $templateId = $items[0]->les_pln_temp_id;
+
+            // ✅ Check if used in lesson_plan table
+            $isUsed = DB::table('lesson_plan')
+                ->where('les_pln_temp_id', $templateId)
+                ->exists();
+
             return [
-                'les_pln_temp_id' => $items[0]->les_pln_temp_id,
+                'les_pln_temp_id' => $templateId,
                 'class_id' => $items[0]->class_id,
                 'subject_id' => $items[0]->subject_id,
                 'chapter_id' => $items[0]->chapter_id,
                 'publish' => $items[0]->publish,
+
+                // New flag
+                'is_used' => $isUsed,
+
                 'details' => $items->map(function ($i) {
                     return [
                         'detail_id' => $i->detail_id,
