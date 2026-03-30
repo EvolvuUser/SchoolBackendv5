@@ -7929,7 +7929,7 @@ class AssessmentController extends Controller
             JOIN lesson_plan_heading AS lph 
                 ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
             JOIN teacher AS t
-                ON t.id = lpt.reg_id
+                ON t.teacher_id = lpt.reg_id
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
             AND lpt.class_id = ?
@@ -7951,17 +7951,29 @@ class AssessmentController extends Controller
         $status = false;
         $message = '';
 
+        $teacherName = $first->teacher_name ?? 'another teacher';
+
         if ($first->teacher_id == $reg_id) {
             $status = true;
         } else {
             if ($first->publish == 'Y') {
-                // $message = 'Lesson Plan Template is already created and published!!!';
-                $message = 'Lesson Plan Template is already created and published by another teacher.';
+                $message = "Lesson Plan Template is already created and published by {$teacherName}.";
             } else {
-                // $message = 'Lesson Plan Template is already created!!!';
-                $message = 'Lesson Plan Template is already created by another teacher.';
+                $message = "Lesson Plan Template is already created by {$teacherName}.";
             }
         }
+
+        // if ($first->teacher_id == $reg_id) {
+        //     $status = true;
+        // } else {
+        //     if ($first->publish == 'Y') {
+        //         // $message = 'Lesson Plan Template is already created and published!!!';
+        //         $message = 'Lesson Plan Template is already created and published by another teacher.';
+        //     } else {
+        //         // $message = 'Lesson Plan Template is already created!!!';
+        //         $message = 'Lesson Plan Template is already created by another teacher.';
+        //     }
+        // }
 
         // if (!$status) {
         //     $lessonplantemplate = [];
