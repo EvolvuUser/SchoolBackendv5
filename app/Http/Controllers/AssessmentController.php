@@ -7951,7 +7951,9 @@ class AssessmentController extends Controller
         $status = false;
         $message = '';
 
-        $teacherName = $first->teacher_name ?? 'another teacher';
+        $teacherName = $first->teacher_name
+            ? ucwords(strtolower($first->teacher_name))
+            : 'Another Teacher';
 
         if ($first->teacher_id == $reg_id) {
             $status = true;
