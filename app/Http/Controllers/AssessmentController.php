@@ -7951,17 +7951,29 @@ class AssessmentController extends Controller
         $status = false;
         $message = '';
 
+        $teacherName = $first->teacher_name ?? 'another teacher';
+
         if ($first->teacher_id == $reg_id) {
             $status = true;
         } else {
             if ($first->publish == 'Y') {
-                // $message = 'Lesson Plan Template is already created and published!!!';
-                $message = 'Lesson Plan Template is already created and published by another teacher.';
+                $message = "Lesson Plan Template is already created and published by {$teacherName}.";
             } else {
-                // $message = 'Lesson Plan Template is already created!!!';
-                $message = 'Lesson Plan Template is already created by another teacher.';
+                $message = "Lesson Plan Template is already created by {$teacherName}.";
             }
         }
+
+        // if ($first->teacher_id == $reg_id) {
+        //     $status = true;
+        // } else {
+        //     if ($first->publish == 'Y') {
+        //         // $message = 'Lesson Plan Template is already created and published!!!';
+        //         $message = 'Lesson Plan Template is already created and published by another teacher.';
+        //     } else {
+        //         // $message = 'Lesson Plan Template is already created!!!';
+        //         $message = 'Lesson Plan Template is already created by another teacher.';
+        //     }
+        // }
 
         // if (!$status) {
         //     $lessonplantemplate = [];
