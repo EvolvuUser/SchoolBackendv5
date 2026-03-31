@@ -3,13 +3,13 @@
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\AuthController;
-use App\Http\Controllers\BankAccountController;
-use App\Http\Controllers\CertificateController;
+    use App\Http\Controllers\BankAccountController;
+    use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DropdownController;
-use App\Http\Controllers\DropdownOptionController;
-use App\Http\Controllers\HscController;
+    use App\Http\Controllers\DropdownController;
+    use App\Http\Controllers\DropdownOptionController;
+    use App\Http\Controllers\HscController;
     use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
     use App\Http\Controllers\LoginController;
@@ -21,7 +21,7 @@ use App\Http\Controllers\HscController;
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\TeacherDashboardController;
-     use App\Http\Controllers\UserController;
+    use App\Http\Controllers\UserController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\Route;
@@ -35,7 +35,7 @@ use App\Http\Controllers\HscController;
         // Protected routes
         Route::middleware(['jwt.auth', 'impersonation.readonly'])->group(function () {
 
-            Route::get('sso/user' , [UserController::class , 'getUserDetails']);
+            Route::get('sso/user', [UserController::class, 'getUserDetails']);
 
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
@@ -170,7 +170,7 @@ use App\Http\Controllers\HscController;
             Route::patch('/admin/admission-management/{id}', [AdminController::class, 'updateAdmissionForm']);
 
             Route::get('/admin/admission/classes/not-created', [AdminController::class, 'getAdmissionClassesNotCreated']);
-            Route::get('/admin/admission/bank-accounts', [BankAccountController::class , 'index']);
+            Route::get('/admin/admission/bank-accounts', [BankAccountController::class, 'index']);
 
             // Admin admission email module
             Route::prefix('/admin/email-templates')->group(function () {
@@ -1569,24 +1569,24 @@ use App\Http\Controllers\HscController;
                 * dropdown_options - To store the options.
             */
             // --------------------------------- Routes
-                // Dropdowns
-                Route::get('/master/dropdowns', [DropdownController::class, 'index']);
-                Route::post('/master/dropdowns', [DropdownController::class, 'store']);
-                Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
-                Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
-                Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
+            // Dropdowns
+            Route::get('/master/dropdowns', [DropdownController::class, 'index']);
+            Route::post('/master/dropdowns', [DropdownController::class, 'store']);
+            Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
+            Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
+            Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
 
-                // By code
-                Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
-                Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
+            // By code
+            Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
+            Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
 
-                // Options under dropdown
-                Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
-                Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
+            // Options under dropdown
+            Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
+            Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
 
-                // Option update/delete
-                Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
-                Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
+            // Option update/delete
+            Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
+            Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
             // --------------------------------- Routes
         });
 

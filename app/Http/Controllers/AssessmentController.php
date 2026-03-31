@@ -8381,106 +8381,6 @@ class AssessmentController extends Controller
         }
     }
 
-    // public function getLessonPlanTemplateID(Request $request)
-    // {
-    //     $class_id = $request->input('class_id');
-    //     $subject_id = $request->input('subject_id');
-    //     $chapter_id = $request->input('chapter_id');
-    //     $les_pln_temp_id = $request->input('les_pln_temp_id');
-
-    //     $query = DB::table('lesson_plan_template as t')
-    //         ->leftJoin('lesson_plan_template_details as d', 't.les_pln_temp_id', '=', 'd.les_pln_temp_id')
-    //         ->leftJoin('lesson_plan_heading as h', 'd.lesson_plan_headings_id', '=', 'h.lesson_plan_headings_id')
-    //         ->select(
-    //             't.les_pln_temp_id',
-    //             't.class_id',
-    //             't.subject_id',
-    //             't.chapter_id',
-    //             't.publish',
-    //             'd.les_pln_tempdetails_id as detail_id',
-    //             'd.lesson_plan_headings_id',
-    //             'h.name as heading_name',
-    //             'd.description'
-    //         );
-
-    //     if ($les_pln_temp_id) {
-    //         $query->where('t.les_pln_temp_id', $les_pln_temp_id);
-    //     } else {
-    //         $query
-    //             ->where('t.class_id', $class_id)
-    //             ->where('t.subject_id', $subject_id)
-    //             ->where('t.chapter_id', $chapter_id);
-    //     }
-
-    //     $lessonPlans = $query->orderBy('d.lesson_plan_headings_id', 'ASC')->get();
-
-    //     if ($lessonPlans->isEmpty()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'No lesson plan templates found.',
-    //             'status' => 404
-    //         ]);
-    //     }
-
-    //     $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
-
-    //         return [
-    //             'les_pln_temp_id' => $items[0]->les_pln_temp_id,
-    //             'class_id' => $items[0]->class_id,
-    //             'subject_id' => $items[0]->subject_id,
-    //             'chapter_id' => $items[0]->chapter_id,
-    //             'publish' => $items[0]->publish,
-    //             'details' => $items->map(function ($i) {
-    //                 return [
-    //                     'detail_id' => $i->detail_id,
-    //                     'lesson_plan_headings_id' => $i->lesson_plan_headings_id,
-    //                     'heading_name' => $i->heading_name,
-    //                     'description' => $i->description,
-    //                 ];
-    //             })->values(),
-    //         ];
-    //     })->values();
-
-    //     // Changed by Mahima 30-03-2026
-
-    //     // $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
-
-    //     //     $templateId = $items[0]->les_pln_temp_id;
-
-    //     //     //  Check if used in lesson_plan table
-    //     //     $isUsed = DB::table('lesson_plan')
-    //     //         ->where('les_pln_temp_id', $templateId)
-    //     //         ->exists();
-
-    //     //     return [
-    //     //         'les_pln_temp_id' => $templateId,
-    //     //         'class_id' => $items[0]->class_id,
-    //     //         'subject_id' => $items[0]->subject_id,
-    //     //         'chapter_id' => $items[0]->chapter_id,
-    //     //         'publish' => $items[0]->publish,
-
-    //     //         // New flag
-    //     //         'is_used' => $isUsed,
-
-    //     //         'details' => $items->map(function ($i) {
-    //     //             return [
-    //     //                 'detail_id' => $i->detail_id,
-    //     //                 'lesson_plan_headings_id' => $i->lesson_plan_headings_id,
-    //     //                 'heading_name' => $i->heading_name,
-    //     //                 'description' => $i->description,
-    //     //             ];
-    //     //         })->values(),
-    //     //     ];
-    //     // })->values();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => $groupedData,
-    //         'message' => 'Lesson plan template fetched successfully.',
-    //         'status' => 200
-    //     ]);
-    // }
-
     public function getLessonPlanTemplateID(Request $request)
     {
         $class_id = $request->input('class_id');
@@ -8522,19 +8422,35 @@ class AssessmentController extends Controller
             ]);
         }
 
-        //  Step 1: Get all template IDs
-        $templateIds = $lessonPlans->pluck('les_pln_temp_id')->unique();
+        // $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
 
-        //  Step 2: Fetch used template IDs in ONE query
-        $usedTemplateIds = DB::table('lesson_plan')
-            ->whereIn('les_pln_temp_id', $templateIds)
-            ->pluck('les_pln_temp_id')
-            ->toArray();
+        //     return [
+        //         'les_pln_temp_id' => $items[0]->les_pln_temp_id,
+        //         'class_id' => $items[0]->class_id,
+        //         'subject_id' => $items[0]->subject_id,
+        //         'chapter_id' => $items[0]->chapter_id,
+        //         'publish' => $items[0]->publish,
+        //         'details' => $items->map(function ($i) {
+        //             return [
+        //                 'detail_id' => $i->detail_id,
+        //                 'lesson_plan_headings_id' => $i->lesson_plan_headings_id,
+        //                 'heading_name' => $i->heading_name,
+        //                 'description' => $i->description,
+        //             ];
+        //         })->values(),
+        //     ];
+        // })->values();
 
-        // Step 3: Group and attach flag
-        $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) use ($usedTemplateIds) {
+        // Changed by Mahima 30-03-2026
+
+        $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
 
             $templateId = $items[0]->les_pln_temp_id;
+
+            //  Check if used in lesson_plan table
+            $isUsed = DB::table('lesson_plan')
+                ->where('les_pln_temp_id', $templateId)
+                ->exists();
 
             return [
                 'les_pln_temp_id' => $templateId,
@@ -8543,8 +8459,8 @@ class AssessmentController extends Controller
                 'chapter_id' => $items[0]->chapter_id,
                 'publish' => $items[0]->publish,
 
-                // OUTSIDE DB CALL (fast)
-                'is_used' => in_array($templateId, $usedTemplateIds),
+                // New flag
+                'is_used' => $isUsed,
 
                 'details' => $items->map(function ($i) {
                     return [
@@ -8564,6 +8480,8 @@ class AssessmentController extends Controller
             'status' => 200
         ]);
     }
+
+
 
 
     public function getSubSubjectByClassSub(Request $request)
@@ -8845,6 +8763,7 @@ class AssessmentController extends Controller
                 ->first();
 
             $pageData['unq_id'] = $lessonPlan->unq_id ?? null;
+            $pageData['les_pln_temp_id'] = $lessonPlanData[0]->les_pln_temp_id ?? null;
         } else {
             $pageData['header_info'] = 'N';
             $pageData['create'] = true;
