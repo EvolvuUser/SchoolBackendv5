@@ -4586,107 +4586,6 @@ class LibraryController extends Controller
 
 
     // Health Acitivity Record Dev Name - Mahima Chaudhari  14-03-2026
-    // public function generateHealthActivityCsv(Request $request)
-    // {
-    //     $request->validate([
-    //         'class_id' => 'required|integer',
-    //         'section_id' => 'required|integer'
-    //     ]);
-
-    //     $class_id = $request->class_id;
-    //     $section_id = $request->section_id;
-
-    //     // dd("hello");
-
-    //     $students = DB::table('student')
-    //         ->select(
-    //             'student_id',
-    //             'roll_no',
-    //             'first_name',
-    //             'mid_name',
-    //             'last_name'
-    //         )
-    //         ->where('class_id', $class_id)
-    //         ->where('section_id', $section_id)
-    //         ->orderBy('roll_no')
-    //         ->get();
-
-    //     $filename = "Health_Activity_Class_{$class_id}_Section_{$section_id}.csv";
-
-    //     return response()->stream(function () use ($students) {
-
-    //         $file = fopen('php://output', 'w');
-
-    //         // CSV Header
-    //         fputcsv($file, [
-    //             'Code',
-    //             // 'Student Name',
-    //             'Roll No',
-    //             'First Name',
-    //             'Middle Name',
-    //             'Last Name',
-    //             'BMI',
-    //             'Partial Curl Up',
-    //             'Flex Bent Arm Hang',
-    //             'Sit N Reach',
-    //             '600m Run',
-    //             'Flamingo Balance Test',
-    //             'Shuttle Run',
-    //             'Sprint Dash',
-    //             'Standing Vertical Jump',
-    //             'Plate Tapping',
-    //             'Alternative Handwall Toss',
-    //             'Vision RE',
-    //             'Vision LE',
-    //             'Ears Left',
-    //             'Ears Right',
-    //             'Teeth Caries',
-    //             'Teeth Tonsils',
-    //             'Teeth Gums',
-    //             'Height',
-    //             'Weight',
-    //             'Hip',
-    //             'Waist',
-    //             'Pulse',
-    //             'BP',
-    //             'Posture Evaluation',
-    //             'STRD1 Athletics',
-    //             'STRD2 Health Fitness',
-    //             'STRD3 Sewa',
-    //             'Mother Weight',
-    //             'Mother Height',
-    //             'Father Weight',
-    //             'Father Height',
-    //             'Family Income',
-    //             'CWSN'
-    //         ]);
-
-    //         // Student rows
-    //         foreach ($students as $student) {
-
-    //             $student_name = trim(
-    //                 $student->first_name . ' ' .
-    //                     $student->mid_name . ' ' .
-    //                     $student->last_name
-    //             );
-
-    //             fputcsv($file, [
-    //                 $student->student_id,
-    //                 // $student_name,
-    //                 $student->roll_no,
-    //                 $student->first_name,
-    //                 $student->mid_name,
-    //                 $student->last_name
-    //             ]);
-    //         }
-
-    //         fclose($file);
-    //     }, 200, [
-    //         'Content-Type' => 'text/csv',
-    //         'Content-Disposition' => "attachment; filename={$filename}",
-    //     ]);
-    // }
-
 
     // Changed by Mahima  30-03-2026
     public function generateHealthActivityCsv(Request $request)
@@ -4816,201 +4715,6 @@ class LibraryController extends Controller
 
 
 
-    // public function uploadHealthActivityRecord(Request $request)
-    // {
-    //     $user = $this->authenticateUser();
-    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
-
-    //     $validator = Validator::make($request->all(), [
-    //         'file' => 'required|file|mimes:csv,txt|max:2048'
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'status' => 422,
-    //             'message' => $validator->errors()->first(),
-    //         ]);
-    //     }
-
-    //     $file = $request->file('file');
-
-    //     $lines = file($file->getRealPath(), FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-
-    //     if (count($lines) <= 1) {
-    //         return response()->json([
-    //             'status' => 422,
-    //             'message' => 'Empty CSV cannot be uploaded.',
-    //         ]);
-    //     }
-
-    //     $handle = fopen($file->getRealPath(), 'r');
-
-    //     $row = 1;
-    //     $errors = [];
-
-    //     while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-
-    //         if ($row == 1) {
-
-    //             if (trim($data[0]) != 'Code') {
-    //                 return response()->json([
-    //                     'status' => 422,
-    //                     'message' => 'Invalid CSV format. Please download the correct format.'
-    //                 ]);
-    //             }
-
-    //             $row++;
-    //             continue;
-    //         }
-
-    //         $student_id = isset($data[0]) ? trim($data[0]) : null;
-
-    //         if (!$student_id) {
-    //             $errors[] = "Row $row: Student Code is missing.";
-    //             $row++;
-    //             continue;
-    //         }
-
-    //         $bmi = $data[5] ?? null;
-    //         $partial_curl_up = $data[6] ?? null;
-    //         $flex_bent_arm_hang = $data[7] ?? null;
-    //         $sit_n_reach = $data[8] ?? null;
-    //         $m_run = $data[9] ?? null;
-    //         $flamingo_bel_test = $data[10] ?? null;
-    //         $shuttle_run = $data[11] ?? null;
-    //         $sprint_dash = $data[12] ?? null;
-    //         $standing_vertical_jump = $data[13] ?? null;
-    //         $plate_tapping = $data[14] ?? null;
-    //         $alternative_handwall_toss = $data[15] ?? null;
-    //         $vision_re = $data[16] ?? null;
-    //         $vision_le = $data[17] ?? null;
-    //         $ears_left = $data[18] ?? null;
-    //         $ears_right = $data[19] ?? null;
-    //         $teeth_caries = $data[20] ?? null;
-    //         $teeth_tonsils = $data[21] ?? null;
-    //         $teeth_gums = $data[22] ?? null;
-    //         $height = $data[23] ?? null;
-    //         $weight = $data[24] ?? null;
-    //         $hip = $data[25] ?? null;
-    //         $waist = $data[26] ?? null;
-    //         $pulse = $data[27] ?? null;
-    //         $bp = $data[28] ?? null;
-    //         $posture_evaluation = $data[29] ?? null;
-    //         $strd1 = $data[30] ?? null;
-    //         $strd2_health_fitness = $data[31] ?? null;
-    //         $strd3_sewa = $data[32] ?? null;
-    //         $m_weight = $data[33] ?? null;
-    //         $m_height = $data[34] ?? null;
-    //         $f_weight = $data[35] ?? null;
-    //         $f_height = $data[36] ?? null;
-    //         $family_income = $data[37] ?? null;
-    //         $cwsn = $data[38] ?? null;
-
-    //         $exists = DB::table('health_activity_record')
-    //             ->where('student_id', $student_id)
-    //             ->exists();
-
-    //         if ($exists) {
-
-    //             DB::table('health_activity_record')
-    //                 ->where('student_id', $student_id)
-    //                 ->update([
-    //                     'bmi' => $bmi,
-    //                     'partial_curl_up' => $partial_curl_up,
-    //                     'flex_bent_arm_hang' => $flex_bent_arm_hang,
-    //                     'sit_n_reach' => $sit_n_reach,
-    //                     '600m_run' => $m_run,
-    //                     'flamingo_bel_test' => $flamingo_bel_test,
-    //                     'shuttle_run' => $shuttle_run,
-    //                     'sprint_dash' => $sprint_dash,
-    //                     'standing_vertical_jump' => $standing_vertical_jump,
-    //                     'plate_tapping' => $plate_tapping,
-    //                     'alternative_handwall_toss' => $alternative_handwall_toss,
-    //                     'vision_re' => $vision_re,
-    //                     'vision_le' => $vision_le,
-    //                     'ears_left' => $ears_left,
-    //                     'ears_right' => $ears_right,
-    //                     'teeth_caries' => $teeth_caries,
-    //                     'teeth_tonsils' => $teeth_tonsils,
-    //                     'teeth_gums' => $teeth_gums,
-    //                     'height' => $height,
-    //                     'weight' => $weight,
-    //                     'hip' => $hip,
-    //                     'waist' => $waist,
-    //                     'pulse' => $pulse,
-    //                     'bp' => $bp,
-    //                     'posture_evaluation' => $posture_evaluation,
-    //                     'strd1' => $strd1,
-    //                     'strd2_health_fitness' => $strd2_health_fitness,
-    //                     'strd3_sewa' => $strd3_sewa,
-    //                     'm_weight' => $m_weight,
-    //                     'm_height' => $m_height,
-    //                     'f_weight' => $f_weight,
-    //                     'f_height' => $f_height,
-    //                     'family_income' => $family_income,
-    //                     'cwsn' => $cwsn
-    //                 ]);
-    //         } else {
-    //             DB::table('health_activity_record')->insert([
-    //                 'student_id' => $student_id,
-    //                 'academic_yr' => $academic_yr,
-    //                 'created_by' => $user->reg_id,
-    //                 'bmi' => $bmi,
-    //                 'partial_curl_up' => $partial_curl_up,
-    //                 'flex_bent_arm_hang' => $flex_bent_arm_hang,
-    //                 'sit_n_reach' => $sit_n_reach,
-    //                 '600m_run' => $m_run,
-    //                 'flamingo_bel_test' => $flamingo_bel_test,
-    //                 'shuttle_run' => $shuttle_run,
-    //                 'sprint_dash' => $sprint_dash,
-    //                 'standing_vertical_jump' => $standing_vertical_jump,
-    //                 'plate_tapping' => $plate_tapping,
-    //                 'alternative_handwall_toss' => $alternative_handwall_toss,
-    //                 'vision_re' => $vision_re,
-    //                 'vision_le' => $vision_le,
-    //                 'ears_left' => $ears_left,
-    //                 'ears_right' => $ears_right,
-    //                 'teeth_caries' => $teeth_caries,
-    //                 'teeth_tonsils' => $teeth_tonsils,
-    //                 'teeth_gums' => $teeth_gums,
-    //                 'height' => $height,
-    //                 'weight' => $weight,
-    //                 'hip' => $hip,
-    //                 'waist' => $waist,
-    //                 'pulse' => $pulse,
-    //                 'bp' => $bp,
-    //                 'posture_evaluation' => $posture_evaluation,
-    //                 'strd1' => $strd1,
-    //                 'strd2_health_fitness' => $strd2_health_fitness,
-    //                 'strd3_sewa' => $strd3_sewa,
-    //                 'm_weight' => $m_weight,
-    //                 'm_height' => $m_height,
-    //                 'f_weight' => $f_weight,
-    //                 'f_height' => $f_height,
-    //                 'family_income' => $family_income,
-    //                 'cwsn' => $cwsn
-    //             ]);
-    //         }
-
-    //         $row++;
-    //     }
-
-    //     fclose($handle);
-
-    //     if (!empty($errors)) {
-    //         return response()->json([
-    //             'status' => 422,
-    //             'message' => implode(', ', $errors)
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'status' => 200,
-    //         'message' => 'Health Activity Records uploaded successfully',
-    //         'success' => true
-    //     ]);
-    // }
-
     public function uploadHealthActivityRecord(Request $request)
     {
         $user = $this->authenticateUser();
@@ -5116,54 +4820,67 @@ class LibraryController extends Controller
         ]);
     }
 
+
+
     public function updateHealthActivityRecord(Request $request, $student_id)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-        $validated = $request->validate([
-            'bmi' => 'nullable|numeric',
-            'partial_curl_up' => 'nullable|numeric',
-            'flex_bent_arm_hang' => 'nullable|numeric',
-            'sit_n_reach' => 'nullable|numeric',
-            '600m_run' => 'nullable|string',
-            'flamingo_bel_test' => 'nullable|string',
-            'shuttle_run' => 'nullable|string',
-            'sprint_dash' => 'nullable|string',
-            'standing_vertical_jump' => 'nullable|string',
-            'plate_tapping' => 'nullable|string',
-            'alternative_handwall_toss' => 'nullable|string',
-            'vision_re' => 'nullable|string',
-            'vision_le' => 'nullable|string',
-            'ears_left' => 'nullable|string',
-            'ears_right' => 'nullable|string',
-            'teeth_caries' => 'nullable|string',
-            'teeth_tonsils' => 'nullable|string',
-            'teeth_gums' => 'nullable|string',
-            'height' => 'nullable|numeric',
-            'weight' => 'nullable|numeric',
-            'hip' => 'nullable|numeric',
-            'waist' => 'nullable|numeric',
-            'pulse' => 'nullable|string',
-            'bp' => 'nullable|string',
-            'posture_evaluation' => 'nullable|string',
-            'strd1' => 'nullable|string',
-            'strd2_health_fitness' => 'nullable|string',
-            'strd3_sewa' => 'nullable|string',
-            'm_weight' => 'nullable|numeric',
-            'm_height' => 'nullable|numeric',
-            'f_weight' => 'nullable|numeric',
-            'f_height' => 'nullable|numeric',
-            'family_income' => 'nullable|string',
-            'cwsn' => 'nullable|string'
-        ]);
+        // Get JSON value from request
+        $jsonValue = $request->input('value');
 
-        $exists = DB::table('health_activity_record')
+        if (!$jsonValue) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Value JSON is required',
+                'success' => false
+            ]);
+        }
+
+        // Decode JSON
+        $inputData = json_decode($jsonValue, true);
+
+        if (!is_array($inputData)) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Invalid JSON format',
+                'success' => false
+            ]);
+        }
+
+        // Fetch valid parameters
+        $parameters = DB::table('health_activity_parameter')
+            ->where('is_active', 'Y')
+            ->pluck('name')
+            ->map(fn($item) => strtolower(trim($item)))
+            ->toArray();
+
+        // Filter only valid parameters
+        $filteredData = [];
+
+        foreach ($inputData as $key => $value) {
+            if (in_array(strtolower(trim($key)), $parameters)) {
+                $filteredData[$key] = $value;
+            }
+        }
+
+        // No valid data
+        if (empty($filteredData)) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'No valid parameters provided',
+                'success' => false
+            ]);
+        }
+
+        // Check record exists
+        $record = DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
-            ->exists();
+            ->first();
 
-        if (!$exists) {
+        if (!$record) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Health record not found for this student',
@@ -5171,10 +4888,19 @@ class LibraryController extends Controller
             ]);
         }
 
+        // Decode existing JSON
+        $existingData = json_decode($record->value, true) ?? [];
+
+        // Merge old + new data
+        $updatedData = array_merge($existingData, $filteredData);
+
+        // Update
         DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
-            ->update($validated);
+            ->update([
+                'value' => json_encode($updatedData)
+            ]);
 
         return response()->json([
             'status' => 200,
@@ -5182,6 +4908,7 @@ class LibraryController extends Controller
             'success' => true
         ]);
     }
+
 
     public function deleteHealthActivityRecord($student_id)
     {
@@ -5214,7 +4941,6 @@ class LibraryController extends Controller
     }
 
     // 16-03-2026
-
     public function getHealthActivityReport(Request $request)
     {
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
@@ -5235,6 +4961,8 @@ class LibraryController extends Controller
                 'student.last_name',
                 'student.class_id',
                 'student.section_id',
+                // 
+                'student.roll_no',
                 'class.name as class_name',
                 'section.name as section_name'
             );
@@ -5270,72 +4998,6 @@ class LibraryController extends Controller
             'data' => $data
         ]);
     }
-
-
-    // incomplete
-    // public function downloadHealthActivityPDF(Request $request)
-    // {
-    //     try {
-
-    //         $user = $this->authenticateUser();
-    //         $academic_yr = JWTAuth::getPayload()->get('academic_year');
-    //         $shortname = JWTAuth::getPayload()->get('short_name');
-
-    //         $student_id = $request->student_id;
-
-    //         $data = DB::table('health_activity_record')
-    //             ->join('student', 'student.student_id', '=', 'health_activity_record.student_id')
-    //             ->leftJoin('parent', 'parent.parent_id', '=', 'student.parent_id')
-    //             ->select(
-    //                 'health_activity_record.*',
-    //                 'student.first_name',
-    //                 'student.mid_name',
-    //                 'student.last_name',
-    //                 'student.class_id',
-    //                 'student.section_id',
-    //                 'parent.mother_name'
-    //             )
-    //             ->where('health_activity_record.student_id', $student_id)
-    //             ->where('health_activity_record.academic_yr', $academic_yr)
-    //             ->first();
-
-    //         if (!$data) {
-    //             return response()->json([
-    //                 'status' => 404,
-    //                 'message' => 'Health record not found'
-    //             ]);
-    //         }
-
-    //         // Choose PDF template based on school
-    //         if ($shortname == 'SACS') {
-    //             $pdf = PDF::loadView('pdf.health_activity', compact('data'));
-    //         } elseif ($shortname == 'HSCS') {
-    //             $pdf = PDF::loadView('pdf.hscs_health_activity', compact('data'));
-    //         } else {
-    //             $pdf = PDF::loadView('pdf.demo_health_activity', compact('data'));
-    //         }
-
-    //         $dynamicFilename = "Health_Activity_" . $data->first_name . "_" . $data->last_name . ".pdf";
-
-    //         return response()->stream(
-    //             function () use ($pdf) {
-    //                 echo $pdf->output();
-    //             },
-    //             200,
-    //             [
-    //                 'Content-Type' => 'application/pdf',
-    //                 'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
-    //             ]
-    //         );
-    //     } catch (\Exception $e) {
-
-    //         \Log::error($e);
-
-    //         return response()->json([
-    //             'error' => 'An error occurred: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     public function publishHealthActivityCard(Request $request)
     {
@@ -5548,7 +5210,6 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-
 
 
     public function updateHealthActivityParameter(Request $request, $id)
@@ -5944,5 +5605,167 @@ class LibraryController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // only paramter present group
+    public function getHealthActivityGroupsWithParams()
+    {
+        // Fetch groups (ordered)
+        $groups = DB::table('health_activity_group')
+            ->orderBy('id')
+            ->get();
+
+        // Fetch parameters (ordered by group + sequence)
+        $parameters = DB::table('health_activity_parameter')
+            ->where('is_active', 'Y')
+            ->orderBy('group_id')
+            ->orderBy('sequence')
+            ->get();
+
+        // Group parameters by group_id
+        $groupedParams = $parameters->groupBy('group_id');
+
+        $result = [];
+
+        foreach ($groups as $group) {
+
+            //  Skip if no parameters exist for this group
+            if (!isset($groupedParams[$group->id])) {
+                continue;
+            }
+
+            $result[] = [
+                'group_id'   => $group->id,
+                'group_name' => $group->group_name,
+                'parameters' => $groupedParams[$group->id]->map(function ($param) {
+                    return [
+                        'parameter_id'   => $param->id,
+                        'parameter_name' => $param->name,
+                        'sequence'       => $param->sequence
+                    ];
+                })->values()
+            ];
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Group with parameters fetched successfully',
+            'data' => $result
+        ]);
+    }
+
+
+    public function getTeacherClasseswithSportsTeacher(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $customClaims = JWTAuth::getPayload()->get('academic_year');
+        $teacher_id = $request->input('teacher_id');
+        // $classdata = DB::table('subject')
+        //     ->join('class', 'class.class_id', '=', 'subject.class_id')
+        //     ->join('section', 'section.section_id', '=', 'subject.section_id')
+        //     ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+        //     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+        //         $join
+        //             ->on('class_teachers.class_id', '=', 'subject.class_id')
+        //             ->on('class_teachers.section_id', '=', 'subject.section_id')
+        //             ->where('class_teachers.teacher_id', '=', $teacher_id);
+        //     })
+        //     ->where('subject.academic_yr', $customClaims)
+        //     ->where('subject.teacher_id', $teacher_id)
+        //     ->where(function ($query) use ($teacher_id) {
+        //         $query
+        //             ->where('subject.teacher_id', $teacher_id)
+        //             ->orWhere('class_teachers.teacher_id', $teacher_id);
+        //     })
+        //     ->distinct()
+        //     ->select(
+        //         'subject.class_id',
+        //         'section.section_id',
+        //         'class.name as classname',
+        //         'section.name as sectionname',
+        //         'teacher.name as teachername',
+        //         'teacher.teacher_id',
+        //         'class.class_id',
+        //         DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher')
+        //     )
+        //     // ->orderBy('subject.class_id')
+        //     ->orderByRaw('CAST(class.name AS UNSIGNED) ASC')
+        //     ->orderBy('section.name', 'ASC')
+        //     ->get();
+
+
+        $classdata = DB::table('subject')
+            ->join('class', 'class.class_id', '=', 'subject.class_id')
+            ->join('section', 'section.section_id', '=', 'subject.section_id')
+            ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+
+            // Class teacher join
+            ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                    ->on('class_teachers.section_id', '=', 'subject.section_id')
+                    ->where('class_teachers.teacher_id', '=', $teacher_id);
+            })
+
+            // Join students
+            ->leftJoin('student', function ($join) {
+                $join->on('student.class_id', '=', 'subject.class_id')
+                    ->on('student.section_id', '=', 'subject.section_id');
+            })
+
+            // Join health activity
+            ->leftJoin('health_activity_record as har', function ($join) use ($customClaims) {
+                $join->on('har.student_id', '=', 'student.student_id')
+                    ->where('har.academic_yr', '=', $customClaims);
+            })
+
+            ->where('subject.academic_yr', $customClaims)
+            ->where('subject.teacher_id', $teacher_id)
+
+            ->where(function ($query) use ($teacher_id) {
+                $query->where('subject.teacher_id', $teacher_id)
+                    ->orWhere('class_teachers.teacher_id', $teacher_id);
+            })
+
+            ->groupBy(
+                'subject.class_id',
+                'section.section_id',
+                'class.name',
+                'section.name',
+                'teacher.name',
+                'teacher.teacher_id',
+                'class.class_id',
+                'class_teachers.teacher_id'
+            )
+
+            ->select(
+                'subject.class_id',
+                'section.section_id',
+                'class.name as classname',
+                'section.name as sectionname',
+                'teacher.name as teachername',
+                'teacher.teacher_id',
+                'class.class_id',
+
+                DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher'),
+
+                // Total students
+                DB::raw('COUNT(DISTINCT student.student_id) as total_students'),
+
+                //Students having health records
+                DB::raw('COUNT(DISTINCT har.student_id) as health_record_count')
+            )
+
+            ->orderByRaw('CAST(class.name AS UNSIGNED) ASC')
+            ->orderBy('section.name', 'ASC')
+            ->get();
+
+
+        return response()->json([
+            'status' => 200,
+            'data' => $classdata,
+            'message' => 'Classes for teachers.',
+            'success' => true
+
+        ]);
     }
 }
