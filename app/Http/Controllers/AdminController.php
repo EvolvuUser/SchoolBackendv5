@@ -15826,7 +15826,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This class already exists'
+                    'message' => 'An application form already exists for the selected class and shift.'
                 ], 409);  // Conflict
             }
 
@@ -16044,7 +16044,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This class already exists'
+                    'message' => 'An application form already exists for the selected class and shift.'
                 ], 409);
             }
 
