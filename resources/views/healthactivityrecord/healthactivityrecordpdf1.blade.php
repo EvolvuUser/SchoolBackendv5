@@ -1,9 +1,4 @@
 <?php
-// $class = get_class_section_of_student($student_id);
-// dd($class);
-// $class_array = explode(' ', $class);
-// $classname = $class_array[0];
-
 
 $class = get_class_section_of_student($student_id);
 // dd($class);
@@ -109,7 +104,8 @@ if ($class_name >= 1) {
                     </tr>
                     <tr></tr>
                 </table>
-                <table width="100%" border="0">
+                01-04-2026
+                {{-- <table width="100%" border="0">
                     <tr>
                         <?php
                         if ($parent_info[0]->m_dob != '') {
@@ -120,24 +116,6 @@ if ($class_name >= 1) {
                         $m_weight = $health_activity_data[0]->m_weight ?: '&nbsp;';
                         $m_height = $health_activity_data[0]->m_height ?: '&nbsp;';
                         $m_blood_group = $parent_info[0]->m_blood_group ?: '&nbsp;';
-
-                        //                         $m_year = $parent_info[0]['m_year'] ?? '&nbsp;';
-
-                        //                        if($health_activity_data[0]['m_weight']!=''){
-                        //                            $m_weight =  $health_activity_data[0]['m_weight'];
-                        //                        }else{
-                        //                            $m_weight = '-';
-                        //                        }
-                        //                        if($health_activity_data[0]['m_height']!=''){
-                        //                            $m_height =  $health_activity_data[0]['m_height'];
-                        //                        }else{
-                        //                            $m_height = '-';
-                        //                        }
-                        //                        if($parent_info[0]['m_blood_group']!=''){
-                        //                            $m_blood_group =  $parent_info[0]['m_blood_group'];
-                        //                        }else{
-                        //                            $m_blood_group = '-';
-                        //                        }
                         ?>
                         <td align="left" width="8%">YOB :</td><td><div class="statistics_line"> <?php echo $m_year; ?></div></td>
                         <td align="left" width="14%">WEIGHT :</td><td><div class="statistics_line"> <?php echo $m_weight; ?></div></td>
@@ -145,15 +123,35 @@ if ($class_name >= 1) {
                         <td align="left" width="25%">BLOOD GROUP :</td><td><div class="statistics_line"> <?php echo $m_blood_group; ?></div></td>
                     </tr>
                     <tr></tr>
-                </table>   
+                </table>    --}}
+                <table width="100%" border="0">
+    <tr>
+        <?php
+        if ($parent_info[0]->m_dob != '') {
+            $m_year = date('Y', strtotime($parent_info[0]->m_dob));
+        } else {
+            $m_year = '&nbsp;';
+        }
+
+        $m_blood_group = $parent_info[0]->m_blood_group ?: '&nbsp;';
+        ?>
+
+        <td align="left" width="8%">YOB :</td>
+        <td><div class="statistics_line"><?php echo $m_year; ?></div></td>
+
+        <td align="left" width="14%">WEIGHT :</td>
+        <td><div class="statistics_line"><?php echo $m_weight; ?></div></td>
+
+        <td align="left" width="12%">HEIGHT :</td>
+        <td><div class="statistics_line"><?php echo $m_height; ?></div></td>
+
+        <td align="left" width="25%">BLOOD GROUP :</td>
+        <td><div class="statistics_line"><?php echo $m_blood_group; ?></div></td>
+    </tr>
+</table>
                 <table width="100%" border="0">
                     <tr>
                       <?php
-//                        if($parent_info[0]['m_adhar_no']!=''){
-//                            $m_adhar_no =  $parent_info[0]['m_adhar_no'];
-//                        }else{
-//                            $m_adhar_no = '-';
-//                        }
 
 $m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
 ?>
@@ -174,23 +172,7 @@ $m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
                             $f_year = date('Y', strtotime($parent_info[0]->f_dob));
                         } else {
                             $f_year = '&nbsp;';
-                        }
-                        //                        if($health_activity_data[0]['f_height']!=''){
-                        //                            $f_height = $health_activity_data[0]['f_height'];
-                        //                        }else{
-                        //                            $f_height = '-';
-                        //                        }
-                        //                        if($health_activity_data[0]['f_weight']!=''){
-                        //                            $f_weight = $health_activity_data[0]['f_weight'];
-                        //                        }else{
-                        //                            $f_weight = '-';
-                        //                        }
-                        //                        if($parent_info[0]['f_blood_group']!=''){
-                        //                            $f_blood_group = $parent_info[0]['f_blood_group'];
-                        //                        }else{
-                        //                            $f_blood_group = '-';
-                        //                        }
-                        // $space='&nbsp;';
+                        }                       
                         $f_blood_group = $parent_info[0]->f_blood_group ?: '&nbsp;';
                         $f_weight = $health_activity_data[0]->f_weight ?: '&nbsp;';
                         $f_height = $health_activity_data[0]->f_height ?: '&nbsp;';
@@ -221,11 +203,7 @@ $m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
                 <table width="100%" border="0">
                     <tr>
                         <?php
-                        //                        if($health_activity_data[0]['family_income']!=''){
-                        //                            $family_income =  $health_activity_data[0]['family_income'];
-                        //                        }else{
-                        //                            $family_income = '-';
-                        //                        }
+                      
                         $family_income = $health_activity_data[0]->family_income ?: '&nbsp;';
                         ?>
                         <td align="left" width="37%">FAMILY MONTHLY INCOME :</td><td><div class="statistics_line">  <?php echo $family_income; ?></div></td>
@@ -278,14 +256,14 @@ $m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
     background-repeat: no-repeat;
     background-position: center center; /* Ensure it's centered */
     object-fit: cover;
-}
-.second {
+  }
+  .second {
     height: 100%;
     background: url('https://sms.evolvu.in/public/health2_bg.jpg');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center center;
-}
+  }
     .tdalign{
         text-align: center;
     }

@@ -1543,6 +1543,12 @@
             Route::get('/get_health_activity_last_sequence/{group_id}', [LibraryController::class, 'getLastSequenceByGroup']);
             Route::get('/health_activity_parameter_status/{id}', [LibraryController::class, 'toggleHealthActivityParameterStatus']);
 
+            // 31/03/2026
+            Route::get('/health_activity_parametergroup', [LibraryController::class, 'getHealthActivityGroupsWithParams']);
+
+            // 02/04/2026
+            Route::get('/get_sportsteacherclasses', [LibraryController::class, 'getTeacherClasseswithSportsTeacher']);
+
 
 
             // Testing
