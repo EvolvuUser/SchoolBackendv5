@@ -401,6 +401,9 @@ class ReportController extends Controller
 
             // dd("Hello");
             $staff_id = $request->input('staff_id');
+
+            //add by mahima 07-04-2026
+            $tc_id = $request->input('tc_id');
             $query = DB::table('leave_allocation')
                 ->join('leave_type_master', 'leave_allocation.leave_type_id', '=', 'leave_type_master.leave_type_id')
                 ->join('teacher', 'teacher.teacher_id', '=', 'leave_allocation.staff_id')
@@ -418,6 +421,10 @@ class ReportController extends Controller
             // Add staff_id filter if provided
             if ($staff_id) {
                 $query->where('leave_allocation.staff_id', $staff_id);
+            }
+
+            if (!empty($tc_id)) {
+                $query->whereRaw('LOWER(tc_id) LIKE ?', ['%' . strtolower($tc_id) . '%']);
             }
 
             // Execute the query and get the results
@@ -453,6 +460,11 @@ class ReportController extends Controller
             $from_date = $request->input('from_date');
             $to_date = $request->input('to_date');
 
+            // add by mahaima 07-04-2026
+            $tc_id = $request->input('tc_id');
+
+            // dd("tc id", $tc_id);
+
             $query = DB::table('leave_application')
                 ->join('teacher as staff', 'leave_application.staff_id', '=', 'staff.teacher_id')  // Alias for staff
                 ->join('leave_type_master', 'leave_type_master.leave_type_id', '=', 'leave_application.leave_type_id')
@@ -487,6 +499,9 @@ class ReportController extends Controller
                 $query->where('leave_application.staff_id', $staff_id);
             }
 
+            if (!empty($tc_id)) {
+                $query->whereRaw('LOWER(staff.tc_id) LIKE ?', ['%' . strtolower($tc_id) . '%']);
+            }
             // Execute the query and get the results
             $leaveApplications = $query->get();
             // dd($leaveApplications);
@@ -1997,6 +2012,9 @@ class ReportController extends Controller
             $from_date = $request->input('from_date');
             $to_date = $request->input('to_date');
 
+            // Add 07-04-2026
+            $tc_id = $request->input('tc_id');
+
             // Step 1: Get all leave types
             $leave_types = DB::table('leave_type_master')->pluck('name', 'leave_type_id');
 
@@ -2005,6 +2023,12 @@ class ReportController extends Controller
             if (!empty($staff_id)) {
                 $staff_query->where('teacher_id', $staff_id);
             }
+
+            //07-04-2026
+            if (!empty($tc_id)) {
+                $staff_query->where('tc_id', 'LIKE', '%' . $tc_id . '%');
+            }
+
             $staffList = $staff_query->get();
 
             $result = [];

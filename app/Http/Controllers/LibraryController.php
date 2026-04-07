@@ -4593,6 +4593,8 @@ class LibraryController extends Controller
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
         $request->validate([
+
+
             'class_id' => 'required|integer',
             'section_id' => 'required|integer'
         ]);
@@ -4741,7 +4743,8 @@ class LibraryController extends Controller
         // Fetch parameters from DB
         $parameters = DB::table('health_activity_parameter')
             ->where('is_active', 'Y')
-            ->pluck('name')
+            // ->pluck('name')
+            ->pluck('test_parameter')
             ->toArray();
 
         while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
@@ -4852,7 +4855,8 @@ class LibraryController extends Controller
         // Fetch valid parameters
         $parameters = DB::table('health_activity_parameter')
             ->where('is_active', 'Y')
-            ->pluck('name')
+            // ->pluck('name')
+            ->pluck('test_parameter')
             ->map(fn($item) => strtolower(trim($item)))
             ->toArray();
 
@@ -4910,11 +4914,42 @@ class LibraryController extends Controller
     }
 
 
+    // public function deleteHealthActivityRecord($student_id)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $exists = DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->exists();
+
+    //     if (!$exists) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'message' => 'Health record not found',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->delete();
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health activity record deleted successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
     public function deleteHealthActivityRecord($student_id)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
+        // Step 1: Check record exists
         $exists = DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
@@ -4928,6 +4963,36 @@ class LibraryController extends Controller
             ]);
         }
 
+        // Step 2: Get student's class & section
+        $student = DB::table('student')
+            ->where('student_id', $student_id)
+            ->select('class_id', 'section_id')
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Student not found',
+                'success' => false
+            ]);
+        }
+
+        // Step 3: Check publish status
+        $isPublished = DB::table('health_activity_record_publish')
+            ->where('class_id', $student->class_id)
+            ->where('section_id', $student->section_id)
+            ->where('publish', 'Y')
+            ->exists();
+
+        if ($isPublished) {
+            return response()->json([
+                'status' => 403,
+                'message' => 'Health and activity record is published. You cannot delete it.',
+                'success' => false
+            ]);
+        }
+
+        // Step 4: Delete
         DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
@@ -5100,10 +5165,89 @@ class LibraryController extends Controller
     }
 
 
+    // public function createHealthActivityParameter(Request $request)
+    // {
+    //     try {
+    //         $name = trim($request->name);
+
+    //         $groupId = ($request->group_id === null ||
+    //             $request->group_id === "" ||
+    //             $request->group_id === "null")
+    //             ? 1
+    //             : $request->group_id;
+
+    //         $sequence = (int) $request->sequence;
+
+    //         if (empty($name) || empty($sequence)) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Name and sequence are required'
+    //             ], 400);
+    //         }
+
+    //         // Check duplicate name
+    //         $nameExists = DB::table('health_activity_parameter')
+    //             ->where('name', $name)
+    //             ->exists();
+
+    //         if ($nameExists) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter name already exists'
+    //             ], 409);
+    //         }
+
+    //         DB::beginTransaction();
+
+    //         // CHECK IF SEQUENCE EXISTS
+    //         $sequenceExists = DB::table('health_activity_parameter')
+    //             ->where('group_id', $groupId)
+    //             ->where('sequence', $sequence)
+    //             ->exists();
+
+    //         // SHIFT ONLY IF EXISTS
+    //         if ($sequenceExists) {
+    //             DB::table('health_activity_parameter')
+    //                 ->where('group_id', $groupId)
+    //                 ->where('sequence', '>=', $sequence)
+    //                 ->increment('sequence');
+    //         }
+
+    //         // INSERT
+    //         $id = DB::table('health_activity_parameter')->insertGetId([
+    //             'name' => $name,
+    //             'group_id' => $groupId,
+    //             'sequence' => $sequence,
+    //             'is_active' => 'Y',
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Health activity parameter created successfully',
+    //             'data' => [
+    //                 'id' => $id,
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $sequence
+    //             ]
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function createHealthActivityParameter(Request $request)
     {
         try {
-            $name = trim($request->name);
+            $test_parameter = trim($request->name);
 
             $groupId = ($request->group_id === null ||
                 $request->group_id === "" ||
@@ -5113,16 +5257,16 @@ class LibraryController extends Controller
 
             $sequence = (int) $request->sequence;
 
-            if (empty($name) || empty($sequence)) {
+            if (empty($test_parameter) || empty($sequence)) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Name and sequence are required'
+                    'message' => 'Parameter and sequence are required'
                 ], 400);
             }
 
-            // Check duplicate name
+            // Check duplicate parameter
             $nameExists = DB::table('health_activity_parameter')
-                ->where('name', $name)
+                ->where('test_parameter', $test_parameter)
                 ->exists();
 
             if ($nameExists) {
@@ -5150,7 +5294,7 @@ class LibraryController extends Controller
 
             // INSERT
             $id = DB::table('health_activity_parameter')->insertGetId([
-                'name' => $name,
+                'test_parameter' => $test_parameter,
                 'group_id' => $groupId,
                 'sequence' => $sequence,
                 'is_active' => 'Y',
@@ -5163,7 +5307,7 @@ class LibraryController extends Controller
                 'message' => 'Health activity parameter created successfully',
                 'data' => [
                     'id' => $id,
-                    'name' => $name,
+                    'test_parameter' => $test_parameter,
                     'group_id' => $groupId,
                     'sequence' => $sequence
                 ]
@@ -5187,7 +5331,8 @@ class LibraryController extends Controller
                 ->join('health_activity_group as g', 'p.group_id', '=', 'g.id')
                 ->select(
                     'p.id',
-                    'p.name as parameter_name',
+                    // 'p.name as parameter_name',
+                    'p.test_parameter as parameter_name',
                     'p.group_id',
                     'g.group_name',
                     'p.sequence',
@@ -5212,12 +5357,155 @@ class LibraryController extends Controller
     }
 
 
+    // public function updateHealthActivityParameter(Request $request, $id)
+    // {
+    //     try {
+    //         $id = (int) $id;
+
+    //         $name = trim($request->name);
+
+    //         $groupId = ($request->group_id === null ||
+    //             $request->group_id === "" ||
+    //             $request->group_id === "null")
+    //             ? 1
+    //             : $request->group_id;
+
+    //         $newSequence = (int) $request->sequence;
+
+    //         // Check record exists
+    //         $existing = DB::table('health_activity_parameter')
+    //             ->where('id', $id)
+    //             ->first();
+
+    //         if (!$existing) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter not found'
+    //             ], 404);
+    //         }
+
+    //         // Duplicate name check
+    //         $nameExists = DB::table('health_activity_parameter')
+    //             ->where('name', $name)
+    //             ->where('id', '!=', $id)
+    //             ->exists();
+
+    //         if ($nameExists) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Parameter name already exists'
+    //             ], 409);
+    //         }
+
+    //         $oldSequence = (int) $existing->sequence;
+
+    //         DB::beginTransaction();
+
+    //         // CASE 1: SAME SEQUENCE → ONLY UPDATE NAME
+
+    //         if ($newSequence == $oldSequence) {
+    //             DB::table('health_activity_parameter')
+    //                 ->where('id', $id)
+    //                 ->update([
+    //                     'name' => $name,
+    //                     'group_id' => $groupId
+    //                 ]);
+
+    //             DB::commit();
+
+    //             return response()->json([
+    //                 'status' => true,
+    //                 'message' => 'Updated successfully'
+    //             ]);
+    //         }
+
+
+    //         // CHECK IF TARGET SEQUENCE EXISTS
+
+    //         $sequenceExists = DB::table('health_activity_parameter')
+    //             ->where('group_id', $groupId)
+    //             ->where('sequence', $newSequence)
+    //             ->where('id', '!=', $id)
+    //             ->exists();
+
+
+    //         // CASE 2: GAP EXISTS → NO SHIFT
+
+    //         if (!$sequenceExists) {
+
+    //             DB::table('health_activity_parameter')
+    //                 ->where('id', $id)
+    //                 ->update([
+    //                     'name' => $name,
+    //                     'group_id' => $groupId,
+    //                     'sequence' => $newSequence
+    //                 ]);
+
+    //             DB::commit();
+
+    //             return response()->json([
+    //                 'status' => true,
+    //                 'message' => 'Updated successfully (gap used)'
+    //             ]);
+    //         }
+
+
+    //         // CASE 3: MOVE UP (e.g., 5 → 2)
+
+    //         if ($newSequence < $oldSequence) {
+
+    //             DB::table('health_activity_parameter')
+    //                 ->where('group_id', $groupId)
+    //                 ->whereBetween('sequence', [$newSequence, $oldSequence - 1])
+    //                 ->increment('sequence');
+    //         }
+
+
+    //         // CASE 4: MOVE DOWN (e.g., 2 → 5)
+
+    //         else {
+
+    //             DB::table('health_activity_parameter')
+    //                 ->where('group_id', $groupId)
+    //                 ->whereBetween('sequence', [$oldSequence + 1, $newSequence])
+    //                 ->decrement('sequence');
+    //         }
+
+
+    //         // FINAL UPDATE
+
+    //         DB::table('health_activity_parameter')
+    //             ->where('id', $id)
+    //             ->update([
+    //                 'name' => $name,
+    //                 'group_id' => $groupId,
+    //                 'sequence' => $newSequence
+    //             ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Updated successfully'
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function updateHealthActivityParameter(Request $request, $id)
     {
         try {
             $id = (int) $id;
 
-            $name = trim($request->name);
+            // map frontend -> backend
+            $test_parameter = trim($request->name);
 
             $groupId = ($request->group_id === null ||
                 $request->group_id === "" ||
@@ -5239,9 +5527,9 @@ class LibraryController extends Controller
                 ], 404);
             }
 
-            // Duplicate name check
+            // ✅ Duplicate check (updated)
             $nameExists = DB::table('health_activity_parameter')
-                ->where('name', $name)
+                ->where('test_parameter', $test_parameter)
                 ->where('id', '!=', $id)
                 ->exists();
 
@@ -5256,13 +5544,12 @@ class LibraryController extends Controller
 
             DB::beginTransaction();
 
-            // CASE 1: SAME SEQUENCE → ONLY UPDATE NAME
-
+            // CASE 1: SAME SEQUENCE
             if ($newSequence == $oldSequence) {
                 DB::table('health_activity_parameter')
                     ->where('id', $id)
                     ->update([
-                        'name' => $name,
+                        'test_parameter' => $test_parameter, // ✅ changed
                         'group_id' => $groupId
                     ]);
 
@@ -5274,24 +5561,19 @@ class LibraryController extends Controller
                 ]);
             }
 
-
             // CHECK IF TARGET SEQUENCE EXISTS
-
             $sequenceExists = DB::table('health_activity_parameter')
                 ->where('group_id', $groupId)
                 ->where('sequence', $newSequence)
                 ->where('id', '!=', $id)
                 ->exists();
 
-
-            // CASE 2: GAP EXISTS → NO SHIFT
-
+            // CASE 2: GAP EXISTS
             if (!$sequenceExists) {
-
                 DB::table('health_activity_parameter')
                     ->where('id', $id)
                     ->update([
-                        'name' => $name,
+                        'test_parameter' => $test_parameter, // ✅ changed
                         'group_id' => $groupId,
                         'sequence' => $newSequence
                     ]);
@@ -5304,35 +5586,27 @@ class LibraryController extends Controller
                 ]);
             }
 
-
-            // CASE 3: MOVE UP (e.g., 5 → 2)
-
+            // CASE 3: MOVE UP
             if ($newSequence < $oldSequence) {
-
                 DB::table('health_activity_parameter')
                     ->where('group_id', $groupId)
                     ->whereBetween('sequence', [$newSequence, $oldSequence - 1])
                     ->increment('sequence');
             }
 
-
-            // CASE 4: MOVE DOWN (e.g., 2 → 5)
-
+            // CASE 4: MOVE DOWN
             else {
-
                 DB::table('health_activity_parameter')
                     ->where('group_id', $groupId)
                     ->whereBetween('sequence', [$oldSequence + 1, $newSequence])
                     ->decrement('sequence');
             }
 
-
             // FINAL UPDATE
-
             DB::table('health_activity_parameter')
                 ->where('id', $id)
                 ->update([
-                    'name' => $name,
+                    'test_parameter' => $test_parameter, // changed
                     'group_id' => $groupId,
                     'sequence' => $newSequence
                 ]);
@@ -5382,7 +5656,7 @@ class LibraryController extends Controller
             // }
 
             $isUsed = DB::table('health_activity_record')
-                ->whereRaw("JSON_CONTAINS_PATH(value, 'one', ?)", ['$.' . $parameter->name])
+                ->whereRaw("JSON_CONTAINS_PATH(value, 'one', ?)", ['$.' . $parameter->test_parameter])
                 ->exists();
 
             if ($isUsed) {
@@ -5437,7 +5711,8 @@ class LibraryController extends Controller
                 ->where('p.group_id', $group_id)
                 ->select(
                     'p.id',
-                    'p.name as parameter_name',
+                    // 'p.name as parameter_name',
+                    'p.test_parameter as parameter_name',
                     'p.group_id',
                     'g.group_name',
                     'p.sequence'
@@ -5640,7 +5915,7 @@ class LibraryController extends Controller
                 'parameters' => $groupedParams[$group->id]->map(function ($param) {
                     return [
                         'parameter_id'   => $param->id,
-                        'parameter_name' => $param->name,
+                        'parameter_name' => $param->test_parameter,
                         'sequence'       => $param->sequence
                     ];
                 })->values()

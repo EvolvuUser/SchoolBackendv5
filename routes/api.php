@@ -1550,6 +1550,10 @@
             Route::get('/get_sportsteacherclasses', [LibraryController::class, 'getTeacherClasseswithSportsTeacher']);
 
 
+            // Mahima 07-04-2026
+            Route::get('/get_teaching_nonteaching_staff_list', [AdminController::class, 'getAllTeachingNonTeachingStaffList']);
+
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
