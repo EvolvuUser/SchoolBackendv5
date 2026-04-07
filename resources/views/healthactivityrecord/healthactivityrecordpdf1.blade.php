@@ -105,7 +105,7 @@ if ($class_name >= 1) {
                     <tr></tr>
                 </table>
                 01-04-2026
-                {{-- <table width="100%" border="0">
+                <table width="100%" border="0">
                     <tr>
                         <?php
                         if ($parent_info[0]->m_dob != '') {
@@ -123,32 +123,8 @@ if ($class_name >= 1) {
                         <td align="left" width="25%">BLOOD GROUP :</td><td><div class="statistics_line"> <?php echo $m_blood_group; ?></div></td>
                     </tr>
                     <tr></tr>
-                </table>    --}}
-                <table width="100%" border="0">
-    <tr>
-        <?php
-        if ($parent_info[0]->m_dob != '') {
-            $m_year = date('Y', strtotime($parent_info[0]->m_dob));
-        } else {
-            $m_year = '&nbsp;';
-        }
-
-        $m_blood_group = $parent_info[0]->m_blood_group ?: '&nbsp;';
-        ?>
-
-        <td align="left" width="8%">YOB :</td>
-        <td><div class="statistics_line"><?php echo $m_year; ?></div></td>
-
-        <td align="left" width="14%">WEIGHT :</td>
-        <td><div class="statistics_line"><?php echo $m_weight; ?></div></td>
-
-        <td align="left" width="12%">HEIGHT :</td>
-        <td><div class="statistics_line"><?php echo $m_height; ?></div></td>
-
-        <td align="left" width="25%">BLOOD GROUP :</td>
-        <td><div class="statistics_line"><?php echo $m_blood_group; ?></div></td>
-    </tr>
-</table>
+                </table>   
+              
                 <table width="100%" border="0">
                     <tr>
                       <?php

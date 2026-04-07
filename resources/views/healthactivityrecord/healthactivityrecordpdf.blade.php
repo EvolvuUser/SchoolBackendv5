@@ -1,4 +1,4 @@
-<html>
+{{-- <html>
 <style>
     .statistics_line {
         width:100%;
@@ -1558,4 +1558,10 @@ if ($class_name >= 6) {
     </table>
 </div>
     <?php } ?>
+</html> --}}
+
+
+<html>
+
+<h1>Health Activity Certificate</h1>
 </html>
