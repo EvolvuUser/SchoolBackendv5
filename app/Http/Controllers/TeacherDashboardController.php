@@ -1474,7 +1474,7 @@ class TeacherDashboardController extends Controller
                     ->from('subjects_excluded_from_curriculum');
             })
             ->groupBy('s.teacher_id')
-            ->first();
+            ->get();
 
         $isLessonPlanPriorityDay = now()->isSaturday() || now()->isMonday();
         $lessonPlanCount = 0;
