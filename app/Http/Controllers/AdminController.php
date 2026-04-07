@@ -18547,10 +18547,24 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            $stafflist = DB::table('teacher')
-                // ->where('teacher.designation', '!=', 'Caretaker')
-                ->select('teacher.*')
-                ->get();
+
+            //  Get tc_id from request
+            $tc_id = $request->input('tc_id');
+
+            //  Build query first
+            $stafflistQuery = DB::table('teacher')
+                ->select('teacher.*');
+
+            // Apply tc_id filter (FINAL FIX)
+            if (!empty($tc_id)) {
+                $stafflistQuery->whereRaw(
+                    'LOWER(TRIM(tc_id)) = ?',
+                    [strtolower(trim($tc_id))]
+                );
+            }
+
+            //  Execute query
+            $stafflist = $stafflistQuery->get();
 
             // Get class-section mappings for all teachers
             $classMappings = DB::table('class_teachers')
@@ -18579,7 +18593,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 // Attach class-section data
                 $staff->classes = $classMappings
                     ->where('teacher_id', $staff->teacher_id)
-                    ->values();  // reset index
+                    ->values();
 
                 return $staff;
             });
@@ -18587,7 +18601,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return response()->json($stafflist);
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
