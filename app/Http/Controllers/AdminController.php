@@ -18903,7 +18903,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 if (in_array($academic_year, $years)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'House already exists for this academic year'
+                        'message' => 'House already exists.'
                     ], 409);
                 }
 
@@ -18918,7 +18918,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Academic year added to existing house'
+                    'message' => 'House added successfully.'
                 ], 200);
             }
 
@@ -18931,7 +18931,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($sameNameExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House name already exists for this academic year'
+                    'message' => 'House name already exists.'
                 ], 409);
             }
 
@@ -18944,7 +18944,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($sameColorExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Color already assigned to another house for this academic year'
+                    'message' => 'Color already assigned to another house.'
                 ], 409);
             }
 
@@ -18999,7 +18999,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($sameNameExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House name already exists for this academic year'
+                    'message' => 'House name already exists.'
                 ], 409);
             }
 
@@ -19013,7 +19013,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             if ($sameColorExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Color already assigned to another house for this academic year'
+                    'message' => 'Color already assigned to another house.'
                 ], 409);
             }
 
@@ -19032,7 +19032,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'House name updated successfully (in use)'
+                    'message' => 'House updated successfully.'
                 ], 200);
             }
 
