@@ -1553,6 +1553,16 @@
             // Mahima 07-04-2026
             Route::get('/get_teaching_nonteaching_staff_list', [AdminController::class, 'getAllTeachingNonTeachingStaffList']);
 
+            // Mahima 10-04-2026
+            Route::post('/create_health_activity_group/columns_config', [LibraryController::class, 'saveColumnsConfig']);
+
+            Route::get('/get_health_activity_group/{group_id}/columns_config', [LibraryController::class, 'getColumnsConfig']);
+
+            Route::put('/update_health_activity_group/{group_id}/columns_config', [LibraryController::class, 'updateColumnsConfig']);
+
+            Route::get('/health_activity_groups', [LibraryController::class, 'getAllGroups']);
+
+            Route::delete('/delete_health_activity_group/{group_id}', [LibraryController::class, 'deleteGroup']);
 
 
             // Testing
