@@ -19056,12 +19056,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //         ], 500);
     //     }
     // }
+
+
     public function updateHouse(Request $request, $id)
     {
         try {
-            $academic_year = JWTAuth::getPayload()->get('academic_year');
+            $academic_year = JWTAuth::getPayload()->get('academic_yr');
 
-            // Check house exists
+            // 🔍 Check house exists
             $house = DB::table('house')
                 ->where('house_id', $id)
                 ->first();
@@ -19076,41 +19078,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $house_name = trim($request->house_name);
             $color_code = trim($request->color_code);
 
-            //  Duplicate house name check
-            $sameNameExists = DB::table('house')
-                ->where('house_id', '!=', $id)
-                ->where('house_name', $house_name)
-                ->whereJsonContains('academic_yr', $academic_year)
-                ->exists();
-
-            if ($sameNameExists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'House name already exists.'
-                ], 409);
-            }
-
-            //  Duplicate color check
-            $sameColorExists = DB::table('house')
-                ->where('house_id', '!=', $id)
-                ->where('color_code', $color_code)
-                ->whereJsonContains('academic_yr', $academic_year)
-                ->exists();
-
-            if ($sameColorExists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Color already assigned to another house.'
-                ], 409);
-            }
-
-            // Decode academic years
+            // 📦 Decode academic years
             $currentYears = json_decode($house->academic_yr, true);
 
-            // CASE 1: Multiple academic years → split record
+            // ================================
+            // 🔁 CASE 1: MULTIPLE YEARS → SPLIT
+            // ================================
             if (is_array($currentYears) && count($currentYears) > 1) {
 
-                // Remove current academic year from old record
+                // ✅ Step 1: Remove current academic year from old record
                 $updatedYears = array_values(array_filter($currentYears, function ($yr) use ($academic_year) {
                     return $yr != $academic_year;
                 }));
@@ -19121,16 +19097,43 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         'academic_yr' => json_encode($updatedYears)
                     ]);
 
-                // Insert new record for this academic year
+                // ✅ Step 2: Check duplicates ONLY in this academic year
+
+                $sameNameExists = DB::table('house')
+                    ->where('house_name', $house_name)
+                    ->whereJsonContains('academic_yr', $academic_year)
+                    ->exists();
+
+                if ($sameNameExists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'House name already exists for this academic year.'
+                    ], 409);
+                }
+
+                $sameColorExists = DB::table('house')
+                    ->where('color_code', $color_code)
+                    ->whereJsonContains('academic_yr', $academic_year)
+                    ->exists();
+
+                if ($sameColorExists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Color already assigned for this academic year.'
+                    ], 409);
+                }
+
+                // ✅ Step 3: Insert new record
                 $newHouseId = DB::table('house')->insertGetId([
                     'house_name' => $house_name,
                     'color_code' => $color_code,
                     'academic_yr' => json_encode([$academic_year]),
                 ]);
 
-                //  Update student mapping for this academic year
+                // ✅ Step 4: Update students for this academic year
                 DB::table('student')
                     ->where('house', $id)
+                    ->where('academic_yr', $academic_year) // make sure column exists
                     ->update([
                         'house' => $newHouseId
                     ]);
@@ -19142,7 +19145,38 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 200);
             }
 
-            //  CASE 2: Only one academic year → normal update
+            // ==================================
+            // ✏️ CASE 2: SINGLE YEAR → NORMAL UPDATE
+            // ==================================
+
+            // ✅ Duplicate check (same academic year only)
+            $sameNameExists = DB::table('house')
+                ->where('house_id', '!=', $id)
+                ->where('house_name', $house_name)
+                ->whereJsonContains('academic_yr', $academic_year)
+                ->exists();
+
+            if ($sameNameExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House name already exists for this academic year.'
+                ], 409);
+            }
+
+            $sameColorExists = DB::table('house')
+                ->where('house_id', '!=', $id)
+                ->where('color_code', $color_code)
+                ->whereJsonContains('academic_yr', $academic_year)
+                ->exists();
+
+            if ($sameColorExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Color already assigned for this academic year.'
+                ], 409);
+            }
+
+            // ✅ Update directly
             DB::table('house')
                 ->where('house_id', $id)
                 ->update([
