@@ -7907,13 +7907,29 @@ class AssessmentController extends Controller
         $user = $this->authenticateUser();
         $reg_id = JWTAuth::getPayload()->get('reg_id');
 
+        // $lessonplantemplate = DB::select('
+        //     SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
+        //     FROM lesson_plan_template AS lpt
+        //     JOIN lesson_plan_template_details AS lptd 
+        //         ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
+        //     JOIN lesson_plan_heading AS lph 
+        //         ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
+        //     WHERE lpt.chapter_id = ?
+        //     AND lpt.subject_id = ?
+        //     AND lpt.class_id = ?
+        // ', [$chapter_id, $subject_id, $class_id]);
+
+
+        // Changed by Mahima 30-03-2026 for teacher name also show
         $lessonplantemplate = DB::select('
-            SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
+            SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id , t.name AS teacher_name
             FROM lesson_plan_template AS lpt
             JOIN lesson_plan_template_details AS lptd 
                 ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
             JOIN lesson_plan_heading AS lph 
                 ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
+            JOIN teacher AS t
+                ON t.teacher_id = lpt.reg_id
             WHERE lpt.chapter_id = ?
             AND lpt.subject_id = ?
             AND lpt.class_id = ?
@@ -7935,19 +7951,35 @@ class AssessmentController extends Controller
         $status = false;
         $message = '';
 
+        $teacherName = $first->teacher_name
+            ? ucwords(strtolower($first->teacher_name))
+            : 'Another Teacher';
+
         if ($first->teacher_id == $reg_id) {
             $status = true;
         } else {
             if ($first->publish == 'Y') {
-                $message = 'Lesson Plan Template is already created and published!!!';
+                $message = "Lesson Plan Template is already created and published by {$teacherName}.";
             } else {
-                $message = 'Lesson Plan Template is already created!!!';
+                $message = "Lesson Plan Template is already created by {$teacherName}.";
             }
         }
 
-        if (!$status) {
-            $lessonplantemplate = [];
-        }
+        // if ($first->teacher_id == $reg_id) {
+        //     $status = true;
+        // } else {
+        //     if ($first->publish == 'Y') {
+        //         // $message = 'Lesson Plan Template is already created and published!!!';
+        //         $message = 'Lesson Plan Template is already created and published by another teacher.';
+        //     } else {
+        //         // $message = 'Lesson Plan Template is already created!!!';
+        //         $message = 'Lesson Plan Template is already created by another teacher.';
+        //     }
+        // }
+
+        // if (!$status) {
+        //     $lessonplantemplate = [];
+        // }
 
         return response()->json([
             'success' => true,
@@ -8390,13 +8422,46 @@ class AssessmentController extends Controller
             ]);
         }
 
+        // $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
+
+        //     return [
+        //         'les_pln_temp_id' => $items[0]->les_pln_temp_id,
+        //         'class_id' => $items[0]->class_id,
+        //         'subject_id' => $items[0]->subject_id,
+        //         'chapter_id' => $items[0]->chapter_id,
+        //         'publish' => $items[0]->publish,
+        //         'details' => $items->map(function ($i) {
+        //             return [
+        //                 'detail_id' => $i->detail_id,
+        //                 'lesson_plan_headings_id' => $i->lesson_plan_headings_id,
+        //                 'heading_name' => $i->heading_name,
+        //                 'description' => $i->description,
+        //             ];
+        //         })->values(),
+        //     ];
+        // })->values();
+
+        // Changed by Mahima 30-03-2026
+
         $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
+
+            $templateId = $items[0]->les_pln_temp_id;
+
+            //  Check if used in lesson_plan table
+            $isUsed = DB::table('lesson_plan')
+                ->where('les_pln_temp_id', $templateId)
+                ->exists();
+
             return [
-                'les_pln_temp_id' => $items[0]->les_pln_temp_id,
+                'les_pln_temp_id' => $templateId,
                 'class_id' => $items[0]->class_id,
                 'subject_id' => $items[0]->subject_id,
                 'chapter_id' => $items[0]->chapter_id,
                 'publish' => $items[0]->publish,
+
+                // New flag
+                'is_used' => $isUsed,
+
                 'details' => $items->map(function ($i) {
                     return [
                         'detail_id' => $i->detail_id,
@@ -8415,6 +8480,9 @@ class AssessmentController extends Controller
             'status' => 200
         ]);
     }
+
+
+
 
     public function getSubSubjectByClassSub(Request $request)
     {
@@ -8695,6 +8763,7 @@ class AssessmentController extends Controller
                 ->first();
 
             $pageData['unq_id'] = $lessonPlan->unq_id ?? null;
+            $pageData['les_pln_temp_id'] = $lessonPlanData[0]->les_pln_temp_id ?? null;
         } else {
             $pageData['header_info'] = 'N';
             $pageData['create'] = true;
@@ -9111,7 +9180,7 @@ class AssessmentController extends Controller
         $filename = $request->input('filename');
         $doc_type_folder = $request->input('doc_type_folder');
         $random_no = $request->input('random_no');
-        Log::channel('upload_logs')->info('Parameters called' , [
+        Log::channel('upload_logs')->info('Parameters called', [
             'filename' => $filename,
             'upload_date' => $upload_date,
             'doc_type_folder' => $doc_type_folder,
@@ -10214,15 +10283,15 @@ class AssessmentController extends Controller
         } elseif ($short_name == 'HSCS') {
             switch ($class_name) {
                 case 'Nursery':
-                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case 'UKG':
-                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
                     break;
 
                 case '1':
@@ -10245,6 +10314,24 @@ class AssessmentController extends Controller
                 case '9':
                 case '10':
                     return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Science':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Commerce':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '11 - Arts':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Science':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Commerce':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12 - Arts':
+                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
 
                 default:

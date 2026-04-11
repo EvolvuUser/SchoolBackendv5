@@ -528,12 +528,26 @@ function get_parent_student_data_by_class($section_id, $acd_yr)
         ->get();
 }
 
+// function check_health_activity_data_exist_for_studentid($student_id)
+// {
+//     $records = DB::table('health_activity_record')
+//         ->where('student_id', $student_id)
+//         ->get();
+//     return $records->toArray();
+// }
+
 function check_health_activity_data_exist_for_studentid($student_id)
 {
-    $records = DB::table('health_activity_record')
+    $record = DB::table('health_activity_record')
         ->where('student_id', $student_id)
-        ->get();
-    return $records->toArray();
+        ->latest('ha_id') // or id if exists
+        ->first();
+
+    if (!$record) {
+        return [];
+    }
+
+    return json_decode($record->value, true); // return as array
 }
 
 function get_student_name($student_id)

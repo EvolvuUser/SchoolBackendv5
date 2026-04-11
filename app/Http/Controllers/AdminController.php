@@ -2105,6 +2105,8 @@ class AdminController extends Controller
                 $query->distinct()->where('academic_yr', $academicYr);
             }])
             ->where('academic_yr', $academicYr)
+            ->orderBy('class_id', 'ASC')
+            ->orderBy('section_id', 'ASC')
             ->get();
         return response()->json($divisions);
     }
@@ -2315,7 +2317,7 @@ class AdminController extends Controller
                 'message' => 'Please provide at least one search condition.',
             ], 400);
         }
-
+        $query->orderBy('roll_no', 'asc');
         $students = $query->get();
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
@@ -6926,6 +6928,7 @@ class AdminController extends Controller
             $students = DB::table('student')
                 ->where('section_id', $id)
                 ->where('academic_yr', $customClaims)
+                ->where('IsDelete', 'N')
                 ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'reg_no', 'admission_date', 'stu_aadhaar_no')
                 ->orderBy('roll_no', 'ASC')
                 ->get();
@@ -7078,6 +7081,7 @@ class AdminController extends Controller
                 ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('academic_yr', $customClaims)
+                ->where('isDelete', 'N')
                 ->select(
                     'student_id',
                     'first_name',
@@ -9038,6 +9042,7 @@ class AdminController extends Controller
             $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
 
             $pdf = PDF::loadView('healthactivityrecord.healthactivityrecordpdf1', compact('student_id', 'customClaims'))->setPaper('A4', 'portrait');
+            // $pdf = PDF::loadView('healthactivityrecord.healthactivityrecordpdf', compact('student_id', 'customClaims'))->setPaper('A4', 'portrait');
             return response()->stream(
                 function () use ($pdf) {
                     echo $pdf->output();
@@ -13611,7 +13616,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'mother_email' => $mother_emailid
                         ]);
 
-                        $cc = "school@arnoldcentralschoolpune.edu.in";
+                        // $cc = "school@arnoldcentralschoolpune.edu.in";
 
                         smart_mail(
                             $father_emailid,
@@ -13627,12 +13632,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $emailData
                         );
 
-                        smart_mail(
-                            $cc,
-                            'Inviting For Verification for Admission',
-                            'emails.parentUserEmail',
-                            $emailData
-                        );
+                        // smart_mail(
+                        //     $cc,
+                        //     'Inviting For Verification for Admission',
+                        //     'emails.parentUserEmail',
+                        //     $emailData
+                        // );
 
                         Log::channel('approve_admission')->info('Emails sent successfully', [
                             'form_id' => $form_id
@@ -13707,10 +13712,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $admissions = $query
                 ->orderBy('adm_form_pk', 'asc')
                 ->get();
-            $admissions->transform(function ($item) {
-                $item->form_id = $item->form_id . ' (' . $item->adm_form_pk . ')';
-                return $item;
-            });
 
             return response()->json([
                 'status' => true,
@@ -14972,12 +14973,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                                 $user_id = str_replace("'", '', $user_id);
 
                                 if ($usql) {
-                                    $school_id = '7';
-                                    $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                    $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                        ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                    $err = $response->failed() ? $response->status() : null;
-                                    $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $resp = createUserInEvolvu($user_id);
+                                    // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                    // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                    //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                    // $err = $response->failed() ? $response->status() : null;
+                                    // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                    $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                     $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                     DB::table('contact_details')->insert([
@@ -15285,12 +15287,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $user_id = str_replace("'", '', $user_id);
 
                             if ($usql) {
-                                $school_id = '1';
-                                $evolvuUrl = config('externalapis.EVOLVU_URL');
-                                $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                                    ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
-                                $err = $response->failed() ? $response->status() : null;
-                                $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $resp = createUserInEvolvu($user_id);
+                                // $school_id = '1';
+                                // $evolvuUrl = config('externalapis.EVOLVU_URL');
+                                // $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                                //     ->post($evolvuUrl . 'user_create_post', ['user_id' => $user_id, 'school_id' => $school_id]);
+                                // $err = $response->failed() ? $response->status() : null;
+                                // $logger->info("form_id {$form_id}: evolvu API called", ['status' => $response->status(), 'err' => $err]);
+                                $logger->info("form_id {$form_id}: evolvu API called", ['response' => $resp]);
 
                                 $phone_no = ($sms_sending_phone_no != '') ? $sms_sending_phone_no : $f_mobile;
                                 DB::table('contact_details')->insert([
@@ -15715,7 +15719,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $data = DB::table('new_admission_class as a')
             ->leftJoin('class', 'class.class_id', '=', 'a.class_id')
-            ->select('a.*', 'class.name as class_name')
+            ->leftJoin('bank_account_name', 'bank_account_name.id', '=', 'a.account_id')
+            ->select('a.*', 'class.name as class_name', 'bank_account_name.account_name')
             ->where('a.academic_yr', $academic_year)
             ->orderBy('a.class_id', 'ASC')
             ->get();
@@ -15730,35 +15735,38 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     {
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
-        $role = $user->role_id;
 
-        if (in_array($role, ['A', 'U', 'M', 'P'])) {
-            $data = DB::table('class')
-                ->select(
-                    'class.class_id',
-                    'class.name',
-                    'class.academic_yr',
-                    'class.department_id'
-                )
-                ->where('class.academic_yr', $academic_year)
-                ->whereNotIn('class.class_id', function ($query) {
-                    $query
-                        ->select('class_id')
-                        ->from('new_admission_class');
-                })
-                ->orderBy('class.class_id', 'asc')
-                ->get();
+        // $data = DB::table('class')
+        //     ->select(
+        //         'class.class_id',
+        //         'class.name',
+        //         'class.academic_yr',
+        //         'class.department_id'
+        //     )
+        //     ->where('class.academic_yr', $academic_year)
+        //     ->whereNotIn('class.class_id', function ($query) {
+        //         $query
+        //             ->select('class_id')
+        //             ->from('new_admission_class');
+        //     })
+        //     ->orderBy('class.class_id', 'asc')
+        //     ->get();
 
-            return response()->json([
-                'status' => true,
-                'data' => $data
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => false,
-                'message' => "You don't have access to this resource"
-            ], 405);
-        }
+        $data = DB::table('class')
+            ->select(
+                'class.class_id',
+                'class.name',
+                'class.academic_yr',
+                'class.department_id'
+            )
+            ->where('class.academic_yr', $academic_year)
+            ->orderBy('class.class_id', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ], 200);
     }
 
     public function createAdmissionForm(Request $request)
@@ -15775,6 +15783,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'account_id' => 'required|integer',
+                'type' => 'nullable'
             ]);
 
             // ✅ Prepare data
@@ -15794,7 +15804,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,  // adjust if using JWT,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type') ?? '',
             ];
 
             // ❌ Academic year missing
@@ -15808,13 +15820,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // 🔍 Check if class already exists
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
+                ->where('type', $data['type'])
                 ->where('academic_yr', $data['academic_yr'])
                 ->first();
 
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This class already exists'
+                    'message' => 'An application form already exists for the selected class and shift.'
                 ], 409);  // Conflict
             }
 
@@ -15982,6 +15995,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'age_start_date' => 'nullable|date',
                 'age_end_date' => 'nullable|date',
                 'form_fee' => 'required|numeric',
+                'type' => 'nullable',
+                'account_id' => 'required|integer'
             ]);
 
             // 🧾 Prepare update data
@@ -16001,7 +16016,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     : null,
                 'application_form_fee' => $request->input('form_fee'),
                 'publish' => $request->input('publish') ?? 'N',
-                'academic_yr' => $academic_year,  // adjust if using JWT
+                'academic_yr' => $academic_year,
+                'account_id' => $request->input('account_id'),
+                'type' => $request->input('type') ?? '',
             ];
 
             // 🔍 Check record exists
@@ -16021,13 +16038,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $exists = DB::table('new_admission_class')
                 ->where('class_id', $data['class_id'])
                 ->where('academic_yr', $academic_year)
+                ->where('type', $data['type'])
                 ->where('nac_id', '!=', $id)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This class already exists'
+                    'message' => 'An application form already exists for the selected class and shift.'
                 ], 409);
             }
 
@@ -16052,7 +16070,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Invalid or expired token'
             ], 401);
         } catch (\Exception $e) {
-            \Log::error('Update Admission Form Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -18520,17 +18537,273 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         ]);
     }
 
+    // 07-04-2026
+    public function getAllTeachingNonTeachingStaffList(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+            $globalVariables = App::make('global_variables');
+            $parent_app_url = $globalVariables['parent_app_url'];
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            //  Get tc_id from request
+            $tc_id = $request->input('tc_id');
+
+            //  Build query first
+            $stafflistQuery = DB::table('teacher')
+                ->select('teacher.*');
+
+            // Apply tc_id filter (FINAL FIX)
+            if (!empty($tc_id)) {
+                $stafflistQuery->whereRaw(
+                    'LOWER(TRIM(tc_id)) = ?',
+                    [strtolower(trim($tc_id))]
+                );
+            }
+
+            //  Execute query
+            $stafflist = $stafflistQuery->get();
+
+            // Get class-section mappings for all teachers
+            $classMappings = DB::table('class_teachers')
+                ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+                ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+                ->select(
+                    'class_teachers.teacher_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'class_teachers.class_id',
+                    'class_teachers.section_id'
+                )
+                ->where('class_teachers.academic_yr', $customClaims)
+                ->orderBy('class_teachers.section_id')
+                ->get();
+
+            // Attach classes + fix image URL
+            $stafflist = $stafflist->map(function ($staff) use ($classMappings, $codeigniter_app_url) {
+                $concatprojecturl = $codeigniter_app_url . 'uploads/teacher_image/';
+
+                // Fix image path
+                $staff->teacher_image_name = $staff->teacher_image_name
+                    ? $concatprojecturl . $staff->teacher_image_name
+                    : null;
+
+                // Attach class-section data
+                $staff->classes = $classMappings
+                    ->where('teacher_id', $staff->teacher_id)
+                    ->values();
+
+                return $staff;
+            });
+
+            return response()->json($stafflist);
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Mahima 02-02-2026
+    // public function getAllHouses(Request $request)
+    // {
+    //     try {
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         $query = DB::table('house as h')
+    //             ->select('h.*')
+    //             ->where('h.academic_yr', $academic_year);
+
+    //         $houses = $query->orderBy('h.house_name', 'asc')->get();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'House data fetched successfully',
+    //             'data' => $houses
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+    // public function insertHouse(Request $request)
+    // {
+    //     try {
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         $exists = DB::table('house')
+    //             ->where('academic_yr', $academic_year)
+    //             ->where(function ($query) use ($request) {
+    //                 $query
+    //                     ->where('house_name', $request->house_name)
+    //                     ->orWhere('color_code', $request->color);
+    //             })
+    //             ->exists();
+
+    //         if ($exists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House name or color already exists for this academic year'
+    //             ], 409);
+    //         }
+
+    //         $houseId = DB::table('house')->insertGetId([
+    //             'house_name' => $request->house_name,
+    //             'color_code' => $request->color,
+    //             'academic_yr' => $academic_year,
+    //         ]);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'House inserted successfully',
+    //             'house_id' => $houseId
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // public function updateHouse(Request $request, $id)
+    // {
+    //     try {
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //         // Check house exists
+    //         $house = DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->first();
+
+    //         if (!$house) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House not found'
+    //             ], 404);
+    //         }
+
+    //         $exists = DB::table('house')
+    //             ->where('academic_yr', $academic_year)
+    //             ->where('house_id', '!=', $id)
+    //             ->where(function ($query) use ($request) {
+    //                 $query
+    //                     ->where('house_name', $request->house_name)
+    //                     ->orWhere('color_code', $request->color_code);
+    //             })
+    //             ->exists();
+
+    //         if ($exists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House name or color already exists for this academic year'
+    //             ], 409);
+    //         }
+
+    //         // Check if house is used in student table
+    //         $isUsed = DB::table('student')
+    //             ->where('house', $id)
+    //             ->exists();
+
+    //         if ($isUsed) {
+    //             // Only update house_name
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House name updated successfully.'
+    //             ], 200);
+    //         } else {
+    //             DB::table('house')
+    //                 ->where('house_id', $id)
+    //                 ->update([
+    //                     'house_name' => $request->house_name,
+    //                     'color_code' => $request->color_code,
+    //                 ]);
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'House updated successfully'
+    //             ], 200);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
+    // public function deleteHouse($id)
+    // {
+    //     try {
+    //         $house = DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->first();
+
+    //         if (!$house) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House not found'
+    //             ], 404);
+    //         }
+
+    //         $isUsed = DB::table('student')
+    //             ->where('house', $id)
+    //             ->exists();
+
+    //         if ($isUsed) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House cannot be deleted because it is used.'
+    //             ], 400);
+    //         }
+
+    //         // Delete house
+    //         DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->delete();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'House deleted successfully'
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Something went wrong',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // Mahima 07-04-2026
     public function getAllHouses(Request $request)
     {
         try {
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            $query = DB::table('house as h')
+            $houses = DB::table('house as h')
                 ->select('h.*')
-                ->where('h.academic_yr', $academic_year);
-
-            $houses = $query->orderBy('h.house_name', 'asc')->get();
+                ->where(function ($query) use ($academic_year) {
+                    $query->whereJsonContains('h.academic_yr', $academic_year)
+                        ->orWhereNull('h.academic_yr');
+                })
+                ->orderBy('h.house_name', 'asc')
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -18549,37 +18822,61 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     // public function insertHouse(Request $request)
     // {
     //     try {
-
     //         $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-    //         $exists = DB::table('house')
-    //             ->where('house_name', $request->house_name)
-    //             ->where('academic_yr', $academic_year)
-    //             ->exists();
+    //         // Check if same house already exists (ignore year)
+    //         $existingHouse = DB::table('house')
+    //             ->where(function ($query) use ($request) {
+    //                 $query->where('house_name', $request->house_name)
+    //                     ->orWhere('color_code', $request->color);
+    //             })
+    //             ->first();
 
-    //         if ($exists) {
+    //         if ($existingHouse) {
+
+    //             $academicYears = json_decode($existingHouse->academic_yr, true) ?? [];
+
+    //             // If year already exists → prevent duplicate
+    //             if (in_array($academic_year, $academicYears)) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'House already exists for this academic year'
+    //                 ], 409);
+    //             }
+
+    //             // Append new academic year
+    //             $academicYears[] = $academic_year;
+
+    //             DB::table('house')
+    //                 ->where('house_id', $existingHouse->house_id)
+    //                 ->update([
+    //                     'academic_yr' => json_encode($academicYears)
+    //                 ]);
+
     //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'House already exists for this academic year'
-    //             ], 409);
+    //                 'success' => true,
+    //                 'message' => 'Academic year added to existing house',
+    //                 'house_id' => $existingHouse->house_id
+    //             ], 200);
     //         }
 
+    //         // Insert new house with JSON year
     //         $houseId = DB::table('house')->insertGetId([
-    //             'house_name'    => $request->house_name,
-    //             'color_code'         => $request->color,
-    //             'academic_yr' => $academic_year,
+    //             'house_name' => $request->house_name,
+    //             'color_code' => $request->color,
+    //             'academic_yr' => json_encode([$academic_year]),
     //         ]);
 
     //         return response()->json([
-    //             'success'  => true,
-    //             'message'  => 'House inserted successfully',
+    //             'success' => true,
+    //             'message' => 'House inserted successfully',
     //             'house_id' => $houseId
     //         ], 201);
     //     } catch (\Exception $e) {
     //         return response()->json([
     //             'success' => false,
     //             'message' => 'Something went wrong',
-    //             'error'   => $e->getMessage()
+    //             'error' => $e->getMessage()
     //         ], 500);
     //     }
     // }
@@ -18589,32 +18886,78 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            $exists = DB::table('house')
-                ->where('academic_yr', $academic_year)
-                ->where(function ($query) use ($request) {
-                    $query
-                        ->where('house_name', $request->house_name)
-                        ->orWhere('color_code', $request->color);
-                })
+            $house_name = $request->house_name;
+            $color_code = $request->color;
+
+            // Step 1: Find exact match (same house + color)
+            $existingExact = DB::table('house')
+                ->where('house_name', $house_name)
+                ->where('color_code', $color_code)
+                ->first();
+
+            if ($existingExact) {
+
+                $years = json_decode($existingExact->academic_yr, true) ?? [];
+
+                //  Case 4: same year already exists
+                if (in_array($academic_year, $years)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'House already exists.'
+                    ], 409);
+                }
+
+                //  Case 1: append new year
+                $years[] = $academic_year;
+
+                DB::table('house')
+                    ->where('house_id', $existingExact->house_id)
+                    ->update([
+                        'academic_yr' => json_encode($years)
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House added successfully.'
+                ], 200);
+            }
+
+            //  Step 2: Check same house_name for this year (Case 2)
+            $sameNameExists = DB::table('house')
+                ->where('house_name', $house_name)
+                ->whereJsonContains('academic_yr', $academic_year)
                 ->exists();
 
-            if ($exists) {
+            if ($sameNameExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'House name or color already exists for this academic year'
+                    'message' => 'House name already exists.'
                 ], 409);
             }
 
-            $houseId = DB::table('house')->insertGetId([
-                'house_name' => $request->house_name,
-                'color_code' => $request->color,
-                'academic_yr' => $academic_year,
+            //  Step 3: Check same color_code for this year (Case 3)
+            $sameColorExists = DB::table('house')
+                ->where('color_code', $color_code)
+                ->whereJsonContains('academic_yr', $academic_year)
+                ->exists();
+
+            if ($sameColorExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Color already assigned to another house.'
+                ], 409);
+            }
+
+            //  Insert new row
+            DB::table('house')->insert([
+                'house_name' => $house_name,
+                'color_code' => $color_code,
+                'academic_yr' => json_encode([$academic_year]),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'House inserted successfully',
-                'house_id' => $houseId
+                'message' => 'House inserted successfully'
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -18625,84 +18968,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-    public function updateHouse(Request $request, $id)
-    {
-        try {
-            $academic_year = JWTAuth::getPayload()->get('academic_year');
-
-            // Check house exists
-            $house = DB::table('house')
-                ->where('house_id', $id)
-                ->first();
-
-            if (!$house) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'House not found'
-                ], 404);
-            }
-
-            $exists = DB::table('house')
-                ->where('academic_yr', $academic_year)
-                ->where('house_id', '!=', $id)
-                ->where(function ($query) use ($request) {
-                    $query
-                        ->where('house_name', $request->house_name)
-                        ->orWhere('color_code', $request->color_code);
-                })
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'House name or color already exists for this academic year'
-                ], 409);
-            }
-
-            // Check if house is used in student table
-            $isUsed = DB::table('student')
-                ->where('house', $id)
-                ->exists();
-
-            if ($isUsed) {
-                // Only update house_name
-                DB::table('house')
-                    ->where('house_id', $id)
-                    ->update([
-                        'house_name' => $request->house_name,
-                    ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'House name updated successfully.'
-                ], 200);
-            } else {
-                DB::table('house')
-                    ->where('house_id', $id)
-                    ->update([
-                        'house_name' => $request->house_name,
-                        'color_code' => $request->color_code,
-                    ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'House updated successfully'
-                ], 200);
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
     // public function updateHouse(Request $request, $id)
     // {
     //     try {
+    //         $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-    //         // Check house exists
+    //         // 🔍 Check house exists
     //         $house = DB::table('house')
     //             ->where('house_id', $id)
     //             ->first();
@@ -18714,50 +18986,84 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //             ], 404);
     //         }
 
+    //         $house_name = $request->house_name;
+    //         $color_code = $request->color_code;
+
+    //         //  Check duplicate house_name for this academic year (excluding current)
+    //         $sameNameExists = DB::table('house')
+    //             ->where('house_id', '!=', $id)
+    //             ->where('house_name', $house_name)
+    //             ->whereJsonContains('academic_yr', $academic_year)
+    //             ->exists();
+
+    //         if ($sameNameExists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'House name already exists.'
+    //             ], 409);
+    //         }
+
+    //         // Check duplicate color_code for this academic year (excluding current)
+    //         $sameColorExists = DB::table('house')
+    //             ->where('house_id', '!=', $id)
+    //             ->where('color_code', $color_code)
+    //             ->whereJsonContains('academic_yr', $academic_year)
+    //             ->exists();
+
+    //         if ($sameColorExists) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Color already assigned to another house.'
+    //             ], 409);
+    //         }
+
     //         // Check if house is used in student table
     //         $isUsed = DB::table('student')
     //             ->where('house', $id)
     //             ->exists();
 
     //         if ($isUsed) {
-
-    //             // Only update house_name
+    //             // Only update name
     //             DB::table('house')
     //                 ->where('house_id', $id)
     //                 ->update([
-    //                     'house_name' => $request->house_name,
+    //                     'house_name' => $house_name,
     //                 ]);
 
     //             return response()->json([
     //                 'success' => true,
-    //                 'message' => 'House name updated successfully.'
-    //             ], 200);
-    //         } else {
-
-    //             DB::table('house')
-    //                 ->where('house_id', $id)
-    //                 ->update([
-    //                     'house_name' => $request->house_name,
-    //                     'color_code' => $request->color_code,
-    //                 ]);
-
-    //             return response()->json([
-    //                 'success' => true,
-    //                 'message' => 'House updated successfully'
+    //                 'message' => 'House updated successfully.'
     //             ], 200);
     //         }
+
+    //         // Full update allowed
+    //         DB::table('house')
+    //             ->where('house_id', $id)
+    //             ->update([
+    //                 'house_name' => $house_name,
+    //                 'color_code' => $color_code,
+    //             ]);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'House updated successfully'
+    //         ], 200);
     //     } catch (\Exception $e) {
     //         return response()->json([
     //             'success' => false,
     //             'message' => 'Something went wrong',
-    //             'error'   => $e->getMessage()
+    //             'error' => $e->getMessage()
     //         ], 500);
     //     }
     // }
 
-    public function deleteHouse($id)
+
+    public function updateHouse(Request $request, $id)
     {
         try {
+            $academic_year = JWTAuth::getPayload()->get('academic_yr');
+
+            // 🔍 Check house exists
             $house = DB::table('house')
                 ->where('house_id', $id)
                 ->first();
@@ -18769,6 +19075,146 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 404);
             }
 
+            $house_name = trim($request->house_name);
+            $color_code = trim($request->color_code);
+
+            // 📦 Decode academic years
+            $currentYears = json_decode($house->academic_yr, true);
+
+            // ================================
+            // 🔁 CASE 1: MULTIPLE YEARS → SPLIT
+            // ================================
+            if (is_array($currentYears) && count($currentYears) > 1) {
+
+                // ✅ Step 1: Remove current academic year from old record
+                $updatedYears = array_values(array_filter($currentYears, function ($yr) use ($academic_year) {
+                    return $yr != $academic_year;
+                }));
+
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->update([
+                        'academic_yr' => json_encode($updatedYears)
+                    ]);
+
+                // ✅ Step 2: Check duplicates ONLY in this academic year
+
+                $sameNameExists = DB::table('house')
+                    ->where('house_name', $house_name)
+                    ->whereJsonContains('academic_yr', $academic_year)
+                    ->exists();
+
+                if ($sameNameExists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'House name already exists for this academic year.'
+                    ], 409);
+                }
+
+                $sameColorExists = DB::table('house')
+                    ->where('color_code', $color_code)
+                    ->whereJsonContains('academic_yr', $academic_year)
+                    ->exists();
+
+                if ($sameColorExists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Color already assigned for this academic year.'
+                    ], 409);
+                }
+
+                // ✅ Step 3: Insert new record
+                $newHouseId = DB::table('house')->insertGetId([
+                    'house_name' => $house_name,
+                    'color_code' => $color_code,
+                    'academic_yr' => json_encode([$academic_year]),
+                ]);
+
+                // ✅ Step 4: Update students for this academic year
+                DB::table('student')
+                    ->where('house', $id)
+                    ->where('academic_yr', $academic_year) // make sure column exists
+                    ->update([
+                        'house' => $newHouseId
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House updated for this academic year only.',
+                    'new_house_id' => $newHouseId
+                ], 200);
+            }
+
+            // ==================================
+            // ✏️ CASE 2: SINGLE YEAR → NORMAL UPDATE
+            // ==================================
+
+            // ✅ Duplicate check (same academic year only)
+            $sameNameExists = DB::table('house')
+                ->where('house_id', '!=', $id)
+                ->where('house_name', $house_name)
+                ->whereJsonContains('academic_yr', $academic_year)
+                ->exists();
+
+            if ($sameNameExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House name already exists for this academic year.'
+                ], 409);
+            }
+
+            $sameColorExists = DB::table('house')
+                ->where('house_id', '!=', $id)
+                ->where('color_code', $color_code)
+                ->whereJsonContains('academic_yr', $academic_year)
+                ->exists();
+
+            if ($sameColorExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Color already assigned for this academic year.'
+                ], 409);
+            }
+
+            // ✅ Update directly
+            DB::table('house')
+                ->where('house_id', $id)
+                ->update([
+                    'house_name' => $house_name,
+                    'color_code' => $color_code,
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'House updated successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function deleteHouse($id)
+    {
+        try {
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $house = DB::table('house')
+                ->where('house_id', $id)
+                ->first();
+
+            if (!$house) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not found'
+                ], 404);
+            }
+
+            // Check if used in student table (optional: you can also check per year if needed)
             $isUsed = DB::table('student')
                 ->where('house', $id)
                 ->exists();
@@ -18780,14 +19226,44 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ], 400);
             }
 
-            // Delete house
+            // Decode JSON academic years
+            $years = json_decode($house->academic_yr, true) ?? [];
+
+            // If current year not found
+            if (!in_array($academic_year, $years)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'House not assigned to this academic year'
+                ], 400);
+            }
+
+            // Remove current academic year
+            $updatedYears = array_values(array_filter($years, function ($year) use ($academic_year) {
+                return $year !== $academic_year;
+            }));
+
+            if (empty($updatedYears)) {
+                // No years left → delete row
+                DB::table('house')
+                    ->where('house_id', $id)
+                    ->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'House deleted completely (no academic years left)'
+                ], 200);
+            }
+
+            // Update remaining years
             DB::table('house')
                 ->where('house_id', $id)
-                ->delete();
+                ->update([
+                    'academic_yr' => json_encode($updatedYears)
+                ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'House deleted successfully'
+                'message' => 'House removed for current academic year only'
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

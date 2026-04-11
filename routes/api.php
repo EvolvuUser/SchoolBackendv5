@@ -3,9 +3,12 @@
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\AuthController;
+    use App\Http\Controllers\BankAccountController;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\DashboardController;
+    use App\Http\Controllers\DropdownController;
+    use App\Http\Controllers\DropdownOptionController;
     use App\Http\Controllers\HscController;
     use App\Http\Controllers\ImpersonateController;
     use App\Http\Controllers\LibraryController;
@@ -18,6 +21,7 @@
     use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\TeacherDashboardController;
+    use App\Http\Controllers\UserController;
     use App\Http\Services\SmartMailer;
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\Route;
@@ -30,6 +34,9 @@
 
         // Protected routes
         Route::middleware(['jwt.auth', 'impersonation.readonly'])->group(function () {
+
+            Route::get('sso/user', [UserController::class, 'getUserDetails']);
+
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
@@ -163,6 +170,7 @@
             Route::patch('/admin/admission-management/{id}', [AdminController::class, 'updateAdmissionForm']);
 
             Route::get('/admin/admission/classes/not-created', [AdminController::class, 'getAdmissionClassesNotCreated']);
+            Route::get('/admin/admission/bank-accounts', [BankAccountController::class, 'index']);
 
             // Admin admission email module
             Route::prefix('/admin/email-templates')->group(function () {
@@ -1503,7 +1511,6 @@
 
             Route::delete('/delete_house/{id}', [AdminController::class, 'deleteHouse']);
 
-
             // Health Activity Record Certificates  Dev Name :- Mahima Chaudhari 14-03-26
             Route::get('/generate_health_activity_csv', [LibraryController::class, 'generateHealthActivityCsv']);
             Route::post('/upload_health_activity_record_from_excelsheet', [LibraryController::class, 'uploadHealthActivityRecord']);
@@ -1512,6 +1519,51 @@
             // Route::post('/download_health_activity', [LibraryController::class, 'downloadHealthActivityPDF']);
             //  16-03-2026
             Route::post('/health_activity_report_list', [LibraryController::class, 'getHealthActivityReport']);
+            // 23-03-2026
+            Route::post('/publish_health_activity_card', [LibraryController::class, 'publishHealthActivityCard']);
+            Route::get(
+                'get_health_card_publish_value/{class_id}/{section_id}',
+                [LibraryController::class, 'getHealthCardPublishValue']
+            );
+
+            // 25-03-2026
+            Route::get('/get_health_activity_groups', [LibraryController::class, 'getHealthActivityGroups']);
+            // 26-03-2026
+            Route::post('/save_health_activity_parameter', [LibraryController::class, 'createHealthActivityParameter']);
+            Route::get('/get_health_activity_parameter_list', [LibraryController::class, 'getHealthActivityParameterList']);
+            Route::put('/update_health_activity_parameter/{id}', [LibraryController::class, 'updateHealthActivityParameter']);
+            Route::delete('/delete_health_activity_parameter/{id}', [LibraryController::class, 'deleteHealthActivityParameter']);
+
+            Route::get('/get_health_activity_group_parameter_list/{group_id}', [LibraryController::class, 'getHealthActivityParameterByGroup']);
+
+            // 27/03/2026
+            Route::get('/check_sequence_availability/{group_id}/{sequence}', [LibraryController::class, 'checkSequenceAvailability']);
+
+            // 28/03/2026
+            Route::get('/get_health_activity_last_sequence/{group_id}', [LibraryController::class, 'getLastSequenceByGroup']);
+            Route::get('/health_activity_parameter_status/{id}', [LibraryController::class, 'toggleHealthActivityParameterStatus']);
+
+            // 31/03/2026
+            Route::get('/health_activity_parametergroup', [LibraryController::class, 'getHealthActivityGroupsWithParams']);
+
+            // 02/04/2026
+            Route::get('/get_sportsteacherclasses', [LibraryController::class, 'getTeacherClasseswithSportsTeacher']);
+
+
+            // Mahima 07-04-2026
+            Route::get('/get_teaching_nonteaching_staff_list', [AdminController::class, 'getAllTeachingNonTeachingStaffList']);
+
+            // Mahima 10-04-2026
+            Route::post('/create_health_activity_group/columns_config', [LibraryController::class, 'saveColumnsConfig']);
+
+            Route::get('/get_health_activity_group/{group_id}/columns_config', [LibraryController::class, 'getColumnsConfig']);
+
+            Route::put('/update_health_activity_group/{group_id}/columns_config', [LibraryController::class, 'updateColumnsConfig']);
+
+            Route::get('/health_activity_groups', [LibraryController::class, 'getAllGroups']);
+
+            Route::delete('/delete_health_activity_group/{group_id}', [LibraryController::class, 'deleteGroup']);
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
@@ -1520,6 +1572,42 @@
             });
 
             Route::get('/getparentdetails', [ParentController::class, 'getparentdetails']);
+            Route::post('/save_dashboardwidgets', [DashboardController::class, 'saveDashboardWidgets']);
+            Route::post('/widget/add', [DashboardController::class, 'addWidget']);
+            Route::get('/widgets', [DashboardController::class, 'getWidgets']);
+            Route::post('/widget/update', [DashboardController::class, 'updateWidget']);
+            Route::delete('/widget/delete/{id}', [DashboardController::class, 'deleteWidget']);
+            Route::get('get_widgetstype', [DashboardController::class, 'getWidgetsType']);
+            Route::get('get_dashboards', [DashboardController::class, 'getDashboards']);
+
+            // ########################
+            // Master Drop Down Module
+            // ########################
+            // ------------------------- Tables Used
+            /*
+                * dropdown_master - To store module data to which the drop down belongs.
+                * dropdown_options - To store the options.
+            */
+            // --------------------------------- Routes
+            // Dropdowns
+            Route::get('/master/dropdowns', [DropdownController::class, 'index']);
+            Route::post('/master/dropdowns', [DropdownController::class, 'store']);
+            Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
+            Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
+            Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
+
+            // By code
+            Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
+            Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
+
+            // Options under dropdown
+            Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
+            Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
+
+            // Option update/delete
+            Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
+            Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
+            // --------------------------------- Routes
         });
 
         // Impersonate
@@ -1606,7 +1694,6 @@
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('send_pending_messages_whatsapp', [NewController::class, 'sendPendingMessagesWhatsapp']);
     Route::get('get_dashboardstructure', [DashboardController::class, 'getDashboardStructure']);
-    Route::post('/save_dashboardwidgets', [DashboardController::class, 'saveDashboardWidgets']);
 
     // Example of retrieving authenticated user information
     Route::get('/user', function (Request $request) {

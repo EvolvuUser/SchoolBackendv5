@@ -5427,22 +5427,52 @@ ORDER BY Z.t_remark_id DESC;");
         ]);
     }
 
+
+    // public function getHouseofSchool(Request $request)
+    // {
+    //     $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+    //     $query = DB::table('house as h')
+    //         ->select('h.*');
+    //     // ->where('h.academic_yr', $academic_year);
+
+    //     $houses = $query->orderBy('h.house_name', 'asc')->get();
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'data' => $houses,
+    //         'message' => 'School houses.',
+    //         'success' => true
+    //     ]);
+    // }
+
+    // Changed by mahima 08-04-2026
     public function getHouseofSchool(Request $request)
     {
-        $academic_year = JWTAuth::getPayload()->get('academic_year');
+        try {
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-        $query = DB::table('house as h')
-            ->select('h.*');
-        // ->where('h.academic_yr', $academic_year);
+            $houses = DB::table('house as h')
+                ->select('h.*')
+                ->where(function ($query) use ($academic_year) {
+                    $query->whereJsonContains('h.academic_yr', $academic_year)
+                        ->orWhereNull('h.academic_yr');
+                })
+                ->orderBy('h.house_name', 'asc')
+                ->get();
 
-        $houses = $query->orderBy('h.house_name', 'asc')->get();
-
-        return response()->json([
-            'status' => 200,
-            'data' => $houses,
-            'message' => 'School houses.',
-            'success' => true
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'House data fetched successfully',
+                'data' => $houses
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getSupportEmailId(Request $request)
