@@ -2875,7 +2875,7 @@ class AdminController extends Controller
                 'first_name' => 'nullable|string|max:100',
                 'mid_name' => 'nullable|string|max:100',
                 'last_name' => 'nullable|string|max:100',
-                'house' => 'nullable|string|max:100',
+                'house' => 'nullable|max:100',
                 'student_name' => 'nullable|string|max:100',
                 'dob' => 'nullable|date',
                 'admission_date' => 'nullable|date',
