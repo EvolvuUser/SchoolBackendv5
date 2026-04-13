@@ -1564,6 +1564,8 @@
 
             Route::delete('/delete_health_activity_group/{group_id}', [LibraryController::class, 'deleteGroup']);
 
+            Route::post('/delete_sub_group', [LibraryController::class, 'deleteSubGroup']);
+
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
