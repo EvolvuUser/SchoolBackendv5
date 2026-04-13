@@ -4406,29 +4406,7 @@ class LibraryController extends Controller
                     $join->on('a.member_id', '=', 'teacher.teacher_id')
                         ->where('a.member_type', '=', 'T');
                 })
-                // ->select(
-                //     'a.*',
-                //     'book.book_title',
-                //     DB::raw("
-                //     CASE 
-                //         WHEN a.member_type = 'S' THEN student.first_name
-                //         WHEN a.member_type = 'T' THEN teacher.name
-                //     END as first_name
-                // "),
-                //     DB::raw("
-                //     CASE 
-                //         WHEN a.member_type = 'S' THEN student.mid_name
-                //         ELSE NULL
-                //     END as mid_name
-                // "),
-                //     DB::raw("
-                //     CASE 
-                //         WHEN a.member_type = 'S' THEN student.last_name
-                //         ELSE NULL
-                //     END as last_name
-                // ")
-                // )
-                // ->get();
+
                 ->select(
                     'a.*',
                     'book.book_title',
@@ -4549,23 +4527,42 @@ class LibraryController extends Controller
                     ->orWhere('ir.return_date', '0000-00-00');
             })
             ->count();
+        // $pendingStudentBookReturnCount = DB::table('issue_return as ir')
+        //     ->whereDate('ir.due_date', '<', Carbon::today())
+        //     ->where('ir.member_type', "=", "S")
+        //     ->where(function ($query) {
+        //         $query->whereNull('ir.return_date')
+        //             ->orWhere('ir.return_date', '0000-00-00');
+        //     })
+        //     ->count();
+
+        // $pendingStaffBookReturnCount = DB::table('issue_return as ir')
+        //     ->whereDate('ir.due_date', '<', Carbon::today())
+        //     ->where('ir.member_type', "=", "T")
+        //     ->where(function ($query) {
+        //         $query->whereNull('ir.return_date')
+        //             ->orWhere('ir.return_date', '0000-00-00');
+        //     })
+        //     ->count();
         $pendingStudentBookReturnCount = DB::table('issue_return as ir')
             ->whereDate('ir.due_date', '<', Carbon::today())
-            ->where('ir.member_type', "=", "S")
+            ->where('ir.member_type', 'S')
             ->where(function ($query) {
                 $query->whereNull('ir.return_date')
                     ->orWhere('ir.return_date', '0000-00-00');
             })
-            ->count();
+            ->distinct('ir.member_id')
+            ->count('ir.member_id');
 
         $pendingStaffBookReturnCount = DB::table('issue_return as ir')
             ->whereDate('ir.due_date', '<', Carbon::today())
-            ->where('ir.member_type', "=", "T")
+            ->where('ir.member_type', 'T')
             ->where(function ($query) {
                 $query->whereNull('ir.return_date')
                     ->orWhere('ir.return_date', '0000-00-00');
             })
-            ->count();
+            ->distinct('ir.member_id')
+            ->count('ir.member_id');
 
         /** Books Count */
         $totalBooksCount = DB::table('book_copies')->count();
