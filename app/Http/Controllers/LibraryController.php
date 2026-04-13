@@ -4571,7 +4571,7 @@ class LibraryController extends Controller
         $teacherCount = DB::table('library_member as lm')
             ->join('teacher as t', 't.teacher_id', '=', 'lm.member_id')
             ->where('lm.member_type', 'T')
-            ->where('t.is_Delete', 'N') // only active (not deleted) teachers
+            ->where('t.isDelete', 'N') // only active (not deleted) teachers
             ->count();
 
         return response()->json([
