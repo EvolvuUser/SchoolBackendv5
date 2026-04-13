@@ -4444,7 +4444,7 @@ class LibraryController extends Controller
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
 
-                // ✅ ADD THIS
+                // ADD THIS
                 ->leftJoin('contact_details as b', 'a.member_id', '=', 'b.id')
 
                 ->whereDate('a.due_date', '<', Carbon::today())
@@ -4489,7 +4489,7 @@ class LibraryController extends Controller
         "),
 
                     // UPDATED PHONE SOURCE
-                    'b.phone as phone_no'
+                    'b.phone_no as phone_no'
                 )
                 ->get();
 
