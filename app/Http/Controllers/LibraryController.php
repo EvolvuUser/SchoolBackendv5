@@ -4406,27 +4406,60 @@ class LibraryController extends Controller
                     $join->on('a.member_id', '=', 'teacher.teacher_id')
                         ->where('a.member_type', '=', 'T');
                 })
+                // ->select(
+                //     'a.*',
+                //     'book.book_title',
+                //     DB::raw("
+                //     CASE 
+                //         WHEN a.member_type = 'S' THEN student.first_name
+                //         WHEN a.member_type = 'T' THEN teacher.name
+                //     END as first_name
+                // "),
+                //     DB::raw("
+                //     CASE 
+                //         WHEN a.member_type = 'S' THEN student.mid_name
+                //         ELSE NULL
+                //     END as mid_name
+                // "),
+                //     DB::raw("
+                //     CASE 
+                //         WHEN a.member_type = 'S' THEN student.last_name
+                //         ELSE NULL
+                //     END as last_name
+                // ")
+                // )
+                // ->get();
                 ->select(
                     'a.*',
                     'book.book_title',
+
                     DB::raw("
-                    CASE 
-                        WHEN a.member_type = 'S' THEN student.first_name
-                        WHEN a.member_type = 'T' THEN teacher.name
-                    END as first_name
-                "),
+        CASE 
+            WHEN a.member_type = 'S' THEN student.first_name
+            WHEN a.member_type = 'T' THEN teacher.name
+        END as first_name
+    "),
+
                     DB::raw("
-                    CASE 
-                        WHEN a.member_type = 'S' THEN student.mid_name
-                        ELSE NULL
-                    END as mid_name
-                "),
+        CASE 
+            WHEN a.member_type = 'S' THEN student.mid_name
+            ELSE NULL
+        END as mid_name
+    "),
+
                     DB::raw("
-                    CASE 
-                        WHEN a.member_type = 'S' THEN student.last_name
-                        ELSE NULL
-                    END as last_name
-                ")
+        CASE 
+            WHEN a.member_type = 'S' THEN student.last_name
+            ELSE NULL
+        END as last_name
+    "),
+
+                    DB::raw("
+        CASE 
+            WHEN a.member_type = 'S' THEN student.emergency_contact
+            WHEN a.member_type = 'T' THEN teacher.phone
+        END as phone_no
+    ")
                 )
                 ->get();
 
