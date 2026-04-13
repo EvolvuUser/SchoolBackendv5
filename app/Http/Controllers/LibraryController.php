@@ -4389,18 +4389,75 @@ class LibraryController extends Controller
         try {
             $this->authenticateUser();
 
+            //         $result = DB::table('issue_return as a')
+            //             ->join('book', 'a.book_id', '=', 'book.book_id')
+            //             ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
+            //             ->whereDate('a.due_date', '<', Carbon::today())
+            //             ->where(function ($query) {
+            //                 $query->whereNull('a.return_date')
+            //                     ->orWhere('a.return_date', '0000-00-00');
+            //             })
+            //             ->leftJoin('student', function ($join) {
+            //                 $join->on('a.member_id', '=', 'student.student_id')
+            //                     ->where('a.member_type', '=', 'S');
+            //             })
+            //             ->leftJoin('teacher', function ($join) {
+            //                 $join->on('a.member_id', '=', 'teacher.teacher_id')
+            //                     ->where('a.member_type', '=', 'T');
+            //             })
+
+            //             ->select(
+            //                 'a.*',
+            //                 'book.book_title',
+
+            //                 DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.first_name
+            //         WHEN a.member_type = 'T' THEN teacher.name
+            //     END as first_name
+            // "),
+
+            //                 DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.mid_name
+            //         ELSE NULL
+            //     END as mid_name
+            // "),
+
+            //                 DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.last_name
+            //         ELSE NULL
+            //     END as last_name
+            // "),
+
+            //                 DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.emergency_contact
+            //         WHEN a.member_type = 'T' THEN teacher.phone
+            //     END as phone_no
+            // ")
+            //             )
+            //             ->get();
+
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
+
+                // ✅ ADD THIS
+                ->leftJoin('contact_details as b', 'a.member_id', '=', 'b.id')
+
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
                     $query->whereNull('a.return_date')
                         ->orWhere('a.return_date', '0000-00-00');
                 })
+
                 ->leftJoin('student', function ($join) {
                     $join->on('a.member_id', '=', 'student.student_id')
                         ->where('a.member_type', '=', 'S');
                 })
+
                 ->leftJoin('teacher', function ($join) {
                     $join->on('a.member_id', '=', 'teacher.teacher_id')
                         ->where('a.member_type', '=', 'T');
@@ -4411,32 +4468,28 @@ class LibraryController extends Controller
                     'book.book_title',
 
                     DB::raw("
-        CASE 
-            WHEN a.member_type = 'S' THEN student.first_name
-            WHEN a.member_type = 'T' THEN teacher.name
-        END as first_name
-    "),
+            CASE 
+                WHEN a.member_type = 'S' THEN student.first_name
+                WHEN a.member_type = 'T' THEN teacher.name
+            END as first_name
+        "),
 
                     DB::raw("
-        CASE 
-            WHEN a.member_type = 'S' THEN student.mid_name
-            ELSE NULL
-        END as mid_name
-    "),
+            CASE 
+                WHEN a.member_type = 'S' THEN student.mid_name
+                ELSE NULL
+            END as mid_name
+        "),
 
                     DB::raw("
-        CASE 
-            WHEN a.member_type = 'S' THEN student.last_name
-            ELSE NULL
-        END as last_name
-    "),
+            CASE 
+                WHEN a.member_type = 'S' THEN student.last_name
+                ELSE NULL
+            END as last_name
+        "),
 
-                    DB::raw("
-        CASE 
-            WHEN a.member_type = 'S' THEN student.emergency_contact
-            WHEN a.member_type = 'T' THEN teacher.phone
-        END as phone_no
-    ")
+                    // UPDATED PHONE SOURCE
+                    'b.phone as phone_no'
                 )
                 ->get();
 
@@ -4526,42 +4579,6 @@ class LibraryController extends Controller
                     ->orWhere('ir.return_date', '0000-00-00');
             })
             ->count();
-        // $pendingStudentBookReturnCount = DB::table('issue_return as ir')
-        //     ->whereDate('ir.due_date', '<', Carbon::today())
-        //     ->where('ir.member_type', "=", "S")
-        //     ->where(function ($query) {
-        //         $query->whereNull('ir.return_date')
-        //             ->orWhere('ir.return_date', '0000-00-00');
-        //     })
-        //     ->count();
-
-        // $pendingStaffBookReturnCount = DB::table('issue_return as ir')
-        //     ->whereDate('ir.due_date', '<', Carbon::today())
-        //     ->where('ir.member_type', "=", "T")
-        //     ->where(function ($query) {
-        //         $query->whereNull('ir.return_date')
-        //             ->orWhere('ir.return_date', '0000-00-00');
-        //     })
-        //     ->count();
-        // $pendingStudentBookReturnCount = DB::table('issue_return as ir')
-        //     ->whereDate('ir.due_date', '<', Carbon::today())
-        //     ->where('ir.member_type', 'S')
-        //     ->where(function ($query) {
-        //         $query->whereNull('ir.return_date')
-        //             ->orWhere('ir.return_date', '0000-00-00');
-        //     })
-        //     ->distinct('ir.member_id')
-        //     ->count('ir.member_id');
-
-        // $pendingStaffBookReturnCount = DB::table('issue_return as ir')
-        //     ->whereDate('ir.due_date', '<', Carbon::today())
-        //     ->where('ir.member_type', 'T')
-        //     ->where(function ($query) {
-        //         $query->whereNull('ir.return_date')
-        //             ->orWhere('ir.return_date', '0000-00-00');
-        //     })
-        //     ->distinct('ir.member_id')
-        //     ->count('ir.member_id');
 
         $baseQuery = DB::table('issue_return as a')
             ->join('book', 'a.book_id', '=', 'book.book_id')
@@ -4592,21 +4609,6 @@ class LibraryController extends Controller
         $periodicalsCount = DB::table('periodicals')->count();
 
         /** Library Members Count */
-        // $memberCounts = DB::table('library_member')
-        //     ->select('member_type', DB::raw('COUNT(*) as total'))
-        //     ->groupBy('member_type')
-        //     ->get();
-
-        // $studentCount = 0;
-        // $teacherCount = 0;
-
-        // foreach ($memberCounts as $row) {
-        //     if ($row->member_type === 'S') {
-        //         $studentCount = $row->total;
-        //     } elseif ($row->member_type === 'T') {
-        //         $teacherCount = $row->total;
-        //     }
-        // }
         // Student Members Count
         $studentCount = DB::table('library_member as lm')
             ->join('student as s', 's.student_id', '=', 'lm.member_id')
