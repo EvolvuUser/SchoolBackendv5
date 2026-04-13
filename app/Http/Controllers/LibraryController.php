@@ -4391,7 +4391,6 @@ class LibraryController extends Controller
 
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
-                // ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
@@ -4544,25 +4543,43 @@ class LibraryController extends Controller
         //             ->orWhere('ir.return_date', '0000-00-00');
         //     })
         //     ->count();
-        $pendingStudentBookReturnCount = DB::table('issue_return as ir')
-            ->whereDate('ir.due_date', '<', Carbon::today())
-            ->where('ir.member_type', 'S')
-            ->where(function ($query) {
-                $query->whereNull('ir.return_date')
-                    ->orWhere('ir.return_date', '0000-00-00');
-            })
-            ->distinct('ir.member_id')
-            ->count('ir.member_id');
+        // $pendingStudentBookReturnCount = DB::table('issue_return as ir')
+        //     ->whereDate('ir.due_date', '<', Carbon::today())
+        //     ->where('ir.member_type', 'S')
+        //     ->where(function ($query) {
+        //         $query->whereNull('ir.return_date')
+        //             ->orWhere('ir.return_date', '0000-00-00');
+        //     })
+        //     ->distinct('ir.member_id')
+        //     ->count('ir.member_id');
 
-        $pendingStaffBookReturnCount = DB::table('issue_return as ir')
-            ->whereDate('ir.due_date', '<', Carbon::today())
-            ->where('ir.member_type', 'T')
+        // $pendingStaffBookReturnCount = DB::table('issue_return as ir')
+        //     ->whereDate('ir.due_date', '<', Carbon::today())
+        //     ->where('ir.member_type', 'T')
+        //     ->where(function ($query) {
+        //         $query->whereNull('ir.return_date')
+        //             ->orWhere('ir.return_date', '0000-00-00');
+        //     })
+        //     ->distinct('ir.member_id')
+        //     ->count('ir.member_id');
+
+        $baseQuery = DB::table('issue_return as a')
+            ->join('book', 'a.book_id', '=', 'book.book_id')
+            ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
+            ->whereDate('a.due_date', '<', Carbon::today())
             ->where(function ($query) {
-                $query->whereNull('ir.return_date')
-                    ->orWhere('ir.return_date', '0000-00-00');
-            })
-            ->distinct('ir.member_id')
-            ->count('ir.member_id');
+                $query->whereNull('a.return_date')
+                    ->orWhere('a.return_date', '0000-00-00');
+            });
+
+        //  Count (same logic as list)
+        $pendingStudentBookReturnCount = (clone $baseQuery)
+            ->where('a.member_type', 'S')
+            ->count();
+
+        $pendingStaffBookReturnCount = (clone $baseQuery)
+            ->where('a.member_type', 'T')
+            ->count();
 
         /** Books Count */
         $totalBooksCount = DB::table('book_copies')->count();
