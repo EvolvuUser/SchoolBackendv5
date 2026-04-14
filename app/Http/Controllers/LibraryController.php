@@ -3080,8 +3080,7 @@ class LibraryController extends Controller
                 !$receiving_date ||
                 !$frequency ||
                 !$volume_lists ||
-                !$issue_lists ||
-                !$bimonthly_second_date
+                !$issue_lists
             ) {
                 return response()->json([
                     'status' => false,
