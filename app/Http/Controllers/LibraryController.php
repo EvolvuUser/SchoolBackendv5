@@ -4457,33 +4457,103 @@ class LibraryController extends Controller
             //             )
             //             ->get();
 
+            //     $result = DB::table('issue_return as a')
+            //         ->join('book', 'a.book_id', '=', 'book.book_id')
+            //         ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
+
+            //         // ADD THIS
+            //         ->leftJoin('contact_details as b', 'a.member_id', '=', 'b.id')
+
+            //         ->whereDate('a.due_date', '<', Carbon::today())
+            //         ->where(function ($query) {
+            //             $query->whereNull('a.return_date')
+            //                 ->orWhere('a.return_date', '0000-00-00');
+            //         })
+
+            //         ->leftJoin('student', function ($join) {
+            //             $join->on('a.member_id', '=', 'student.student_id')
+            //                 ->where('a.member_type', '=', 'S');
+            //         })
+
+            //         ->leftJoin('teacher', function ($join) {
+            //             $join->on('a.member_id', '=', 'teacher.teacher_id')
+            //                 ->where('a.member_type', '=', 'T');
+            //         })
+
+            //         ->select(
+            //             'a.*',
+            //             'book.book_title',
+
+            //             DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.first_name
+            //         WHEN a.member_type = 'T' THEN teacher.name
+            //     END as first_name
+            // "),
+
+            //             DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.mid_name
+            //         ELSE NULL
+            //     END as mid_name
+            // "),
+
+            //             DB::raw("
+            //     CASE 
+            //         WHEN a.member_type = 'S' THEN student.last_name
+            //         ELSE NULL
+            //     END as last_name
+            // "),
+
+            //             // UPDATED PHONE SOURCE
+            //             'b.phone_no as phone_no'
+            //         )
+            //         ->get();
+
+
+
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
 
-                // ADD THIS
-                ->leftJoin('contact_details as b', 'a.member_id', '=', 'b.id')
+                // Student Join
+                ->leftJoin('student', function ($join) {
+                    $join->on('a.member_id', '=', 'student.student_id')
+                        ->where('a.member_type', '=', 'S');
+                })
 
+                // Teacher Join
+                ->leftJoin('teacher', function ($join) {
+                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                        ->where('a.member_type', '=', 'T');
+                })
+
+                // Contact (Student → parent_id, Teacher → member_id)
+                ->leftJoin('contact_details as b', function ($join) {
+                    $join->on(function ($query) {
+                        // Teacher mapping
+                        $query->on('a.member_id', '=', 'b.id')
+                            ->where('a.member_type', '=', 'T');
+                    })
+                        ->orOn(function ($query) {
+                            // Student mapping via parent_id
+                            $query->on('student.parent_id', '=', 'b.id')
+                                ->where('a.member_type', '=', 'S');
+                        });
+                })
+
+                // Overdue condition
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
                     $query->whereNull('a.return_date')
                         ->orWhere('a.return_date', '0000-00-00');
                 })
 
-                ->leftJoin('student', function ($join) {
-                    $join->on('a.member_id', '=', 'student.student_id')
-                        ->where('a.member_type', '=', 'S');
-                })
-
-                ->leftJoin('teacher', function ($join) {
-                    $join->on('a.member_id', '=', 'teacher.teacher_id')
-                        ->where('a.member_type', '=', 'T');
-                })
-
                 ->select(
                     'a.*',
                     'book.book_title',
 
+                    // First Name
                     DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN student.first_name
@@ -4491,6 +4561,7 @@ class LibraryController extends Controller
             END as first_name
         "),
 
+                    // Middle Name (only student)
                     DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN student.mid_name
@@ -4498,6 +4569,7 @@ class LibraryController extends Controller
             END as mid_name
         "),
 
+                    // Last Name (only student)
                     DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN student.last_name
@@ -4505,9 +4577,11 @@ class LibraryController extends Controller
             END as last_name
         "),
 
-                    // UPDATED PHONE SOURCE
+                    // Phone Number (Final सही mapping)
                     'b.phone_no as phone_no'
                 )
+
+                ->orderBy('a.due_date', 'asc')
                 ->get();
 
             if ($result->isEmpty()) {
