@@ -4626,7 +4626,8 @@ class LibraryController extends Controller
 
         $availableBooksCount = DB::table('book_copies')
             ->where('status', 'A')
-            ->count();
+            ->distinct('book_id')
+            ->count('book_id');
 
         /** Periodicals Count */
         $periodicalsCount = DB::table('periodicals')->count();
