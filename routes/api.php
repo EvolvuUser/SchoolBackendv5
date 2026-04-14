@@ -1457,8 +1457,11 @@
             // Subscription Reminder Report
             Route::get('/subscription/reminder', [LibraryController::class, 'subscriptionReminderReport']);
 
+            Route::get('/subscription/reminder/list', [LibraryController::class, 'subscriptionReminderReport']);
+
             // Periodicals Non Received Reminder
             Route::get('/periodicals/reminder', [LibraryController::class, 'periodicalNotReceivedReminder']);
+
 
             // Book Return Pending
             Route::get('/book_return_pending', [LibraryController::class, 'pendingOverdueBooks']);
