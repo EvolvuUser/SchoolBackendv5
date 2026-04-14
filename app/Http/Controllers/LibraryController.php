@@ -4165,6 +4165,7 @@ class LibraryController extends Controller
             ->where('s.status', 'Active')
             ->whereRaw('s.to_date - 7 < CURDATE()')
             ->select('s.*', 'p.*')
+            ->orderBy('s.to_date', 'desc')
             ->get();
 
         return response()->json([
