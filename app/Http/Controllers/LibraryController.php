@@ -4617,9 +4617,12 @@ class LibraryController extends Controller
 
         /** Books Count */
         // $totalBooksCount = DB::table('book_copies')->count();
-        $totalBooksCount = DB::table('book_copies')
-            ->distinct('book_id')
-            ->count('book_id');
+
+        $totalBooksCount = DB::table('book')
+            ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
+            ->join('category', 'category.category_id', '=', 'book.category_id')
+            ->count();
+
 
         $availableBooksCount = DB::table('book_copies')
             ->where('status', 'A')
