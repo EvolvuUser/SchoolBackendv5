@@ -107,29 +107,82 @@ class ReturnPendingBookJob implements ShouldQueue
 
         $members = DB::table('issue_return as a')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
-            ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+
+            // Student Join
             ->leftJoin('student as s', function ($join) {
                 $join->on('a.member_id', '=', 's.student_id')
-                    ->where('a.member_type', 'S');
+                    ->where('a.member_type', '=', 'S');
             })
+
+            // Teacher Join
             ->leftJoin('teacher as t', function ($join) {
                 $join->on('a.member_id', '=', 't.teacher_id')
-                    ->where('a.member_type', 'T');
+                    ->where('a.member_type', '=', 'T');
             })
+
+            // Fixed Contact Join
+            ->leftJoin('contact_details as b', function ($join) {
+                $join->on(function ($query) {
+                    // Teacher mapping
+                    $query->on('a.member_id', '=', 'b.id')
+                        ->where('a.member_type', '=', 'T');
+                })
+                    ->orOn(function ($query) {
+                        // Student mapping via parent_id
+                        $query->on('s.parent_id', '=', 'b.id')
+                            ->where('a.member_type', '=', 'S');
+                    });
+            })
+
             ->whereIn('a.member_id', $this->members)
             ->whereDate('a.due_date', '<', now())
             ->where(function ($query) {
                 $query->whereNull('a.return_date')
                     ->orWhere('a.return_date', '0000-00-00');
             })
+
             ->select(
                 'a.member_id',
                 'a.copy_id',
                 'b.phone_no',
                 'c.book_title',
-                DB::raw("COALESCE(s.first_name, t.name) as member_name")
+
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'S' THEN s.first_name
+                WHEN a.member_type = 'T' THEN t.name
+            END as member_name
+        ")
             )
+
+            ->orderBy('a.due_date', 'asc')
             ->get();
+
+        // $members = DB::table('issue_return as a')
+        //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
+        //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+        //     ->leftJoin('student as s', function ($join) {
+        //         $join->on('a.member_id', '=', 's.student_id')
+        //             ->where('a.member_type', 'S');
+        //     })
+        //     ->leftJoin('teacher as t', function ($join) {
+        //         $join->on('a.member_id', '=', 't.teacher_id')
+        //             ->where('a.member_type', 'T');
+        //     })
+        //     ->whereIn('a.member_id', $this->members)
+        //     ->whereDate('a.due_date', '<', now())
+        //     ->where(function ($query) {
+        //         $query->whereNull('a.return_date')
+        //             ->orWhere('a.return_date', '0000-00-00');
+        //     })
+        //     ->select(
+        //         'a.member_id',
+        //         'a.copy_id',
+        //         'b.phone_no',
+        //         'c.book_title',
+        //         DB::raw("COALESCE(s.first_name, t.name) as member_name")
+        //     )
+        //     ->get();
 
         $schoolSettings = getSchoolSettingsData();
         $wamids = [];
