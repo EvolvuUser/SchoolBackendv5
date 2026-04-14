@@ -4246,7 +4246,9 @@ class LibraryController extends Controller
             'b.*',
             'c.*',
             'd.*'
-        )->get();
+        )
+            ->orderBy('d.receive_by_date', 'desc')
+            ->get();
 
         return response()->json([
             'status' => true,
@@ -4304,6 +4306,21 @@ class LibraryController extends Controller
             'status' => 200,
             'message' => 'Periodicals reminder emails sent successfully.',
             'success' => true
+        ]);
+    }
+
+    public function subscriptionReminderCardList()
+    {
+        $data = DB::table('subscription as s')
+            ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
+            ->where('s.status', 'Active')
+            ->whereRaw('s.to_date - 7 < CURDATE()')
+            ->select('s.*', 'p.*')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data'   => $data
         ]);
     }
 
