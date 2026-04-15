@@ -108,7 +108,7 @@ class ReturnPendingBookJob implements ShouldQueue
         $members = DB::table('issue_return as a')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
 
-            // Student Join
+            // Student Join (ONLY ONCE)
             ->leftJoin('student as s', function ($join) {
                 $join->on('a.member_id', '=', 's.student_id')
                     ->where('a.member_type', '=', 'S');
@@ -120,12 +120,7 @@ class ReturnPendingBookJob implements ShouldQueue
                     ->where('a.member_type', '=', 'T');
             })
 
-            ->leftJoin('student as s', function ($join) {
-                $join->on('a.member_id', '=', 's.student_id')
-                    ->where('a.member_type', '=', 'S');
-            })
-
-            // Only for students → contact_details
+            // Contact ONLY for Student
             ->leftJoin('contact_details as b', function ($join) {
                 $join->on('s.parent_id', '=', 'b.id')
                     ->where('a.member_type', '=', 'S');
@@ -141,9 +136,17 @@ class ReturnPendingBookJob implements ShouldQueue
             ->select(
                 'a.member_id',
                 'a.copy_id',
-                'b.phone_no',
                 'c.book_title',
 
+                //  Correct Phone Mapping
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'T' THEN t.phone
+                WHEN a.member_type = 'S' THEN b.phone_no
+            END as phone_no
+        "),
+
+                // Name Mapping
                 DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN s.first_name
