@@ -120,18 +120,15 @@ class ReturnPendingBookJob implements ShouldQueue
                     ->where('a.member_type', '=', 'T');
             })
 
-            // Fixed Contact Join
+            ->leftJoin('student as s', function ($join) {
+                $join->on('a.member_id', '=', 's.student_id')
+                    ->where('a.member_type', '=', 'S');
+            })
+
+            // Only for students → contact_details
             ->leftJoin('contact_details as b', function ($join) {
-                $join->on(function ($query) {
-                    // Teacher mapping
-                    $query->on('a.member_id', '=', 'b.id')
-                        ->where('a.member_type', '=', 'T');
-                })
-                    ->orOn(function ($query) {
-                        // Student mapping via parent_id
-                        $query->on('s.parent_id', '=', 'b.id')
-                            ->where('a.member_type', '=', 'S');
-                    });
+                $join->on('s.parent_id', '=', 'b.id')
+                    ->where('a.member_type', '=', 'S');
             })
 
             ->whereIn('a.member_id', $this->members)

@@ -4528,18 +4528,10 @@ class LibraryController extends Controller
                         ->where('a.member_type', '=', 'T');
                 })
 
-                // Contact (Student → parent_id, Teacher → member_id)
+                // ONLY Student → contact_details
                 ->leftJoin('contact_details as b', function ($join) {
-                    $join->on(function ($query) {
-                        // Teacher mapping
-                        $query->on('a.member_id', '=', 'b.id')
-                            ->where('a.member_type', '=', 'T');
-                    })
-                        ->orOn(function ($query) {
-                            // Student mapping via parent_id
-                            $query->on('student.parent_id', '=', 'b.id')
-                                ->where('a.member_type', '=', 'S');
-                        });
+                    $join->on('student.parent_id', '=', 'b.id')
+                        ->where('a.member_type', '=', 'S');
                 })
 
                 // Overdue condition
@@ -4561,7 +4553,7 @@ class LibraryController extends Controller
             END as first_name
         "),
 
-                    // Middle Name (only student)
+                    // Middle Name
                     DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN student.mid_name
@@ -4569,7 +4561,7 @@ class LibraryController extends Controller
             END as mid_name
         "),
 
-                    // Last Name (only student)
+                    // Last Name
                     DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN student.last_name
@@ -4577,8 +4569,13 @@ class LibraryController extends Controller
             END as last_name
         "),
 
-                    // Phone Number (Final सही mapping)
-                    'b.phone_no as phone_no'
+                    //  Correct Phone Mapping
+                    DB::raw("
+            CASE 
+                WHEN a.member_type = 'T' THEN teacher.phone
+                WHEN a.member_type = 'S' THEN b.phone_no
+            END as phone_no
+        ")
                 )
 
                 ->orderBy('a.due_date', 'asc')
