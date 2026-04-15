@@ -102,16 +102,41 @@ class ReturnPendingBookJob implements ShouldQueue
             }
 
             // collect book titles
-            $bookTitles = $group->pluck('book_title')->implode(', ');
+            // $bookTitles = $group->pluck('book_title')->implode(', ');
 
             // $finalMessage = $member->member_name . ', ' .
             //     'Please return the following books: ' .
             //     $bookTitles . ' ' . ($this->message ?? '');
 
-            $finalMessage = $member->member_name . ', ' .
-                'Please return the following books: ' .
-                $bookTitles .
-                (!empty($this->message) ? '. ' . $this->message : '.');
+            // $finalMessage = $member->member_name . ', ' .
+            //     'Please return the following books: ' .
+            //     $bookTitles .
+            //     (!empty($this->message) ? '. ' . $this->message : '.');
+
+            $bookDetails = $group->map(function ($book, $index) {
+                $issueDate = date('d/m/Y', strtotime($book->issue_date));
+                $dueDate = date('d/m/Y', strtotime($book->due_date));
+
+                return ($index + 1) . ') ' . $book->book_title .
+                    ' (Issue: ' . $issueDate . ', Due: ' . $dueDate . ')';
+            })->implode("\n");
+
+            // custom message OR default line
+            $customSection = !empty($this->message)
+                ? trim($this->message)
+                : "Please return the book(s) to the library tomorrow during short break.";
+
+            $finalMessage = "Dear " . $member->member_name . ",\n\n" .
+                "You have not submitted the following issued book(s):\n\n" .
+                $bookDetails . "\n\n" .
+                $customSection . "\n\n" .
+                "Regards\n" .
+                "Library";
+            if (!empty($this->message)) {
+                $finalMessage = $this->message;
+            } else {
+                $finalMessage = $finalMessage;
+            }
 
             // WhatsApp
             if ($schoolSettings->whatsapp_integration === 'Y') {
