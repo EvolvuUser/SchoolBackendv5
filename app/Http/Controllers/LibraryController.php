@@ -4878,6 +4878,112 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function uploadHealthActivityRecord(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $validator = Validator::make($request->all(), [
+    //         'file' => 'required|file|mimes:csv,txt|max:2048'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => $validator->errors()->first(),
+    //         ]);
+    //     }
+
+    //     $file = $request->file('file');
+    //     $handle = fopen($file->getRealPath(), 'r');
+
+    //     $row = 1;
+    //     $errors = [];
+    //     $headers = [];
+
+    //     // Fetch parameters from DB
+    //     $parameters = DB::table('health_activity_parameter')
+    //         ->where('is_active', 'Y')
+    //         // ->pluck('name')
+    //         ->pluck('test_parameter')
+    //         ->toArray();
+
+    //     while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+
+    //         // ================= HEADER =================
+    //         if ($row == 1) {
+
+    //             if (trim($data[0]) != 'Code') {
+    //                 return response()->json([
+    //                     'status' => 422,
+    //                     'message' => 'Invalid CSV format. Please download the correct format.'
+    //                 ]);
+    //             }
+
+    //             $headers = $data; // store full header row
+    //             $row++;
+    //             continue;
+    //         }
+
+    //         // ================= STUDENT =================
+    //         $student_id = isset($data[0]) ? trim($data[0]) : null;
+
+    //         if (!$student_id) {
+    //             $errors[] = "Row $row: Student Code is missing.";
+    //             $row++;
+    //             continue;
+    //         }
+
+    //         // ================= DYNAMIC PARAM VALUES =================
+    //         $paramData = [];
+
+    //         foreach ($headers as $index => $columnName) {
+
+    //             $columnName = trim($columnName);
+
+    //             // Skip fixed columns
+    //             if (in_array($columnName, ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name'])) {
+    //                 continue;
+    //             }
+
+    //             // Only take valid parameters
+    //             if (in_array($columnName, $parameters)) {
+    //                 $paramData[$columnName] = $data[$index] ?? null;
+    //             }
+    //         }
+
+    //         // ================= SAVE DATA =================
+
+    //         DB::table('health_activity_record')->updateOrInsert(
+    //             [
+    //                 'student_id'  => $student_id,
+    //                 'academic_yr' => $academic_yr
+    //             ],
+    //             [
+    //                 'value'       => json_encode($paramData),
+    //                 'created_by'  => $user->reg_id
+    //             ]
+    //         );
+
+    //         $row++;
+    //     }
+
+    //     fclose($handle);
+
+    //     if (!empty($errors)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => implode(', ', $errors)
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health Activity Records uploaded successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
     public function uploadHealthActivityRecord(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4901,12 +5007,20 @@ class LibraryController extends Controller
         $errors = [];
         $headers = [];
 
-        // Fetch parameters from DB
-        $parameters = DB::table('health_activity_parameter')
-            ->where('is_active', 'Y')
-            // ->pluck('name')
-            ->pluck('test_parameter')
-            ->toArray();
+        // FETCH PARAMETERS WITH GROUP + PARAM DATA
+        $parameters = DB::table('health_activity_parameter as p')
+            ->join('health_activity_group as g', 'p.group_id', '=', 'g.id')
+            ->where('p.is_active', 'Y')
+            ->select(
+                'p.id',
+                'p.test_parameter',
+                'p.param_data',
+                'p.description',
+                'p.group_id',
+                'g.group_name'
+            )
+            ->get()
+            ->keyBy('test_parameter');
 
         while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
 
@@ -4920,7 +5034,7 @@ class LibraryController extends Controller
                     ]);
                 }
 
-                $headers = $data; // store full header row
+                $headers = $data;
                 $row++;
                 continue;
             }
@@ -4934,34 +5048,53 @@ class LibraryController extends Controller
                 continue;
             }
 
-            // ================= DYNAMIC PARAM VALUES =================
-            $paramData = [];
+            // ================= INIT ARRAYS =================
+            $paramValues = []; // value
+            $paramMeta   = []; // param_data
+            $groupData   = []; // group_data
 
+            // ================= LOOP =================
             foreach ($headers as $index => $columnName) {
 
                 $columnName = trim($columnName);
 
-                // Skip fixed columns
+                // Skip static columns
                 if (in_array($columnName, ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name'])) {
                     continue;
                 }
 
-                // Only take valid parameters
-                if (in_array($columnName, $parameters)) {
-                    $paramData[$columnName] = $data[$index] ?? null;
+                if (isset($parameters[$columnName])) {
+
+                    $param = $parameters[$columnName];
+                    $value = $data[$index] ?? null;
+
+                    // VALUE
+                    $paramValues[$columnName] = $value;
+
+                    // PARAM DATA (from parameter table)
+                    $paramMeta[$columnName] = $param->param_data
+                        ? json_decode($param->param_data, true)
+                        : null;
+
+                    // GROUP DATA (from group table)
+                    $groupData[$columnName] = [
+                        'group_id'   => $param->group_id,
+                        'group_name' => $param->group_name
+                    ];
                 }
             }
 
-            // ================= SAVE DATA =================
-
+            // ================= SAVE =================
             DB::table('health_activity_record')->updateOrInsert(
                 [
                     'student_id'  => $student_id,
                     'academic_yr' => $academic_yr
                 ],
                 [
-                    'value'       => json_encode($paramData),
-                    'created_by'  => $user->reg_id
+                    'value'       => json_encode($paramValues), //ONLY VALUES
+                    'group_data'  => json_encode($groupData),   // GROUP INFO
+                    'param_data'  => json_encode($paramMeta),   // PARAM META
+
                 ]
             );
 
@@ -4984,12 +5117,100 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function updateHealthActivityRecord(Request $request, $student_id)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     // Get JSON value from request
+    //     $jsonValue = $request->input('value');
+
+    //     if (!$jsonValue) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Value JSON is required',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // Decode JSON
+    //     $inputData = json_decode($jsonValue, true);
+
+    //     if (!is_array($inputData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Invalid JSON format',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // Fetch valid parameters
+    //     $parameters = DB::table('health_activity_parameter')
+    //         ->where('is_active', 'Y')
+    //         // ->pluck('name')
+    //         ->pluck('test_parameter')
+    //         ->map(fn($item) => strtolower(trim($item)))
+    //         ->toArray();
+
+    //     // Filter only valid parameters
+    //     $filteredData = [];
+
+    //     foreach ($inputData as $key => $value) {
+    //         if (in_array(strtolower(trim($key)), $parameters)) {
+    //             $filteredData[$key] = $value;
+    //         }
+    //     }
+
+    //     // No valid data
+    //     if (empty($filteredData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'No valid parameters provided',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // Check record exists
+    //     $record = DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->first();
+
+    //     if (!$record) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'message' => 'Health record not found for this student',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // Decode existing JSON
+    //     $existingData = json_decode($record->value, true) ?? [];
+
+    //     // Merge old + new data
+    //     $updatedData = array_merge($existingData, $filteredData);
+
+    //     // Update
+    //     DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->update([
+    //             'value' => json_encode($updatedData)
+    //         ]);
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health record updated successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
+
     public function updateHealthActivityRecord(Request $request, $student_id)
     {
         $user = $this->authenticateUser();
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-        // Get JSON value from request
         $jsonValue = $request->input('value');
 
         if (!$jsonValue) {
@@ -5000,7 +5221,6 @@ class LibraryController extends Controller
             ]);
         }
 
-        // Decode JSON
         $inputData = json_decode($jsonValue, true);
 
         if (!is_array($inputData)) {
@@ -5011,24 +5231,55 @@ class LibraryController extends Controller
             ]);
         }
 
-        // Fetch valid parameters
-        $parameters = DB::table('health_activity_parameter')
+        // ================= PARAMETERS MASTER =================
+        $parameterRows = DB::table('health_activity_parameter')
             ->where('is_active', 'Y')
-            // ->pluck('name')
-            ->pluck('test_parameter')
-            ->map(fn($item) => strtolower(trim($item)))
-            ->toArray();
+            ->select('id', 'test_parameter', 'group_id', 'param_data')
+            ->get();
 
-        // Filter only valid parameters
+        // Map for quick lookup
+        $parameterMap = [];
+        foreach ($parameterRows as $p) {
+            $parameterMap[strtolower(trim($p->test_parameter))] = $p;
+        }
+
+        // ================= GROUP MASTER =================
+        $groups = DB::table('health_activity_group')
+            ->select('id', 'group_name')
+            ->get()
+            ->keyBy('id');
+
+        // ================= FILTER + BUILD DATA =================
         $filteredData = [];
+        $groupData = [];
+        $paramMetaData = [];
 
         foreach ($inputData as $key => $value) {
-            if (in_array(strtolower(trim($key)), $parameters)) {
-                $filteredData[$key] = $value;
+
+            $normalizedKey = strtolower(trim($key));
+
+            if (isset($parameterMap[$normalizedKey])) {
+
+                $param = $parameterMap[$normalizedKey];
+
+                // VALUE
+                $filteredData[$param->test_parameter] = $value;
+
+                // GROUP DATA
+                if (isset($groups[$param->group_id])) {
+                    $groupData[$param->test_parameter] = [
+                        'group_id' => $param->group_id,
+                        'group_name' => $groups[$param->group_id]->group_name
+                    ];
+                }
+
+                // PARAM META DATA (from param_data column)
+                $paramMetaData[$param->test_parameter] = $param->param_data
+                    ? json_decode($param->param_data, true)
+                    : null;
             }
         }
 
-        // No valid data
         if (empty($filteredData)) {
             return response()->json([
                 'status' => 422,
@@ -5037,7 +5288,7 @@ class LibraryController extends Controller
             ]);
         }
 
-        // Check record exists
+        // ================= EXISTING RECORD =================
         $record = DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
@@ -5051,18 +5302,24 @@ class LibraryController extends Controller
             ]);
         }
 
-        // Decode existing JSON
-        $existingData = json_decode($record->value, true) ?? [];
+        // ================= MERGE OLD DATA =================
+        $existingValue = json_decode($record->value, true) ?? [];
+        $existingGroup = json_decode($record->group_data, true) ?? [];
+        $existingParam = json_decode($record->param_data, true) ?? [];
 
-        // Merge old + new data
-        $updatedData = array_merge($existingData, $filteredData);
+        $updatedValue = array_merge($existingValue, $filteredData);
+        $updatedGroup = array_merge($existingGroup, $groupData);
+        $updatedParam = array_merge($existingParam, $paramMetaData);
 
-        // Update
+        // ================= UPDATE =================
         DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
             ->update([
-                'value' => json_encode($updatedData)
+                'value'       => json_encode($updatedValue),
+                'group_data'  => json_encode($updatedGroup),   // NEW
+                'param_data'  => json_encode($updatedParam),   // NEW
+                'created_by'  => $user->reg_id
             ]);
 
         return response()->json([
