@@ -104,10 +104,14 @@ class ReturnPendingBookJob implements ShouldQueue
             // collect book titles
             $bookTitles = $group->pluck('book_title')->implode(', ');
 
+            // $finalMessage = $member->member_name . ', ' .
+            //     'Please return the following books: ' .
+            //     $bookTitles . ' ' . ($this->message ?? '');
+
             $finalMessage = $member->member_name . ', ' .
                 'Please return the following books: ' .
-                $bookTitles . ' ' .
-                ($this->message ?? '');
+                $bookTitles .
+                (!empty($this->message) ? '. ' . $this->message : '.');
 
             // WhatsApp
             if ($schoolSettings->whatsapp_integration === 'Y') {
