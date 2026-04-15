@@ -62,6 +62,8 @@ class ReturnPendingBookJob implements ShouldQueue
                 'a.member_id',
                 'a.copy_id',
                 'c.book_title',
+                'a.issue_date',   // ADD
+                'a.due_date',
 
                 //  Correct Phone Mapping
                 DB::raw("
@@ -121,7 +123,7 @@ class ReturnPendingBookJob implements ShouldQueue
                     ' (Issue: ' . $issueDate . ', Due: ' . $dueDate . ')';
             })->implode("\n");
 
-            // custom message OR default line
+
             $customSection = !empty($this->message)
                 ? trim($this->message)
                 : "Please return the book(s) to the library tomorrow during short break.";
@@ -132,11 +134,12 @@ class ReturnPendingBookJob implements ShouldQueue
                 $customSection . "\n\n" .
                 "Regards\n" .
                 "Library";
-            if (!empty($this->message)) {
-                $finalMessage = $this->message;
-            } else {
-                $finalMessage = $finalMessage;
-            }
+
+            // if (!empty($this->message)) {
+            //     $finalMessage = $this->message;
+            // } else {
+            //     $finalMessage = $finalMessage;
+            // }
 
             // WhatsApp
             if ($schoolSettings->whatsapp_integration === 'Y') {
