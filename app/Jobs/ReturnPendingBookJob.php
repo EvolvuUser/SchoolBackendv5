@@ -19,11 +19,14 @@ class ReturnPendingBookJob implements ShouldQueue
 
     protected $members;
     protected $message;
+    protected $loginUserName;
 
-    public function __construct($members, $message)
+
+    public function __construct($members, $message, $loginUserName)
     {
         $this->members = $members;
         $this->message   = $message;
+        $this->loginUserName = $loginUserName;
     }
 
 
@@ -128,11 +131,12 @@ class ReturnPendingBookJob implements ShouldQueue
                 ? trim($this->message)
                 : "Please return the book(s) to the library tomorrow during short break.";
 
-            $finalMessage = "Dear " . $member->member_name . ",\n\n" .
+            $finalMessage = " " . $member->member_name . ",\n\n" .
                 "You have not submitted the following issued book(s):\n\n" .
                 $bookDetails . "\n\n" .
                 $customSection . "\n\n" .
                 "Regards\n" .
+                $this->loginUserName . "\n" .
                 "Library";
 
             // if (!empty($this->message)) {
