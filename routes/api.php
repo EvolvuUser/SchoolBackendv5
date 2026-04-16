@@ -41,7 +41,7 @@
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
 
-            // Route::get('/getAuthUser', [AdminController::class, 'getAuthUser']);
+            Route::get('/getAuthUser', [AdminController::class, 'getAuthUser']);
             // Route::put('/updateauthacademicyear', [AdminController::class, 'updateAcademicYearForAuthUser']);
             // Route::get('/someControllerMethod', [LoginController::class, 'someControllerMethod']);
 

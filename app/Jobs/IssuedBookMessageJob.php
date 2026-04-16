@@ -43,10 +43,12 @@ class IssuedBookMessageJob implements ShouldQueue
         $dueDate      = $this->data['due_date'];
 
 
+
         // $member = DB::table('issue_return as a')
         //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
         //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
         //     ->where('a.member_id', $memberId)
+        //     ->where('a.copy_id', $copyId)   // IMPORTANT
         //     ->select(
         //         'b.phone_no',
         //         'b.email_id',
@@ -56,13 +58,52 @@ class IssuedBookMessageJob implements ShouldQueue
         //     ->first();
 
         $member = DB::table('issue_return as a')
-            ->join('contact_details as b', 'a.member_id', '=', 'b.id')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
+
+            // Student
+            ->leftJoin('student as s', function ($join) {
+                $join->on('a.member_id', '=', 's.student_id')
+                    ->where('a.member_type', '=', 'S');
+            })
+
+            ->leftJoin('contact_details as cd', function ($join) {
+                $join->on('s.parent_id', '=', 'cd.id');
+            })
+
+            // Teacher
+            ->leftJoin('teacher as t', function ($join) {
+                $join->on('a.member_id', '=', 't.teacher_id')
+                    ->where('a.member_type', '=', 'T');
+            })
+
             ->where('a.member_id', $memberId)
-            ->where('a.copy_id', $copyId)   // IMPORTANT
+            ->where('a.copy_id', $copyId)
+
             ->select(
-                'b.phone_no',
-                'b.email_id',
+                // Phone
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'S' THEN cd.phone_no
+                WHEN a.member_type = 'T' THEN t.phone
+            END as phone_no
+        "),
+
+                // Email
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'S' THEN cd.email_id
+                WHEN a.member_type = 'T' THEN t.email_id
+            END as email_id
+        "),
+
+                //  Full Name
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'S' THEN CONCAT(s.first_name, ' ', s.mid_name, ' ', s.last_name)
+                WHEN a.member_type = 'T' THEN CONCAT(t.first_name, ' ', t.mid_name, ' ', t.last_name)
+            END as member_name
+        "),
+
                 'a.member_id',
                 'c.book_title'
             )
@@ -84,7 +125,11 @@ class IssuedBookMessageJob implements ShouldQueue
             $result = app(WhatsAppService::class)->sendTextMessage(
                 $member->phone_no,
                 'emergency_message',
-                ['Member, ' . $member->book_title . ' book has been issued']
+                // ['Member, ' . $member->book_title . ' book has been issued']
+                [
+                    $member->member_name . ', ' .
+                        $member->book_title . ' book has been issued'
+                ]
 
             );
 
@@ -129,12 +174,19 @@ class IssuedBookMessageJob implements ShouldQueue
                     ->where('sms_sent', 'N')
                     ->first();
 
+                // $sms_status = app(SmsService::class)->sendSms(
+                //     $member->phone_no,
+                //     'Dear Member, ' . $member->book_title . 'has been issued. Login to school application for details - AceVentura',
+                //     '1107161354408119887'
+                // );
+
+
                 $sms_status = app(SmsService::class)->sendSms(
                     $member->phone_no,
-                    'Dear Member, ' . $member->book_title . 'has been issued. Login to school application for details - AceVentura',
+                    'Dear ' . $member->member_name . ', ' .
+                        $member->book_title . ' has been issued. Login to school application for details - AceVentura',
                     '1107161354408119887'
                 );
-
                 $messagestatus = $sms_status['data']['status'] ?? null;
 
                 if ($messagestatus === 'success') {

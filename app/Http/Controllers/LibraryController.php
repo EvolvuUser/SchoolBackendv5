@@ -4614,6 +4614,8 @@ class LibraryController extends Controller
     public function returnBooksPendingWhatsapp(Request $request)
     {
         $user = $this->authenticateUser();
+        $loginUserName = $user->name;
+        // dd($loginUserName);
         $academicYear = JWTAuth::getPayload()->get('academic_year');
         $members = $request->input('member_id');
         $message = $request->input('message');
@@ -4622,7 +4624,7 @@ class LibraryController extends Controller
         $smsintegration = $schoolsettings->sms_integration;
 
         if ($whatsappintegration === 'Y' || $smsintegration === 'Y') {
-            ReturnPendingBookJob::dispatch($members, $message);
+            ReturnPendingBookJob::dispatch($members, $message, $loginUserName);
         }
 
         return response()->json([
@@ -5395,6 +5397,7 @@ class LibraryController extends Controller
     public function getHealthActivityReport(Request $request)
     {
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
         $student_id = $request->student_id;
         $reg_id = $request->reg_id;
 
