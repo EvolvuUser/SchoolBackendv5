@@ -19281,7 +19281,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $users = DB::table('new_adm_registration as r')
-                ->leftJoin('new_adm_user_master as u', 'u.nar_id', '=', 'r.nar_id')
+                ->Join('new_adm_user_master as u', 'u.nar_id', '=', 'r.nar_id')
                 ->select(
                     'r.nar_id',
                     'r.parent_name',
