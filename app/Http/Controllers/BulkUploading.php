@@ -10,10 +10,20 @@ class BulkUploading extends Controller
 {
     public function downloadTeacherCsvTemplate(Request $request)
     {
-        $roles = \DB::table('role_master')->pluck('role_name')->toArray();
-        $roleString = implode(',', $roles);
-        $categories = \DB::table('teacher_category')->pluck('teacher_category')->toArray();
-        $categoryString = implode(',', $categories);
+        $roles = \DB::table('role_master')
+            ->select('name', 'role_id')
+            ->get();
+
+        $roleString = $roles->map(function ($role) {
+            return $role->name . '=' . $role->role_id;
+        })->implode(',');
+        $categories = \DB::table('teacher_category')
+            ->select('name', 'tc_id')
+            ->get();
+
+        $categoryString = $categories->map(function ($cat) {
+            return $cat->name . '=' . $cat->tc_id;
+        })->implode(',');
         $teachers = \App\Models\Teacher::select(
             'employee_id as *Employee ID',
             'name as *Staff Name',
@@ -35,7 +45,6 @@ class BulkUploading extends Controller
             'emergency_phone as Emergency contact no.(Without +91)',
             'permanent_address as *Permanent Address',
             'tc_id as Teacher Category (' . $categoryString . ')',
-            'role as Role(' . $roleString . ')'
         )->get()->toArray();
 
         $headers = [
@@ -64,11 +73,13 @@ class BulkUploading extends Controller
             'Emergency contact no.(Without +91)',
             '*Permanent Address',
             'Teacher Category (' . $categoryString . ')',
-            'Role (' . $roleString . ')',
+            'Role(' . $roleString . ')',
         ];
 
         $callback = function () use ($columns, $teachers) {
             $file = fopen('php://output', 'w');
+            fputcsv($file, ['NOTE: Fields with * are mandatory']);
+            fputcsv($file, []);
             fputcsv($file, $columns);
 
             foreach ($teachers as $teacher) {

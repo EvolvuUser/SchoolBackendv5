@@ -12875,8 +12875,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16070,7 +16070,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'message' => 'Invalid or expired token'
             ], 401);
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while updating admission class'
@@ -16320,19 +16319,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
@@ -18746,7 +18745,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //     }
     // }
 
-
     // public function deleteHouse($id)
     // {
     //     try {
@@ -18799,7 +18797,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $houses = DB::table('house as h')
                 ->select('h.*')
                 ->where(function ($query) use ($academic_year) {
-                    $query->whereJsonContains('h.academic_yr', $academic_year)
+                    $query
+                        ->whereJsonContains('h.academic_yr', $academic_year)
                         ->orWhereNull('h.academic_yr');
                 })
                 ->orderBy('h.house_name', 'asc')
@@ -18896,7 +18895,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->first();
 
             if ($existingExact) {
-
                 $years = json_decode($existingExact->academic_yr, true) ?? [];
 
                 //  Case 4: same year already exists
@@ -18967,7 +18965,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
-
 
     // public function updateHouse(Request $request, $id)
     // {
@@ -19057,7 +19054,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     //     }
     // }
 
-
     public function updateHouse(Request $request, $id)
     {
         try {
@@ -19085,7 +19081,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // 🔁 CASE 1: MULTIPLE YEARS → SPLIT
             // ================================
             if (is_array($currentYears) && count($currentYears) > 1) {
-
                 // ✅ Step 1: Remove current academic year from old record
                 $updatedYears = array_values(array_filter($currentYears, function ($yr) use ($academic_year) {
                     return $yr != $academic_year;
@@ -19133,7 +19128,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 // ✅ Step 4: Update students for this academic year
                 DB::table('student')
                     ->where('house', $id)
-                    ->where('academic_yr', $academic_year) // make sure column exists
+                    ->where('academic_yr', $academic_year)  // make sure column exists
                     ->update([
                         'house' => $newHouseId
                     ]);
@@ -19196,7 +19191,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ], 500);
         }
     }
-
 
     public function deleteHouse($id)
     {
@@ -19270,6 +19264,104 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'success' => false,
                 'message' => 'Something went wrong',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAdmissionUsers(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $users = DB::table('new_adm_registration as r')
+                ->leftJoin('new_adm_user_master as u', 'u.nar_id', '=', 'r.nar_id')
+                ->select(
+                    'r.nar_id',
+                    'r.parent_name',
+                    'r.email',
+                    'r.phone_no',
+                    'r.date',
+                    'u.user_id',
+                    'u.special_user'
+                )
+                ->orderBy('r.nar_id', 'desc')
+                ->get();
+
+            $data = $users->map(function ($row) {
+                return [
+                    'nar_id' => $row->nar_id,
+                    'parent_name' => $row->parent_name,
+                    'email' => $row->email,
+                    'phone_no' => $row->phone_no,
+                    'date' => $row->date,
+                    'user_id' => $row->user_id,
+                    'is_special_user' => $row->special_user === 'Y',
+                    'user_type' => $row->special_user === 'Y' ? 'SPECIAL' : 'NORMAL'
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateSpecialUser(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $request->validate([
+                'nar_id' => 'required|integer',
+                'special_user' => 'required|in:Y,N'
+            ]);
+
+            $record = DB::table('new_adm_user_master')
+                ->where('nar_id', $request->nar_id)
+                ->first();
+
+            if (!$record) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            DB::table('new_adm_user_master')
+                ->where('nar_id', $request->nar_id)
+                ->update([
+                    'special_user' => $request->special_user
+                ]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Special user updated successfully',
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }
