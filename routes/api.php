@@ -1613,6 +1613,10 @@
 
             Route::get('/teacher/download-csv', [BulkUploading::class, 'downloadTeacherCsvTemplate']);
             Route::post('/teacher/upload-csv', [BulkUploading::class, 'uploadTeacherCsv']);
+
+            // New Admissions Users
+            Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
+            Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);
             // --------------------------------- Routes
         });
 
