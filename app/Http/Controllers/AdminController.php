@@ -12806,7 +12806,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'b.payment_date',
                     'class.name as class_name'
                 )
-                ->orderBy('a.adm_form_pk', 'asc');
+                ->orderBy('a.adm_form_pk', 'desc');
 
             if (!empty($classId)) {
                 $query->where('a.class_id', $classId);
@@ -13202,7 +13202,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'b.payment_date',
                     'cc.name as class_name'
                 )
-                ->orderBy('a.adm_form_pk', 'asc');
+                ->orderBy('a.adm_form_pk', 'desc');
 
             $admissions = $query->get();
 
@@ -13324,7 +13324,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $admissions = $query
-                ->orderBy('adm_form_pk', 'asc')
+                ->orderBy('adm_form_pk', 'desc')
                 ->get();
 
             return response()->json([
@@ -13710,7 +13710,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $admissions = $query
-                ->orderBy('adm_form_pk', 'asc')
+                ->orderBy('adm_form_pk', 'desc')
                 ->get();
 
             return response()->json([
@@ -13840,7 +13840,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             $admissions = $query
-                ->orderBy('online_admission_form.adm_form_pk', 'asc')
+                ->orderBy('online_admission_form.adm_form_pk', 'desc')
                 ->get();
 
             return response()->json([
