@@ -5,15 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\DailyTodo;
 use App\Models\Event;
+use App\Models\Setting;
 use App\Models\StaffNotice;
 use App\Models\Teacher;
+use App\Models\UserMaster;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use App\Models\UserMaster;
-use App\Models\Setting;
 
 class ImpersonateController extends Controller
 {
@@ -88,7 +88,6 @@ class ImpersonateController extends Controller
                 'short_name' => $shortName,
                 'settings' => $settings,
                 'settings_new' => $settings_new,
-
                 // 🔥 impersonation metadata
                 'impersonation' => true,
                 'impersonated_by' => $payload->get('reg_id'),
@@ -111,7 +110,6 @@ class ImpersonateController extends Controller
                     'school' => $shortName
                 ]
             ]);
-
         } catch (\Exception $e) {
             // Log::error('Impersonation failed', ['error' => $e->getMessage()]);
 
@@ -137,16 +135,16 @@ class ImpersonateController extends Controller
 
         $sessionId = $payload->get('isid');
 
-        if(!$sessionId) {
-            return response()->json(['message' => "Invalid Payload, Cannot Exit"],404);
+        if (!$sessionId) {
+            return response()->json(['message' => 'Invalid Payload, Cannot Exit'], 404);
         }
 
-        DB::table('impersonation_sessions')->where('id', $sessionId)
-        ->update([
-            'ended_at' => now(),
-            'exit_reason' => 'manual'
-        ]);
-
+        DB::table('impersonation_sessions')
+            ->where('id', $sessionId)
+            ->update([
+                'ended_at' => now(),
+                'exit_reason' => 'manual'
+            ]);
 
         return response()->json([
             'success' => true,
@@ -154,49 +152,54 @@ class ImpersonateController extends Controller
         ]);
     }
 
-    public function getRoles() {
+    public function getRoles()
+    {
         try {
             $payload = JWTAuth::getPayload();
             $user = $this->authenticateUser();
 
-            // get all the teachers 
+            // get all the teachers
             $data = DB::table('role_master')
-            ->select(
-                'role_master.role_id', 'role_master.name'
-            )->where('is_active' , 'Y')->where('role_id' , '!=' , 'U')->get();
+                ->select(
+                    'role_master.role_id', 'role_master.name'
+                )
+                ->where('is_active', 'Y')
+                ->where('role_id', '!=', 'U')
+                ->get();
 
             return response()->json([
                 'data' => $data,
                 'count' => count($data),
-            ] , 200);
-
-        } catch(Exception $err) {
+            ], 200);
+        } catch (Exception $err) {
             return response()->json([
                 'status' => false,
-                'message' => "Something went wrong",
+                'message' => 'Something went wrong',
                 'error' => $err->getMessage(),
                 'line' => $err->getLine(),
-            ] , 500);
+            ], 500);
         }
     }
 
-    public function getUsers(Request $request) {
+    public function getUsers(Request $request)
+    {
         try {
             $user = $this->authenticateUser();
             $role_id = $request->query('role_id');
 
-            // get all the teachers 
+            // get all the teachers
             $data = DB::table('user_master')
-            // ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
-            ->select(
-                'user_master.user_id' , 
-                'user_master.reg_id' , 
-                'user_master.role_id',
-                'user_master.name',
-            )->where('user_master.isDelete' , 'N');
+                // ->leftJoin('teacher' , 'teacher.teacher_id' , '=' , 'user_master.reg_id')
+                ->select(
+                    'user_master.user_id',
+                    'user_master.reg_id',
+                    'user_master.role_id',
+                    'user_master.name',
+                )
+                ->where('user_master.isDelete', 'N');
 
-            if($role_id) {
-                $data->where('user_master.role_id' , $role_id);
+            if ($role_id) {
+                $data->where('user_master.role_id', $role_id);
             }
 
             $data = $data->get();
@@ -204,16 +207,14 @@ class ImpersonateController extends Controller
             return response()->json([
                 'data' => $data,
                 'count' => count($data),
-            ] , 200);
-
-        } catch(Exception $err) {
+            ], 200);
+        } catch (Exception $err) {
             return response()->json([
                 'status' => false,
-                'message' => "Something went wrong",
+                'message' => 'Something went wrong',
                 'error' => $err->getMessage(),
                 'line' => $err->getLine(),
-            ] , 500);
+            ], 500);
         }
     }
-
 }

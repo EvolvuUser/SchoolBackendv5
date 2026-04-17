@@ -43,7 +43,7 @@ $classname = isset($class_array[0]) ? (int)$class_array[0] : 0;
     </style>
  <?php
 $parent_info = get_student_parent_info($student_id, $customClaims);
-//  dd($parent_info);
+ dd($parent_info);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
 // dd($health_activity_data);
 $class = get_class_section_of_student($student_id);
@@ -129,7 +129,7 @@ if ($class_name >= 1) {
                     <tr>
                       <?php
 
-$m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
+   $m_adhar_no = $parent_info[0]->m_adhar_no ?: '&nbsp;';
 ?>
                         <td align="left" width="27%">AADHAR CARD NO.: </td><td><div class="statistics_line"><?php echo $m_adhar_no; ?></div></td>
                     </tr>

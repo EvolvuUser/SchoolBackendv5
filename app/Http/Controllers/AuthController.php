@@ -58,7 +58,6 @@ class AuthController extends Controller
             }
 
             $userrole = UserMaster::where('user_id', $credentials['user_id'])
-                ->whereIn('role_id', ['A', 'M', 'U', 'T', 'P', 'L', 'E'])
                 ->first();
             if ($userrole) {
                 $user = UserMaster::where('user_id', $credentials['user_id'])->first();

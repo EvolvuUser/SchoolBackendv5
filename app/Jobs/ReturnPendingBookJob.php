@@ -19,117 +19,76 @@ class ReturnPendingBookJob implements ShouldQueue
 
     protected $members;
     protected $message;
+    protected $loginUserName;
 
-    public function __construct($members, $message)
+
+    public function __construct($members, $message, $loginUserName)
     {
         $this->members = $members;
         $this->message   = $message;
+        $this->loginUserName = $loginUserName;
     }
 
 
     public function handle(): void
     {
-        // \Log::info('ReturnPendingBookJob running', [
-        //     'members' => $this->members,
-        //     'message' => $this->message
-        // ]);
-
-
-        // $members = DB::table('issue_return as a')
-        //     ->join('book as c', 'a.book_id', '=', 'c.book_id')
-        //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
-        //     ->leftJoin('student as s', function ($join) {
-        //         $join->on('a.member_id', '=', 's.student_id')
-        //             ->where('a.member_type', 'S');
-        //     })
-        //     ->leftJoin('teacher as t', function ($join) {
-        //         $join->on('a.member_id', '=', 't.teacher_id')
-        //             ->where('a.member_type', 'T');
-        //     })
-        //     ->whereIn('a.member_id', $this->members)
-        //     ->whereDate('a.due_date', '<', now())
-        //     ->where(function ($query) {
-        //         $query->whereNull('a.return_date')
-        //             ->orWhere('a.return_date', '0000-00-00');
-        //     })
-        //     ->select(
-        //         'a.member_id',
-        //         'a.copy_id',
-        //         'b.phone_no',
-        //         'c.book_title',
-        //         DB::raw("COALESCE(s.first_name, t.name) as member_name")
-        //     )
-        //     ->get();
-
-        // $schoolSettings = getSchoolSettingsData();
-        // $wamids = [];
-
-        // foreach ($members as $member) {
-
-        //     if (!$member->phone_no) {
-        //         continue;
-        //     }
-
-        //     $finalMessage = $member->member_name . ', ' .
-        //         $member->book_title . ' ' .
-        //         ($this->message ?? 'yet not returned.');
-
-        //     // WhatsApp
-        //     if ($schoolSettings->whatsapp_integration === 'Y') {
-
-        //         $response = app(WhatsAppService::class)->sendTextMessage(
-        //             $member->phone_no,
-        //             'emergency_message',
-        //             [$finalMessage]
-        //         );
-
-        //         if (!isset($response['code'])) {
-
-        //             $wamid = $response['messages'][0]['id'] ?? null;
-
-        //             if ($wamid) {
-        //                 $wamids[] = $wamid;
-
-        //                 DB::table('redington_webhook_details')->insert([
-        //                     'wa_id' => $wamid,
-        //                     'phone_no' => $member->phone_no,
-        //                     'stu_teacher_id' => $member->member_id,
-        //                     'notice_id' => $member->copy_id,
-        //                     'message_type' => 'returnBookPending',
-        //                     'created_at' => now()
-        //                 ]);
-        //             }
-        //         }
-        //     }
-        // }
-
-        // sleep(20);
 
         $members = DB::table('issue_return as a')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
-            ->join('contact_details as b', 'a.member_id', '=', 'b.id')
+
+            // Student Join (ONLY ONCE)
             ->leftJoin('student as s', function ($join) {
                 $join->on('a.member_id', '=', 's.student_id')
-                    ->where('a.member_type', 'S');
+                    ->where('a.member_type', '=', 'S');
             })
+
+            // Teacher Join
             ->leftJoin('teacher as t', function ($join) {
                 $join->on('a.member_id', '=', 't.teacher_id')
-                    ->where('a.member_type', 'T');
+                    ->where('a.member_type', '=', 'T');
             })
+
+            // Contact ONLY for Student
+            ->leftJoin('contact_details as b', function ($join) {
+                $join->on('s.parent_id', '=', 'b.id')
+                    ->where('a.member_type', '=', 'S');
+            })
+
             ->whereIn('a.member_id', $this->members)
             ->whereDate('a.due_date', '<', now())
             ->where(function ($query) {
                 $query->whereNull('a.return_date')
                     ->orWhere('a.return_date', '0000-00-00');
             })
+
             ->select(
                 'a.member_id',
                 'a.copy_id',
-                'b.phone_no',
                 'c.book_title',
-                DB::raw("COALESCE(s.first_name, t.name) as member_name")
+                'a.issue_date',   // ADD
+                'a.due_date',
+
+                //  Correct Phone Mapping
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'T' THEN t.phone
+                WHEN a.member_type = 'S' THEN b.phone_no
+            END as phone_no
+        "),
+
+                // Name Mapping
+                DB::raw("
+            CASE 
+                WHEN a.member_type = 'S' THEN s.first_name
+                WHEN a.member_type = 'T' THEN t.name
+            END as member_name
+        ")
             )
+
+            ->orderBy('a.due_date', 'asc')
             ->get();
+
+
 
         $schoolSettings = getSchoolSettingsData();
         $wamids = [];
@@ -148,12 +107,43 @@ class ReturnPendingBookJob implements ShouldQueue
             }
 
             // collect book titles
-            $bookTitles = $group->pluck('book_title')->implode(', ');
+            // $bookTitles = $group->pluck('book_title')->implode(', ');
 
-            $finalMessage = $member->member_name . ', ' .
-                'Please return the following books: ' .
-                $bookTitles . '. ' .
-                ($this->message ?? '');
+            // $finalMessage = $member->member_name . ', ' .
+            //     'Please return the following books: ' .
+            //     $bookTitles . ' ' . ($this->message ?? '');
+
+            // $finalMessage = $member->member_name . ', ' .
+            //     'Please return the following books: ' .
+            //     $bookTitles .
+            //     (!empty($this->message) ? '. ' . $this->message : '.');
+
+            $bookDetails = $group->map(function ($book, $index) {
+                $issueDate = date('d/m/Y', strtotime($book->issue_date));
+                $dueDate = date('d/m/Y', strtotime($book->due_date));
+
+                return ($index + 1) . ') ' . $book->book_title .
+                    ' (Issue: ' . $issueDate . ', Due: ' . $dueDate . ')';
+            })->implode("\n");
+
+
+            $customSection = !empty($this->message)
+                ? trim($this->message)
+                : "Please return the book(s) to the library tomorrow during short break.";
+
+            $finalMessage = " " . $member->member_name . ",\n\n" .
+                "You have not submitted the following issued book(s):\n\n" .
+                $bookDetails . "\n\n" .
+                $customSection . "\n\n" .
+                "Regards\n" .
+                $this->loginUserName . "\n" .
+                "Library";
+
+            // if (!empty($this->message)) {
+            //     $finalMessage = $this->message;
+            // } else {
+            //     $finalMessage = $finalMessage;
+            // }
 
             // WhatsApp
             if ($schoolSettings->whatsapp_integration === 'Y') {

@@ -4,6 +4,7 @@
     use App\Http\Controllers\AssessmentController;
     use App\Http\Controllers\AuthController;
     use App\Http\Controllers\BankAccountController;
+    use App\Http\Controllers\BulkUploading;
     use App\Http\Controllers\CertificateController;
     use App\Http\Controllers\DailyTodoController;
     use App\Http\Controllers\DashboardController;
@@ -34,14 +35,13 @@
 
         // Protected routes
         Route::middleware(['jwt.auth', 'impersonation.readonly'])->group(function () {
-
             Route::get('sso/user', [UserController::class, 'getUserDetails']);
 
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('sessionData', [AuthController::class, 'getUserDetails']);
             Route::post('update_academic_year', [AuthController::class, 'updateAcademicYear']);
 
-            // Route::get('/getAuthUser', [AdminController::class, 'getAuthUser']);
+            Route::get('/getAuthUser', [AdminController::class, 'getAuthUser']);
             // Route::put('/updateauthacademicyear', [AdminController::class, 'updateAcademicYearForAuthUser']);
             // Route::get('/someControllerMethod', [LoginController::class, 'someControllerMethod']);
 
@@ -1457,6 +1457,8 @@
             // Subscription Reminder Report
             Route::get('/subscription/reminder', [LibraryController::class, 'subscriptionReminderReport']);
 
+            Route::get('/subscription/reminder/list', [LibraryController::class, 'subscriptionReminderReport']);
+
             // Periodicals Non Received Reminder
             Route::get('/periodicals/reminder', [LibraryController::class, 'periodicalNotReceivedReminder']);
 
@@ -1549,7 +1551,6 @@
             // 02/04/2026
             Route::get('/get_sportsteacherclasses', [LibraryController::class, 'getTeacherClasseswithSportsTeacher']);
 
-
             // Mahima 07-04-2026
             Route::get('/get_teaching_nonteaching_staff_list', [AdminController::class, 'getAllTeachingNonTeachingStaffList']);
 
@@ -1564,6 +1565,7 @@
 
             Route::delete('/delete_health_activity_group/{group_id}', [LibraryController::class, 'deleteGroup']);
 
+            Route::post('/delete_sub_group', [LibraryController::class, 'deleteSubGroup']);
 
             // Testing
             Route::get('/testPayload', function (Request $request) {
@@ -1584,10 +1586,11 @@
             // Master Drop Down Module
             // ########################
             // ------------------------- Tables Used
+
             /*
-                * dropdown_master - To store module data to which the drop down belongs.
-                * dropdown_options - To store the options.
-            */
+             * dropdown_master - To store module data to which the drop down belongs.
+             * dropdown_options - To store the options.
+             */
             // --------------------------------- Routes
             // Dropdowns
             Route::get('/master/dropdowns', [DropdownController::class, 'index']);
@@ -1607,6 +1610,13 @@
             // Option update/delete
             Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
             Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
+
+            Route::get('/teacher/download-csv', [BulkUploading::class, 'downloadTeacherCsvTemplate']);
+            Route::post('/teacher/upload-csv', [BulkUploading::class, 'uploadTeacherCsv']);
+
+            // New Admissions Users
+            Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
+            Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);
             // --------------------------------- Routes
         });
 
