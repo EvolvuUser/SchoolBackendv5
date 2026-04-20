@@ -388,4 +388,47 @@ class ReadmissionController extends Controller
             ], 500);
         }
     }
+
+    public function getNextClass($current_class_id)
+    {
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        $data = DB::table('currentclass_nextclass_mapping as m')
+            ->join('class as c', 'c.class_id', '=', 'm.next_class_id')
+            ->where('m.current_class_id', $current_class_id)
+            ->select(
+                'm.next_class_id',
+                'c.name as classname'
+            )
+            ->get();
+
+        if ($data->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No mapping found'
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    public function checkReadmission($class_id)
+    {
+        $today = Carbon::today()->toDateString();
+
+        $exists = DB::table('readmission_class')
+            ->where('class_id', $class_id)
+            ->where('publish', 'Y')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->exists();
+
+        return response()->json([
+            'status' => true,
+            'allowed' => $exists  // true / false
+        ]);
+    }
 }
