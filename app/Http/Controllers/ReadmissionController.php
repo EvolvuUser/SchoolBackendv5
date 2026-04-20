@@ -394,7 +394,15 @@ class ReadmissionController extends Controller
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $today = Carbon::today()->toDateString();
 
-        // ✅ Step 1: Get next class mapping
+        // ✅ Step 1: Check readmission for CURRENT class
+        $allowed = DB::table('readmission_class')
+            ->where('class_id', $current_class_id)
+            ->where('publish', 'Y')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->exists();
+
+        // ✅ Step 2: Get next class mapping
         $classes = DB::table('currentclass_nextclass_mapping as m')
             ->join('class as c', 'c.class_id', '=', 'm.next_class_id')
             ->where('m.current_class_id', $current_class_id)
@@ -412,15 +420,8 @@ class ReadmissionController extends Controller
             ]);
         }
 
-        $data = $classes->map(function ($item) use ($today, $academic_yr) {
-            $allowed = DB::table('readmission_class')
-                ->where('class_id', $item->next_class_id)
-                ->where('academic_yr', $academic_yr)
-                ->where('publish', 'Y')
-                ->whereDate('start_date', '<=', $today)
-                ->whereDate('end_date', '>=', $today)
-                ->exists();
-
+        // ✅ Step 3: Attach same readmission status
+        $data = $classes->map(function ($item) use ($allowed) {
             return [
                 'next_class_id' => $item->next_class_id,
                 'classname' => $item->classname,
