@@ -1629,8 +1629,7 @@
             Route::get('/admin/readmission-management/{id}', [ReadmissionController::class, 'viewreAdmissionForm']);
             Route::delete('/admin/readmission-management/{id}', [ReadmissionController::class, 'deletereAdmissionForm']);
             Route::patch('/admin/readmission-management/{id}', [ReadmissionController::class, 'updatereAdmissionForm']);
-            Route::get('/next_class/{current_class_id}', [ReadmissionController::class, 'getNextClass']);
-            Route::get('/check_readmission/{class_id}', [ReadmissionController::class, 'checkReadmission']);
+            Route::get('/next_classwithreadmission/{current_class_id}', [ReadmissionController::class, 'getNextClassWithReadmission']);
             // --------------------------------- Routes
         });
 
