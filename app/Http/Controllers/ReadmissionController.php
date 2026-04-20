@@ -389,11 +389,13 @@ class ReadmissionController extends Controller
         }
     }
 
-    public function getNextClass($current_class_id)
+    public function getNextClassWithReadmission($current_class_id)
     {
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
+        $today = Carbon::today()->toDateString();
 
-        $data = DB::table('currentclass_nextclass_mapping as m')
+        // ✅ Step 1: Get next class mapping
+        $classes = DB::table('currentclass_nextclass_mapping as m')
             ->join('class as c', 'c.class_id', '=', 'm.next_class_id')
             ->where('m.current_class_id', $current_class_id)
             ->select(
@@ -403,33 +405,33 @@ class ReadmissionController extends Controller
             )
             ->get();
 
-        if ($data->isEmpty()) {
+        if ($classes->isEmpty()) {
             return response()->json([
                 'status' => false,
                 'message' => 'No mapping found'
             ]);
         }
 
+        $data = $classes->map(function ($item) use ($today, $academic_yr) {
+            $allowed = DB::table('readmission_class')
+                ->where('class_id', $item->next_class_id)
+                ->where('academic_yr', $academic_yr)
+                ->where('publish', 'Y')
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->exists();
+
+            return [
+                'next_class_id' => $item->next_class_id,
+                'classname' => $item->classname,
+                'academic_yr' => $item->academic_yr,
+                'readmission_allowed' => $allowed
+            ];
+        });
+
         return response()->json([
             'status' => true,
             'data' => $data
-        ]);
-    }
-
-    public function checkReadmission($class_id)
-    {
-        $today = Carbon::today()->toDateString();
-
-        $exists = DB::table('readmission_class')
-            ->where('class_id', $class_id)
-            ->where('publish', 'Y')
-            ->whereDate('start_date', '<=', $today)
-            ->whereDate('end_date', '>=', $today)
-            ->exists();
-
-        return response()->json([
-            'status' => true,
-            'allowed' => $exists  // true / false
         ]);
     }
 }
