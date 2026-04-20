@@ -398,7 +398,8 @@ class ReadmissionController extends Controller
             ->where('m.current_class_id', $current_class_id)
             ->select(
                 'm.next_class_id',
-                'c.name as classname'
+                'c.name as classname',
+                'c.academic_yr'
             )
             ->get();
 
