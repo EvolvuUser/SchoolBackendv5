@@ -17,6 +17,7 @@
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\NoticeController;
     use App\Http\Controllers\ParentController;
+    use App\Http\Controllers\ReadmissionController;
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
@@ -1617,6 +1618,17 @@
             // New Admissions Users
             Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
             Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);
+
+            // Readmission APIs
+            Route::post('save_readmission', [ReadmissionController::class, 'saveReadmission']);
+
+            // Readmission classes
+            Route::get('/admin/readmission-management', [ReadmissionController::class, 'getreAdmissionManagement']);
+            Route::get('/admin/readmission/classes/not-created', [ReadmissionController::class, 'getreAdmissionClassesNotCreated']);
+            Route::post('/admin/readminssion-management/create', [ReadmissionController::class, 'createreAdmissionForm']);
+            Route::get('/admin/readmission-management/{id}', [ReadmissionController::class, 'viewreAdmissionForm']);
+            Route::delete('/admin/readmission-management/{id}', [ReadmissionController::class, 'deletereAdmissionForm']);
+            Route::patch('/admin/readmission-management/{id}', [ReadmissionController::class, 'updatereAdmissionForm']);
             // --------------------------------- Routes
         });
 
