@@ -402,7 +402,6 @@ class ReadmissionController extends Controller
             ->whereDate('end_date', '>=', $today)
             ->exists();
 
-        // ✅ Step 2: Get next class mapping
         $classes = DB::table('currentclass_nextclass_mapping as m')
             ->join('class as c', 'c.class_id', '=', 'm.next_class_id')
             ->where('m.current_class_id', $current_class_id)
