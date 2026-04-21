@@ -644,7 +644,14 @@ class StudentController extends Controller
             $next_academic_year = $next_start_year . '-' . $next_end_year;
             // dd($next_academic_year);
 
-            $section = DB::table('section')->where('academic_yr', $next_academic_year)->where('class_id', $class_id)->get();
+            $section = DB::table('section')
+                ->where('class_id', $class_id)
+                ->where('academic_yr', $next_academic_year)
+                ->union(
+                    DB::table('section')
+                        ->whereNull('class_id')
+                )
+                ->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'Section List for the next academic year',
@@ -733,13 +740,32 @@ class StudentController extends Controller
                     ];
                     // dd($data);
                     // Insert the student record for the next academic year
-                    Student::create($data);
+                    $newStudent = Student::create($data);
 
-                    // Mark the student as promoted
+                    // Mark old student promoted
                     DB::table('student')
                         ->where('student_id', $student_id)
                         ->where('academic_yr', $customClaims)
                         ->update(['isPromoted' => 'Y']);
+
+                    $fees_category_id = $this->getFeesCategoryOfClass($tclass_id);
+
+                    if (!empty($fees_category_id)) {
+                        $exists = DB::table('fees_student_category')
+                            ->where('student_id', $newStudent->student_id)
+                            ->where('fees_category_id', $fees_category_id)
+                            ->where('academic_yr', $next_academic_year)
+                            ->exists();
+
+                        if (!$exists) {
+                            DB::table('fees_student_category')->insert([
+                                'student_id' => $newStudent->student_id,
+                                'fees_category_id' => $fees_category_id,
+                                'isModify' => 'Y',
+                                'academic_yr' => $next_academic_year
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -753,6 +779,13 @@ class StudentController extends Controller
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function getFeesCategoryOfClass($class_id)
+    {
+        return DB::table('fees_category_detail')
+            ->where('class_concession', $class_id)
+            ->value('fees_category_id');
     }
 
     // Student List with Class name Dev name-Manish Kumar Sharma 09-04-2025

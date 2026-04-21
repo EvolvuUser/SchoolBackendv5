@@ -16103,9 +16103,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
             $academic_year = $request->query('academic_year') ?? JWTAuth::getPayload()->get('academic_year');
-            if ($payload->get('role_id') != 'A') {
-                return response()->json(['status' => false, 'message' => 'You are not allowd to access this resource'], 400);
-            }
+
             $templates = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
@@ -16126,13 +16124,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $request->validate([
                 'key' => 'required|string|max:100',
@@ -16181,13 +16172,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
 
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
-
             $template = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
@@ -16218,13 +16202,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $request->validate([
                 'body' => 'required|string',
@@ -16270,13 +16247,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $template = DB::table('email_templates')->where('id', $id)->first();
 
