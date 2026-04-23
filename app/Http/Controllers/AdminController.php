@@ -3757,7 +3757,6 @@ class AdminController extends Controller
                     ->first();
 
                 if ($detail['teacher_id'] === null) {
-                    // If teacher_id is null, delete the record
                     if ($subjectAllotment) {
                         $subjectAllotment->delete();
                     }
@@ -3775,7 +3774,7 @@ class AdminController extends Controller
                             'section_id' => $sectionId,
                             'teacher_id' => $detail['teacher_id'],
                             'academic_yr' => $academicYr,
-                            'sm_id' => $sm_id  // Ensure sm_id is correctly passed
+                            'sm_id' => $sm_id
                         ]);
                     }
                 }
@@ -3807,16 +3806,7 @@ class AdminController extends Controller
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            $recordCount = $recordsToDelete->count();
-
-            if ($recordCount > 1) {
-                // Delete all but one, and set teacher_id to null on the remaining one
-                $recordsToDelete->slice(1)->each->delete();
-                $recordsToDelete->first()->update(['teacher_id' => null]);
-            } elseif ($recordCount == 1) {
-                // Just set teacher_id to null
-                $recordsToDelete->first()->update(['teacher_id' => null]);
-            }
+            $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -3972,9 +3962,10 @@ class AdminController extends Controller
         }
 
         $className = $class->name;
-
+        $hscClasses = getClassesOfADepartment('Higher Secondary');
+        $hscClassIds = collect($hscClasses)->pluck('class_id')->toArray();
         // Determine subjects based on class name
-        $subjects = ($className == 11 || $className == 12)
+        $subjects = in_array($classId, $hscClassIds)
             ? $this->getAllSubjectsNotHsc()
             : $this->getAllSubjectsOfHsc();
 
@@ -4119,32 +4110,25 @@ class AdminController extends Controller
 
         // Iterate through the input subjects and update or create records
         foreach ($subjects as $subjectData) {
-            // if (isset($subjectData['subject_id'])) {
-            //     // Update existing record
-            //     SubjectAllotment::updateOrCreate(
-            //         [
-            //             'subject_id' => $subjectData['subject_id'],
-            //             'class_id' => $class_id,
-            //             'section_id' => $section_id,
-            //             'academic_yr' => $academicYr,
-            //         ],
-            //         [
-            //             'sm_id' => $subjectData['sm_id'],
-            //             'teacher_id' => $subjectData['teacher_id'],
-            //         ]
-            //     );
-            // } else {
-            // Create new record
+            if (!array_key_exists('teacher_id', $subjectData)) {
+                continue;
+            }
+
+            if (empty($subjectData['teacher_id'])) {
+                continue;
+            }
+
             SubjectAllotment::updateOrCreate(
                 [
                     'class_id' => $class_id,
                     'section_id' => $section_id,
                     'sm_id' => $subjectData['sm_id'],
                     'academic_yr' => $academicYr,
+                ],
+                [
                     'teacher_id' => $subjectData['teacher_id']
                 ]
             );
-            // }
         }
 
         // Handle extra records in the existing allotments that are not in the input
