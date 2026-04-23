@@ -3456,7 +3456,8 @@ class AdminController extends Controller
         }
 
         $className = $class->name;
-
+        $hscClasses = getClassesOfADepartment('Higher Secondary');
+        $hscClassIds = collect($hscClasses)->pluck('class_id')->toArray();
         // Fetch Division Names
         $divisionNames = Division::where('academic_yr', $academicYr)
             ->where('class_id', $classId)
@@ -3466,7 +3467,7 @@ class AdminController extends Controller
             ->get();
 
         // Fetch Subjects Based on Class Type
-        $subjects = ($className == 11 || $className == 12)
+        $subjects = in_array($classId, $hscClassIds)
             ? $this->getAllSubjectsOfHsc()
             : $this->getAllSubjectsNotHsc();
         $count = $subjects->count();
