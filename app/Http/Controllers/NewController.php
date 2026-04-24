@@ -4438,11 +4438,11 @@ ORDER BY Z.t_remark_id DESC;");
                 $result->smslogid = $smssent->sms_log_id ?? null;
                 $result->smssentdates = isset($result->smslogid)
                     ? DB::table('sms_log_for_outstanding_fees_details')
-                    ->select('date_sms_sent')
-                    ->where('sms_log_id', $result->smslogid)
-                    ->orderBy('date_sms_sent', 'asc')
-                    ->get()
-                    ->toArray()
+                        ->select('date_sms_sent')
+                        ->where('sms_log_id', $result->smslogid)
+                        ->orderBy('date_sms_sent', 'asc')
+                        ->get()
+                        ->toArray()
                     : null;
                 $classname = DB::table('section')
                     ->join('class', 'class.class_id', '=', 'section.class_id')
@@ -5427,7 +5427,6 @@ ORDER BY Z.t_remark_id DESC;");
         ]);
     }
 
-
     // public function getHouseofSchool(Request $request)
     // {
     //     $academic_year = JWTAuth::getPayload()->get('academic_year');
@@ -5455,7 +5454,8 @@ ORDER BY Z.t_remark_id DESC;");
             $houses = DB::table('house as h')
                 ->select('h.*')
                 ->where(function ($query) use ($academic_year) {
-                    $query->whereJsonContains('h.academic_yr', $academic_year)
+                    $query
+                        ->whereJsonContains('h.academic_yr', $academic_year)
                         ->orWhereNull('h.academic_yr');
                 })
                 ->orderBy('h.house_name', 'asc')
@@ -6018,7 +6018,9 @@ ORDER BY Z.t_remark_id DESC;");
                 ->where('section_id', $section_id)
                 ->where('academic_yr', $customClaims)
                 ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'reg_no', 'admission_date', 'stu_aadhaar_no', 'house')
-                ->orderBy('reg_no', 'ASC')
+                ->orderBy('first_name', 'ASC')
+                ->orderBy('mid_name', 'ASC')
+                ->orderBy('last_name', 'ASC')
                 ->get();
 
             $students = $students->map(function ($student) {
