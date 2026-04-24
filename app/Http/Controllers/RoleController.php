@@ -209,11 +209,6 @@ class RoleController extends Controller
 
     public function updateAccess(Request $request, $role_id)
     {
-        $request->validate([
-            'menu_ids' => 'required|array',
-            'menu_ids.*' => 'exists:menus,menu_id',
-        ]);
-
         RolesAndMenu::where('role_id', $role_id)->delete();
         $menuIds = $request->input('menu_ids');
         foreach ($menuIds as $menuId) {
