@@ -601,8 +601,6 @@ class StudentController extends Controller
             $nextClasses = DB::table('currentclass_nextclass_mapping as map')
                 ->join('class as c', 'c.class_id', '=', 'map.next_class_id')
                 ->where('map.current_class_id', $class_id)
-                ->where('map.academic_yr', $current_academic_year)
-                ->where('c.academic_yr', $next_academic_year)
                 ->select('c.*')
                 ->get();
             return response()->json([
