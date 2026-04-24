@@ -389,7 +389,7 @@ class ReadmissionController extends Controller
         }
     }
 
-    public function getNextClassWithReadmission($current_class_id)
+    public function getNextClassWithReadmission($current_class_id, $student_id)
     {
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
         $today = Carbon::today()->toDateString();
@@ -400,6 +400,12 @@ class ReadmissionController extends Controller
             ->where('publish', 'Y')
             ->whereDate('start_date', '<=', $today)
             ->whereDate('end_date', '>=', $today)
+            ->exists();
+
+        $alreadyConfirmed = DB::table('confirmation_readmission')
+            ->where('student_id', $student_id)
+            ->where('current_class_id', $current_class_id)
+            ->where('confirm', 'Y')
             ->exists();
 
         $classes = DB::table('currentclass_nextclass_mapping as m')
@@ -418,14 +424,14 @@ class ReadmissionController extends Controller
                 'message' => 'No mapping found'
             ]);
         }
-
+        $finalAllowed = $alreadyConfirmed ? false : $allowed;
         // ✅ Step 3: Attach same readmission status
-        $data = $classes->map(function ($item) use ($allowed) {
+        $data = $classes->map(function ($item) use ($finalAllowed) {
             return [
                 'next_class_id' => $item->next_class_id,
                 'classname' => $item->classname,
                 'academic_yr' => $item->academic_yr,
-                'readmission_allowed' => $allowed
+                'readmission_allowed' => $finalAllowed
             ];
         });
 
