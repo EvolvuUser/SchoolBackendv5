@@ -426,7 +426,7 @@
 
             // Promote Students
             Route::get('getstudentlistbyclassdivision/{class_id}/{section_id}', [StudentController::class, 'getStudentListClass']);
-            Route::get('nextclassacademicyear', [StudentController::class, 'nextClassPromote']);
+            Route::get('nextclassacademicyear/{class_id}', [StudentController::class, 'nextClassPromote']);
             Route::get('nextsectionacademicyear/{class_id}', [StudentController::class, 'nextSectionPromote']);
             Route::post('promotestudents', [StudentController::class, 'promoteStudentsUpdate']);
 

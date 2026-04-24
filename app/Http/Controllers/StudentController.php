@@ -595,29 +595,20 @@ class StudentController extends Controller
         }
     }
 
-    public function nextClassPromote(Request $request)
+    public function nextClassPromote(Request $request, $class_id)
     {
         try {
-            $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $current_academic_year = $customClaims;
-
-            // Split the string into start year and end year
-            list($start_year, $end_year) = explode('-', $current_academic_year);
-
-            // Increment the start year to move to the next academic year
-            $next_start_year = $start_year + 1;
-            $next_end_year = $end_year + 1;
-
-            // Create the next academic year
-            $next_academic_year = $next_start_year . '-' . $next_end_year;
-            // dd($next_academic_year);
-
-            $class = DB::table('class')->where('academic_yr', $next_academic_year)->get();
+            $nextClasses = DB::table('currentclass_nextclass_mapping as map')
+                ->join('class as c', 'c.class_id', '=', 'map.next_class_id')
+                ->where('map.current_class_id', $class_id)
+                ->where('map.academic_yr', $current_academic_year)
+                ->where('c.academic_yr', $next_academic_year)
+                ->select('c.*')
+                ->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'Class List for the next academic year',
-                'data' => $class,
+                'data' => $nextClasses,
                 'success' => true
             ]);
         } catch (Exception $e) {
