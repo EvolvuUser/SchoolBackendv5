@@ -575,14 +575,21 @@ class StudentController extends Controller
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $students = DB::table('student')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('IsDelete', 'N')
-                ->where('isPromoted', '!=', 'Y')
-                ->orderBy('roll_no', 'asc')
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $students = DB::table('student as s')
+                ->leftJoin('confirmation_readmission as cr', 'cr.student_id', '=', 's.student_id')
+                ->where('s.class_id', $class_id)
+                ->where('s.section_id', $section_id)
+                ->where('s.IsDelete', 'N')
+                ->where('s.isPromoted', '!=', 'Y')
+                ->orderBy('s.roll_no', 'asc')
+                ->select(
+                    's.*',
+                    DB::raw("COALESCE(cr.confirm, '') as confirm_status")
+                )
                 ->get();
+
             return response()->json([
                 'status' => 200,
                 'message' => 'Student List for this class',
@@ -590,8 +597,10 @@ class StudentController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
-            \Log::error($e);  // Log the exception
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
