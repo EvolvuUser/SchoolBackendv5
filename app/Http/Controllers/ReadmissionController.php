@@ -402,10 +402,9 @@ class ReadmissionController extends Controller
             ->whereDate('end_date', '>=', $today)
             ->exists();
 
-        $alreadyConfirmed = DB::table('confirmation_readmission')
+        $alreadyConfirmed = DB::table('student')
             ->where('student_id', $student_id)
-            ->where('current_class_id', $current_class_id)
-            ->where('confirm', 'Y')
+            ->where('isPromoted', 'Y')
             ->exists();
 
         $classes = DB::table('currentclass_nextclass_mapping as m')
