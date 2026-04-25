@@ -377,7 +377,7 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.template', compact('data'));
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
-            } elseif ($shortname == 'DEMONEW') {  
+            } elseif ($shortname == 'DEMONEW') {
                 $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
             }
 
@@ -1024,7 +1024,7 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.bonafidecaste', compact('data'));
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsbonafidecaste', compact('data'));
-            }  elseif ($shortname == 'DEMONEW') {
+            } elseif ($shortname == 'DEMONEW') {
                 $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
             } else {
                 $pdf = PDF::loadView('pdf.demobonafidecaste', compact('data'));
@@ -3797,7 +3797,7 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
             } elseif ($shortName == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscsleavingcertificate', compact('data'));
-            } elseif($shortName == 'DEMONEW') {
+            } elseif ($shortName == 'DEMONEW') {
                 $pdf = PDF::loadView('pdf.demoleavingcertificate', compact('data'));
             } else {
                 $pdf = PDF::loadView('pdf.leavingcertificate', compact('data'));
@@ -4386,13 +4386,18 @@ class CertificateController extends Controller
             $user_id = 'S' . str_pad($student_id, 4, '0', STR_PAD_LEFT);  // Building the user_id without quotes
             $first_name = addslashes($first_name);  // Ensure proper escaping if $first_name is a string
 
-            DB::table('user_master')->insert([
-                'user_id' => $user_id,
-                'name' => $first_name,
-                'password' => $password,
-                'reg_id' => $student_id,
-                'role_id' => 'S'
-            ]);
+            DB::table('user_master')->updateOrInsert(
+                [
+                    'user_id' => $user_id
+                ],
+                [
+                    'name' => $first_name,
+                    'password' => $password,
+                    'reg_id' => $student_id,
+                    'role_id' => 'S',
+                    'IsDelete' => 'N'
+                ]
+            );
             $parent_id = DB::table('student')
                 ->where('student_id', $student_id)
                 ->value('parent_id');
@@ -4422,7 +4427,6 @@ class CertificateController extends Controller
 
                 $response = createUserInEvolvu($currentUserName);
 
-                $token_data = $response->body();
                 $data = DB::table('deleted_contact_details')
                     ->where('id', $parent_id)
                     ->get();
