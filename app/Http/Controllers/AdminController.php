@@ -2116,38 +2116,52 @@ class AdminController extends Controller
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
 
-        // ✅ Real sections
-        $sections = DB::table('class')
-            ->join('section', 'class.class_id', '=', 'section.class_id')
-            ->select(
-                'class.class_id',
-                'section.section_id',
-                'class.name as classname',
-                'section.name as sectionname'
-            )
-            ->where('class.academic_yr', $academicYr)
-            ->where('section.academic_yr', $academicYr);
+        $sql = "
+        SELECT 
+            x.*,
+            (
+                SELECT COUNT(*) 
+                FROM student s 
+                WHERE s.section_id = x.section_id
+                  AND s.academic_yr = ?
+                  AND s.isDelete = 'N'
+            ) as students_count
+        FROM (
+            
+            SELECT 
+                class.class_id, 
+                section.section_id, 
+                class.name AS classname, 
+                section.name AS sectionname 
+            FROM class 
+            JOIN section 
+                ON class.class_id = section.class_id 
+            WHERE class.academic_yr = ? 
+              AND section.academic_yr = ?
 
-        $dummySections = DB::table('class')
-            ->leftJoin('section', function ($join) {
-                $join->on('class.class_id', '=', 'section.class_id');
-            })
-            ->select(
-                'class.class_id',
-                DB::raw('NULL as section_id'),
-                'class.name as classname',
-                DB::raw("'Dummy' as sectionname")
-            )
-            ->whereNull('section.class_id')  // important
-            ->where('class.academic_yr', $academicYr);
+            UNION
 
-        $finalData = $sections
-            ->union($dummySections)
-            ->orderBy('class_id', 'ASC')
-            ->orderBy('section_id', 'ASC')
-            ->get();
+            SELECT 
+                class.class_id, 
+                section.section_id, 
+                class.name AS classname, 
+                section.name AS sectionname 
+            FROM class, section 
+            WHERE section.class_id IS NULL 
+              AND class.academic_yr = ?
 
-        return response()->json($finalData);
+        ) AS x
+        ORDER BY x.class_id ASC, x.section_id ASC
+    ";
+
+        $data = DB::select($sql, [
+            $academicYr,  // for student count
+            $academicYr,
+            $academicYr,
+            $academicYr
+        ]);
+
+        return response()->json($data);
     }
 
     public function getStudentListBySection(Request $request)
@@ -2225,6 +2239,47 @@ class AdminController extends Controller
                     ->join('section', 'section.section_id', '=', 'student.section_id')
                     ->where('student.academic_yr', $academicYr)
                     ->where('isDelete', 'N')
+                    ->where('student.section_id', $sectionId)
+                    ->where('parent_id', '!=', 0)
+                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->get();
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student Information',
+                'data' => $student,
+                'success' => true
+            ]);
+        } catch (Exception $e) {
+            \Log::error($e);  // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getStudentListByClassSectionData(Request $request)
+    {
+        try {
+            $payload = getTokenPayload($request);
+            $academicYr = $payload->get('academic_year');
+            $classId = $request->query('class_id');
+            $sectionId = $request->query('section_id');
+            if (!$sectionId) {
+                $student = DB::table('student')
+                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                    ->where('student.academic_yr', $academicYr)
+                    ->where('isDelete', 'N')
+                    ->where('parent_id', '!=', 0)
+                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->get();
+            } else {
+                $student = DB::table('student')
+                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                    ->where('student.academic_yr', $academicYr)
+                    ->where('isDelete', 'N')
+                    ->where('student.class_id', $classId)
                     ->where('student.section_id', $sectionId)
                     ->where('parent_id', '!=', 0)
                     ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
