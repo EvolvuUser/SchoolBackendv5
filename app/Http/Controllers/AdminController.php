@@ -4045,16 +4045,15 @@ class AdminController extends Controller
         $class = Classes::find($classId);
         // $className = $class->name;
         // Fetch Division Names
-        $divisionNames = Division::where(function ($q) use ($classId) {
+        $divisionNames = Division::where(function ($q) use ($classId, $academicYr) {
             $q
-                ->where('class_id', $classId)
+                ->where(function ($q1) use ($classId, $academicYr) {
+                    $q1
+                        ->where('class_id', $classId)
+                        ->where('academic_yr', $academicYr);
+                })
                 ->orWhereNull('class_id');
         })
-            ->where(function ($q) use ($academicYr) {
-                $q
-                    ->where('academic_yr', $academicYr)
-                    ->orWhereNull('academic_yr');
-            })
             ->select('section_id', 'name')
             ->orderBy('section_id', 'asc')
             ->distinct()
