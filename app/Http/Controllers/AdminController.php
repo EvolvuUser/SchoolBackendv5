@@ -2111,6 +2111,45 @@ class AdminController extends Controller
         return response()->json($divisions);
     }
 
+    public function getallSectionsWithDummyStudentCount(Request $request)
+    {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        // ✅ Real sections
+        $sections = DB::table('class')
+            ->join('section', 'class.class_id', '=', 'section.class_id')
+            ->select(
+                'class.class_id',
+                'section.section_id',
+                'class.name as classname',
+                'section.name as sectionname'
+            )
+            ->where('class.academic_yr', $academicYr)
+            ->where('section.academic_yr', $academicYr);
+
+        $dummySections = DB::table('class')
+            ->leftJoin('section', function ($join) {
+                $join->on('class.class_id', '=', 'section.class_id');
+            })
+            ->select(
+                'class.class_id',
+                DB::raw('NULL as section_id'),
+                'class.name as classname',
+                DB::raw("'Dummy' as sectionname")
+            )
+            ->whereNull('section.class_id')  // important
+            ->where('class.academic_yr', $academicYr);
+
+        $finalData = $sections
+            ->union($dummySections)
+            ->orderBy('class_id', 'ASC')
+            ->orderBy('section_id', 'ASC')
+            ->get();
+
+        return response()->json($finalData);
+    }
+
     public function getStudentListBySection(Request $request)
     {
         $payload = getTokenPayload($request);
