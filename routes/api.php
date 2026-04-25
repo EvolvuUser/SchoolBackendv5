@@ -255,6 +255,7 @@
 
             // Allot Teachers
             Route::get('/get_divisions/{classId}', [AdminController::class, 'getDivisionsbyClass']);  // Done  Allot teacher tab list the division for the selected class.
+            Route::get('/get_divisionswithdummydivision/{classId}', [AdminController::class, 'getDivisionswithDummybyClass']);  // Done  Allot teacher tab list the division for the selected class.
             Route::get('/get_subjects/{sectionId}', [AdminController::class, 'getSubjectsbyDivision']);  // Done   Allot teacher tab list the subject  for the selected Division.
             Route::get('/get_presubjects/{classId}', [AdminController::class, 'getPresignSubjectByDivision']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.
             Route::get('/get_presubjectss/{sectionId}', [AdminController::class, 'getSubjectsByDivisionWithAssigned']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.

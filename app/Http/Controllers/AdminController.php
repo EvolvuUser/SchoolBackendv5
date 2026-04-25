@@ -4037,6 +4037,35 @@ class AdminController extends Controller
         ]);
     }
 
+    public function getDivisionswithDummybyClass(Request $request, $classId)
+    {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+        // Retrieve Class Information
+        $class = Classes::find($classId);
+        // $className = $class->name;
+        // Fetch Division Names
+        $divisionNames = Division::where(function ($q) use ($classId) {
+            $q
+                ->where('class_id', $classId)
+                ->orWhereNull('class_id');
+        })
+            ->where(function ($q) use ($academicYr) {
+                $q
+                    ->where('academic_yr', $academicYr)
+                    ->orWhereNull('academic_yr');
+            })
+            ->select('section_id', 'name')
+            ->orderBy('section_id', 'asc')
+            ->distinct()
+            ->get();
+
+        // Return Combined Response
+        return response()->json([
+            'divisions' => $divisionNames,
+        ]);
+    }
+
     // Get the Subject list base on the Division
     public function getSubjectsbyDivision(Request $request, $sectionId)
     {
