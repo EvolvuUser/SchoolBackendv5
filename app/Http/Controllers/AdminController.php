@@ -19562,29 +19562,25 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
 
-            // Correct folder logic
             $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
             $fileUrl = $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}";
 
-            // Fetch file content
-            $fileContent = @file_get_contents($fileUrl);
+            // ✅ STREAM (binary safe)
+            return response()->streamDownload(function () use ($fileUrl) {
+                $stream = fopen($fileUrl, 'rb'); // binary mode
 
-            if ($fileContent === false) {
-                return response()->json([
-                    'status' => 404,
-                    'message' => 'File not found',
-                    'success' => false
-                ]);
-            }
-
-            // Detect MIME type
-            $mimeType = mime_content_type($fileUrl) ?: 'application/octet-stream';
-
-            // Force download
-            return response($fileContent, 200)
-                ->header('Content-Type', $mimeType)
-                ->header('Content-Disposition', 'attachment; filename="' . $file_name . '"');
+                if ($stream) {
+                    while (!feof($stream)) {
+                        echo fread($stream, 8192);
+                        flush();
+                    }
+                    fclose($stream);
+                }
+            }, $file_name, [
+                'Content-Type' => 'application/octet-stream',
+                'Content-Disposition' => 'attachment; filename="' . $file_name . '"',
+            ]);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
