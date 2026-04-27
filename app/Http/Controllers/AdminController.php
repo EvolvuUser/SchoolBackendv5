@@ -13724,8 +13724,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             'mother_email' => $mother_emailid
                         ]);
 
-                        // $cc = "school@arnoldcentralschoolpune.edu.in";
-
                         smart_mail(
                             $father_emailid,
                             'Inviting For Verification for Admission',
@@ -13740,12 +13738,16 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                             $emailData
                         );
 
-                        // smart_mail(
-                        //     $cc,
-                        //     'Inviting For Verification for Admission',
-                        //     'emails.parentUserEmail',
-                        //     $emailData
-                        // );
+                        // stage => dev , live => production
+                        if(env("APP_ENV") == 'production') {
+                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                            smart_mail(
+                                $cc,
+                                'Inviting For Verification for Admission',
+                                'emails.parentUserEmail',
+                                $emailData
+                            );
+                        }
 
                         Log::channel('approve_admission')->info('Emails sent successfully', [
                             'form_id' => $form_id
@@ -13877,6 +13879,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $mother_emailid = DB::table('online_admission_form')->where('form_id', $form_id)->value('m_emailid');
                 smart_mail($father_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
                 smart_mail($mother_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
+
+                if(env("APP_ENV") == 'production') {
+                    $cc = "school@arnoldcentralschoolpune.edu.in";
+                    smart_mail($cc, 'Admission Details', 'emails.parentUserEmail', $emailData);
+
+                }
             }
 
             DB::commit();
@@ -15010,6 +15018,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+
+                        if(env("APP_ENV") == 'production') {
+                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                            smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        }
                         $logger->info("form_id {$form_id}: emails sent to fmail={$fmail}, mmail={$mmail}");
                     } else {
                         $logger->info("form_id {$form_id}: non-sibling path [HSCS]");
@@ -15566,6 +15579,12 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+
+                        if(env("APP_ENV") == 'production') {
+                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                            smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
+                        }
+
                         $logger->info("form_id {$form_id}: emails sent fmail={$fmail}, mmail={$mmail}");
                     }
                 }
