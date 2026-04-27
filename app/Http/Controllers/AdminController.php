@@ -9071,6 +9071,7 @@ class AdminController extends Controller
 
             // 🔹 Step 1: Get remarks (NO remark_detail join)
             $remarks = DB::table('remark')
+                ->leftJoin('student', 'student.student_id', '=', 'remark.student_id')
                 ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
                 ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
                 ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
@@ -9090,7 +9091,10 @@ class AdminController extends Controller
                     'subject_master.name as subjectname',
                     'teacher.name as teachername',
                     'class.name as classname',
-                    'section.name as sectionname'
+                    'section.name as sectionname',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name'
                 )
                 ->get();
 
@@ -19566,7 +19570,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $fileUrl = $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}";
 
-            // ✅ STREAM (binary safe)
+            // STREAM (binary safe)
             return response()->streamDownload(function () use ($fileUrl) {
                 $stream = fopen($fileUrl, 'rb'); // binary mode
 
