@@ -2111,6 +2111,59 @@ class AdminController extends Controller
         return response()->json($divisions);
     }
 
+    public function getallSectionsWithDummyStudentCount(Request $request)
+    {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        $sql = "
+        SELECT 
+            x.*,
+            (
+                SELECT COUNT(*) 
+                FROM student s 
+                WHERE s.section_id = x.section_id
+                  AND s.academic_yr = ?
+                  AND s.isDelete = 'N'
+            ) as students_count
+        FROM (
+            
+            SELECT 
+                class.class_id, 
+                section.section_id, 
+                class.name AS classname, 
+                section.name AS sectionname 
+            FROM class 
+            JOIN section 
+                ON class.class_id = section.class_id 
+            WHERE class.academic_yr = ? 
+              AND section.academic_yr = ?
+
+            UNION
+
+            SELECT 
+                class.class_id, 
+                section.section_id, 
+                class.name AS classname, 
+                section.name AS sectionname 
+            FROM class, section 
+            WHERE section.class_id IS NULL 
+              AND class.academic_yr = ?
+
+        ) AS x
+        ORDER BY x.class_id ASC, x.section_id ASC
+    ";
+
+        $data = DB::select($sql, [
+            $academicYr,  // for student count
+            $academicYr,
+            $academicYr,
+            $academicYr
+        ]);
+
+        return response()->json($data);
+    }
+
     public function getStudentListBySection(Request $request)
     {
         $payload = getTokenPayload($request);
@@ -2186,6 +2239,47 @@ class AdminController extends Controller
                     ->join('section', 'section.section_id', '=', 'student.section_id')
                     ->where('student.academic_yr', $academicYr)
                     ->where('isDelete', 'N')
+                    ->where('student.section_id', $sectionId)
+                    ->where('parent_id', '!=', 0)
+                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->get();
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student Information',
+                'data' => $student,
+                'success' => true
+            ]);
+        } catch (Exception $e) {
+            \Log::error($e);  // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getStudentListByClassSectionData(Request $request)
+    {
+        try {
+            $payload = getTokenPayload($request);
+            $academicYr = $payload->get('academic_year');
+            $classId = $request->query('class_id');
+            $sectionId = $request->query('section_id');
+            if (!$sectionId) {
+                $student = DB::table('student')
+                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                    ->where('student.academic_yr', $academicYr)
+                    ->where('isDelete', 'N')
+                    ->where('parent_id', '!=', 0)
+                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
+                    ->get();
+            } else {
+                $student = DB::table('student')
+                    ->join('class', 'class.class_id', '=', 'student.class_id')
+                    ->join('section', 'section.section_id', '=', 'student.section_id')
+                    ->where('student.academic_yr', $academicYr)
+                    ->where('isDelete', 'N')
+                    ->where('student.class_id', $classId)
                     ->where('student.section_id', $sectionId)
                     ->where('parent_id', '!=', 0)
                     ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
@@ -3456,7 +3550,8 @@ class AdminController extends Controller
         }
 
         $className = $class->name;
-
+        $hscClasses = getClassesOfADepartment('Higher Secondary');
+        $hscClassIds = collect($hscClasses)->pluck('class_id')->toArray();
         // Fetch Division Names
         $divisionNames = Division::where('academic_yr', $academicYr)
             ->where('class_id', $classId)
@@ -3466,7 +3561,7 @@ class AdminController extends Controller
             ->get();
 
         // Fetch Subjects Based on Class Type
-        $subjects = ($className == 11 || $className == 12)
+        $subjects = in_array($classId, $hscClassIds)
             ? $this->getAllSubjectsOfHsc()
             : $this->getAllSubjectsNotHsc();
         $count = $subjects->count();
@@ -3756,7 +3851,6 @@ class AdminController extends Controller
                     ->first();
 
                 if ($detail['teacher_id'] === null) {
-                    // If teacher_id is null, delete the record
                     if ($subjectAllotment) {
                         $subjectAllotment->delete();
                     }
@@ -3774,7 +3868,7 @@ class AdminController extends Controller
                             'section_id' => $sectionId,
                             'teacher_id' => $detail['teacher_id'],
                             'academic_yr' => $academicYr,
-                            'sm_id' => $sm_id  // Ensure sm_id is correctly passed
+                            'sm_id' => $sm_id
                         ]);
                     }
                 }
@@ -3806,16 +3900,7 @@ class AdminController extends Controller
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            $recordCount = $recordsToDelete->count();
-
-            if ($recordCount > 1) {
-                // Delete all but one, and set teacher_id to null on the remaining one
-                $recordsToDelete->slice(1)->each->delete();
-                $recordsToDelete->first()->update(['teacher_id' => null]);
-            } elseif ($recordCount == 1) {
-                // Just set teacher_id to null
-                $recordsToDelete->first()->update(['teacher_id' => null]);
-            }
+            $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -3952,6 +4037,34 @@ class AdminController extends Controller
         ]);
     }
 
+    public function getDivisionswithDummybyClass(Request $request, $classId)
+    {
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+        // Retrieve Class Information
+        $class = Classes::find($classId);
+        // $className = $class->name;
+        // Fetch Division Names
+        $divisionNames = Division::where(function ($q) use ($classId, $academicYr) {
+            $q
+                ->where(function ($q1) use ($classId, $academicYr) {
+                    $q1
+                        ->where('class_id', $classId)
+                        ->where('academic_yr', $academicYr);
+                })
+                ->orWhereNull('class_id');
+        })
+            ->select('section_id', 'name')
+            ->orderBy('section_id', 'asc')
+            ->distinct()
+            ->get();
+
+        // Return Combined Response
+        return response()->json([
+            'divisions' => $divisionNames,
+        ]);
+    }
+
     // Get the Subject list base on the Division
     public function getSubjectsbyDivision(Request $request, $sectionId)
     {
@@ -3971,9 +4084,10 @@ class AdminController extends Controller
         }
 
         $className = $class->name;
-
+        $hscClasses = getClassesOfADepartment('Higher Secondary');
+        $hscClassIds = collect($hscClasses)->pluck('class_id')->toArray();
         // Determine subjects based on class name
-        $subjects = ($className == 11 || $className == 12)
+        $subjects = in_array($classId, $hscClassIds)
             ? $this->getAllSubjectsNotHsc()
             : $this->getAllSubjectsOfHsc();
 
@@ -4118,32 +4232,25 @@ class AdminController extends Controller
 
         // Iterate through the input subjects and update or create records
         foreach ($subjects as $subjectData) {
-            // if (isset($subjectData['subject_id'])) {
-            //     // Update existing record
-            //     SubjectAllotment::updateOrCreate(
-            //         [
-            //             'subject_id' => $subjectData['subject_id'],
-            //             'class_id' => $class_id,
-            //             'section_id' => $section_id,
-            //             'academic_yr' => $academicYr,
-            //         ],
-            //         [
-            //             'sm_id' => $subjectData['sm_id'],
-            //             'teacher_id' => $subjectData['teacher_id'],
-            //         ]
-            //     );
-            // } else {
-            // Create new record
+            if (!array_key_exists('teacher_id', $subjectData)) {
+                continue;
+            }
+
+            if (empty($subjectData['teacher_id'])) {
+                continue;
+            }
+
             SubjectAllotment::updateOrCreate(
                 [
                     'class_id' => $class_id,
                     'section_id' => $section_id,
                     'sm_id' => $subjectData['sm_id'],
                     'academic_yr' => $academicYr,
+                ],
+                [
                     'teacher_id' => $subjectData['teacher_id']
                 ]
             );
-            // }
         }
 
         // Handle extra records in the existing allotments that are not in the input
@@ -16104,9 +16211,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
             $academic_year = $request->query('academic_year') ?? JWTAuth::getPayload()->get('academic_year');
-            if ($payload->get('role_id') != 'A') {
-                return response()->json(['status' => false, 'message' => 'You are not allowd to access this resource'], 400);
-            }
+
             $templates = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
@@ -16127,13 +16232,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $request->validate([
                 'key' => 'required|string|max:100',
@@ -16182,13 +16280,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
 
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
-
             $template = DB::table('email_templates')
                 ->select('class.name as class_name', 'email_templates.*')
                 ->leftJoin('class', 'class.class_id', 'email_templates.class_id')
@@ -16219,13 +16310,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $request->validate([
                 'body' => 'required|string',
@@ -16271,13 +16355,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $user = $this->authenticateUser();
             $payload = JWTAuth::getPayload();
-
-            if ($payload->get('role_id') !== 'A') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'You are not allowed to access this resource'
-                ], 403);
-            }
 
             $template = DB::table('email_templates')->where('id', $id)->first();
 
