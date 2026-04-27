@@ -19538,9 +19538,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         try {
             $remark_id = $request->input('remark_id');
             $file_name = $request->input('file_name');
-            $download = $request->input('download', false);
 
-            // 🔹 Validate input
             if (!$remark_id || !$file_name) {
                 return response()->json([
                     'status' => 400,
@@ -19549,24 +19547,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
 
-            // 🔒 Prevent path traversal (VERY IMPORTANT)
-            $file_name = basename($file_name);
+            $globalVariables = App::make('global_variables');
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-            // 🔹 Check file exists in DB (security)
-            $fileExists = DB::table('remark_detail')
-                ->where('remark_id', $remark_id)
-                ->where('image_name', $file_name)
-                ->exists();
-
-            if (!$fileExists) {
-                return response()->json([
-                    'status' => 403,
-                    'message' => 'Unauthorized file access',
-                    'success' => false
-                ]);
-            }
-
-            // 🔹 Get remark (for date folder)
             $remark = DB::table('remark')
                 ->where('remark_id', $remark_id)
                 ->first();
@@ -19579,41 +19562,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
 
-            // 🔹 Build path
+            //SAME logic as your working API
             $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
-            $filePath = public_path("uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}");
+            $fileUrl = $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}";
 
-            if (!File::exists($filePath)) {
-                return response()->json([
-                    'status' => 404,
-                    'message' => 'File not found',
-                    'success' => false
-                ]);
-            }
-
-            // 🔹 Detect MIME type
-            $mimeType = mime_content_type($filePath);
-
-            // 🔹 Return response
-            if ($download) {
-                // Force download
-                return response()->download($filePath, $file_name, [
-                    'Content-Type' => $mimeType,
-                ]);
-            } else {
-                // Preview in browser (image/pdf etc.)
-                return response()->file($filePath, [
-                    'Content-Type' => $mimeType,
-                ]);
-            }
+            // Redirect instead of downloading
+            return redirect()->away($fileUrl);
         } catch (\Exception $e) {
             \Log::error($e);
-
             return response()->json([
                 'status' => 500,
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage(),
+                'message' => $e->getMessage(),
                 'success' => false
             ]);
         }
