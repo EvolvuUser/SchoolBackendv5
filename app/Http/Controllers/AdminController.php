@@ -19562,13 +19562,29 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ]);
             }
 
-            //SAME logic as your working API
+            // Correct folder logic
             $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
             $fileUrl = $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}";
 
-            // Redirect instead of downloading
-            return redirect()->away($fileUrl);
+            // Fetch file content
+            $fileContent = @file_get_contents($fileUrl);
+
+            if ($fileContent === false) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'File not found',
+                    'success' => false
+                ]);
+            }
+
+            // Detect MIME type
+            $mimeType = mime_content_type($fileUrl) ?: 'application/octet-stream';
+
+            // Force download
+            return response($fileContent, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'attachment; filename="' . $file_name . '"');
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
