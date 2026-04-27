@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Jwt\NullableTtlClaimFactory;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('tymon.jwt.claim.factory', function ($app) {
+            $factory = new NullableTtlClaimFactory($app['request']);
+            $app->refresh('request', $factory, 'setRequest');
+
+            return $factory
+                ->setTTL(config('jwt.ttl'))
+                ->setLeeway(config('jwt.leeway'));
+        });
     }
 
     /**

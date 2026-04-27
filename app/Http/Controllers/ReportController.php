@@ -402,7 +402,7 @@ class ReportController extends Controller
             // dd("Hello");
             $staff_id = $request->input('staff_id');
 
-            //add by mahima 07-04-2026
+            // add by mahima 07-04-2026
             $tc_id = $request->input('tc_id');
             $query = DB::table('leave_allocation')
                 ->join('leave_type_master', 'leave_allocation.leave_type_id', '=', 'leave_type_master.leave_type_id')
@@ -527,11 +527,12 @@ class ReportController extends Controller
                 ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
                 ->join('class as c', 'c.class_id', '=', 'a.class_id')
                 ->join('section as d', 'd.section_id', '=', 'a.section_id')
+                ->leftjoin('house', 'house.house_id', '=', 'a.house')
                 ->where('a.isDelete', 'N')  // Condition for 'isDelete'
                 ->where('a.section_id', $section_id)  // Condition for section_id
                 ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
                 ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
-                ->select('a.*', 'b.*', 'c.name as classname', 'd.name as sectionname')  // Select all columns from both student (a) and parent (b)
+                ->select('a.*', 'b.*', 'c.name as classname', 'd.name as sectionname', 'house.house_name as housename')  // Select all columns from both student (a) and parent (b)
                 ->get();
             $mappedStudentDetails = [];
             foreach ($studentdetails as $studentdetail) {
@@ -2024,7 +2025,7 @@ class ReportController extends Controller
                 $staff_query->where('teacher_id', $staff_id);
             }
 
-            //07-04-2026
+            // 07-04-2026
             if (!empty($tc_id)) {
                 $staff_query->where('tc_id', 'LIKE', '%' . $tc_id . '%');
             }
@@ -5209,8 +5210,8 @@ class ReportController extends Controller
                 'house_name' => $student->house_name,
                 'name' => trim(
                     $student->first_name . ' '
-                        . ($student->mid_name ?? '') . ' '
-                        . $student->last_name
+                    . ($student->mid_name ?? '') . ' '
+                    . $student->last_name
                 ),
                 'subjects' => []
             ];
@@ -5275,15 +5276,14 @@ class ReportController extends Controller
     public function customizedStudentReport(Request $request)
     {
         try {
-
             $request->validate([
-                'class_id'      => 'required',
-                'section_id'    => 'required',
+                'class_id' => 'required',
+                'section_id' => 'required',
                 'academic_year' => 'required'
             ]);
 
-            $class_id     = $request->class_id;
-            $section_id   = $request->section_id;
+            $class_id = $request->class_id;
+            $section_id = $request->section_id;
             $academicYear = $request->academic_year;
 
             /* ---------------- CLASS & SECTION ---------------- */
@@ -5328,11 +5328,10 @@ class ReportController extends Controller
             $finalData = [];
 
             foreach ($students as $student) {
-
                 $fullName = trim(
-                    ($student->first_name != 'No Data' ? $student->first_name : '') . ' ' .
-                        ($student->mid_name != 'No Data' ? $student->mid_name : '') . ' ' .
-                        ($student->last_name != 'No Data' ? $student->last_name : '')
+                    ($student->first_name != 'No Data' ? $student->first_name : '') . ' '
+                    . ($student->mid_name != 'No Data' ? $student->mid_name : '') . ' '
+                    . ($student->last_name != 'No Data' ? $student->last_name : '')
                 );
 
                 $studentArray = (array) $student;
@@ -5355,7 +5354,6 @@ class ReportController extends Controller
                 'students' => $finalData
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
@@ -5366,17 +5364,16 @@ class ReportController extends Controller
     public function getWorldlineAllOrderIdsReport(Request $request)
     {
         try {
-
-            $student_id   = $request->query('student_id');
-            $order_id     = $request->query('order_id');
+            $student_id = $request->query('student_id');
+            $order_id = $request->query('order_id');
             $account_type = $request->query('account_type');
-            $academic_yr  = $request->query('academic_yr');
-            $from_date    = $request->query('from_date');
-            $to_date      = $request->query('to_date');
+            $academic_yr = $request->query('academic_yr');
+            $from_date = $request->query('from_date');
+            $to_date = $request->query('to_date');
 
             // Format Dates
             $from_date = $from_date ? date('Y-m-d', strtotime($from_date)) : null;
-            $to_date   = $to_date ? date('Y-m-d', strtotime($to_date)) : null;
+            $to_date = $to_date ? date('Y-m-d', strtotime($to_date)) : null;
 
             // Get Parent ID
             $parent_id = null;
@@ -5434,7 +5431,7 @@ class ReportController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => "Back account name fetch successfully.",
+                'message' => 'Back account name fetch successfully.',
                 'data' => $result
             ]);
         } catch (\Exception $e) {
@@ -5449,9 +5446,8 @@ class ReportController extends Controller
     public function getAllAdmissionFormList(Request $request)
     {
         try {
-
-            $class_id    = $request->class_id;
-            $status      = $request->status;
+            $class_id = $request->class_id;
+            $status = $request->status;
             $academic_yr = $request->academic_yr;
 
             if (!$academic_yr) {
@@ -5472,7 +5468,6 @@ class ReportController extends Controller
                     'sc.name as sibling_class_name',
                     'ss.name as sibling_section_name'
                 )
-
                 // =========================
                 // Latest Interview Schedule
                 // =========================
@@ -5492,7 +5487,6 @@ class ReportController extends Controller
                     '=',
                     't1.max_id'
                 )
-
                 // =========================
                 // Latest Fee Record (FIXED)
                 // =========================
@@ -5512,9 +5506,7 @@ class ReportController extends Controller
                     '=',
                     't2.max_fee_id'
                 )
-
                 ->leftJoin('class as d', 'd.class_id', '=', 'a.class_id')
-
                 ->leftJoin('class as sc', function ($join) {
                     $join->on(
                         'sc.class_id',
@@ -5529,7 +5521,6 @@ class ReportController extends Controller
                         DB::raw("SUBSTRING_INDEX(a.sibling_class_id, '^', -1)")
                     );
                 })
-
                 ->where('a.academic_yr', $academic_yr);
 
             // Optional Filters
@@ -5549,10 +5540,9 @@ class ReportController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data'    => $data
+                'data' => $data
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()

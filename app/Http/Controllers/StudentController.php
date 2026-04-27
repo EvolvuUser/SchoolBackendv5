@@ -575,14 +575,21 @@ class StudentController extends Controller
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $students = DB::table('student')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('IsDelete', 'N')
-                ->where('isPromoted', '!=', 'Y')
-                ->orderBy('roll_no', 'asc')
+            $academic_year = JWTAuth::getPayload()->get('academic_year');
+
+            $students = DB::table('student as s')
+                ->leftJoin('confirmation_readmission as cr', 'cr.student_id', '=', 's.student_id')
+                ->where('s.class_id', $class_id)
+                ->where('s.section_id', $section_id)
+                ->where('s.IsDelete', 'N')
+                ->where('s.isPromoted', '!=', 'Y')
+                ->orderBy('s.roll_no', 'asc')
+                ->select(
+                    's.*',
+                    DB::raw("COALESCE(cr.confirm, '') as confirm_status")
+                )
                 ->get();
+
             return response()->json([
                 'status' => 200,
                 'message' => 'Student List for this class',
@@ -590,34 +597,25 @@ class StudentController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
-            \Log::error($e);  // Log the exception
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function nextClassPromote(Request $request)
+    public function nextClassPromote(Request $request, $class_id)
     {
         try {
-            $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $current_academic_year = $customClaims;
-
-            // Split the string into start year and end year
-            list($start_year, $end_year) = explode('-', $current_academic_year);
-
-            // Increment the start year to move to the next academic year
-            $next_start_year = $start_year + 1;
-            $next_end_year = $end_year + 1;
-
-            // Create the next academic year
-            $next_academic_year = $next_start_year . '-' . $next_end_year;
-            // dd($next_academic_year);
-
-            $class = DB::table('class')->where('academic_yr', $next_academic_year)->get();
+            $nextClasses = DB::table('currentclass_nextclass_mapping as map')
+                ->join('class as c', 'c.class_id', '=', 'map.next_class_id')
+                ->where('map.current_class_id', $class_id)
+                ->select('c.*')
+                ->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'Class List for the next academic year',
-                'data' => $class,
+                'data' => $nextClasses,
                 'success' => true
             ]);
         } catch (Exception $e) {
@@ -644,7 +642,14 @@ class StudentController extends Controller
             $next_academic_year = $next_start_year . '-' . $next_end_year;
             // dd($next_academic_year);
 
-            $section = DB::table('section')->where('academic_yr', $next_academic_year)->where('class_id', $class_id)->get();
+            $section = DB::table('section')
+                ->where('class_id', $class_id)
+                ->where('academic_yr', $next_academic_year)
+                ->union(
+                    DB::table('section')
+                        ->whereNull('class_id')
+                )
+                ->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'Section List for the next academic year',
@@ -733,13 +738,32 @@ class StudentController extends Controller
                     ];
                     // dd($data);
                     // Insert the student record for the next academic year
-                    Student::create($data);
+                    $newStudent = Student::create($data);
 
-                    // Mark the student as promoted
+                    // Mark old student promoted
                     DB::table('student')
                         ->where('student_id', $student_id)
                         ->where('academic_yr', $customClaims)
                         ->update(['isPromoted' => 'Y']);
+
+                    $fees_category_id = $this->getFeesCategoryOfClass($tclass_id);
+
+                    if (!empty($fees_category_id)) {
+                        $exists = DB::table('fees_student_category')
+                            ->where('student_id', $newStudent->student_id)
+                            ->where('fees_category_id', $fees_category_id)
+                            ->where('academic_yr', $next_academic_year)
+                            ->exists();
+
+                        if (!$exists) {
+                            DB::table('fees_student_category')->insert([
+                                'student_id' => $newStudent->student_id,
+                                'fees_category_id' => $fees_category_id,
+                                'isModify' => 'Y',
+                                'academic_yr' => $next_academic_year
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -753,6 +777,13 @@ class StudentController extends Controller
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function getFeesCategoryOfClass($class_id)
+    {
+        return DB::table('fees_category_detail')
+            ->where('class_concession', $class_id)
+            ->value('fees_category_id');
     }
 
     // Student List with Class name Dev name-Manish Kumar Sharma 09-04-2025

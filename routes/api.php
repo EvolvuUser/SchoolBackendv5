@@ -17,6 +17,7 @@
     use App\Http\Controllers\NewController;
     use App\Http\Controllers\NoticeController;
     use App\Http\Controllers\ParentController;
+    use App\Http\Controllers\ReadmissionController;
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RoleController;
     use App\Http\Controllers\StudentController;
@@ -254,6 +255,7 @@
 
             // Allot Teachers
             Route::get('/get_divisions/{classId}', [AdminController::class, 'getDivisionsbyClass']);  // Done  Allot teacher tab list the division for the selected class.
+            Route::get('/get_divisionswithdummydivision/{classId}', [AdminController::class, 'getDivisionswithDummybyClass']);  // Done  Allot teacher tab list the division for the selected class.
             Route::get('/get_subjects/{sectionId}', [AdminController::class, 'getSubjectsbyDivision']);  // Done   Allot teacher tab list the subject  for the selected Division.
             Route::get('/get_presubjects/{classId}', [AdminController::class, 'getPresignSubjectByDivision']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.
             Route::get('/get_presubjectss/{sectionId}', [AdminController::class, 'getSubjectsByDivisionWithAssigned']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.
@@ -272,8 +274,11 @@
 
             // Student Model Routes.
             Route::get('/getallClassWithStudentCount', [AdminController::class, 'getallSectionsWithStudentCount']);  // Done for class dropdown.
+            Route::get('/getallClassWithDummyStudentCount', [AdminController::class, 'getallSectionsWithDummyStudentCount']);  // Done for class dropdown.
+
             Route::get('/getStudentListBySection', [AdminController::class, 'getStudentListBySection']);  // Done for student dropdown.
             Route::get('/getStudentListBySectionData', [AdminController::class, 'getStudentListBySectionData']);
+            Route::get('/getStudentListByClassSectionData', [AdminController::class, 'getStudentListByClassSectionData']);
             Route::get('/students/{studentId}', [AdminController::class, 'getStudentById']);  // Edit Student , for the view Student. and single student select for the list.
             Route::get('/student_by_reg_no/{reg_no}', [AdminController::class, 'getStudentByGRN']);  // Student By GRN .
             Route::delete('/students/{studentId}', [AdminController::class, 'deleteStudent']);
@@ -425,7 +430,7 @@
 
             // Promote Students
             Route::get('getstudentlistbyclassdivision/{class_id}/{section_id}', [StudentController::class, 'getStudentListClass']);
-            Route::get('nextclassacademicyear', [StudentController::class, 'nextClassPromote']);
+            Route::get('nextclassacademicyear/{class_id}', [StudentController::class, 'nextClassPromote']);
             Route::get('nextsectionacademicyear/{class_id}', [StudentController::class, 'nextSectionPromote']);
             Route::post('promotestudents', [StudentController::class, 'promoteStudentsUpdate']);
 
@@ -1617,6 +1622,18 @@
             // New Admissions Users
             Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
             Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);
+
+            // Readmission APIs
+            Route::post('save_readmission', [ReadmissionController::class, 'saveReadmission']);
+
+            // Readmission classes
+            Route::get('/admin/readmission-management', [ReadmissionController::class, 'getreAdmissionManagement']);
+            Route::get('/admin/readmission/classes/not-created', [ReadmissionController::class, 'getreAdmissionClassesNotCreated']);
+            Route::post('/admin/readminssion-management/create', [ReadmissionController::class, 'createreAdmissionForm']);
+            Route::get('/admin/readmission-management/{id}', [ReadmissionController::class, 'viewreAdmissionForm']);
+            Route::delete('/admin/readmission-management/{id}', [ReadmissionController::class, 'deletereAdmissionForm']);
+            Route::patch('/admin/readmission-management/{id}', [ReadmissionController::class, 'updatereAdmissionForm']);
+            Route::get('/next_classwithreadmission/{current_class_id}/{student_id}', [ReadmissionController::class, 'getNextClassWithReadmission']);
             // --------------------------------- Routes
         });
 
