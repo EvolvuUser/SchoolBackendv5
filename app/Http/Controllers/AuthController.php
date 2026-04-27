@@ -122,8 +122,11 @@ class AuthController extends Controller
 
                     Log::info('Token created successfully:', ['token' => $token]);
 
-                    return response()->json(['token' => $token,
-                        'user' => $user, 'userdetails' => $customClaims]);
+                    return response()->json([
+                        'token' => $token,
+                        'user' => $user,
+                        'userdetails' => $customClaims
+                    ]);
                 } else {
                     $academic_yr = Setting::where('active', 'Y')->first()->academic_yr;
                     $schoolName = Setting::where('active', 'Y')->first()->institute_name;
@@ -143,8 +146,11 @@ class AuthController extends Controller
 
                     Log::info('Token created successfully:', ['token' => $token]);
 
-                    return response()->json(['token' => $token,
-                        'user' => $user, 'userdetails' => $customClaims]);
+                    return response()->json([
+                        'token' => $token,
+                        'user' => $user,
+                        'userdetails' => $customClaims
+                    ]);
                 }
             } else {
                 return response()->json([
