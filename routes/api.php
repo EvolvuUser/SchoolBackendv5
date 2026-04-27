@@ -1572,6 +1572,9 @@
 
             Route::post('/delete_sub_group', [LibraryController::class, 'deleteSubGroup']);
 
+
+            Route::get('/download_remark_file', [AdminController::class, 'downloadRemarkFile']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
