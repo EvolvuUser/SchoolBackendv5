@@ -315,34 +315,19 @@ function get_highestmarks_of_subject_exam_class($exam_id, $class_id, $sm_id, $ac
         return $row->max_marks;
 }
 
-// function check_cbse_rc_publish_of_a_class($class_id, $section_id)
-// {
-//     $query = DB::select('SELECT r.* FROM report_card_publish r join exam e on r.term_id = e.exam_id WHERE r.class_id = ' . $class_id . ' AND r.section_id = ' . $section_id . " AND r.publish = 'Y' and (e.name='Term 1' or e.name='Term 2' or e.name='Final Exam')");
-//     // print_r($this->db->last_query());
-//     $res = $query;
-//     if (count($res) > 0) {
-//         return 'Y';
-//     } else {
-//         return 'N';
-//     }
-// }
-
 function check_cbse_rc_publish_of_a_class($class_id, $section_id)
 {
-    $res = DB::table('report_card_publish as r')
-        ->join('exam as e', 'r.term_id', '=', 'e.exam_id')
-        ->where('r.class_id', $class_id)
-        ->where('r.section_id', $section_id)
-        ->where('r.publish', 'Y')
-        ->where(function ($query) {
-            $query->whereRaw('LOWER(e.name) LIKE ?', ['%term 1%'])
-                ->orWhereRaw('LOWER(e.name) LIKE ?', ['%term 2%'])
-                ->orWhereRaw('LOWER(e.name) LIKE ?', ['%final%']);
-        })
-        ->get();
-
-    return $res->count() > 0 ? 'Y' : 'N';
+    $query = DB::select('SELECT r.* FROM report_card_publish r join exam e on r.term_id = e.exam_id WHERE r.class_id = ' . $class_id . ' AND r.section_id = ' . $section_id . " AND r.publish = 'Y' and (e.name='Term 1' or e.name='Term 2' or e.name='Final Exam')");
+    // print_r($this->db->last_query());
+    $res = $query;
+    if (count($res) > 0) {
+        return 'Y';
+    } else {
+        return 'N';
+    }
 }
+
+
 
 function check_rc_publish_of_a_class($class_id, $section_id, $term_id = '')
 {
