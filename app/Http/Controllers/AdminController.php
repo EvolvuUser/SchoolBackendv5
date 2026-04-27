@@ -13809,7 +13809,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         );
 
                         // stage => dev , live => production
-                        if(env("APP_ENV") == 'production') {
+                        if (env("APP_ENV") == 'production') {
                             $cc = "school@arnoldcentralschoolpune.edu.in";
                             smart_mail(
                                 $cc,
@@ -13950,10 +13950,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 smart_mail($father_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
                 smart_mail($mother_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
 
-                if(env("APP_ENV") == 'production') {
+                if (env("APP_ENV") == 'production') {
                     $cc = "school@arnoldcentralschoolpune.edu.in";
                     smart_mail($cc, 'Admission Details', 'emails.parentUserEmail', $emailData);
-
                 }
             }
 
@@ -15089,7 +15088,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if(env("APP_ENV") == 'production') {
+                        if (env("APP_ENV") == 'production') {
                             $cc = "school@arnoldcentralschoolpune.edu.in";
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
@@ -15650,7 +15649,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if(env("APP_ENV") == 'production') {
+                        if (env("APP_ENV") == 'production') {
                             $cc = "school@arnoldcentralschoolpune.edu.in";
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
@@ -19530,6 +19529,60 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => false,
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+
+    public function downloadRemarkFile(Request $request)
+    {
+        try {
+            $remark_id = $request->input('remark_id');
+            $file_name = $request->input('file_name');
+
+            if (!$remark_id || !$file_name) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'remark_id and file_name are required',
+                    'success' => false
+                ]);
+            }
+
+            // 🔹 Get remark to find date folder
+            $remark = DB::table('remark')
+                ->where('remark_id', $remark_id)
+                ->first();
+
+            if (!$remark) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Remark not found',
+                    'success' => false
+                ]);
+            }
+
+            // 🔹 Build file path
+            $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+
+            $filePath = public_path("uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}");
+
+            // 🔹 Check file exists
+            if (!File::exists($filePath)) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'File not found',
+                    'success' => false
+                ]);
+            }
+
+            // 🔹 Return download
+            return response()->download($filePath, $file_name);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage(),
+                'success' => false
+            ]);
         }
     }
 }
