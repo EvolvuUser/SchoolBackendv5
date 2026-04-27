@@ -9005,57 +9005,127 @@ class AdminController extends Controller
         }
     }
 
+    // public function getStudentRemarkObservation(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $student_id = $request->input('student_id');
+    //         $academic_yr = $request->input('academic_yr');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+    //         $remarkobservation = DB::table('remark')
+    //             ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
+    //             ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
+    //             ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
+    //             ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
+    //             ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
+    //             ->where('remark.student_id', $student_id)
+    //             ->where('remark.academic_yr', $academic_yr)
+    //             ->where(function ($query) {
+    //                 $query
+    //                     ->where('remark_type', 'Observation')
+    //                     ->orWhere(function ($query) {
+    //                         $query
+    //                             ->where('remark_type', 'Remark')
+    //                             ->where('publish', 'Y');
+    //                     });
+    //             })
+    //             ->orderBy('publish_date')
+    //             ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
+    //             ->get()
+    //             ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
+    //                 $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
+    //                 $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
+    //                 if ($remark->image_name) {
+    //                     $remark->remark_url = $remark_url . '' . "$remark->image_name";
+    //                 } else {
+    //                     $remark->remark_url = null;
+    //                 }
+    //                 return $remark;
+    //             });
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data' => $remarkobservation,
+    //             'message' => 'Student Remark Observation',
+    //             'success' => true
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getStudentRemarkObservation(Request $request)
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $student_id = $request->input('student_id');
             $academic_yr = $request->input('academic_yr');
+
             $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-            $remarkobservation = DB::table('remark')
+            // 🔹 Step 1: Get remarks (NO remark_detail join)
+            $remarks = DB::table('remark')
                 ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
                 ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
-                ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
                 ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
                 ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
                 ->where('remark.student_id', $student_id)
                 ->where('remark.academic_yr', $academic_yr)
                 ->where(function ($query) {
-                    $query
-                        ->where('remark_type', 'Observation')
+                    $query->where('remark_type', 'Observation')
                         ->orWhere(function ($query) {
-                            $query
-                                ->where('remark_type', 'Remark')
+                            $query->where('remark_type', 'Remark')
                                 ->where('publish', 'Y');
                         });
                 })
                 ->orderBy('publish_date')
-                ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
+                ->select(
+                    'remark.*',
+                    'subject_master.name as subjectname',
+                    'teacher.name as teachername',
+                    'class.name as classname',
+                    'section.name as sectionname'
+                )
+                ->get();
+
+            // 🔹 Step 2: Get all files
+            $remarkIds = $remarks->pluck('remark_id')->toArray();
+
+            $files = DB::table('remark_detail')
+                ->whereIn('remark_id', $remarkIds)
                 ->get()
-                ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
-                    $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
-                    if ($remark->image_name) {
-                        $remark->remark_url = $remark_url . '' . "$remark->image_name";
-                    } else {
-                        $remark->remark_url = null;
-                    }
-                    return $remark;
-                });
+                ->groupBy('remark_id');
+
+            // 🔹 Step 3: Attach multiple files
+            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+                $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+
+                $remark->files = collect($files[$remark->remark_id] ?? [])
+                    ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+                        return [
+                            'image_name' => $file->image_name,
+                            'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
+                        ];
+                    });
+
+                return $remark;
+            });
 
             return response()->json([
                 'status' => 200,
-                'data' => $remarkobservation,
+                'data' => $remarks,
                 'message' => 'Student Remark Observation',
                 'success' => true
             ]);
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
