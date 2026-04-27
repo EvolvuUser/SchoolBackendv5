@@ -19580,7 +19580,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             // 🔹 Build path
-            $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+            $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
             $filePath = public_path("uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}");
 
