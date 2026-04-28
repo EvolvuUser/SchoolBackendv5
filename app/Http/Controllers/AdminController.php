@@ -9248,6 +9248,7 @@ class AdminController extends Controller
 
             $academic_year = $request->input('academic_yr');
 
+            //fallback from JWT if request not sent
             if (!$academic_year) {
                 $academic_year = JWTAuth::getPayload()->get('academic_year');
             }
@@ -9255,11 +9256,16 @@ class AdminController extends Controller
             $student_id = $request->input('student_id');
             $student_name = get_student_name($student_id);
 
+            //IMPORTANT: recreate customClaims for Blade (NO Blade change needed)
+            $customClaims = [
+                'academic_year' => $academic_year
+            ];
+
             $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
 
             $pdf = PDF::loadView(
                 'healthactivityrecord.healthactivityrecordpdf2',
-                compact('student_id', 'academic_year')
+                compact('student_id', 'customClaims') // keep Blade unchanged
             )->setPaper('A4', 'portrait');
 
             return response()->stream(
@@ -9274,7 +9280,9 @@ class AdminController extends Controller
             );
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
