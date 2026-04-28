@@ -9241,6 +9241,7 @@ class AdminController extends Controller
         }
     }
 
+    // Dev Name - Mahima Chaudhari 28-04-2026
     public function getHealthActivityPdfGRN(Request $request)
     {
         try {
@@ -9283,6 +9284,59 @@ class AdminController extends Controller
             return response()->json([
                 'error' => 'An error occurred: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function checkHealthActivityRecord(Request $request)
+    {
+        try {
+
+            $student_id = $request->input('student_id');
+            $academic_yr = $request->input('academic_yr');
+
+            if (!$student_id || !$academic_yr) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Required parameters missing'
+                ]);
+            }
+
+            // Get student class & section
+            $student = DB::table('student')
+                ->where('student_id', $student_id)
+                ->first();
+
+            if (!$student) {
+                return response()->json(['status' => false]);
+            }
+
+            // Check record exists
+            $recordExists = DB::table('health_activity_record')
+                ->where('student_id', $student_id)
+                ->where('academic_yr', $academic_yr)
+                ->exists();
+
+            if (!$recordExists) {
+                return response()->json(['status' => false]);
+            }
+
+            // Check publish status (IMPORTANT JOIN)
+            $publish = DB::table('health_activity_record_publish')
+                ->where('class_id', $student->class_id)
+                ->where('section_id', $student->section_id)
+                ->where('publish', 'Y')
+                ->exists();
+
+            return response()->json([
+                'status' => $publish ? true : false
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
