@@ -606,6 +606,9 @@
             Route::get('getacademicyrbysettings', [AdminController::class, 'getAcademicYrBySettings']);
             Route::get('health_activity_data_pdf', [AdminController::class, 'getHealthActivityPdf']);
 
+            // Health and activity pdf for global grn Dev Name-Mahima Chaudhari 28-04-2026
+            Route::get('health_activity_data_pdf_grn', [AdminController::class, 'getHealthActivityPdfGRN']);
+
             // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
             Route::get('get_departments', [AdminController::class, 'getDepartmentss']);
             Route::get('get_teacherperiodallocation', [AdminController::class, 'getTeacherPeriodAllocation']);

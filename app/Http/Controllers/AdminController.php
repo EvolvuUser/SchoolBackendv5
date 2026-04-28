@@ -9241,6 +9241,43 @@ class AdminController extends Controller
         }
     }
 
+    public function getHealthActivityPdfGRN(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $academic_year = $request->input('academic_yr');
+
+            if (!$academic_year) {
+                $academic_year = JWTAuth::getPayload()->get('academic_year');
+            }
+
+            $student_id = $request->input('student_id');
+            $student_name = get_student_name($student_id);
+
+            $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
+
+            $pdf = PDF::loadView(
+                'healthactivityrecord.healthactivityrecordpdf2',
+                compact('student_id', 'academic_year')
+            )->setPaper('A4', 'portrait');
+
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
     public function getTeacherClassTimetable(Request $request)
     {
