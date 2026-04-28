@@ -1191,10 +1191,10 @@ class TeacherDashboardController extends Controller
             ->get();
 
         /** 3️⃣ Load subject master once */
-        $subjectMaster = DB::table('subject_master')
-            ->select('sm_id', 'name')
+        $subjectMaster = DB::table('subjects_on_report_card_master')
+            ->select('sub_rc_master_id', 'name')
             ->get()
-            ->keyBy('sm_id');
+            ->keyBy('sub_rc_master_id');
         $teacherSubjectIds = DB::table('subject')
             ->where('teacher_id', $reg_id)
             ->where('academic_yr', $acd_yr)
@@ -1683,10 +1683,10 @@ class TeacherDashboardController extends Controller
             ->get();
 
         /** 3️⃣ Load subject master once */
-        $subjectMaster = DB::table('subject_master')
-            ->select('sm_id', 'name')
+        $subjectMaster = DB::table('subjects_on_report_card_master')
+            ->select('sub_rc_master_id', 'name')
             ->get()
-            ->keyBy('sm_id');
+            ->keyBy('sub_rc_master_id');
 
         $teacherSections = DB::table('subject as sub')
             ->join('section as sec', 'sec.section_id', '=', 'sub.section_id')
