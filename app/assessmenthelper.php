@@ -317,8 +317,20 @@ function get_highestmarks_of_subject_exam_class($exam_id, $class_id, $sm_id, $ac
 
 function check_cbse_rc_publish_of_a_class($class_id, $section_id)
 {
-    $query = DB::select('SELECT r.* FROM report_card_publish r join exam e on r.term_id = e.exam_id WHERE r.class_id = ' . $class_id . ' AND r.section_id = ' . $section_id . " AND r.publish = 'Y' and (e.name='Term 1' or e.name='Term 2' or e.name='Final Exam')");
+    // dd($class_id);
+    // $query = DB::select('SELECT r.* FROM report_card_publish r join exam e on r.term_id = e.exam_id WHERE r.class_id = ' . $class_id . ' AND r.section_id = ' . $section_id . " AND r.publish = 'Y' and (e.name='Term 1' or e.name='Term 2' or e.name='Final Exam')");
     // print_r($this->db->last_query());
+    $query = DB::select(
+        "SELECT r.* 
+     FROM report_card_publish r
+     JOIN exam e ON r.term_id = e.exam_id
+     WHERE r.class_id = ?
+     AND r.section_id = ?
+     AND r.publish = 'Y'
+     AND LOWER(e.name) IN ('term 1','term 2','final exam')",
+        [$class_id, $section_id]
+    );
+    // dd($query);
     $res = $query;
     if (count($res) > 0) {
         return 'Y';
