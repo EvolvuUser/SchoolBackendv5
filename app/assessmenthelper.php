@@ -323,7 +323,7 @@ function check_cbse_rc_publish_of_a_class($class_id, $section_id)
     $query = DB::select(
         "SELECT r.* 
      FROM report_card_publish r
-     JOIN exam e ON r.term_id = e.exam_id
+     JOIN exam e ON r.term_id = e.term_id
      WHERE r.class_id = ?
      AND r.section_id = ?
      AND r.publish = 'Y'
