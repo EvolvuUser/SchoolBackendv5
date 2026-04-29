@@ -2339,6 +2339,7 @@ class AdminController extends Controller
     {
         set_time_limit(300);
         $section_id = $request->section_id;
+        $class_id = $request->class_id;
         $student_id = $request->student_id;
         $reg_no = $request->reg_no;
         $user = $this->authenticateUser();
@@ -2349,8 +2350,9 @@ class AdminController extends Controller
 
         $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
 
-        if ($section_id && $reg_no) {
+        if ($class_id && $section_id && $reg_no) {
             $query
+                ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('reg_no', $reg_no)
                 ->where('isDelete', 'N')
@@ -2363,23 +2365,25 @@ class AdminController extends Controller
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id && $student_id && $reg_no) {
+        } elseif ($class_id && $section_id && $student_id && $reg_no) {
             $query
+                ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('student_id', $student_id)
                 ->where('reg_no', $reg_no)
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id && $student_id) {
+        } elseif ($class_id && $section_id && $student_id) {
             $query
+                ->where('class_id', $class_id)
                 ->where('student_id', $student_id)
                 ->where('section_id', $section_id)
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id) {
-            $query->where('section_id', $section_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id) {
+            $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
         } elseif ($student_id) {
             $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
         } elseif ($reg_no) {
