@@ -2122,7 +2122,8 @@ class AdminController extends Controller
             (
                 SELECT COUNT(*) 
                 FROM student s 
-                WHERE s.section_id = x.section_id
+                WHERE s.class_id = x.class_id
+                AND s.section_id = x.section_id
                   AND s.academic_yr = ?
                   AND s.isDelete = 'N'
             ) as students_count
@@ -9079,9 +9080,11 @@ class AdminController extends Controller
                 ->where('remark.student_id', $student_id)
                 ->where('remark.academic_yr', $academic_yr)
                 ->where(function ($query) {
-                    $query->where('remark_type', 'Observation')
+                    $query
+                        ->where('remark_type', 'Observation')
                         ->orWhere(function ($query) {
-                            $query->where('remark_type', 'Remark')
+                            $query
+                                ->where('remark_type', 'Remark')
                                 ->where('publish', 'Y');
                         });
                 })
@@ -9249,7 +9252,7 @@ class AdminController extends Controller
 
             $academic_year = $request->input('academic_yr');
 
-            //fallback from JWT if request not sent
+            // fallback from JWT if request not sent
             if (!$academic_year) {
                 $academic_year = JWTAuth::getPayload()->get('academic_year');
             }
@@ -9257,7 +9260,7 @@ class AdminController extends Controller
             $student_id = $request->input('student_id');
             $student_name = get_student_name($student_id);
 
-            //IMPORTANT: recreate customClaims for Blade (NO Blade change needed)
+            // IMPORTANT: recreate customClaims for Blade (NO Blade change needed)
             $customClaims = [
                 'academic_year' => $academic_year
             ];
@@ -9266,7 +9269,7 @@ class AdminController extends Controller
 
             $pdf = PDF::loadView(
                 'healthactivityrecord.healthactivityrecordpdf2',
-                compact('student_id', 'customClaims') // keep Blade unchanged
+                compact('student_id', 'customClaims')  // keep Blade unchanged
             )->setPaper('A4', 'portrait');
 
             return response()->stream(
@@ -9290,7 +9293,6 @@ class AdminController extends Controller
     public function checkHealthActivityRecord(Request $request)
     {
         try {
-
             $student_id = $request->input('student_id');
             $academic_yr = $request->input('academic_yr');
 
@@ -13156,8 +13158,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -13912,8 +13914,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         );
 
                         // stage => dev , live => production
-                        if (env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail(
                                 $cc,
                                 'Inviting For Verification for Admission',
@@ -14053,8 +14055,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 smart_mail($father_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
                 smart_mail($mother_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
 
-                if (env("APP_ENV") == 'production') {
-                    $cc = "school@arnoldcentralschoolpune.edu.in";
+                if (env('APP_ENV') == 'production') {
+                    $cc = 'school@arnoldcentralschoolpune.edu.in';
                     smart_mail($cc, 'Admission Details', 'emails.parentUserEmail', $emailData);
                 }
             }
@@ -15191,8 +15193,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if (env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
                         $logger->info("form_id {$form_id}: emails sent to fmail={$fmail}, mmail={$mmail}");
@@ -15752,8 +15754,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if (env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
 
@@ -16588,19 +16590,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
@@ -19635,7 +19637,6 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
     }
 
-
     public function downloadRemarkFile(Request $request)
     {
         try {
@@ -19671,7 +19672,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             // STREAM (binary safe)
             return response()->streamDownload(function () use ($fileUrl) {
-                $stream = fopen($fileUrl, 'rb'); // binary mode
+                $stream = fopen($fileUrl, 'rb');  // binary mode
 
                 if ($stream) {
                     while (!feof($stream)) {
