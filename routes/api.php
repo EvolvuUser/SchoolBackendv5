@@ -1576,7 +1576,6 @@
 
             Route::post('/delete_sub_group', [LibraryController::class, 'deleteSubGroup']);
 
-
             Route::get('/download_remark_file', [AdminController::class, 'downloadRemarkFile']);
 
             // Testing
@@ -1714,6 +1713,7 @@
     Route::post('sendwhatsappmessages', [AdminController::class, 'sendwhatsappmessages']);
 
     Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
+    Route::post('webhook/redingtonhscs', [AdminController::class, 'webhookredingtonhscs']);
 
     Route::get('whatsapp_messages_for_not_approving_lesson', [ReportController::class, 'whatsappmessagesfornotapprovinglessonplan']);
     Route::get('get_supportemailid', [NewController::class, 'getSupportEmailId']);

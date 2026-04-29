@@ -12188,6 +12188,44 @@ class AdminController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
+    public function webhookredingtonhscs(Request $request)
+    {
+        $shortName = 'HSCS';
+        if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd('No database configuration for the given short_name');
+        }
+        Log::info('Redington Webhook Received:', $request->all());
+        $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+
+        foreach ($statuses as $status) {
+            $wamid = $status['id'];  // The WhatsApp message ID
+            $deliveryStatus = $status['status'];  // e.g., 'sent', 'delivered', 'failed'
+            Log::info($wamid);
+            Log::info($deliveryStatus);
+            // Update the database table where wa_id = wamid
+            $updateData = [
+                'status' => $deliveryStatus,
+                'updated_at' => now(),
+            ];
+
+            // If status is one of the success types, add sms_sent = 'Y'
+            if (in_array($deliveryStatus, ['sent', 'delivered', 'read'])) {
+                $updateData['sms_sent'] = 'Y';
+            }
+
+            // Update DB record where wa_id matches
+            DB::table('redington_webhook_details')
+                ->where('wa_id', $wamid)
+                ->update($updateData);
+
+            Log::info("Updated status for WAMID: $wamid to $deliveryStatus");
+        }
+
+        return response()->json(['status' => 'success'], 200);
+    }
+
     // API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
     public function getAbsentStudentForToday(Request $request)
     {
