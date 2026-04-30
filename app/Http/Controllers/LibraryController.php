@@ -6318,4 +6318,346 @@ class LibraryController extends Controller
             ], 500);
         }
     }
+
+
+    public function uploadOrUpdateBackground(Request $request)
+    {
+        // Step 1: Check required fields manually
+        $missing = [];
+
+        if (!$request->hasFile('image')) {
+            $missing[] = 'image';
+        }
+
+        if (!$request->input('module')) {
+            $missing[] = 'module';
+        }
+
+        if (!empty($missing)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'These fields are required: ' . implode(', ', $missing)
+            ], 422);
+        }
+
+        //Step 2: Validate other rules
+        $validator = Validator::make($request->all(), [
+            'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+            'module' => 'string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        try {
+            $module = $request->module;
+
+            // Step 3: Authenticate user
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $shortName = JWTAuth::getPayload()->get('short_name');
+
+            if (!$shortName) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'School short_name missing in token'
+                ], 400);
+            }
+
+            // Step 4: Check existing image
+            $existing = DB::table('background_images')
+                ->where('module', $module)
+                ->first();
+
+            // Delete old file if exists
+            if ($existing && !empty($existing->file_path)) {
+                $oldPath = public_path($existing->file_path);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+
+            // Step 5: Upload new file
+            $file = $request->file('image');
+
+            //Safe filename (avoid overwrite issue)
+            $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
+
+            // School-wise folder
+            $destinationPath = public_path('BackgroundImages/' . $shortName);
+
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+
+            $file->move($destinationPath, $filename);
+
+            // Step 6: Save path
+            $path = 'BackgroundImages/' . $shortName . '/' . $filename;
+
+            DB::table('background_images')->updateOrInsert(
+                ['module' => $module],
+                [
+                    'file_name' => $filename,
+                    'file_path' => $path,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+
+            // Step 7: Success response
+            return response()->json([
+                'status' => true,
+                'message' => 'Background image saved successfully',
+                'data' => [
+                    'module' => $module,
+                    'school' => $shortName,
+                    'file_name' => $filename,
+                    'file_url' => asset($path)
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Upload failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getBackgroundImages(Request $request)
+    {
+        try {
+            // Get short_name from JWT
+            $user = $this->authenticateUser();
+            $shortName = JWTAuth::getPayload()->get('short_name');
+
+
+
+            // Fetch records for this school only
+            $images = DB::table('background_images')
+                ->where('file_path', 'like', 'BackgroundImages/' . $shortName . '/%')
+                ->get();
+
+            // Format response
+            $data = $images->map(function ($img) {
+                return [
+                    'module' => $img->module,
+                    'file_name' => $img->file_name,
+                    'file_url' => asset($img->file_path),
+                    'uploaded_at' => $img->created_at,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Images fetched successfully',
+                'school' => $shortName,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch images',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function updateBackgroundImageById(Request $request)
+    {
+        // Required fields check
+        $missing = [];
+
+        if (!$request->input('id')) {
+            $missing[] = 'id';
+        }
+
+        if (!$request->hasFile('image')) {
+            $missing[] = 'image';
+        }
+
+        if (!empty($missing)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'These fields are required: ' . implode(', ', $missing)
+            ], 422);
+        }
+
+        // Validate
+        $validator = Validator::make($request->all(), [
+            'id' => 'integer',
+            'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        try {
+            $id = $request->id;
+
+            // Auth
+            $user = $this->authenticateUser();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $shortName = JWTAuth::getPayload()->get('short_name');
+
+            // Find record by ID
+            $existing = DB::table('background_images')
+                ->where('id', $id)
+                ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Image record not found'
+                ], 404);
+            }
+
+            // Delete old file
+            if (!empty($existing->file_path)) {
+                $oldPath = public_path($existing->file_path);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+
+            // Upload new file
+            $file = $request->file('image');
+
+            // Use module name from DB for filename
+            $filename = $existing->module . '_' . time() . '.' . $file->getClientOriginalExtension();
+
+            $destinationPath = public_path('BackgroundImages/' . $shortName);
+
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+
+            $file->move($destinationPath, $filename);
+
+            $path = 'BackgroundImages/' . $shortName . '/' . $filename;
+
+            // Update DB
+            DB::table('background_images')
+                ->where('id', $id)
+                ->update([
+                    'file_name' => $filename,
+                    'file_path' => $path,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Background image updated successfully',
+                'data' => [
+                    'id' => $id,
+                    'module' => $existing->module,
+                    'school' => $shortName,
+                    'file_name' => $filename,
+                    'file_url' => asset($path)
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function deleteBackgroundImageById(Request $request)
+    {
+        // Required field
+        if (!$request->input('id')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'These fields are required: id'
+            ], 422);
+        }
+
+        try {
+            $id = (int) $request->id;
+
+            // Auth
+            $user = $this->authenticateUser();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $shortName = JWTAuth::getPayload()->get('short_name');
+
+            // Find record
+            $existing = DB::table('background_images')
+                ->where('id', $id)
+                ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Image record not found'
+                ], 404);
+            }
+
+            // (Optional but recommended) ensure it belongs to this school
+            if (strpos($existing->file_path, 'BackgroundImages/' . $shortName . '/') !== 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Forbidden: not allowed to delete this image'
+                ], 403);
+            }
+
+            // Delete file from disk
+            if (!empty($existing->file_path)) {
+                $fullPath = public_path($existing->file_path);
+                if (file_exists($fullPath)) {
+                    unlink($fullPath);
+                }
+            }
+
+            // Delete DB record
+            DB::table('background_images')->where('id', $id)->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Background image deleted successfully',
+                'data' => [
+                    'id' => $id,
+                    'module' => $existing->module
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

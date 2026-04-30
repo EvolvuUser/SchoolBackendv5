@@ -1578,6 +1578,12 @@
 
             Route::get('/download_remark_file', [AdminController::class, 'downloadRemarkFile']);
 
+            // Upload Background images for Health and Activity certificate Dev Name - Mahima Chaudhari  29-04-2026
+            Route::post('/upload_background_image', [LibraryController::class, 'uploadOrUpdateBackground']);
+            Route::get('/background_images_list', [LibraryController::class, 'getBackgroundImages']);
+            Route::post('/update_background_image_by_id', [LibraryController::class, 'updateBackgroundImageById']);
+            Route::post('/delete_background_image_by_id', [LibraryController::class, 'deleteBackgroundImageById']);
+
             // Testing
             Route::get('/testPayload', function (Request $request) {
                 $payload = JWTAuth::getPayload();
