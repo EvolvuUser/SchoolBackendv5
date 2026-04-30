@@ -1576,7 +1576,6 @@
 
             Route::post('/delete_sub_group', [LibraryController::class, 'deleteSubGroup']);
 
-            // DoWnload upload remark attachments Dev Name - Mahima Chaudhari 29-02-2026
             Route::get('/download_remark_file', [AdminController::class, 'downloadRemarkFile']);
 
             // Upload Background images for Health and Activity certificate Dev Name - Mahima Chaudhari  29-04-2026
@@ -1720,6 +1719,7 @@
     Route::post('sendwhatsappmessages', [AdminController::class, 'sendwhatsappmessages']);
 
     Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
+    Route::post('webhook/redingtonhscs', [AdminController::class, 'webhookredingtonhscs']);
 
     Route::get('whatsapp_messages_for_not_approving_lesson', [ReportController::class, 'whatsappmessagesfornotapprovinglessonplan']);
     Route::get('get_supportemailid', [NewController::class, 'getSupportEmailId']);
