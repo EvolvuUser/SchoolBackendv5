@@ -1,5 +1,7 @@
 @php
 $school = getSchoolDetails();
+$bgImage = getHealthBgImage();
+// dd($bgImage);
 
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
@@ -450,7 +452,7 @@ html, body {
 }
 
 /* CELLS */
-.record-table th {
+/* .record-table th {
     border: 1px solid #000;
     padding: 6px;
     background-color: #f2f2f2;
@@ -466,38 +468,136 @@ html, body {
     vertical-align: middle;
     word-wrap: break-word;
     overflow-wrap: break-word;
-}
-
-/* PREVENT ROW BREAK IN PDF/PRINT */
-/* .record-table tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
 } */
 
+
 /* GROUP ROW */
-.group-cell {
+/* .group-cell {
     font-weight: bold;
     background-color: #efefef;
     text-align: left;
     padding-left: 6px;
-}
+} */
 
 /* SUB GROUP ROW */
-.subgroup-cell {
+/* .subgroup-cell {
     background-color: #fafafa;
     text-align: left;
 }
 
+.bgcolor {
+    background-color: #fafafa;
+
+} */
+
 /* REMOVE ANY GLOBAL TABLE OVERRIDE ISSUES */
-table {
+/* table {
     width: 100%;
     border-collapse: collapse;
-}
+} */
 
 /* REMOVE PAGE CUTTING ISSUE */
+/* body {
+    overflow: visible;
+    
+} */
+
+
+/* TABLE BASE */
+.record-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #f0f7ff; /* light blue base */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* 3D effect */
+}
+
+/* HEADER */
+.record-table th {
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    /* text-transform: uppercase; */
+    letter-spacing: 0.05em;
+    color: #000000;
+
+    background: linear-gradient(145deg, #dbeafe, #bfdbfe); /* light blue gradient */
+    border: 1px solid #cfe3f5;
+    border-bottom: 2px solid #93c5fd;
+
+    text-align: center;
+    white-space: nowrap;
+
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); /* depth */
+}
+
+.record-table th.class-col {
+    white-space: normal;
+    line-height: 1.2;
+}
+
+/* CELLS */
+.record-table td {
+    border: 1px solid #d6e6f5; /* light border */
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+/* ROW HOVER EFFECT */
+.record-table tr:hover td {
+    background: #eaf4ff;
+    transform: scale(1.002); /* slight lift */
+}
+
+/* GROUP CELL */
+.group-cell {
+    font-weight: bold;
+    background: linear-gradient(145deg, #e0f2fe, #bae6fd);
+    text-align: left;
+    padding-left: 8px;
+    color: #080808;
+
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
+}
+
+/* SUB GROUP */
+.subgroup-cell {
+    background-color: #f0f9ff;
+    text-align: left;
+    color: #000000;
+}
+
+/* NORMAL ALT BG */
+.bgcolor {
+    background-color: #f8fbff;
+}
+
+/* TABLE BORDER RADIUS FIX */
+.record-table tr:first-child th:first-child {
+    border-top-left-radius: 8px;
+}
+.record-table tr:first-child th:last-child {
+    border-top-right-radius: 8px;
+}
+
+/* SOFT OUTER BORDER */
+.record-table {
+    border: 1px solid #cfe3f5;
+}
+
+/* BODY FIX */
 body {
     overflow: visible;
 }
+
 
 /* OPTIONAL: BETTER PRINT CONTROL */
 @media print {
@@ -520,7 +620,8 @@ body {
 
 {{-- ================= FIRST PAGE ================= --}}
 <div class="first">
-    <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img">
+    {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
+    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
 
     <div class="page-inner">
 
@@ -539,16 +640,16 @@ body {
                 </tr>
             </table>
         </div> --}}
+    {{-- <div class="bgcolor"> --}}
+         <div class="school-header">
 
-        <div class="school-header">
+        <div class="logo-box">
+           <img src="{{ $school['logo'] ?? '' }}" class="school-logo">
+        </div>
 
-    <div class="logo-box">
-        <img src="{{ $school['logo'] ?? '' }}" class="school-logo">
-    </div>
-
-    <div class="school-text">
-        <div class="school-name">{{ $school['school_name'] ?? '' }}</div>
-        <div class="school-address">{{ $school['address'] ?? '' }}</div>
+        <div class="school-text">
+           <div class="school-name">{{ $school['school_name'] ?? '' }}</div>
+           <div class="school-address">{{ $school['address'] ?? '' }}</div>
         <div class="school-phone">Phone: {{ $school['phone'] ?? '' }}</div>
     </div>
 
@@ -557,21 +658,21 @@ body {
             <div class="main-title">HEALTH AND ACTIVITY CARD</div>
             <div class="sub-title">GENERAL INFORMATION</div>
         </div>    
-      <div class="first-content">
-        <table>
+        <div class="first-content">
+         <table>
 
-        <!-- FULL WIDTH ROW -->
-        <tr>
+       
+          <tr>
             <td>NAME :</td>
             <td colspan="3">
                 <span class="statistics_line">
                     {{ ($parent->first_name ?? '') . ' ' . ($parent->mid_name ?? '') . ' ' . ($parent->last_name ?? '') }}
                 </span>
             </td>
-        </tr>
+          </tr>
 
-        <!-- 2 COLUMN ROW -->
-        <tr>
+       
+          <tr>
             <td>ADMISSION DATE :</td>
             <td>
                 <span class="statistics_line">
@@ -585,9 +686,9 @@ body {
                     {{ !empty($parent->dob) ? date('d-m-Y', strtotime($parent->dob)) : '' }}
                 </span>
             </td>
-        </tr>
+          </tr>
 
-        <tr>
+          <tr>
             <td>M F T :</td>
             <td>
                 <span class="statistics_line">{{ $parent->gender ?? '' }}</span>
@@ -597,23 +698,22 @@ body {
             <td>
                 <span class="statistics_line">{{ $parent->blood_group ?? '' }}</span>
             </td>
-        </tr>
+          </tr>
 
-        <!-- FULL WIDTH ROW -->
-        <tr>
+        
+          <tr>
             <td>MOTHER'S NAME :</td>
             <td colspan="3">
                 <span class="statistics_line">{{ $parent->mother_name ?? '' }}</span>
             </td>
-        </tr>
+          </tr>
 
-        <!-- FULL WIDTH ROW -->
-        <tr>
+          <tr>
             <td>FATHER'S NAME :</td>
             <td colspan="3">
                 <span class="statistics_line">{{ $parent->father_name ?? '' }}</span>
             </td>
-        </tr>
+           </tr>
 
         @php $chunks = array_chunk($basicInfo, 2); @endphp
         @foreach($chunks as $rowItem)
@@ -651,6 +751,10 @@ body {
            </table>
       </div>
     </div>
+        
+    {{-- </div> --}}
+
+  
 </div>
 
 {{-- ================= TABLE ================= --}}
@@ -707,7 +811,8 @@ body {
 
 @foreach($finalPages as $pageIndex => $pageRows)
 <div class="health-page">
-    <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img">
+    {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
+    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
     <div class="page-content">
 
         {{-- @if($pageIndex === 0) --}}
@@ -725,7 +830,7 @@ body {
                     <th>Test</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
-                        <th>Class {{ $cls }}</th>
+                        <th class="class-col">Class {{ $cls }}</th>
                     @endforeach
                 </tr>
             </thead>
@@ -745,12 +850,12 @@ body {
                         </td>
                     @endif
 
-                    <td>{{ $row['sub_sub'] }}</td>
-                    <td>{{ $row['test'] }}</td>
-                    <td>{{ $row['desc'] }}</td>
+                    <td class="bgcolor">{{ $row['sub_sub'] }}</td>
+                    <td class="bgcolor">{{ $row['test'] }}</td>
+                    <td class="bgcolor">{{ $row['desc'] }}</td>
 
                     @foreach($student_id_array_new as $cls => $id)
-                        <td>{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
+                        <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach
                 </tr>
                 @endforeach

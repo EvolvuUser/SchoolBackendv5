@@ -1493,10 +1493,10 @@ if (!function_exists('getSchoolDetails')) {
         try {
             static $cache = [];
 
-            // 🔹 Get JWT payload
+            //  Get JWT payload
             $payload = JWTAuth::getPayload();
 
-            // 🔹 Get short_name
+            //Get short_name
             $shortName = $shortName
                 ?? auth()->user()->short_name
                 ?? $payload->get('short_name')
@@ -1511,12 +1511,12 @@ if (!function_exists('getSchoolDetails')) {
                 return defaultSchool();
             }
 
-            // 🔹 Cache per school
+            // Cache per school
             if (isset($cache[$shortName])) {
                 return $cache[$shortName];
             }
 
-            // 🔹 Switch DB
+            // Switch DB
             if (array_key_exists($shortName, config('database.connections'))) {
                 config(['database.default' => $shortName]);
                 DB::purge($shortName);
@@ -1525,9 +1525,6 @@ if (!function_exists('getSchoolDetails')) {
                 return $cache[$shortName] = defaultSchool();
             }
 
-            // =====================================================
-            // 🔹 STEP 1: GET SETTINGS TABLE (ADDRESS + PHONE)
-            // =====================================================
             $settings = DB::table('settings')
                 ->where('academic_yr', $academicYear)
                 ->where('active', 'Y')
@@ -1545,18 +1542,10 @@ if (!function_exists('getSchoolDetails')) {
                     ->orderByDesc('setting_id')
                     ->first();
             }
-
-            // =====================================================
-            // 🔹 STEP 2: GET LOGO + IMAGE NAME
-            // =====================================================
             $settingsData = getSchoolSettingsData();
 
             $logo  = $settingsData->school_logo ?? '';
             $image = $settingsData->school_image ?? '';
-
-            // =====================================================
-            // 🔹 STEP 3: GET PROJECT URL FROM API
-            // =====================================================
             $projectUrl = '';
 
             try {
@@ -1575,9 +1564,7 @@ if (!function_exists('getSchoolDetails')) {
                 \Log::warning('Project URL fetch failed: ' . $e->getMessage());
             }
 
-            // =====================================================
-            // 🔹 FINAL RETURN (COMBINED DATA)
-            // =====================================================
+            // FINAL RETURN (COMBINED DATA)
             return $cache[$shortName] = [
                 'institute_name' => $settings->institute_name ?? '',
                 'school_name'    => $settings->page_title ?? $settings->institute_name ?? '',
@@ -1599,9 +1586,7 @@ if (!function_exists('getSchoolDetails')) {
     }
 }
 
-/**
- * 🔹 Default fallback
- */
+// Default fallback
 if (!function_exists('defaultSchool')) {
     function defaultSchool()
     {
@@ -1614,4 +1599,40 @@ if (!function_exists('defaultSchool')) {
             'school_img'     => '',
         ];
     }
+}
+
+// function getHealthBgImage()
+// {
+//     $bgImage = DB::table('background_images')
+//         ->where('module', 'health')
+//         ->first();
+
+//     if (!$bgImage) {
+//         return null;
+//     }
+
+//     return [
+//         'file_name' => $bgImage->file_name,
+//         'file_path' => $bgImage->file_path,
+//     ];
+// }
+
+function getHealthBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'health')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
 }
