@@ -43,6 +43,8 @@ class StudentAchievementController extends Controller
         $role_id = $payload->get('role_id');
         $parent_id = $payload->get("reg_id");
 
+        // currently data is filtered to student_id
+
         if ($req->reg_no) {
             $query->where('reg_no', $req->reg_no);
         }
@@ -138,7 +140,7 @@ class StudentAchievementController extends Controller
         return $achievement;
     }
 
-    // PENDING
+    // DONE
     public function update(Request $req, $id)
     {
         $user = $this->authenticateUser();
@@ -148,15 +150,14 @@ class StudentAchievementController extends Controller
                 'title' => $req->title,
                 'description' => $req->description,
                 'achievement_date' => $req->achievement_date,
-                'type_id' => $req->type_id,
-                'level_id' => $req->level_id,
+                'type' => $req->type,
+                'level' => $req->level,
                 'organization_name' => $req->organization_name,
                 'event_name' => $req->event_name,
                 'score' => $req->score,
                 'position' => $req->position,
                 'is_external' => $req->is_external,
             ]);
-
         return response()->json(['message' => 'Updated']);
     }
 
@@ -166,7 +167,6 @@ class StudentAchievementController extends Controller
         $user = $this->authenticateUser();
         DB::table('achievement_files')->where('achievement_id', $id)->delete();
         DB::table('student_achievements')->where('id', $id)->delete();
-
         return response()->json(['message' => 'Deleted']);
     }
 
