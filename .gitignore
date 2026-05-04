@@ -24,3 +24,4 @@ yarn-error.log
 fcm.json
 app/Http/Middleware/ConnectSchoolDatabase.php
 composer.lock
+composer.phar

@@ -1,0 +1,99 @@
+What column is for what: 
+
+title → Short headline of achievement
+👉 Example: "Won 1st Prize in Hackathon"
+description → Detailed explanation
+👉 Example: "Built an AI chatbot in 24 hours and won first place among 30 teams"
+event_name → Name of event/competition
+👉 Example: "TechFest 2026"
+organization_name → Who conducted it
+👉 Example: "IIT Bombay"
+
+type_id → Type/category of achievement
+👉 Example:
+Academic
+Sports
+Cultural
+Technical
+NCC/NSS etc.
+level_id → Level of achievement
+👉 Example:
+School
+District
+State
+National
+International
+
+score → Any score/value
+👉 Example:
+"95%"
+"8.5 CGPA"
+"Gold Medal"
+position → Rank achieved
+👉 Example:
+1, 2, 3
+or NULL if not applicable
+
+Tables:
+
+-------------------------------- QUERIES TO RUN 
+
+CREATE TABLE student_achievements (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    reg_no VARCHAR(10) NULL,
+    student_id BIGINT UNSIGNED NOT NULL,
+    academic_year VARCHAR(11) NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    achievement_date DATE NOT NULL,
+    type VARCHAR(20),
+    level VARCHAR(20),
+    organization_name VARCHAR(255) NULL,
+    event_name VARCHAR(255) NULL,
+    score VARCHAR(50) NULL,
+    position INT NULL,
+    is_verified TINYINT(1) DEFAULT 0,
+    is_external TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE achievement_files (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    achievement_id BIGINT UNSIGNED NOT NULL,
+    file_url TEXT NOT NULL,
+    file_type VARCHAR(20) NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-------------------------------- Master dropdown entries
+achievement_types: Sports, Academics, Arts, Music, Debate, Olympiad
+achievement_levels: School, Inter-school, District, State, National, International
+
+----------------Data Inserted queries
+
+INSERT INTO `dropdown_master` (`id`, `code`, `name`, `module`, `is_active`, `created_at`, `updated_at`) VALUES (NULL, 'ACHIEVEMENT_TYPE', 'achievement_type', 'student_achievements', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO `dropdown_master` (`id`, `code`, `name`, `module`, `is_active`, `created_at`, `updated_at`) VALUES 
+(NULL, 'ACHIEVEMENT_LEVEL', 'achievement_level', 'student_achievements', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO `dropdown_options`
+(`id`, `dropdown_id`, `value`, `label`, `sequence`, `parent_id`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(NULL, '4', 'Sports', 'Sports', '0', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '4', 'Academics', 'Academics', '1', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '4', 'Arts', 'Arts', '2', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '4', 'Music', 'Music', '3', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '4', 'Debate', 'Debate', '4', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, '4', 'Olympiad', 'Olympiad', '5', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+
+INSERT INTO `dropdown_options`
+(`id`, `dropdown_id`, `value`, `label`, `sequence`, `parent_id`, `is_active`, `created_at`, `updated_at`)
+VALUES
+(NULL, 5, 'School', 'School', '0', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 5, 'Inter-school', 'Inter-school', '1', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 5, 'District', 'District', '2', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 5, 'State', 'State', '3', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 5, 'National', 'National', '4', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(NULL, 5, 'International', 'International', '5', NULL, '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
