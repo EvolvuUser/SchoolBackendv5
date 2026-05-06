@@ -1,7 +1,7 @@
 @php
 $school = getSchoolDetails();
 $bgImage = getHealthBgImage();
-// dd($bgImage);
+// dd($school);
 
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
