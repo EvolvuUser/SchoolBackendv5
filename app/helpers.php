@@ -1578,6 +1578,9 @@ if (!function_exists('getSchoolDetails')) {
                 'school_img' => ($projectUrl && $image)
                     ? $projectUrl . 'uploads/' . $image
                     : '',
+                'affilication_no' => $settings->affilication_no ?? '',
+                'school_code' => $settings->school_code ?? '',
+                'udise_no' => $settings->udise_no,
             ];
         } catch (\Exception $e) {
             \Log::error('getSchoolDetails Error: ' . $e->getMessage());
