@@ -6320,6 +6320,159 @@ class LibraryController extends Controller
     }
 
 
+    // public function uploadOrUpdateBackground(Request $request)
+    // {
+    //     // Step 1: Check required fields manually
+    //     $missing = [];
+
+    //     if (!$request->hasFile('image')) {
+    //         $missing[] = 'image';
+    //     }
+
+    //     if (!$request->input('module')) {
+    //         $missing[] = 'module';
+    //     }
+
+    //     if (!empty($missing)) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'These fields are required: ' . implode(', ', $missing)
+    //         ], 422);
+    //     }
+
+    //     //Step 2: Validate other rules
+    //     $validator = Validator::make($request->all(), [
+    //         'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+    //         'module' => 'string'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => $validator->errors()->first()
+    //         ], 422);
+    //     }
+
+    //     try {
+    //         $module = $request->module;
+
+    //         // Step 3: Authenticate user
+    //         $user = $this->authenticateUser();
+
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Unauthorized'
+    //             ], 401);
+    //         }
+
+    //         $shortName = JWTAuth::getPayload()->get('short_name');
+
+    //         if (!$shortName) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'School short_name missing in token'
+    //             ], 400);
+    //         }
+
+    //         // Step 4: Check existing image
+    //         $existing = DB::table('background_images')
+    //             ->where('module', $module)
+    //             ->first();
+
+    //         // Delete old file if exists
+    //         if ($existing && !empty($existing->file_path)) {
+    //             $oldPath = public_path($existing->file_path);
+    //             if (file_exists($oldPath)) {
+    //                 unlink($oldPath);
+    //             }
+    //         }
+
+    //         // Step 5: Upload new file
+    //         $file = $request->file('image');
+
+    //         //Safe filename (avoid overwrite issue)
+    //         $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
+
+    //         // School-wise folder
+    //         $destinationPath = public_path('BackgroundImages/' . $shortName);
+
+    //         if (!file_exists($destinationPath)) {
+    //             mkdir($destinationPath, 0777, true);
+    //         }
+
+    //         $file->move($destinationPath, $filename);
+
+    //         // Step 6: Save path
+    //         $path = 'BackgroundImages/' . $shortName . '/' . $filename;
+
+    //         DB::table('background_images')->updateOrInsert(
+    //             ['module' => $module],
+    //             [
+    //                 'file_name' => $filename,
+    //                 'file_path' => $path,
+    //                 'updated_at' => now(),
+    //                 'created_at' => now(),
+    //             ]
+    //         );
+
+    //         // Step 7: Success response
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Background image saved successfully',
+    //             'data' => [
+    //                 'module' => $module,
+    //                 'school' => $shortName,
+    //                 'file_name' => $filename,
+    //                 'file_url' => asset($path)
+    //             ]
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Upload failed',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // public function getBackgroundImages(Request $request)
+    // {
+    //     try {
+    //         // Get short_name from JWT
+    //         $user = $this->authenticateUser();
+    //         $shortName = JWTAuth::getPayload()->get('short_name');
+
+    //         // Fetch records for this school only
+    //         $images = DB::table('background_images')
+    //             ->where('file_path', 'like', 'BackgroundImages/' . $shortName . '/%')
+    //             ->get();
+
+    //         // Format response
+    //         $data = $images->map(function ($img) {
+    //             return [
+    //                 'module' => $img->module,
+    //                 'file_name' => $img->file_name,
+    //                 'file_url' => asset($img->file_path),
+    //                 'uploaded_at' => $img->created_at,
+    //             ];
+    //         });
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Images fetched successfully',
+    //             'school' => $shortName,
+    //             'data' => $data
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to fetch images',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function uploadOrUpdateBackground(Request $request)
     {
         // Step 1: Check required fields manually
@@ -6340,7 +6493,7 @@ class LibraryController extends Controller
             ], 422);
         }
 
-        //Step 2: Validate other rules
+        // Step 2: Validate
         $validator = Validator::make($request->all(), [
             'image' => 'image|mimes:jpg,jpeg,png|max:2048',
             'module' => 'string'
@@ -6354,7 +6507,7 @@ class LibraryController extends Controller
         }
 
         try {
-            $module = $request->module;
+            $module = trim($request->module);
 
             // Step 3: Authenticate user
             $user = $this->authenticateUser();
@@ -6375,48 +6528,57 @@ class LibraryController extends Controller
                 ], 400);
             }
 
-            // Step 4: Check existing image
+            // Step 4: Check existing image (module-wise)
             $existing = DB::table('background_images')
                 ->where('module', $module)
                 ->first();
 
-            // Delete old file if exists
-            if ($existing && !empty($existing->file_path)) {
-                $oldPath = public_path($existing->file_path);
+            // Step 5: Delete old file if exists
+            if ($existing && !empty($existing->file_name)) {
+                $oldPath = public_path(
+                    "BackgroundImages/{$shortName}/{$existing->module}/{$existing->file_name}"
+                );
+
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }
             }
 
-            // Step 5: Upload new file
+            // Step 6: Upload new file
             $file = $request->file('image');
 
-            //Safe filename (avoid overwrite issue)
-            $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
+            // // Safe filename
+            // $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
 
-            // School-wise folder
-            $destinationPath = public_path('BackgroundImages/' . $shortName);
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+
+            $filename = $originalName . '_' . time() . '.' . $extension;
+
+            //  Create folder: shortName/module
+            $destinationPath = public_path("BackgroundImages/{$shortName}/{$module}");
 
             if (!file_exists($destinationPath)) {
                 mkdir($destinationPath, 0777, true);
             }
 
+            // Move file
             $file->move($destinationPath, $filename);
 
-            // Step 6: Save path
-            $path = 'BackgroundImages/' . $shortName . '/' . $filename;
+            // Step 7: Save path (optional)
+            // $path = "BackgroundImages/{$shortName}/{$module}/{$filename}";
 
             DB::table('background_images')->updateOrInsert(
                 ['module' => $module],
                 [
                     'file_name' => $filename,
-                    'file_path' => $path,
+                    // 'file_path' => $path,
                     'updated_at' => now(),
                     'created_at' => now(),
                 ]
             );
 
-            // Step 7: Success response
+            // Step 8: Response
             return response()->json([
                 'status' => true,
                 'message' => 'Background image saved successfully',
@@ -6424,7 +6586,7 @@ class LibraryController extends Controller
                     'module' => $module,
                     'school' => $shortName,
                     'file_name' => $filename,
-                    'file_url' => asset($path)
+                    'file_url' => asset("BackgroundImages/{$shortName}/{$module}/{$filename}")
                 ]
             ]);
         } catch (\Exception $e) {
@@ -6436,26 +6598,61 @@ class LibraryController extends Controller
         }
     }
 
+
+    // public function getBackgroundImages(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $shortName = JWTAuth::getPayload()->get('short_name');
+
+    //         // No filtering needed now
+    //         $images = DB::table('background_images')->get();
+
+    //         $data = $images->map(function ($img) use ($shortName) {
+    //             return [
+    //                 'module' => $img->module,
+    //                 'file_name' => $img->file_name,
+    //                 'file_url' => asset(
+    //                     "BackgroundImages/{$shortName}/{$img->module}/{$img->file_name}"
+    //                 ),
+    //                 'uploaded_at' => $img->created_at,
+    //             ];
+    //         });
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Images fetched successfully',
+    //             'school' => $shortName,
+    //             'data' => $data
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to fetch images',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function getBackgroundImages(Request $request)
     {
         try {
-            // Get short_name from JWT
             $user = $this->authenticateUser();
             $shortName = JWTAuth::getPayload()->get('short_name');
 
+            $images = DB::table('background_images')->get();
 
+            $data = $images->map(function ($img) use ($shortName) {
 
-            // Fetch records for this school only
-            $images = DB::table('background_images')
-                ->where('file_path', 'like', 'BackgroundImages/' . $shortName . '/%')
-                ->get();
+                // ✅ encode module for URL
+                $encodedModule = rawurlencode($img->module);
 
-            // Format response
-            $data = $images->map(function ($img) {
                 return [
                     'module' => $img->module,
                     'file_name' => $img->file_name,
-                    'file_url' => asset($img->file_path),
+                    'file_url' => asset(
+                        "BackgroundImages/{$shortName}/{$encodedModule}/{$img->file_name}"
+                    ),
                     'uploaded_at' => $img->created_at,
                 ];
             });
