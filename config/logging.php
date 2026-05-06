@@ -49,15 +49,21 @@ return [
     'channels' => [
         'upload_logs' => [
             'driver' => 'daily',
-            'path'   => storage_path('logs/upload_logs.log'),
-            'level'  => 'debug',
-            'days'   => 2,
+            'path' => storage_path('logs/upload_logs.log'),
+            'level' => 'debug',
+            'days' => 2,
         ],
         'approve_admission' => [
             'driver' => 'daily',
-            'path'   => storage_path('logs/approveAdmissionLog.log'),
-            'level'  => 'debug',
-            'days'   => 2,
+            'path' => storage_path('logs/approveAdmissionLog.log'),
+            'level' => 'debug',
+            'days' => 2,
+        ],
+        'whatsapp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/whatsapp.log'),
+            'level' => 'debug',
+            'days' => 2,
         ],
         'stack' => [
             'driver' => 'stack',

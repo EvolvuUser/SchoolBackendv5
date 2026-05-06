@@ -35,7 +35,6 @@ class TeacherDashboardController extends Controller
                     'message' => 'Unauthorized user'
                 ], 401);
             }
-
             $teacher_id = $user->reg_id;
             $academic_yr = JWTAuth::getPayload()->get('academic_year');
 

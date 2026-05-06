@@ -20,7 +20,8 @@
     use App\Http\Controllers\ReadmissionController;
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RoleController;
-    use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentAchievementController;
+use App\Http\Controllers\StudentController;
     use App\Http\Controllers\SubstituteTeacher;
     use App\Http\Controllers\TeacherDashboardController;
     use App\Http\Controllers\UserController;
@@ -1603,33 +1604,56 @@
             // Master Drop Down Module
             // ########################
             // ------------------------- Tables Used
-
             /*
              * dropdown_master - To store module data to which the drop down belongs.
              * dropdown_options - To store the options.
              */
             // --------------------------------- Routes
-            // Dropdowns
-            Route::get('/master/dropdowns', [DropdownController::class, 'index']);
-            Route::post('/master/dropdowns', [DropdownController::class, 'store']);
-            Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
-            Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
-            Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
+                // Dropdowns
+                Route::get('/master/dropdowns', [DropdownController::class, 'index']);
+                Route::post('/master/dropdowns', [DropdownController::class, 'store']);
+                Route::get('/master/dropdowns/{id}', [DropdownController::class, 'show']);
+                Route::put('/master/dropdowns/{id}', [DropdownController::class, 'update']);
+                Route::delete('/master/dropdowns/{id}', [DropdownController::class, 'destroy']);
 
-            // By code
-            Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
-            Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
+                // By code
+                Route::get('/master/dropdowns/code/{code}', [DropdownController::class, 'getByCode']);
+                Route::get('/master/dropdowns/code/{code}/options', [DropdownOptionController::class, 'getByCode']);
 
-            // Options under dropdown
-            Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
-            Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
+                // Options under dropdown
+                Route::get('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'index']);
+                Route::post('/master/dropdowns/{id}/options', [DropdownOptionController::class, 'store']);
 
-            // Option update/delete
-            Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
-            Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
+                // Option update/delete
+                Route::put('/master/options/{id}', [DropdownOptionController::class, 'update']);
+                Route::delete('/master/options/{id}', [DropdownOptionController::class, 'destroy']);
 
-            Route::get('/teacher/download-csv', [BulkUploading::class, 'downloadTeacherCsvTemplate']);
-            Route::post('/teacher/upload-csv', [BulkUploading::class, 'uploadTeacherCsv']);
+                Route::get('/teacher/download-csv', [BulkUploading::class, 'downloadTeacherCsvTemplate']);
+                Route::post('/teacher/upload-csv', [BulkUploading::class, 'uploadTeacherCsv']);
+
+            // --------------------------------- Routes
+
+            // ########################
+            // Extracurricular Activities Module
+            // ########################
+            // ------------------------- Tables Used
+            /*
+                student_achievements
+                achievement_files
+            */
+            // --------------------------------- Routes
+                Route::prefix('student/achievements')->group(function () {
+                    Route::get('childrens' , [StudentAchievementController::class, 'childrens']);
+                    Route::get('/', [StudentAchievementController::class, 'index']);              // list (filterable)
+                    Route::post('/', [StudentAchievementController::class, 'store']);             // create
+                    Route::get('{id}', [StudentAchievementController::class, 'show']);            // single
+                    Route::put('{id}', [StudentAchievementController::class, 'update']);          // update
+                    Route::delete('{id}', [StudentAchievementController::class, 'destroy']);      // delete
+                    Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']); // upload file
+                    Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);    // list files
+                    Route::post('{id}/verify', [StudentAchievementController::class, 'verify']);  // verify
+                });
+            // --------------------------------- Routes
 
             // New Admissions Users
             Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
@@ -1646,7 +1670,7 @@
             Route::delete('/admin/readmission-management/{id}', [ReadmissionController::class, 'deletereAdmissionForm']);
             Route::patch('/admin/readmission-management/{id}', [ReadmissionController::class, 'updatereAdmissionForm']);
             Route::get('/next_classwithreadmission/{current_class_id}/{student_id}', [ReadmissionController::class, 'getNextClassWithReadmission']);
-            // --------------------------------- Routes
+            
         });
 
         // Impersonate
