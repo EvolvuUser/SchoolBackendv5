@@ -10604,8 +10604,10 @@ class AssessmentController extends Controller
         $section_id = $request->input('section_id');
         $short_name = JWTAuth::getPayload()->get('short_name');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
         if ($class_name == '9' || $class_name == '11') {
             $publish = check_cbse_rc_publish_of_a_class($class_id, $section_id);
+            // dd($publish);
         } else {
             $publish = check_rc_publish_of_a_class($class_id, $section_id, '');
         }

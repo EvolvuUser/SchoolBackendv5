@@ -2122,7 +2122,8 @@ class AdminController extends Controller
             (
                 SELECT COUNT(*) 
                 FROM student s 
-                WHERE s.section_id = x.section_id
+                WHERE s.class_id = x.class_id
+                AND s.section_id = x.section_id
                   AND s.academic_yr = ?
                   AND s.isDelete = 'N'
             ) as students_count
@@ -2338,6 +2339,7 @@ class AdminController extends Controller
     {
         set_time_limit(300);
         $section_id = $request->section_id;
+        $class_id = $request->class_id;
         $student_id = $request->student_id;
         $reg_no = $request->reg_no;
         $user = $this->authenticateUser();
@@ -2348,8 +2350,9 @@ class AdminController extends Controller
 
         $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
 
-        if ($section_id && $reg_no) {
+        if ($class_id && $section_id && $reg_no) {
             $query
+                ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('reg_no', $reg_no)
                 ->where('isDelete', 'N')
@@ -2362,23 +2365,25 @@ class AdminController extends Controller
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id && $student_id && $reg_no) {
+        } elseif ($class_id && $section_id && $student_id && $reg_no) {
             $query
+                ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('student_id', $student_id)
                 ->where('reg_no', $reg_no)
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id && $student_id) {
+        } elseif ($class_id && $section_id && $student_id) {
             $query
+                ->where('class_id', $class_id)
                 ->where('student_id', $student_id)
                 ->where('section_id', $section_id)
                 ->where('isDelete', 'N')
                 ->where('academic_yr', $academicYr)
                 ->where('parent_id', '!=', '0');
-        } elseif ($section_id) {
-            $query->where('section_id', $section_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id) {
+            $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
         } elseif ($student_id) {
             $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
         } elseif ($reg_no) {
@@ -9005,21 +9010,75 @@ class AdminController extends Controller
         }
     }
 
+    // public function getStudentRemarkObservation(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $student_id = $request->input('student_id');
+    //         $academic_yr = $request->input('academic_yr');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+    //         $remarkobservation = DB::table('remark')
+    //             ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
+    //             ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
+    //             ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
+    //             ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
+    //             ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
+    //             ->where('remark.student_id', $student_id)
+    //             ->where('remark.academic_yr', $academic_yr)
+    //             ->where(function ($query) {
+    //                 $query
+    //                     ->where('remark_type', 'Observation')
+    //                     ->orWhere(function ($query) {
+    //                         $query
+    //                             ->where('remark_type', 'Remark')
+    //                             ->where('publish', 'Y');
+    //                     });
+    //             })
+    //             ->orderBy('publish_date')
+    //             ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
+    //             ->get()
+    //             ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
+    //                 $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
+    //                 $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
+    //                 if ($remark->image_name) {
+    //                     $remark->remark_url = $remark_url . '' . "$remark->image_name";
+    //                 } else {
+    //                     $remark->remark_url = null;
+    //                 }
+    //                 return $remark;
+    //             });
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data' => $remarkobservation,
+    //             'message' => 'Student Remark Observation',
+    //             'success' => true
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getStudentRemarkObservation(Request $request)
     {
         try {
             $user = $this->authenticateUser();
-            $customClaims = JWTAuth::getPayload()->get('academic_year');
             $student_id = $request->input('student_id');
             $academic_yr = $request->input('academic_yr');
+
             $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-            $remarkobservation = DB::table('remark')
+            // 🔹 Step 1: Get remarks (NO remark_detail join)
+            $remarks = DB::table('remark')
+                ->leftJoin('student', 'student.student_id', '=', 'remark.student_id')
                 ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
                 ->leftJoin('teacher', 'teacher.teacher_id', '=', 'remark.teacher_id')
-                ->leftJoin('remark_detail', 'remark_detail.remark_id', '=', 'remark.remark_id')
                 ->leftJoin('class', 'class.class_id', '=', 'remark.class_id')
                 ->leftJoin('section', 'section.section_id', '=', 'remark.section_id')
                 ->where('remark.student_id', $student_id)
@@ -9034,28 +9093,50 @@ class AdminController extends Controller
                         });
                 })
                 ->orderBy('publish_date')
-                ->select('remark.*', 'subject_master.name as subjectname', 'teacher.name as teachername', 'remark_detail.image_name', 'class.name as classname', 'section.name as sectionname')
+                ->select(
+                    'remark.*',
+                    'subject_master.name as subjectname',
+                    'teacher.name as teachername',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name'
+                )
+                ->get();
+
+            // 🔹 Step 2: Get all files
+            $remarkIds = $remarks->pluck('remark_id')->toArray();
+
+            $files = DB::table('remark_detail')
+                ->whereIn('remark_id', $remarkIds)
                 ->get()
-                ->map(function ($remark) use ($parent_app_url, $codeigniter_app_url) {
-                    $concatprojecturl = $codeigniter_app_url . '' . 'uploads/remark/';
-                    $remark_url = $concatprojecturl . $remark->publish_date . '/' . $remark->remark_id . '/';
-                    if ($remark->image_name) {
-                        $remark->remark_url = $remark_url . '' . "$remark->image_name";
-                    } else {
-                        $remark->remark_url = null;
-                    }
-                    return $remark;
-                });
+                ->groupBy('remark_id');
+
+            // 🔹 Step 3: Attach multiple files
+            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+                $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+
+                $remark->files = collect($files[$remark->remark_id] ?? [])
+                    ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+                        return [
+                            'image_name' => $file->image_name,
+                            'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
+                        ];
+                    });
+
+                return $remark;
+            });
 
             return response()->json([
                 'status' => 200,
-                'data' => $remarkobservation,
+                'data' => $remarks,
                 'message' => 'Student Remark Observation',
                 'success' => true
             ]);
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -9164,6 +9245,104 @@ class AdminController extends Controller
         } catch (Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // Dev Name - Mahima Chaudhari 28-04-2026
+    public function getHealthActivityPdfGRN(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $academic_year = $request->input('academic_yr');
+
+            // fallback from JWT if request not sent
+            if (!$academic_year) {
+                $academic_year = JWTAuth::getPayload()->get('academic_year');
+            }
+
+            $student_id = $request->input('student_id');
+            $student_name = get_student_name($student_id);
+
+            // IMPORTANT: recreate customClaims for Blade (NO Blade change needed)
+            $customClaims = [
+                'academic_year' => $academic_year
+            ];
+
+            $dynamicFilename = "Health_N_Activity_Card_$student_name.pdf";
+
+            $pdf = PDF::loadView(
+                'healthactivityrecord.healthactivityrecordpdf2',
+                compact('student_id', 'customClaims')  // keep Blade unchanged
+            )->setPaper('A4', 'portrait');
+
+            return response()->stream(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        } catch (Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function checkHealthActivityRecord(Request $request)
+    {
+        try {
+            $student_id = $request->input('student_id');
+            $academic_yr = $request->input('academic_yr');
+
+            if (!$student_id || !$academic_yr) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Required parameters missing'
+                ]);
+            }
+
+            // Get student class & section
+            $student = DB::table('student')
+                ->where('student_id', $student_id)
+                ->first();
+
+            if (!$student) {
+                return response()->json(['status' => false]);
+            }
+
+            // Check record exists
+            $recordExists = DB::table('health_activity_record')
+                ->where('student_id', $student_id)
+                ->where('academic_yr', $academic_yr)
+                ->exists();
+
+            if (!$recordExists) {
+                return response()->json(['status' => false]);
+            }
+
+            // Check publish status (IMPORTANT JOIN)
+            $publish = DB::table('health_activity_record_publish')
+                ->where('class_id', $student->class_id)
+                ->where('section_id', $student->section_id)
+                ->where('publish', 'Y')
+                ->exists();
+
+            return response()->json([
+                'status' => $publish ? true : false
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -12013,6 +12192,44 @@ class AdminController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
+    public function webhookredingtonhscs(Request $request)
+    {
+        $shortName = 'HSCS';
+        if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd('No database configuration for the given short_name');
+        }
+        Log::info('Redington Webhook Received:', $request->all());
+        $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+
+        foreach ($statuses as $status) {
+            $wamid = $status['id'];  // The WhatsApp message ID
+            $deliveryStatus = $status['status'];  // e.g., 'sent', 'delivered', 'failed'
+            Log::info($wamid);
+            Log::info($deliveryStatus);
+            // Update the database table where wa_id = wamid
+            $updateData = [
+                'status' => $deliveryStatus,
+                'updated_at' => now(),
+            ];
+
+            // If status is one of the success types, add sms_sent = 'Y'
+            if (in_array($deliveryStatus, ['sent', 'delivered', 'read'])) {
+                $updateData['sms_sent'] = 'Y';
+            }
+
+            // Update DB record where wa_id matches
+            DB::table('redington_webhook_details')
+                ->where('wa_id', $wamid)
+                ->update($updateData);
+
+            Log::info("Updated status for WAMID: $wamid to $deliveryStatus");
+        }
+
+        return response()->json(['status' => 'success'], 200);
+    }
+
     // API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
     public function getAbsentStudentForToday(Request $request)
     {
@@ -12983,8 +13200,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -13739,8 +13956,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         );
 
                         // stage => dev , live => production
-                        if(env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail(
                                 $cc,
                                 'Inviting For Verification for Admission',
@@ -13880,10 +14097,9 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 smart_mail($father_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
                 smart_mail($mother_emailid, 'Admission Details', 'emails.parentUserEmail', $emailData);
 
-                if(env("APP_ENV") == 'production') {
-                    $cc = "school@arnoldcentralschoolpune.edu.in";
+                if (env('APP_ENV') == 'production') {
+                    $cc = 'school@arnoldcentralschoolpune.edu.in';
                     smart_mail($cc, 'Admission Details', 'emails.parentUserEmail', $emailData);
-
                 }
             }
 
@@ -15019,8 +15235,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if(env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
                         $logger->info("form_id {$form_id}: emails sent to fmail={$fmail}, mmail={$mmail}");
@@ -15580,8 +15796,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         smart_mail($fmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         smart_mail($mmail, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
 
-                        if(env("APP_ENV") == 'production') {
-                            $cc = "school@arnoldcentralschoolpune.edu.in";
+                        if (env('APP_ENV') == 'production') {
+                            $cc = 'school@arnoldcentralschoolpune.edu.in';
                             smart_mail($cc, $short_name . ' - Admission Approved', 'emails.parentUserEmail', $emailData);
                         }
 
@@ -16416,19 +16632,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
@@ -19460,6 +19676,64 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => false,
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function downloadRemarkFile(Request $request)
+    {
+        try {
+            $remark_id = $request->input('remark_id');
+            $file_name = $request->input('file_name');
+
+            if (!$remark_id || !$file_name) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'remark_id and file_name are required',
+                    'success' => false
+                ]);
+            }
+
+            $globalVariables = App::make('global_variables');
+            $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+            $remark = DB::table('remark')
+                ->where('remark_id', $remark_id)
+                ->first();
+
+            if (!$remark) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Remark not found',
+                    'success' => false
+                ]);
+            }
+
+            $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
+
+            $fileUrl = $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark_id}/{$file_name}";
+
+            // STREAM (binary safe)
+            return response()->streamDownload(function () use ($fileUrl) {
+                $stream = fopen($fileUrl, 'rb');  // binary mode
+
+                if ($stream) {
+                    while (!feof($stream)) {
+                        echo fread($stream, 8192);
+                        flush();
+                    }
+                    fclose($stream);
+                }
+            }, $file_name, [
+                'Content-Type' => 'application/octet-stream',
+                'Content-Disposition' => 'attachment; filename="' . $file_name . '"',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage(),
+                'success' => false
+            ]);
         }
     }
 }
