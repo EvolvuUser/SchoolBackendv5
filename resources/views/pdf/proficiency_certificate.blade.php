@@ -1,3 +1,8 @@
+ @php
+$school = getSchoolDetails();
+$bgImage = getHealthBgImage();
+@endphp
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,7 +25,8 @@ body {
 
 /* Background images for each certificate type */
 .Gold {
-  background-image: url("https://sms.evolvu.in/public/proficiencycertificategold.jpg");
+  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificategold.jpg"); */
+  background-image: url('{{ asset($bgImage['file_path']) }}');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;

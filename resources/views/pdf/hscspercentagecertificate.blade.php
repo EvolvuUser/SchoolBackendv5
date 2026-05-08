@@ -1,3 +1,8 @@
+ @php
+$school = getSchoolDetails();
+$bgImage = getHealthBgImage();
+@endphp
+
 <style>
 @page {
     /*size: A4;*/
@@ -8,7 +13,8 @@
     /*padding: 0;*/
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/HSCS/lc_bg.jpg');
+    /* background-image: url('https://sms.evolvu.in/public/HSCS/lc_bg.jpg'); */
+    background-image: url('{{ asset($bgImage['file_path']) }}');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
