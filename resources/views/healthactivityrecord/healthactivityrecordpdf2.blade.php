@@ -396,21 +396,15 @@ html, body {
     min-height: 210mm;
     page-break-after: always;
     break-after: page;
+     overflow: visible;  /* this add*/
 }
 
-/* .health-page {
-    position: relative;
-    width: 297mm;
-    height: 210mm; 
-    page-break-after: always;
-    overflow: hidden;
-} */
 
-.health-page:last-child {
+/* .health-page:last-child {
     page-break-after: auto;
+
 }
 
-/* Content above background */
 .page-content {
     position: relative;
     z-index: 2;
@@ -420,6 +414,19 @@ html, body {
     padding-right: 1px;
     padding-left: 1px;
     
+} */
+
+/* this add */
+.health-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+}
+.page-content {
+    position: relative;
+    z-index: 2;
+    width: 92%;
+    margin: auto;
+    padding-top: 30px;
 }
 
 /* ================= TABLE ================= */
@@ -431,13 +438,28 @@ html, body {
     table-layout: fixed;
 } */
 
-.record-table {
+
+
+/* .record-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 10px;
     table-layout: fixed;
-     /* page-break-after: auto; */
+    page-break-after: auto;
     break-after: auto;
+} */
+/* this  */
+.record-table {
+    width: 100%;
+    border-collapse: collapse; 
+    border-spacing: 0;
+    font-size: 10px;
+    table-layout: fixed;
+    background: #f0f7ff;
+    border: 1px solid #cfe3f5;
+
+    page-break-inside: auto;
+    break-inside: auto;
 }
 
 /* HEADER */
@@ -498,33 +520,48 @@ html, body {
 
 
 /* TABLE BASE */
-.record-table {
+/* .record-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    background: #f0f7ff; /* light blue base */
+    background: #f0f7ff; 
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* 3D effect */
-}
-
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+} */
 /* HEADER */
-.record-table th {
+/* .record-table th {
     padding: 10px 14px;
     font-size: 14px;
     font-weight: 600;
-    /* text-transform: uppercase; */
+
     letter-spacing: 0.05em;
     color: #000000;
 
-    background: linear-gradient(145deg, #dbeafe, #bfdbfe); /* light blue gradient */
+    background: linear-gradient(145deg, #dbeafe, #bfdbfe); 
     border: 1px solid #cfe3f5;
     border-bottom: 2px solid #93c5fd;
 
     text-align: center;
     white-space: nowrap;
 
-    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); /* depth */
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); 
+} */
+
+
+/* this */
+.record-table th {
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #000000;
+    background: #dbeafe;
+    border: 1px solid #cfe3f5;
+    border-bottom: 2px solid #93c5fd;
+    text-align: center;
+    white-space: nowrap;
+    
 }
 
 .record-table th.class-col {
@@ -533,8 +570,8 @@ html, body {
 }
 
 /* CELLS */
-.record-table td {
-    border: 1px solid #d6e6f5; /* light border */
+/* .record-table td {
+    border: 1px solid #d6e6f5; 
     padding: 6px;
     text-align: center;
     vertical-align: middle;
@@ -543,6 +580,18 @@ html, body {
 
     background: #ffffff;
     transition: all 0.2s ease;
+} */
+
+/* this */
+.record-table td {
+    border: 1px solid #d6e6f5;
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    background: #ffffff;
+    /* ❌ REMOVE: transition, transform — useless in print, can break layout */
 }
 
 /* ROW HOVER EFFECT */
@@ -552,7 +601,7 @@ html, body {
 }
 
 /* GROUP CELL */
-.group-cell {
+/* .group-cell {
     font-weight: bold;
     background: linear-gradient(145deg, #e0f2fe, #bae6fd);
     text-align: left;
@@ -560,10 +609,27 @@ html, body {
     color: #080808;
 
     box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
+} */
+
+/* this */
+.group-cell {
+    font-weight: bold;
+    background: #e0f2fe;
+    text-align: left;
+    padding-left: 8px;
+    color: #080808;
+    /* ❌ REMOVE: box-shadow inset */
 }
 
 /* SUB GROUP */
-.subgroup-cell {
+/* .subgroup-cell {
+    background-color: #f0f9ff;
+    text-align: left;
+    color: #000000;
+} */
+
+ /* this */
+ .subgroup-cell {
     background-color: #f0f9ff;
     text-align: left;
     color: #000000;
@@ -586,6 +652,10 @@ html, body {
 .record-table {
     border: 1px solid #cfe3f5;
 }
+.record-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
 
 /* BODY FIX */
 body {
@@ -601,6 +671,7 @@ body {
 
     .record-table tr {
         page-break-inside: avoid;
+        page-break-after: auto;
     }
 
     thead {
