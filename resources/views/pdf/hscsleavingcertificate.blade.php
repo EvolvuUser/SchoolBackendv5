@@ -177,7 +177,7 @@ $bgImage = getHealthBgImage();
 
 @php
 $school = getSchoolDetails();
-$bgImage = getHealthBgImage();
+$bgImage = getLeavingBgImage();
 @endphp
 
 <!DOCTYPE html>

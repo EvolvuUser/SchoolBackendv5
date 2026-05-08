@@ -162,7 +162,7 @@
 
 @php
     $school = getSchoolDetails();
-    $bgImage = getHealthBgImage();
+    $bgImage = getBonafideBgImage();
 @endphp
 
 <!DOCTYPE html>

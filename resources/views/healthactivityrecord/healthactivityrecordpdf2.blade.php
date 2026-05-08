@@ -1,14 +1,17 @@
 @php
 $school = getSchoolDetails();
 $bgImage = getHealthBgImage();
-// dd($school);
+
+
 
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
 $class_name = (!empty($class_array) && isset($class_array[0])) ? (int)$class_array[0] : 0;
 
+
 $parent_info = get_student_parent_info($student_id, $customClaims);
 $health_activity_data = check_health_activity_data_exist_for_studentid($student_id);
+
 
 $parent = $parent_info[0] ?? null;
 $health = $health_activity_data ?? [];

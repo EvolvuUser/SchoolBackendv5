@@ -161,7 +161,7 @@
 
 
 @php
-    $bgImage = getHealthBgImage();
+    $bgImage = getCharacterBgImage();
 @endphp
 
 <!DOCTYPE html>

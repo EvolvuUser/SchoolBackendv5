@@ -1,6 +1,6 @@
 @php
 $school = getSchoolDetails();
-$bgImage = getHealthBgImage();
+$bgImage = getSimpleBonafideBgImage();
 @endphp
 
 <style>

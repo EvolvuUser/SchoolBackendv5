@@ -1,6 +1,8 @@
- @php
+@php
 $school = getSchoolDetails();
-$bgImage = getHealthBgImage();
+$bgImageGold = getProficiencyGoldBgImage();
+$bgImageSilver = getProficiencySilverBgImage();
+$bgImageBronze = getProficiencyBronzeBgImage();
 @endphp
 
 <!DOCTYPE html>
@@ -26,19 +28,21 @@ body {
 /* Background images for each certificate type */
 .Gold {
   /* background-image: url("https://sms.evolvu.in/public/proficiencycertificategold.jpg"); */
-  background-image: url('{{ asset($bgImage['file_path']) }}');
+  background-image: url('{{ asset($bgImageGold['file_path']) }}');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
 }
 .Silver {
-  background-image: url("https://sms.evolvu.in/public/proficiencycertificatesilver.jpg");
+  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificatesilver.jpg"); */
+  background-image: url('{{ asset($bgImageSilver['file_path']) }}');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
 }
 .Bronze {
-  background-image: url("https://sms.evolvu.in/public/proficiencycertificatebronze.jpg");
+  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificatebronze.jpg"); */
+  background-image: url('{{ asset($bgImageBronze['file_path']) }}');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
