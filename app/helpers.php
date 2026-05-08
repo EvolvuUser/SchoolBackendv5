@@ -1665,6 +1665,12 @@ function getHealthBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 
@@ -1691,6 +1697,11 @@ function getCasteBgImage()
             ),
         ];
     }
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getCharacterBgImage()
@@ -1716,6 +1727,12 @@ function getCharacterBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getLeavingBgImage()
@@ -1741,6 +1758,12 @@ function getLeavingBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getSimpleBonafideBgImage()
@@ -1766,6 +1789,12 @@ function getSimpleBonafideBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getBonafideBgImage()
@@ -1791,6 +1820,12 @@ function getBonafideBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getPercentageBgImage()
@@ -1816,6 +1851,12 @@ function getPercentageBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getProficiencyGoldBgImage()
@@ -1841,6 +1882,12 @@ function getProficiencyGoldBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getProficiencySilverBgImage()
@@ -1866,6 +1913,12 @@ function getProficiencySilverBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }
 
 function getProficiencyBronzeBgImage()
@@ -1891,4 +1944,10 @@ function getProficiencyBronzeBgImage()
             ),
         ];
     }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
 }

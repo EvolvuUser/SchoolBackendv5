@@ -388,13 +388,6 @@ html, body {
     padding: 2px 4px;
     min-height: 18px;
 }
-   
-/* Underline effect */
-/* .statistics_line {
-    border-bottom: 1px solid #000;
-    min-height: 16px;
-    display: block;
-} */
 
 /* ================= TABLE PAGES ================= */
 .health-page {
@@ -502,26 +495,18 @@ html, body {
     overflow: visible;
     
 } */
-.record-table {
-    width: 100%;
-    background: #f0f7ff; 
-   border-collapse: separate;
-    table-layout: fixed;
-    font-size: 10px;
-    page-break-inside: auto;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); 
-}
+
 
 /* TABLE BASE */
-/* .record-table {
+.record-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    background: #f0f7ff; 
+    background: #f0f7ff; /* light blue base */
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); 
-} */
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* 3D effect */
+}
 
 /* HEADER */
 .record-table th {
@@ -561,10 +546,10 @@ html, body {
 }
 
 /* ROW HOVER EFFECT */
-/* .record-table tr:hover td {
+.record-table tr:hover td {
     background: #eaf4ff;
-    transform: scale(1.002); 
-} */
+    transform: scale(1.002); /* slight lift */
+}
 
 /* GROUP CELL */
 .group-cell {
@@ -616,8 +601,6 @@ body {
 
     .record-table tr {
         page-break-inside: avoid;
-
-         page-break-after: auto;
     }
 
     thead {
