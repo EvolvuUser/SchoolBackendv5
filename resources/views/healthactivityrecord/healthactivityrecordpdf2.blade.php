@@ -2,8 +2,6 @@
 $school = getSchoolDetails();
 $bgImage = getHealthBgImage();
 
-
-
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
 $class_name = (!empty($class_array) && isset($class_array[0])) ? (int)$class_array[0] : 0;
@@ -624,7 +622,7 @@ body {
 {{-- ================= FIRST PAGE ================= --}}
 <div class="first">
     {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
-    <img src="{{$bgImage['file_path']) }}" class="bg-img">
+    <img src="{{$bgImage['file_path'] }}" class="bg-img">
 
     <div class="page-inner">
 
