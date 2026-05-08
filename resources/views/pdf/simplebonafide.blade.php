@@ -187,7 +187,7 @@ $student_image = '';
 
  @php
 $school = getSchoolDetails();
-$bgImage = getHealthBgImage();
+$bgImage = getSimpleBonafideBgImag();
 @endphp
 
 <style>

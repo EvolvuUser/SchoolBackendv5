@@ -153,7 +153,7 @@
 
 @php
 $school = getSchoolDetails();
-$bgImage = getHealthBgImage();
+$bgImage = getSimpleBonafideBgImag();
 @endphp
 
 <!DOCTYPE html>

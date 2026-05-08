@@ -1620,10 +1620,218 @@ if (!function_exists('defaultSchool')) {
 //     ];
 // }
 
+
+
+// function getHealthBgImage()
+// {
+//     $bgImage = DB::table('background_images')
+//         ->where('module', 'Health & Activity')
+//         ->first();
+
+//     // Default image
+//     $defaultPath = 'health3_bg.jpg';
+//     dd($bgImage);
+//     return [
+//         'file_name' => $bgImage && $bgImage->file_name
+//             ? $bgImage->file_name
+//             : 'default',
+
+//         'file_path' => $bgImage && $bgImage->file_path
+//             ? $bgImage->file_path
+//             : $defaultPath,
+//     ];
+// }
+
 function getHealthBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
-        ->where('module', 'health')
+        ->where('module', 'Health & Activity')
+        ->first();
+
+    // Default image
+    $defaultImage = 'health3_bg.jpg';
+
+    if ($bgImage && $bgImage->file_name) {
+
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
+}
+
+
+function getCasteBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Caste Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getCharacterBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Character Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getLeavingBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Leaving Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getSimpleBonafideBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Simple Bonafide Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getBonafideBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Bonafide Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getPercentageBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Percentage Certificate')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getProficiencyGoldBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Proficiency Certificate(Gold)')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getProficiencySilverBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Proficiency Certificate(Silver)')
+        ->first();
+
+    // Default image
+    $defaultPath = 'health3_bg.jpg';
+
+    return [
+        'file_name' => $bgImage && $bgImage->file_name
+            ? $bgImage->file_name
+            : 'default',
+
+        'file_path' => $bgImage && $bgImage->file_path
+            ? $bgImage->file_path
+            : $defaultPath,
+    ];
+}
+
+function getProficiencyBronzeBgImage()
+{
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Proficiency Certificate(Bronze)')
         ->first();
 
     // Default image

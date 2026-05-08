@@ -6644,7 +6644,7 @@ class LibraryController extends Controller
 
             $data = $images->map(function ($img) use ($shortName) {
 
-                // ✅ encode module for URL
+                //  encode module for URL
                 $encodedModule = rawurlencode($img->module);
 
                 return [
