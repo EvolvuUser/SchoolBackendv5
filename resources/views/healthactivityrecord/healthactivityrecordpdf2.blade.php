@@ -624,7 +624,7 @@ body {
 {{-- ================= FIRST PAGE ================= --}}
 <div class="first">
     {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
-    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
+    <img src="{{$bgImage['file_path']) }}" class="bg-img">
 
     <div class="page-inner">
 
@@ -815,7 +815,7 @@ body {
 @foreach($finalPages as $pageIndex => $pageRows)
 <div class="health-page">
     {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
-    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
+    <img src="{{ $bgImage['file_path']}}" class="bg-img">
     <div class="page-content">
 
         {{-- @if($pageIndex === 0) --}}
