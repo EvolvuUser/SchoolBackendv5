@@ -1670,180 +1670,225 @@ function getHealthBgImage()
 
 function getCasteBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Caste Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getCharacterBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Character Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getLeavingBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Leaving Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getSimpleBonafideBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Simple Bonafide Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getBonafideBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Bonafide Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getPercentageBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Percentage Certificate')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getProficiencyGoldBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Proficiency Certificate(Gold)')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getProficiencySilverBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Proficiency Certificate(Silver)')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
 
 function getProficiencyBronzeBgImage()
 {
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
     $bgImage = DB::table('background_images')
         ->where('module', 'Proficiency Certificate(Bronze)')
         ->first();
 
     // Default image
-    $defaultPath = 'health3_bg.jpg';
+    $defaultImage = 'health3_bg.jpg';
 
-    return [
-        'file_name' => $bgImage && $bgImage->file_name
-            ? $bgImage->file_name
-            : 'default',
+    if ($bgImage && $bgImage->file_name) {
 
-        'file_path' => $bgImage && $bgImage->file_path
-            ? $bgImage->file_path
-            : $defaultPath,
-    ];
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
 }
