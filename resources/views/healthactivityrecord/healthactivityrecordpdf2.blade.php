@@ -244,30 +244,14 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
+    overflow: visible;
 }
 
-/* Prevent overflow issues */
 * {
     box-sizing: border-box;
 }
-  /* .statistics_line {
-    display: block;              
-    width: 100%;
-    border-bottom: 1px solid #000;
-    padding: 2px 0;
-    min-height: 16px;  
- } */
-/* ================= COMMON BACKGROUND ================= */
-/* .bg-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-} */
 
+/* ================= BACKGROUND IMAGE ================= */
 .bg-img {
     position: absolute;
     top: 0;
@@ -286,19 +270,39 @@ html, body {
     page-break-after: always;
 }
 
-/* Wrapper to avoid absolute stacking issues */
 .page-inner {
     position: relative;
     z-index: 2;
     padding: 30px 40px;
 }
 
-
+.school-header {
+    position: relative;
+    width: 100%;
+    height: 80px;
+}
 
 .school-header table {
     width: 100%;
-} 
+}
 
+.logo-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.school-logo {
+    height: 70px;
+    margin-left: 15px;
+}
+
+.school-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 0;
+}
 
 .school-name {
     font-size: 26px;
@@ -313,32 +317,6 @@ html, body {
 
 .school-phone {
     font-size: 13px;
-} 
-
-.school-header {
-    position: relative;
-    width: 100%;
-    height: 80px;
-}
-
-/* LOGO */
-.logo-box {
-    position: absolute;
-    left: 0;
-    top: 0;
-}
-
-.school-logo {
-    height: 70px;
-    margin-left: 15px;
-}
-
-/* CENTER TEXT (TRUE CENTER) */
-.school-text {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    top: 0;
 }
 
 /* ===== TITLE ===== */
@@ -367,7 +345,6 @@ html, body {
     width: 85%;
     margin: auto;
     border-collapse: collapse;
-    /* font-size: 14px; */
 }
 
 .first-content td {
@@ -377,7 +354,6 @@ html, body {
 
 .first-content td:first-child {
     white-space: nowrap;
-    /* font-weight: bold; */
     width: 18%;
 }
 
@@ -389,38 +365,21 @@ html, body {
     min-height: 18px;
 }
 
-/* ================= TABLE PAGES ================= */
+/* ================= HEALTH TABLE PAGES ================= */
 .health-page {
     position: relative;
     width: 297mm;
     min-height: 210mm;
     page-break-after: always;
     break-after: page;
-     overflow: visible;  /* this add*/
+    overflow: visible;
 }
 
-
-/* .health-page:last-child {
-    page-break-after: auto;
-
-}
-
-.page-content {
-    position: relative;
-    z-index: 2;
-    width: 92%;
-    margin: auto;
-    padding-top: 30px;
-    padding-right: 1px;
-    padding-left: 1px;
-    
-} */
-
-/* this add */
 .health-page:last-child {
     page-break-after: auto;
     break-after: auto;
 }
+
 .page-content {
     position: relative;
     z-index: 2;
@@ -430,126 +389,28 @@ html, body {
 }
 
 /* ================= TABLE ================= */
-
-/* .record-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10px;
-    table-layout: fixed;
-} */
-
-
-
-/* .record-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10px;
-    table-layout: fixed;
-    page-break-after: auto;
-    break-after: auto;
-} */
-/* this  */
 .record-table {
     width: 100%;
-    border-collapse: collapse; 
+    border-collapse: collapse;
     border-spacing: 0;
     font-size: 10px;
     table-layout: fixed;
     background: #f0f7ff;
     border: 1px solid #cfe3f5;
-
     page-break-inside: auto;
-    break-inside: auto;
 }
 
-/* HEADER */
+/* ✅ Repeat header on every new page */
 .record-table thead {
     display: table-header-group;
 }
 
-/* CELLS */
-/* .record-table th {
-    border: 1px solid #000;
-    padding: 6px;
-    background-color: #f2f2f2;
-    font-weight: bold;
-    text-align: center;
-    vertical-align: middle;
+/* ✅ Avoid cutting a row across pages */
+.record-table tr {
+    page-break-inside: avoid;
 }
 
-.record-table td {
-    border: 1px solid #000;
-    padding: 4px;
-    text-align: center;
-    vertical-align: middle;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-} */
-
-
-/* GROUP ROW */
-/* .group-cell {
-    font-weight: bold;
-    background-color: #efefef;
-    text-align: left;
-    padding-left: 6px;
-} */
-
-/* SUB GROUP ROW */
-/* .subgroup-cell {
-    background-color: #fafafa;
-    text-align: left;
-}
-
-.bgcolor {
-    background-color: #fafafa;
-
-} */
-
-/* REMOVE ANY GLOBAL TABLE OVERRIDE ISSUES */
-/* table {
-    width: 100%;
-    border-collapse: collapse;
-} */
-
-/* REMOVE PAGE CUTTING ISSUE */
-/* body {
-    overflow: visible;
-    
-} */
-
-
-/* TABLE BASE */
-/* .record-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: #f0f7ff; 
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-} */
-/* HEADER */
-/* .record-table th {
-    padding: 10px 14px;
-    font-size: 14px;
-    font-weight: 600;
-
-    letter-spacing: 0.05em;
-    color: #000000;
-
-    background: linear-gradient(145deg, #dbeafe, #bfdbfe); 
-    border: 1px solid #cfe3f5;
-    border-bottom: 2px solid #93c5fd;
-
-    text-align: center;
-    white-space: nowrap;
-
-    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); 
-} */
-
-
-/* this */
+/* HEADER CELLS */
 .record-table th {
     padding: 10px 14px;
     font-size: 14px;
@@ -561,7 +422,7 @@ html, body {
     border-bottom: 2px solid #93c5fd;
     text-align: center;
     white-space: nowrap;
-    
+    /* NO border-radius, NO box-shadow, NO gradient */
 }
 
 .record-table th.class-col {
@@ -569,20 +430,7 @@ html, body {
     line-height: 1.2;
 }
 
-/* CELLS */
-/* .record-table td {
-    border: 1px solid #d6e6f5; 
-    padding: 6px;
-    text-align: center;
-    vertical-align: middle;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-
-    background: #ffffff;
-    transition: all 0.2s ease;
-} */
-
-/* this */
+/* DATA CELLS */
 .record-table td {
     border: 1px solid #d6e6f5;
     padding: 6px;
@@ -591,82 +439,46 @@ html, body {
     word-wrap: break-word;
     overflow-wrap: break-word;
     background: #ffffff;
-    /* ❌ REMOVE: transition, transform — useless in print, can break layout */
+    /* NO transition, NO transform, NO box-shadow */
 }
 
-/* ROW HOVER EFFECT */
-.record-table tr:hover td {
-    background: #eaf4ff;
-    transform: scale(1.002); /* slight lift */
-}
+/* ❌ REMOVED: tr:hover with transform — breaks PDF page-break flow */
 
 /* GROUP CELL */
-/* .group-cell {
-    font-weight: bold;
-    background: linear-gradient(145deg, #e0f2fe, #bae6fd);
-    text-align: left;
-    padding-left: 8px;
-    color: #080808;
-
-    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
-} */
-
-/* this */
 .group-cell {
     font-weight: bold;
     background: #e0f2fe;
     text-align: left;
     padding-left: 8px;
     color: #080808;
-    /* ❌ REMOVE: box-shadow inset */
+    /* NO box-shadow */
 }
 
 /* SUB GROUP */
-/* .subgroup-cell {
-    background-color: #f0f9ff;
-    text-align: left;
-    color: #000000;
-} */
-
- /* this */
- .subgroup-cell {
+.subgroup-cell {
     background-color: #f0f9ff;
     text-align: left;
     color: #000000;
 }
 
-/* NORMAL ALT BG */
+/* ALT ROW BG */
 .bgcolor {
     background-color: #f8fbff;
 }
 
-/* TABLE BORDER RADIUS FIX */
-.record-table tr:first-child th:first-child {
-    border-top-left-radius: 8px;
-}
-.record-table tr:first-child th:last-child {
-    border-top-right-radius: 8px;
-}
-
-/* SOFT OUTER BORDER */
-.record-table {
-    border: 1px solid #cfe3f5;
-}
-.record-table tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
-/* BODY FIX */
-body {
-    overflow: visible;
-}
-
-
-/* OPTIONAL: BETTER PRINT CONTROL */
+/* ================= PRINT OVERRIDES ================= */
 @media print {
+    html, body {
+        overflow: visible;
+    }
+
     .record-table {
         font-size: 9px;
+        page-break-inside: auto;
+    }
+
+    .record-table thead {
+        display: table-header-group;
     }
 
     .record-table tr {
@@ -674,8 +486,11 @@ body {
         page-break-after: auto;
     }
 
-    thead {
-        display: table-header-group;
+    .record-table td,
+    .record-table th {
+        /* Flat colors only — no gradients in print */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 }
 </style>
