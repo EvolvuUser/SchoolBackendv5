@@ -1,8 +1,21 @@
 @php
 $school = getSchoolDetails();
+
 $bgImageGold = getProficiencyGoldBgImage();
 $bgImageSilver = getProficiencySilverBgImage();
 $bgImageBronze = getProficiencyBronzeBgImage();
+
+$goldBgPath = (!empty($bgImageGold) && !empty($bgImageGold['file_path']))
+    ? asset($bgImageGold['file_path'])
+    : asset('health3_bg.jpg');
+
+$silverBgPath = (!empty($bgImageSilver) && !empty($bgImageSilver['file_path']))
+    ? asset($bgImageSilver['file_path'])
+    : asset('health3_bg.jpg');
+
+$bronzeBgPath = (!empty($bgImageBronze) && !empty($bgImageBronze['file_path']))
+    ? asset($bgImageBronze['file_path'])
+    : asset('health3_bg.jpg');
 @endphp
 
 <!DOCTYPE html>

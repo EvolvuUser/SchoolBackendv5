@@ -1,7 +1,12 @@
- @php
+@php
 $school = getSchoolDetails();
 $bgImage = getCasteBgImage();
+
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
 @endphp
+
 <style>
 @page {
     size: A4;

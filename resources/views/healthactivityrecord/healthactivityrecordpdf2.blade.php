@@ -397,21 +397,21 @@ html, body {
 } */
 
 /* ================= TABLE PAGES ================= */
-/* .health-page {
+.health-page {
     position: relative;
     width: 297mm;
     min-height: 210mm;
     page-break-after: always;
     break-after: page;
-} */
+}
 
-.health-page {
+/* .health-page {
     position: relative;
     width: 297mm;
-    height: 210mm; /* FIXED height (important) */
+    height: 210mm; 
     page-break-after: always;
     overflow: hidden;
-}
+} */
 
 .health-page:last-child {
     page-break-after: auto;
@@ -502,18 +502,26 @@ html, body {
     overflow: visible;
     
 } */
-
+.record-table {
+    width: 100%;
+    background: #f0f7ff; 
+   border-collapse: separate;
+    table-layout: fixed;
+    font-size: 10px;
+    page-break-inside: auto;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); 
+}
 
 /* TABLE BASE */
-.record-table {
+/* .record-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    background: #f0f7ff; /* light blue base */
+    background: #f0f7ff; 
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* 3D effect */
-}
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); 
+} */
 
 /* HEADER */
 .record-table th {
@@ -553,10 +561,10 @@ html, body {
 }
 
 /* ROW HOVER EFFECT */
-.record-table tr:hover td {
+/* .record-table tr:hover td {
     background: #eaf4ff;
-    transform: scale(1.002); /* slight lift */
-}
+    transform: scale(1.002); 
+} */
 
 /* GROUP CELL */
 .group-cell {
@@ -608,6 +616,8 @@ body {
 
     .record-table tr {
         page-break-inside: avoid;
+
+         page-break-after: auto;
     }
 
     thead {
