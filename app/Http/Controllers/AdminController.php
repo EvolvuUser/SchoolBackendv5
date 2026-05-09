@@ -9074,7 +9074,7 @@ class AdminController extends Controller
             $globalVariables = App::make('global_variables');
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-            // 🔹 Step 1: Get remarks (NO remark_detail join)
+            //  Step 1: Get remarks (NO remark_detail join)
             $remarks = DB::table('remark')
                 ->leftJoin('student', 'student.student_id', '=', 'remark.student_id')
                 ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
@@ -9105,7 +9105,7 @@ class AdminController extends Controller
                 )
                 ->get();
 
-            // 🔹 Step 2: Get all files
+            // Step 2: Get all files
             $remarkIds = $remarks->pluck('remark_id')->toArray();
 
             $files = DB::table('remark_detail')
@@ -9113,17 +9113,41 @@ class AdminController extends Controller
                 ->get()
                 ->groupBy('remark_id');
 
-            // 🔹 Step 3: Attach multiple files
-            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
-                $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+            // Step 3: Attach multiple files
+            // $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+            //     $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
 
-                $remark->files = collect($files[$remark->remark_id] ?? [])
-                    ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
-                        return [
-                            'image_name' => $file->image_name,
-                            'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
-                        ];
-                    });
+            //     $remark->files = collect($files[$remark->remark_id] ?? [])
+            //         ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+            //             return [
+            //                 'image_name' => $file->image_name,
+            //                 'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
+            //             ];
+            //         });
+
+            //     return $remark;
+            // });
+            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+
+                // Default empty attachments
+                $remark->attachments = [];
+
+                // Attach files only if remark_type = Remark
+                if ($remark->remark_type === 'Remark') {
+
+                    $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+
+                    $remark->attachments = collect($files[$remark->remark_id] ?? [])
+                        ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+
+                            return [
+                                'image_name' => $file->image_name,
+                                'file_url' => $codeigniter_app_url .
+                                    "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
+                            ];
+                        })
+                        ->values();
+                }
 
                 return $remark;
             });
@@ -13200,8 +13224,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                . $sibling_student->mid_name . ' '
-                                . $sibling_student->last_name
+                                    . $sibling_student->mid_name . ' '
+                                    . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16632,19 +16656,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
