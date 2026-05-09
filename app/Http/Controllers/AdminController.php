@@ -9127,21 +9127,23 @@ class AdminController extends Controller
 
             //     return $remark;
             // });
+            // Step 3: Attach files only for Remark type
             $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
 
-                // Default empty attachments
+                // Always return attachments key
                 $remark->attachments = [];
 
-                // Attach files only if remark_type = Remark
-                if ($remark->remark_type === 'Remark') {
+                // Attach files only for Remark type
+                if ($remark->remark_type == 'Remark') {
 
-                    $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+                    $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
                     $remark->attachments = collect($files[$remark->remark_id] ?? [])
                         ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
 
                             return [
                                 'image_name' => $file->image_name,
+                                'file_size' => $file->file_size,
                                 'file_url' => $codeigniter_app_url .
                                     "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
                             ];
