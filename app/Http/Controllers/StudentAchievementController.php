@@ -128,6 +128,36 @@ class StudentAchievementController extends Controller
     }
 
     // DONE
+    public function deleteFile($fileId)
+    {
+        $user = $this->authenticateUser();
+
+        $file = DB::table('achievement_files')
+            ->where('id', $fileId)
+            ->first();
+
+        if (!$file) {
+            return response()->json([
+                'message' => 'File not found'
+            ], 404);
+        }
+
+        // physically delete file
+        if ($file->file_url && Storage::disk('public')->exists($file->file_url)) {
+            Storage::disk('public')->delete($file->file_url);
+        }
+
+        // remove db record
+        DB::table('achievement_files')
+            ->where('id', $fileId)
+            ->delete();
+
+        return response()->json([
+            'message' => 'File deleted successfully'
+        ]);
+    }
+
+    // DONE
     public function show($id)
     {
         $user = $this->authenticateUser();
@@ -165,9 +195,31 @@ class StudentAchievementController extends Controller
     public function destroy($id)
     {
         $user = $this->authenticateUser();
-        DB::table('achievement_files')->where('achievement_id', $id)->delete();
-        DB::table('student_achievements')->where('id', $id)->delete();
-        return response()->json(['message' => 'Deleted']);
+
+        // get all files first
+        $files = DB::table('achievement_files')
+            ->where('achievement_id', $id)
+            ->get();
+
+        // physically delete files
+        foreach ($files as $file) {
+            if ($file->file_url && Storage::disk('public')->exists($file->file_url)) {
+                Storage::disk('public')->delete($file->file_url);
+            }
+        }
+
+        // delete db records
+        DB::table('achievement_files')
+            ->where('achievement_id', $id)
+            ->delete();
+
+        DB::table('student_achievements')
+            ->where('id', $id)
+            ->delete();
+
+        return response()->json([
+            'message' => 'Deleted successfully'
+        ]);
     }
 
     // DONE
