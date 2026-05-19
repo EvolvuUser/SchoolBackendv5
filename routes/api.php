@@ -1666,6 +1666,7 @@
                 Route::delete('{id}', [StudentAchievementController::class, 'destroy']);      // delete
                 Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']); // upload file
                 Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);    // list files
+                Route::delete('files/{fileId}', [StudentAchievementController::class, 'deleteFile']);
                 Route::post('{id}/verify', [StudentAchievementController::class, 'verify']);  // verify
             });
             // --------------------------------- Routes
