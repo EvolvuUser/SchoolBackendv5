@@ -4808,7 +4808,7 @@ class LibraryController extends Controller
                 'status' => false,
                 'message' => 'Please Active the parameter to download the excel'
             ], 400);
-        } nn
+        } 
 
         // ================= GROUPS =================
         $groups = DB::table('health_activity_group')
