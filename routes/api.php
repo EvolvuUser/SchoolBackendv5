@@ -1,4 +1,4 @@
-    <?php
+<?php
 
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\AssessmentController;
@@ -1657,6 +1657,7 @@
                 achievement_files
             */
             // --------------------------------- Routes
+<<<<<<< HEAD
             Route::prefix('student/achievements')->group(function () {
                 Route::get('childrens', [StudentAchievementController::class, 'childrens']);
                 Route::get('/', [StudentAchievementController::class, 'index']);              // list (filterable)
@@ -1666,9 +1667,22 @@
                 Route::delete('{id}', [StudentAchievementController::class, 'destroy']);      // delete
                 Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']); // upload file
                 Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);    // list files
-                Route::delete('files/{fileId}', [StudentAchievementController::class, 'deleteFile']);
                 Route::post('{id}/verify', [StudentAchievementController::class, 'verify']);  // verify
             });
+=======
+                Route::prefix('student/achievements')->group(function () {
+                    Route::get('childrens' , [StudentAchievementController::class, 'childrens']);
+                    Route::get('/', [StudentAchievementController::class, 'index']);              // list (filterable)
+                    Route::post('/', [StudentAchievementController::class, 'store']);             // create
+                    Route::get('{id}', [StudentAchievementController::class, 'show']);            // single
+                    Route::put('{id}', [StudentAchievementController::class, 'update']);          // update
+                    Route::delete('{id}', [StudentAchievementController::class, 'destroy']);      // delete
+                    Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']); // upload file
+                    Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);    // list files
+                    Route::delete('files/{fileId}', [StudentAchievementController::class, 'deleteFile']);
+                    Route::post('{id}/verify', [StudentAchievementController::class, 'verify']);  // verify
+                });
+>>>>>>> 6e3b334bb459cbd744c5ce92d57d60a41c7a4091
             // --------------------------------- Routes
 
             // New Admissions Users

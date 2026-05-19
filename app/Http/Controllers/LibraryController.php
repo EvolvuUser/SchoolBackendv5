@@ -4777,11 +4777,38 @@ class LibraryController extends Controller
             ->get();
 
         // ================= PARAMETERS =================
+        // $parameters = DB::table('health_activity_parameter')
+        //     ->where('is_active', 'Y')
+        //     ->orderBy('group_id')
+        //     ->orderBy('sequence')
+        //     ->get();
+
+        // Changed by Mahima 19-05-2026
+        // ================= PARAMETERS =================
+        $allParameters = DB::table('health_activity_parameter')->get();
+
+        // Check if no parameter exists
+        if ($allParameters->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please create health and activity parameter and then download'
+            ], 400);
+        }
+
         $parameters = DB::table('health_activity_parameter')
             ->where('is_active', 'Y')
             ->orderBy('group_id')
             ->orderBy('sequence')
-            ->get();
+            ->get(); 
+            
+
+        // Check if no active parameter exists
+        if ($parameters->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please Active the parameter to download the excel'
+            ], 400);
+        } nn
 
         // ================= GROUPS =================
         $groups = DB::table('health_activity_group')
