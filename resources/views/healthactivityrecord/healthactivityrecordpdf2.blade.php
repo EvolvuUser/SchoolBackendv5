@@ -468,6 +468,15 @@ html, body {
     break-inside: auto;
 }
 
+.wrap-header {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+}
+
 .record-table td.desc-cell {
     max-width: 160px;
     min-width: 80px;
@@ -753,14 +762,28 @@ html, body {
 
         <table class="record-table">
             <thead>
-                <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
+                {{-- <tr>
+                    <th>Fitness Parameter</th>
+                    <th>Sub Group</th>
+                    <th>Sub Sub Group</th>
+                    <th>Test Parameter</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
                         <th class="class-col">Class {{ $cls }}</th>
+                    @endforeach
+                </tr> --}}
+
+                <tr>
+                    <th class="wrap-header">Fitness Parameter</th>
+                    <th class="wrap-header">Sub Group</th>
+                    <th class="wrap-header">Sub Sub Group</th>
+                    <th class="wrap-header">Test Parameter</th>
+                    <th class="wrap-header">Description</th>
+
+                    @foreach($student_id_array_new as $cls => $id)
+                        <th class="class-col wrap-header">
+                          Class {{ $cls }}
+                        </th>
                     @endforeach
                 </tr>
             </thead>
