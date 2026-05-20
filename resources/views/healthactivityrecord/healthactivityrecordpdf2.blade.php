@@ -272,7 +272,7 @@ foreach ($grouped as $groupName => $subGroups) {
    STEP 3 : SMART PAGE SPLITTING
 ───────────────────────────────────────────── */
 
-$pageUsableHeight = 730;
+$pageUsableHeight = 670;
 $headerHeight     = 90;
 
 $pages = [];
