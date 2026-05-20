@@ -110,52 +110,39 @@ foreach ($grouped as $groupName => $subGroups) {
     }
 }
 
-/* ── STEP 3: Chunk by estimated height for Puppeteer A4 landscape ── */
-// $pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
-// $headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
+/* ══════════════════════════════════════════════════
+   STEP 3: Smart page splitting (FIXED & UPDATED)
+   ══════════════════════════════════════════════════ */
 
-// $pages        = [];
-// $currentPage  = [];
-// $currentHeight = $headerHeight; // start with header already counted
+$pageUsableHeight = 670;   // A4 landscape usable height (px)
+$headerHeight     = 90;    // h2 title (~40px) + thead (~50px)
 
-// foreach ($flatRows as $row) {
+/* ── Calculate actual description column width dynamically ── */
+$pageWidth       = 1032;   // 92% of 1122px (A4 landscape at 96dpi)
+$fixedColsWidth  = 60 + 70 + 70 + 70;          // Fitness + Sub + SubSub + Test = 270px
+$classColWidth   = 51;                           // each class value column width
+$totalClassWidth = count($student_id_array_new) * $classColWidth;
+$descColWidth    = $pageWidth - $fixedColsWidth - $totalClassWidth;
+$descColWidth    = max(80, $descColWidth);        // minimum 80px safety net
 
-//     // Estimate row height based on description length
-//     $descLength  = strlen($row['desc'] ?? '');
-//     $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
-//     $baseHeight  = 22;  // minimum row height in px
-//     $lineHeight  = 14;  // extra px per extra line
-//     $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+/* ── Row height calculation config ── */
+$avgCharWidth = 6;    // 7pt font ≈ 6px per character
+$lineHeight   = 12;   // px per line at 7pt
+$cellPadding  = 10;   // top + bottom cell padding combined
+$minRowHeight = 28;   // absolute minimum row height
 
-//     // Also account for sub_sub wrapping
-//     $subSubLength = strlen($row['sub_sub'] ?? '');
-//     $subSubLines  = max(1, ceil($subSubLength / 20));
-//     $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+$charsPerLine = max(1, floor($descColWidth / $avgCharWidth));
 
-//     // If adding this row exceeds page height, start a new page
-//     if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
-//         $pages[]       = $currentPage;
-//         $currentPage   = [];
-//         $currentHeight = $headerHeight; // reset with header height for new page
-//     }
+/* ── Helper: calculate row height from description ── */
+$calcRowHeight = function(string $desc) use ($charsPerLine, $lineHeight, $cellPadding, $minRowHeight): int {
+    $lines     = ceil(mb_strlen($desc) / $charsPerLine);
+    $lines     = max(1, $lines);
+    $height    = ($lines * $lineHeight) + $cellPadding;
+    return max($minRowHeight, $height);
+};
 
-//     $currentPage[] = $row;
-//     $currentHeight += $rowHeight;
-// }
-
-// // Add last page
-// if (!empty($currentPage)) {
-//     $pages[] = $currentPage;
-// }
-
-// 20-05-2026
-
-/* ── STEP 3: Smart page splitting ── */
-$pageUsableHeight = 670;
-$headerHeight     = 90;
-
-$pages = [];
-$currentPage = [];
+$pages        = [];
+$currentPage  = [];
 $currentHeight = $headerHeight;
 
 $currentGroup = null;
@@ -190,33 +177,30 @@ foreach ($flatRows as $row) {
         ? mb_substr($cleanTest, 0, 32) . '…'
         : $cleanTest;
 
-    /* ── Fixed height buckets based on desc length ── */
-    $descLen = mb_strlen($row['desc_display']);
-    if ($descLen <= 40) {
-        $rowHeight = 30;
-    } elseif ($descLen <= 80) {
-        $rowHeight = 44;
-    } else {
-        $rowHeight = 58;
-    }
+    /* ── Dynamic row height based on actual desc column width ── */
+    $rowHeight = $calcRowHeight($row['desc_display']);
 
-    /* ── Extra height for new group/subgroup ── */
+    /* ── Extra height for new group / subgroup ── */
     $extraHeight = 0;
     if ($currentGroup !== $row['group']) {
-        $extraHeight += 12;
+        $extraHeight += 12;   // new group separator
     } elseif ($currentSub !== $row['sub_group']) {
-        $extraHeight += 8;
+        $extraHeight += 8;    // new subgroup separator
     }
 
     $requiredHeight = $rowHeight + $extraHeight;
 
-    /* ── Page break ── */
+    /* ── Page break check ── */
     if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
         $pages[]       = $currentPage;
         $currentPage   = [];
         $currentHeight = $headerHeight;
         $currentGroup  = null;
         $currentSub    = null;
+
+        /* ── FIX: Recalculate extraHeight for new page context ── */
+        $extraHeight    = 12;   // first row on new page is always a "new group"
+        $requiredHeight = $rowHeight + $extraHeight;
     }
 
     $currentPage[]  = $row;
@@ -225,13 +209,14 @@ foreach ($flatRows as $row) {
     $currentSub     = $row['sub_group'];
 }
 
+/* ── Last page ── */
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
 
-
-
-/* ── Recalculate rowspans per page ── */
+/* ══════════════════════════════════════════════════
+   Recalculate rowspans per page
+   ══════════════════════════════════════════════════ */
 $finalPages = [];
 foreach ($pages as $pageRows) {
     $groupCounts = [];
@@ -273,6 +258,9 @@ foreach ($student_id_array_new as $cls => $id) {
     $h = check_health_activity_data_exist_for_studentid($id);
     $allClassHealth[$cls] = $h['value'] ?? [];
 }
+
+/* ── Calculate dynamic class column width for CSS ── */
+$classColWidthPx = $classColWidth . 'px';
 @endphp
 
 <html>
@@ -450,78 +438,6 @@ html, body {
     break-inside: auto;
 }
 
-.record-table td.desc-cell {
-    max-width: 160px;
-    min-width: 80px;
-    word-break: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
-/* Sub column */
-.record-table td.subgroup-cell {
-    max-width: 80px;
-    min-width: 50px;
-    word-break: break-word;
-    white-space: normal;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-    background-color: #ffffff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    text-align: left;
-    color: #000000;
-}
-
-/* Sub Sub column */
-.record-table td:nth-child(3),
-.record-table td:nth-child(4) {
-    max-width: 80px;
-    word-break: break-word;
-    white-space: normal;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
-
-/* Description column */
-.record-table td.desc-cell {
-    max-width: 160px;
-    min-width: 80px;
-    word-break: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
-
-/* Force fixed column widths so browser respects them */
-.record-table {
-    table-layout: fixed;
-}
-
-.record-table th:nth-child(1) { width: 60px; }   /* Fitness */
-.record-table th:nth-child(2) { width: 70px; }   /* Sub */
-.record-table th:nth-child(3) { width: 70px; }   /* Sub Sub */
-.record-table th:nth-child(4) { width: 70px; }   /* Test */
-.record-table th:nth-child(5) { width: 150px; }  /* Description */
-
-
-/* Repeat thead on every new page */
-.record-table thead {
-    display: table-header-group;
-}
-
-/* Avoid cutting a single row in half */
-.record-table tbody tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
 /* HEADER CELLS */
 .record-table th {
     padding: 10px 14px;
@@ -556,32 +472,77 @@ html, body {
     print-color-adjust: exact;
 }
 
-/* GROUP CELL */
-.group-cell {
-    font-weight: bold;
-    /* background: #e0f2fe; */
-    background-color: #f0f9ff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+/* Fixed column widths */
+.col-fitness     { width: 60px; }
+.col-sub         { width: 70px; }
+.col-subsub      { width: 70px; }
+.col-test        { width: 70px; }
+.col-desc        {
+    /* Dynamic width set inline via style attribute */
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
     text-align: left;
-    padding-left: 8px;
-    color: #080808;
+    padding: 3px 4px;
 }
 
-/* SUB GROUP */
+/* Sub group cell */
 .subgroup-cell {
-    background-color: #ffffff;
+    max-width: 70px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+    background-color: #ffffff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
     color: #000000;
 }
 
-/* ALT ROW BG */
-.bgcolor {
-    background-color: #f8fbff;
+/* Sub Sub / Test cells */
+.subsub-cell,
+.test-cell {
+    max-width: 70px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* GROUP CELL */
+.group-cell {
+    font-weight: bold;
+    background-color: #f0f9ff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    text-align: left;
+    padding-left: 8px;
+    color: #080808;
+    font-size: 7pt;
+    vertical-align: middle;
+}
+
+/* ALT ROW BG */
+.bgcolor {
+    background-color: #f8fbff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* Repeat thead on every new page */
+.record-table thead {
+    display: table-header-group;
+}
+
+/* Avoid cutting a single row in half */
+.record-table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 /* ================= PRINT MEDIA ================= */
@@ -736,13 +697,14 @@ html, body {
         <table class="record-table">
             <thead>
                 <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
-                    <th>Description</th>
+                    <th class="col-fitness">Fitness</th>
+                    <th class="col-sub">Sub</th>
+                    <th class="col-subsub">Sub Sub</th>
+                    <th class="col-test">Test</th>
+                    {{-- Description column: dynamic width based on class count --}}
+                    <th class="col-desc" style="width: {{ $descColWidth }}px;">Description</th>
                     @foreach($student_id_array_new as $cls => $id)
-                        <th class="class-col">Class {{ $cls }}</th>
+                        <th class="class-col" style="width: {{ $classColWidthPx }};">Class {{ $cls }}</th>
                     @endforeach
                 </tr>
             </thead>
@@ -750,43 +712,43 @@ html, body {
             <tbody>
                 @foreach($pageRows as $row)
                 <tr>
+                    {{-- Fitness / Group cell --}}
                     @if($row['show_group'])
-                        <td class="group-cell" rowspan="{{ $row['group_rowspan'] }}">
+                        <td class="group-cell col-fitness" rowspan="{{ $row['group_rowspan'] }}">
                             {{ $row['group'] }}
                         </td>
                     @endif
 
+                    {{-- Sub Group cell --}}
                     @if($row['show_sub'])
-                        <td class="subgroup-cell" rowspan="{{ $row['sub_rowspan'] }}">
-                            {{ $row['sub_group'] }}
+                        <td class="subgroup-cell col-sub" rowspan="{{ $row['sub_rowspan'] }}"
+                            title="{{ $row['sub_group_full'] }}">
+                            {{ $row['sub_group_display'] }}
                         </td>
                     @endif
 
-                    // {{-- <td class="bgcolor">{{ $row['sub_sub'] }}</td>
-                    // <td class="bgcolor">{{ $row['test'] }}</td>
-                    // <td class="bgcolor">{{ $row['desc'] }}</td> --}}
+                    {{-- Sub Sub --}}
+                    <td class="bgcolor subsub-cell col-subsub" title="{{ $row['sub_sub_full'] }}">
+                        {{ $row['sub_sub_display'] }}
+                    </td>
 
-                    // {{-- Sub Sub --}}
-<td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
-    {{ $row['sub_sub_display'] }}
-</td>
+                    {{-- Test --}}
+                    <td class="bgcolor test-cell col-test" title="{{ $row['test_full'] }}">
+                        {{ $row['test_display'] }}
+                    </td>
 
-// {{-- Test --}}
-<td class="bgcolor" title="{{ $row['test_full'] }}">
-    {{ $row['test_display'] }}
-</td>
+                    {{-- Description: dynamic width applied via col-desc + inline style --}}
+                    <td class="bgcolor col-desc"
+                        style="width: {{ $descColWidth }}px;"
+                        title="{{ $row['desc_full'] }}">
+                        {{ $row['desc_display'] }}
+                    </td>
 
-// {{-- Description --}}
-<td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
-    {{ $row['desc_display'] }}
-</td>
-
-                    
-                       
-                    
-
+                    {{-- Class value columns --}}
                     @foreach($student_id_array_new as $cls => $id)
-                        <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
+                        <td class="bgcolor" style="width: {{ $classColWidthPx }}; font-size: 7pt;">
+                            {{ $allClassHealth[$cls][$row['test']] ?? '' }}
+                        </td>
                     @endforeach
                 </tr>
                 @endforeach
