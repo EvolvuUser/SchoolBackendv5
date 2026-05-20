@@ -4997,9 +4997,16 @@ class LibraryController extends Controller
                     return response()->json([
                         'status' => 422,
                         'message' => 'Some parameter columns are missing in uploaded file.',
+
+                        // COUNTS
                         'active_parameter_count' => $activeCount,
                         'uploaded_parameter_count' => $uploadedCount,
+
+                        // PARAMETER NAMES
+                        'active_parameters' => array_values($activeParameterNames),
+                        'uploaded_parameters' => array_values($csvParameters),
                         'missing_parameters' => array_values($missingParameters)
+
                     ]);
                 }
 
