@@ -161,10 +161,81 @@ $currentHeight = $headerHeight;
 $currentGroup = null;
 $currentSub   = null;
 
+// foreach ($flatRows as $row) {
+
+//     // Estimate dynamic row height
+//     $descLength = strlen(strip_tags($row['desc'] ?? ''));
+//     $descLines  = max(1, ceil($descLength / 35));
+
+//     $subSubLength = strlen($row['sub_sub'] ?? '');
+//     $subSubLines  = max(1, ceil($subSubLength / 22));
+
+//     $lineCount = max($descLines, $subSubLines);
+
+//     $rowHeight = 24 + (($lineCount - 1) * 14);
+
+//     /*
+//     ADD EXTRA HEIGHT
+//     when new group/subgroup starts
+//     because rowspan cells become taller visually
+//     */
+
+//     $extraHeight = 0;
+
+//     if ($currentGroup !== $row['group']) {
+//         $extraHeight += 12;
+//     }
+
+//     if (
+//         $currentGroup === $row['group'] &&
+//         $currentSub !== $row['sub_group']
+//     ) {
+//         $extraHeight += 8;
+//     }
+
+//     $requiredHeight = $rowHeight + $extraHeight;
+
+//     /*
+//     PAGE BREAK
+//     */
+
+//     if (
+//         ($currentHeight + $requiredHeight > $pageUsableHeight)
+//         && !empty($currentPage)
+//     ) {
+
+//         $pages[] = $currentPage;
+
+//         $currentPage = [];
+//         $currentHeight = $headerHeight;
+
+//         /*
+//         RESET
+//         so rowspan starts fresh
+//         */
+
+//         $currentGroup = null;
+//         $currentSub   = null;
+//     }
+
+//     $currentPage[] = $row;
+
+//     $currentHeight += $requiredHeight;
+
+//     $currentGroup = $row['group'];
+//     $currentSub   = $row['sub_group'];
+// }
+
 foreach ($flatRows as $row) {
 
+    /* ── Truncate description ── */
+    $row['desc_full']    = $row['desc'];
+    $row['desc_display'] = mb_strlen(strip_tags($row['desc'])) > 100
+        ? mb_substr(strip_tags($row['desc']), 0, 97) . '…'
+        : strip_tags($row['desc']);
+
     // Estimate dynamic row height
-    $descLength = strlen(strip_tags($row['desc'] ?? ''));
+    $descLength = strlen($row['desc_display']);
     $descLines  = max(1, ceil($descLength / 35));
 
     $subSubLength = strlen($row['sub_sub'] ?? '');
@@ -450,6 +521,17 @@ html, body {
     break-inside: auto;
 }
 
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.4;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
 /* Repeat thead on every new page */
 .record-table thead {
     display: table-header-group;
@@ -702,7 +784,10 @@ html, body {
 
                     <td class="bgcolor">{{ $row['sub_sub'] }}</td>
                     <td class="bgcolor">{{ $row['test'] }}</td>
-                    <td class="bgcolor">{{ $row['desc'] }}</td>
+                    {{-- <td class="bgcolor">{{ $row['desc'] }}</td> --}}
+                    <td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
+                       {{ $row['desc_display'] }}
+                    </td>
 
                     @foreach($student_id_array_new as $cls => $id)
                         <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
