@@ -148,10 +148,131 @@ foreach ($grouped as $groupName => $subGroups) {
 //     $pages[] = $currentPage;
 // }
 
-// 20-05-2026
+// 20-05-2026 -> First try
 
 /* ── STEP 3: Smart page splitting ── */
-$pageUsableHeight = 670;
+// $pageUsableHeight = 670;
+// $headerHeight     = 90;
+
+// $pages = [];
+// $currentPage = [];
+// $currentHeight = $headerHeight;
+
+// $currentGroup = null;
+// $currentSub   = null;
+
+// foreach ($flatRows as $row) {
+
+//     /* ── Truncate sub_group (Sub column) ── */
+//     $row['sub_group_full']    = $row['sub_group'] ?? '';
+//     $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
+//         ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
+//         : ($row['sub_group'] ?? '');
+
+//     /* ── Clean and Truncate description ── */
+//     $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
+//     $row['desc_full']    = $cleanDesc;
+//     $row['desc_display'] = mb_strlen($cleanDesc) > 100
+//         ? mb_substr($cleanDesc, 0, 97) . '…'
+//         : $cleanDesc;
+
+//     /* ── Truncate sub_sub ── */
+//     $cleanSubSub = trim($row['sub_sub'] ?? '');
+//     $row['sub_sub_full']    = $cleanSubSub;
+//     $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
+//         ? mb_substr($cleanSubSub, 0, 32) . '…'
+//         : $cleanSubSub;
+
+//     /* ── Truncate test ── */
+//     $cleanTest = trim($row['test'] ?? '');
+//     $row['test_full']    = $cleanTest;
+//     $row['test_display'] = mb_strlen($cleanTest) > 35
+//         ? mb_substr($cleanTest, 0, 32) . '…'
+//         : $cleanTest;
+
+//     /* ── Fixed height buckets based on desc length ── */
+//     $descLen = mb_strlen($row['desc_display']);
+//     if ($descLen <= 40) {
+//         $rowHeight = 30;
+//     } elseif ($descLen <= 80) {
+//         $rowHeight = 44;
+//     } else {
+//         $rowHeight = 58;
+//     }
+
+//     /* ── Extra height for new group/subgroup ── */
+//     $extraHeight = 0;
+//     if ($currentGroup !== $row['group']) {
+//         $extraHeight += 12;
+//     } elseif ($currentSub !== $row['sub_group']) {
+//         $extraHeight += 8;
+//     }
+
+//     $requiredHeight = $rowHeight + $extraHeight;
+
+//     /* ── Page break ── */
+//     if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
+//         $pages[]       = $currentPage;
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight;
+//         $currentGroup  = null;
+//         $currentSub    = null;
+//     }
+
+//     $currentPage[]  = $row;
+//     $currentHeight += $requiredHeight;
+//     $currentGroup   = $row['group'];
+//     $currentSub     = $row['sub_group'];
+// }
+
+// if (!empty($currentPage)) {
+//     $pages[] = $currentPage;
+// }
+
+/* ── Recalculate rowspans per page ── */
+// $finalPages = [];
+// foreach ($pages as $pageRows) {
+//     $groupCounts = [];
+//     $subCounts   = [];
+
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
+//         $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
+//         $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+//     }
+
+//     $seenGroups = [];
+//     $seenSubs   = [];
+//     $processed  = [];
+
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
+
+//         $row['show_group']    = !isset($seenGroups[$gKey]);
+//         $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
+
+//         $row['show_sub']    = !isset($seenSubs[$sgKey]);
+//         $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
+
+//         $seenGroups[$gKey] = true;
+//         $seenSubs[$sgKey]  = true;
+
+//         $processed[] = $row;
+//     }
+
+//     $finalPages[] = $processed;
+// }
+
+
+
+// 2 nd try
+/* ─────────────────────────────────────────────
+   STEP 3 : SMART PAGE SPLITTING
+───────────────────────────────────────────── */
+
+$pageUsableHeight = 730;
 $headerHeight     = 90;
 
 $pages = [];
@@ -163,98 +284,251 @@ $currentSub   = null;
 
 foreach ($flatRows as $row) {
 
-    /* ── Truncate sub_group (Sub column) ── */
-    $row['sub_group_full']    = $row['sub_group'] ?? '';
-    $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
-        ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
-        : ($row['sub_group'] ?? '');
+    /* ─────────────────────────────────────────
+       CLEAN + PREPARE TEXT
+    ───────────────────────────────────────── */
 
-    /* ── Clean and Truncate description ── */
-    $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
-    $row['desc_full']    = $cleanDesc;
-    $row['desc_display'] = mb_strlen($cleanDesc) > 100
-        ? mb_substr($cleanDesc, 0, 97) . '…'
-        : $cleanDesc;
+    /* Group */
+    $row['group'] = trim($row['group'] ?? '');
 
-    /* ── Truncate sub_sub ── */
+    /* Sub Group */
+    $row['sub_group_full'] = trim($row['sub_group'] ?? '');
+
+    $row['sub_group_display'] =
+        mb_strlen($row['sub_group_full']) > 50
+        ? mb_substr($row['sub_group_full'], 0, 47) . '...'
+        : $row['sub_group_full'];
+
+    /* Description */
+    $cleanDesc = trim(
+        preg_replace(
+            '/\s+/',
+            ' ',
+            strip_tags($row['desc'] ?? '')
+        )
+    );
+
+    $row['desc_full'] = $cleanDesc;
+
+    /*
+    |--------------------------------------------------------------------------
+    | IMPORTANT
+    |--------------------------------------------------------------------------
+    | DO NOT TRUNCATE DESCRIPTION
+    | Otherwise row height estimation becomes wrong
+    |--------------------------------------------------------------------------
+    */
+
+    $row['desc_display'] = $cleanDesc;
+
+    /* Sub Sub */
     $cleanSubSub = trim($row['sub_sub'] ?? '');
-    $row['sub_sub_full']    = $cleanSubSub;
-    $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
-        ? mb_substr($cleanSubSub, 0, 32) . '…'
+
+    $row['sub_sub_full'] = $cleanSubSub;
+
+    $row['sub_sub_display'] =
+        mb_strlen($cleanSubSub) > 40
+        ? mb_substr($cleanSubSub, 0, 37) . '...'
         : $cleanSubSub;
 
-    /* ── Truncate test ── */
+    /* Test */
     $cleanTest = trim($row['test'] ?? '');
-    $row['test_full']    = $cleanTest;
-    $row['test_display'] = mb_strlen($cleanTest) > 35
-        ? mb_substr($cleanTest, 0, 32) . '…'
+
+    $row['test_full'] = $cleanTest;
+
+    $row['test_display'] =
+        mb_strlen($cleanTest) > 40
+        ? mb_substr($cleanTest, 0, 37) . '...'
         : $cleanTest;
 
-    /* ── Fixed height buckets based on desc length ── */
-    $descLen = mb_strlen($row['desc_display']);
-    if ($descLen <= 40) {
-        $rowHeight = 30;
-    } elseif ($descLen <= 80) {
-        $rowHeight = 44;
-    } else {
-        $rowHeight = 58;
-    }
+    /* ─────────────────────────────────────────
+       ACCURATE ROW HEIGHT ESTIMATION
+    ───────────────────────────────────────── */
 
-    /* ── Extra height for new group/subgroup ── */
+    /*
+    |--------------------------------------------------------------------------
+    | Approx chars fitting in one line
+    |--------------------------------------------------------------------------
+    */
+
+    $descCharsPerLine   = 45;
+    $subCharsPerLine    = 18;
+    $subSubCharsPerLine = 18;
+    $testCharsPerLine   = 18;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Wrapped line count
+    |--------------------------------------------------------------------------
+    */
+
+    $descLines = max(
+        1,
+        ceil(mb_strlen($row['desc_display']) / $descCharsPerLine)
+    );
+
+    $subLines = max(
+        1,
+        ceil(mb_strlen($row['sub_group_display']) / $subCharsPerLine)
+    );
+
+    $subSubLines = max(
+        1,
+        ceil(mb_strlen($row['sub_sub_display']) / $subSubCharsPerLine)
+    );
+
+    $testLines = max(
+        1,
+        ceil(mb_strlen($row['test_display']) / $testCharsPerLine)
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Take tallest wrapped column
+    |--------------------------------------------------------------------------
+    */
+
+    $maxLines = max(
+        $descLines,
+        $subLines,
+        $subSubLines,
+        $testLines
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dynamic row height
+    |--------------------------------------------------------------------------
+    |
+    | 1 line  ≈ 24
+    | 2 lines ≈ 38
+    | 3 lines ≈ 52
+    | 4 lines ≈ 66
+    | etc
+    |--------------------------------------------------------------------------
+    */
+
+    $rowHeight = 10 + ($maxLines * 14);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Safety limit
+    |--------------------------------------------------------------------------
+    */
+
+    $rowHeight = min($rowHeight, 100);
+
+    /* ─────────────────────────────────────────
+       EXTRA HEIGHT FOR GROUP HEADINGS
+    ───────────────────────────────────────── */
+
     $extraHeight = 0;
+
     if ($currentGroup !== $row['group']) {
         $extraHeight += 12;
-    } elseif ($currentSub !== $row['sub_group']) {
+    }
+    elseif ($currentSub !== $row['sub_group']) {
         $extraHeight += 8;
     }
 
     $requiredHeight = $rowHeight + $extraHeight;
 
-    /* ── Page break ── */
-    if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
-        $pages[]       = $currentPage;
-        $currentPage   = [];
+    /* ─────────────────────────────────────────
+       PAGE BREAK
+    ───────────────────────────────────────── */
+
+    if (
+        ($currentHeight + $requiredHeight > $pageUsableHeight)
+        && !empty($currentPage)
+    ) {
+
+        $pages[] = $currentPage;
+
+        $currentPage = [];
         $currentHeight = $headerHeight;
-        $currentGroup  = null;
-        $currentSub    = null;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reset group/sub on new page
+        |--------------------------------------------------------------------------
+        */
+
+        $currentGroup = null;
+        $currentSub   = null;
     }
 
-    $currentPage[]  = $row;
+    /* Add row */
+
+    $currentPage[] = $row;
+
     $currentHeight += $requiredHeight;
-    $currentGroup   = $row['group'];
-    $currentSub     = $row['sub_group'];
+
+    $currentGroup = $row['group'];
+    $currentSub   = $row['sub_group'];
 }
+
+/* Last page */
 
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
 
-/* ── Recalculate rowspans per page ── */
+/* ─────────────────────────────────────────────
+   RECALCULATE ROWSPANS PAGE-WISE
+───────────────────────────────────────────── */
+
 $finalPages = [];
+
 foreach ($pages as $pageRows) {
+
     $groupCounts = [];
     $subCounts   = [];
 
+    /* Count rows */
+
     foreach ($pageRows as $row) {
+
         $gKey  = $row['group'];
         $sgKey = $row['group'] . '||' . $row['sub_group'];
-        $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
-        $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+
+        $groupCounts[$gKey] =
+            ($groupCounts[$gKey] ?? 0) + 1;
+
+        $subCounts[$sgKey] =
+            ($subCounts[$sgKey] ?? 0) + 1;
     }
+
+    /* Apply rowspans */
 
     $seenGroups = [];
     $seenSubs   = [];
-    $processed  = [];
+
+    $processed = [];
 
     foreach ($pageRows as $row) {
+
         $gKey  = $row['group'];
         $sgKey = $row['group'] . '||' . $row['sub_group'];
 
-        $row['show_group']    = !isset($seenGroups[$gKey]);
-        $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
+        /* Group */
 
-        $row['show_sub']    = !isset($seenSubs[$sgKey]);
-        $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
+        $row['show_group'] =
+            !isset($seenGroups[$gKey]);
+
+        $row['group_rowspan'] =
+            $row['show_group']
+            ? $groupCounts[$gKey]
+            : 0;
+
+        /* Sub Group */
+
+        $row['show_sub'] =
+            !isset($seenSubs[$sgKey]);
+
+        $row['sub_rowspan'] =
+            $row['show_sub']
+            ? $subCounts[$sgKey]
+            : 0;
 
         $seenGroups[$gKey] = true;
         $seenSubs[$sgKey]  = true;
@@ -734,10 +1008,10 @@ html, body {
         <table class="record-table">
             <thead>
                 <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
+                    <th>Fitness Component</th>
+                    <th>Sub Group</th>
+                    <th>Sub Sub Group</th>
+                    <th>Test Parameter</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
                         <th class="class-col">Class {{ $cls }}</th>
@@ -765,24 +1039,18 @@ html, body {
                     // <td class="bgcolor">{{ $row['desc'] }}</td> --}}
 
                     // {{-- Sub Sub --}}
-<td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
-    {{ $row['sub_sub_display'] }}
-</td>
+  <td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
+      {{ $row['sub_sub_display'] }}
+   </td>
 
-// {{-- Test --}}
-<td class="bgcolor" title="{{ $row['test_full'] }}">
-    {{ $row['test_display'] }}
-</td>
 
-// {{-- Description --}}
-<td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
-    {{ $row['desc_display'] }}
-</td>
+   <td class="bgcolor" title="{{ $row['test_full'] }}">
+       {{ $row['test_display'] }}
+   </td>
 
-                    
-                       
-                    
-
+   <td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
+       {{ $row['desc_display'] }}
+  </td>
                     @foreach($student_id_array_new as $cls => $id)
                         <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach
