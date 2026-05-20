@@ -657,82 +657,82 @@ if (!empty($currentPage)) {
 }
 
 /* ── Recalculate rowspans per page ── */
-$finalPages = [];
-foreach ($pages as $pageRows) {
-    $groupCounts = [];
-    $subCounts   = [];
+// $finalPages = [];
+// foreach ($pages as $pageRows) {
+//     $groupCounts = [];
+//     $subCounts   = [];
 
-    foreach ($pageRows as $row) {
-        $gKey  = $row['group'];
-        $sgKey = $row['group'] . '||' . $row['sub_group'];
-        $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
-        $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
-    }
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
+//         $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
+//         $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+//     }
 
-    $seenGroups = [];
-    $seenSubs   = [];
-    $processed  = [];
+//     $seenGroups = [];
+//     $seenSubs   = [];
+//     $processed  = [];
 
-    foreach ($pageRows as $row) {
-        $gKey  = $row['group'];
-        $sgKey = $row['group'] . '||' . $row['sub_group'];
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
 
-        $row['show_group']    = !isset($seenGroups[$gKey]);
-        $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
+//         $row['show_group']    = !isset($seenGroups[$gKey]);
+//         $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
 
-        $row['show_sub']    = !isset($seenSubs[$sgKey]);
-        $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
+//         $row['show_sub']    = !isset($seenSubs[$sgKey]);
+//         $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
 
-        $seenGroups[$gKey] = true;
-        $seenSubs[$sgKey]  = true;
+//         $seenGroups[$gKey] = true;
+//         $seenSubs[$sgKey]  = true;
 
-        $processed[] = $row;
-    }
+//         $processed[] = $row;
+//     }
 
-    $finalPages[] = $processed;
-}
+//     $finalPages[] = $processed;
+// }
 
 
-if (!empty($currentPage)) {
-    $pages[] = $currentPage;
-}
+// if (!empty($currentPage)) {
+//     $pages[] = $currentPage;
+// }
 
 
 /* ── Recalculate rowspans per page ── */
-$finalPages = [];
-foreach ($pages as $pageRows) {
-    $groupCounts = [];
-    $subCounts   = [];
+// $finalPages = [];
+// foreach ($pages as $pageRows) {
+//     $groupCounts = [];
+//     $subCounts   = [];
 
-    foreach ($pageRows as $row) {
-        $gKey  = $row['group'];
-        $sgKey = $row['group'] . '||' . $row['sub_group'];
-        $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
-        $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
-    }
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
+//         $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
+//         $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+//     }
 
-    $seenGroups = [];
-    $seenSubs   = [];
-    $processed  = [];
+//     $seenGroups = [];
+//     $seenSubs   = [];
+//     $processed  = [];
 
-    foreach ($pageRows as $row) {
-        $gKey  = $row['group'];
-        $sgKey = $row['group'] . '||' . $row['sub_group'];
+//     foreach ($pageRows as $row) {
+//         $gKey  = $row['group'];
+//         $sgKey = $row['group'] . '||' . $row['sub_group'];
 
-        $row['show_group']    = !isset($seenGroups[$gKey]);
-        $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
+//         $row['show_group']    = !isset($seenGroups[$gKey]);
+//         $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
 
-        $row['show_sub']    = !isset($seenSubs[$sgKey]);
-        $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
+//         $row['show_sub']    = !isset($seenSubs[$sgKey]);
+//         $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
 
-        $seenGroups[$gKey] = true;
-        $seenSubs[$sgKey]  = true;
+//         $seenGroups[$gKey] = true;
+//         $seenSubs[$sgKey]  = true;
 
-        $processed[] = $row;
-    }
+//         $processed[] = $row;
+//     }
 
-    $finalPages[] = $processed;
-}
+//     $finalPages[] = $processed;
+// }
 
 /* ── STEP 4: All class health data ── */
 $allClassHealth = [];
