@@ -304,7 +304,6 @@ foreach ($grouped as $groupName => $subGroups) {
 // }
 
 /* ── STEP 3: Smart page splitting ── */
-
 $pageUsableHeight = 670;
 $headerHeight     = 90;
 
@@ -315,27 +314,114 @@ $currentHeight = $headerHeight;
 $currentGroup = null;
 $currentSub   = null;
 
+// foreach ($flatRows as $row) {
+
+//     /* ── Truncate description ── */
+//     $row['desc_full']    = $row['desc'];
+//     $row['desc_display'] = mb_strlen(strip_tags($row['desc'])) > 100
+//         ? mb_substr(strip_tags($row['desc']), 0, 97) . '…'
+//         : strip_tags($row['desc']);
+
+//     /* ── Truncate sub_sub ── */
+//     $row['sub_sub_full']    = $row['sub_sub'] ?? '';
+//     $row['sub_sub_display'] = mb_strlen($row['sub_sub'] ?? '') > 40
+//         ? mb_substr($row['sub_sub'] ?? '', 0, 37) . '…'
+//         : ($row['sub_sub'] ?? '');
+
+//     /* ── Truncate test ── */
+//     $row['test_full']    = $row['test'] ?? '';
+//     $row['test_display'] = mb_strlen($row['test'] ?? '') > 40
+//         ? mb_substr($row['test'] ?? '', 0, 37) . '…'
+//         : ($row['test'] ?? '');
+
+//     // Estimate dynamic row height using display values
+//     $descLength   = strlen($row['desc_display']);
+//     $descLines    = max(1, ceil($descLength / 30));
+
+//     $subSubLength = strlen($row['sub_sub_display']);
+//     $subSubLines  = max(1, ceil($subSubLength / 18));
+
+//     $lineCount = max($descLines, $subSubLines);
+
+//     $rowHeight = 22 + (($lineCount - 1) * 12);
+
+//     /*
+//     ADD EXTRA HEIGHT
+//     when new group/subgroup starts
+//     because rowspan cells become taller visually
+//     */
+
+//     $extraHeight = 0;
+
+//     if ($currentGroup !== $row['group']) {
+//         $extraHeight += 12;
+//     }
+
+//     if (
+//         $currentGroup === $row['group'] &&
+//         $currentSub !== $row['sub_group']
+//     ) {
+//         $extraHeight += 8;
+//     }
+
+//     $requiredHeight = $rowHeight + $extraHeight;
+
+//     /*
+//     PAGE BREAK
+//     */
+
+//     if (
+//         ($currentHeight + $requiredHeight > $pageUsableHeight)
+//         && !empty($currentPage)
+//     ) {
+
+//         $pages[] = $currentPage;
+
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight;
+
+//         /*
+//         RESET
+//         so rowspan starts fresh
+//         */
+
+//         $currentGroup = null;
+//         $currentSub   = null;
+//     }
+
+//     $currentPage[] = $row;
+
+//     $currentHeight += $requiredHeight;
+
+//     $currentGroup = $row['group'];
+//     $currentSub   = $row['sub_group'];
+// }
+
 foreach ($flatRows as $row) {
 
-    /* ── Truncate description ── */
-    $row['desc_full']    = $row['desc'];
-    $row['desc_display'] = mb_strlen(strip_tags($row['desc'])) > 100
-        ? mb_substr(strip_tags($row['desc']), 0, 97) . '…'
-        : strip_tags($row['desc']);
+    /* ── Clean and Truncate description ── */
+    $cleanDesc = strip_tags($row['desc'] ?? '');  // strip HTML first
+    $cleanDesc = preg_replace('/\s+/', ' ', $cleanDesc); // remove extra spaces/newlines
+    $cleanDesc = trim($cleanDesc);
+
+    $row['desc_full']    = $cleanDesc;
+    $row['desc_display'] = mb_strlen($cleanDesc) > 100
+        ? mb_substr($cleanDesc, 0, 97) . '…'
+        : $cleanDesc;
 
     /* ── Truncate sub_sub ── */
     $row['sub_sub_full']    = $row['sub_sub'] ?? '';
-    $row['sub_sub_display'] = mb_strlen($row['sub_sub'] ?? '') > 40
-        ? mb_substr($row['sub_sub'] ?? '', 0, 37) . '…'
+    $row['sub_sub_display'] = mb_strlen($row['sub_sub'] ?? '') > 35
+        ? mb_substr($row['sub_sub'] ?? '', 0, 32) . '…'
         : ($row['sub_sub'] ?? '');
 
     /* ── Truncate test ── */
     $row['test_full']    = $row['test'] ?? '';
-    $row['test_display'] = mb_strlen($row['test'] ?? '') > 40
-        ? mb_substr($row['test'] ?? '', 0, 37) . '…'
+    $row['test_display'] = mb_strlen($row['test'] ?? '') > 35
+        ? mb_substr($row['test'] ?? '', 0, 32) . '…'
         : ($row['test'] ?? '');
 
-    // Estimate dynamic row height using display values
+    // Estimate dynamic row height
     $descLength   = strlen($row['desc_display']);
     $descLines    = max(1, ceil($descLength / 30));
 
@@ -345,12 +431,6 @@ foreach ($flatRows as $row) {
     $lineCount = max($descLines, $subSubLines);
 
     $rowHeight = 22 + (($lineCount - 1) * 12);
-
-    /*
-    ADD EXTRA HEIGHT
-    when new group/subgroup starts
-    because rowspan cells become taller visually
-    */
 
     $extraHeight = 0;
 
@@ -367,35 +447,21 @@ foreach ($flatRows as $row) {
 
     $requiredHeight = $rowHeight + $extraHeight;
 
-    /*
-    PAGE BREAK
-    */
-
     if (
         ($currentHeight + $requiredHeight > $pageUsableHeight)
         && !empty($currentPage)
     ) {
-
         $pages[] = $currentPage;
-
         $currentPage   = [];
         $currentHeight = $headerHeight;
-
-        /*
-        RESET
-        so rowspan starts fresh
-        */
-
-        $currentGroup = null;
-        $currentSub   = null;
+        $currentGroup  = null;
+        $currentSub    = null;
     }
 
     $currentPage[] = $row;
-
     $currentHeight += $requiredHeight;
-
-    $currentGroup = $row['group'];
-    $currentSub   = $row['sub_group'];
+    $currentGroup   = $row['group'];
+    $currentSub     = $row['sub_group'];
 }
 
 if (!empty($currentPage)) {
@@ -898,19 +964,19 @@ html, body {
                     <td class="bgcolor">{{ $row['desc'] }}</td> --}}
 
                     {{-- Sub Sub --}}
-<td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
-    {{ $row['sub_sub_display'] }}
-</td>
+     <td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
+       {{ $row['sub_sub_display'] }}
+    </td>
 
-{{-- Test --}}
-<td class="bgcolor" title="{{ $row['test_full'] }}">
-    {{ $row['test_display'] }}
-</td>
+    {{-- Test --}}
+    <td class="bgcolor" title="{{ $row['test_full'] }}">
+       {{ $row['test_display'] }}
+    </td>
 
-{{-- Description --}}
-<td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
-    {{ $row['desc_display'] }}
-</td>
+    {{-- Description --}}
+    <td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
+      {{ $row['desc_display'] }}
+    </td>
                     
 
                     @foreach($student_id_array_new as $cls => $id)
