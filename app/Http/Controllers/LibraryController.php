@@ -4799,8 +4799,8 @@ class LibraryController extends Controller
             ->where('is_active', 'Y')
             ->orderBy('group_id')
             ->orderBy('sequence')
-            ->get(); 
-            
+            ->get();
+
 
         // Check if no active parameter exists
         if ($parameters->isEmpty()) {
@@ -4808,7 +4808,7 @@ class LibraryController extends Controller
                 'status' => false,
                 'message' => 'Please Active the parameter to download the excel'
             ], 400);
-        } 
+        }
 
         // ================= GROUPS =================
         $groups = DB::table('health_activity_group')
@@ -4948,6 +4948,22 @@ class LibraryController extends Controller
         while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
 
             // ================= HEADER =================
+            // if ($row == 1) {
+
+            //     if (trim($data[0]) != 'Code') {
+            //         return response()->json([
+            //             'status' => 422,
+            //             'message' => 'Invalid CSV format. Please download the correct format.'
+            //         ]);
+            //     }
+
+            //     $headers = $data;
+            //     $row++;
+            //     continue;
+            // }
+
+            // 19-05-2026
+            // ================= HEADER =================
             if ($row == 1) {
 
                 if (trim($data[0]) != 'Code') {
@@ -4957,7 +4973,43 @@ class LibraryController extends Controller
                     ]);
                 }
 
-                $headers = $data;
+                $headers = array_map('trim', $data);
+
+                // ================= ACTIVE PARAMETERS =================
+                $activeParameterNames = $parameters->keys()->toArray();
+
+                // ================= CSV PARAMETERS =================
+                $csvParameters = array_diff(
+                    $headers,
+                    ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name']
+                );
+
+                // ================= COUNTS =================
+                $activeCount = count($activeParameterNames);
+                $uploadedCount = count($csvParameters);
+
+                // ================= MISSING PARAMETERS =================
+                $missingParameters = array_diff($activeParameterNames, $csvParameters);
+
+                // ================= VALIDATION =================
+                if (!empty($missingParameters)) {
+
+                    return response()->json([
+                        'status' => 422,
+                        'message' => 'Some parameter columns are missing in uploaded file.',
+
+                        // COUNTS
+                        'active_parameter_count' => $activeCount,
+                        'uploaded_parameter_count' => $uploadedCount,
+
+                        // PARAMETER NAMES
+                        'active_parameters' => array_values($activeParameterNames),
+                        'uploaded_parameters' => array_values($csvParameters),
+                        'missing_parameters' => array_values($missingParameters)
+
+                    ]);
+                }
+
                 $row++;
                 continue;
             }
