@@ -272,7 +272,7 @@ foreach ($grouped as $groupName => $subGroups) {
    STEP 3 : SMART PAGE SPLITTING
 ───────────────────────────────────────────── */
 
-$pageUsableHeight = 670;
+$pageUsableHeight = 730;
 $headerHeight     = 90;
 
 $pages = [];
@@ -549,8 +549,11 @@ html,
 body {
     margin: 0;
     padding: 0;
+
     font-family: Arial, sans-serif;
+
     overflow: visible;
+
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
@@ -563,10 +566,12 @@ body {
 
 .bg-img {
     position: absolute;
-    top: 0;
-    left: 0;
+
+    inset: 0;
+
     width: 100%;
-    height: 210mm;
+    height: 100%;
+
     z-index: 1;
 }
 
@@ -574,9 +579,12 @@ body {
 
 .first {
     position: relative;
+
     width: 297mm;
     height: 210mm;
+
     overflow: hidden;
+
     page-break-after: always;
     break-after: page;
 }
@@ -584,11 +592,15 @@ body {
 .page-inner {
     position: relative;
     z-index: 2;
+
     padding: 30px 40px;
 }
 
+/* ================= SCHOOL HEADER ================= */
+
 .school-header {
     position: relative;
+
     width: 100%;
     height: 80px;
 }
@@ -599,6 +611,7 @@ body {
 
 .logo-box {
     position: absolute;
+
     left: 0;
     top: 0;
 }
@@ -610,14 +623,18 @@ body {
 
 .school-text {
     position: absolute;
+
     width: 100%;
+
     text-align: center;
+
     top: 0;
 }
 
 .school-name {
     font-size: 26px;
     font-weight: bold;
+
     color: #0b5fa5;
 }
 
@@ -630,10 +647,11 @@ body {
     font-size: 13px;
 }
 
-/* ================= TITLE ================= */
+/* ================= TITLES ================= */
 
 .certificate-title {
     text-align: center;
+
     margin-top: 10px;
     margin-bottom: 20px;
 }
@@ -641,14 +659,18 @@ body {
 .main-title {
     font-size: 20px;
     font-weight: bold;
+
     letter-spacing: 1px;
+
     color: #1f2c7c;
 }
 
 .sub-title {
     font-size: 16px;
     font-weight: bold;
+
     margin-top: 5px;
+
     color: #1f2c7c;
 }
 
@@ -656,35 +678,45 @@ body {
 
 .first-content table {
     width: 85%;
+
     margin: auto;
+
     border-collapse: collapse;
 }
 
 .first-content td {
     padding: 6px 8px;
+
     vertical-align: top;
 }
 
 .first-content td:first-child {
-    white-space: nowrap;
     width: 18%;
+
+    white-space: nowrap;
 }
 
 .statistics_line {
     display: block;
+
     width: 100%;
+
     border-bottom: 1px solid #000;
+
     padding: 2px 4px;
+
     min-height: 18px;
 }
 
-/* ================= HEALTH PAGES ================= */
+/* ================= HEALTH PAGE ================= */
 
 .health-page {
     position: relative;
+
     width: 297mm;
     min-height: 210mm;
-    overflow: hidden;
+
+    overflow: visible;
 
     page-break-after: always;
     break-after: page;
@@ -695,12 +727,19 @@ body {
     break-after: auto;
 }
 
+/* ================= PAGE CONTENT ================= */
+
 .page-content {
     position: relative;
+
     z-index: 2;
+
     width: 92%;
-    margin: auto;
+
+    margin: 0 auto;
+
     padding-top: 30px;
+    padding-bottom: 20px;
 }
 
 /* ================= TABLE ================= */
@@ -715,15 +754,15 @@ body {
 
     font-size: 9px;
 
-    border: 1px solid #cfe3f5;
-
     background: #f0f7ff;
+
+    border: 1px solid #cfe3f5;
 
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: auto;
+    break-inside: auto;
 }
 
 /* ================= TABLE HEADER ================= */
@@ -738,19 +777,19 @@ body {
     font-size: 10px;
     font-weight: 700;
 
-    color: #000000;
-
-    background: #dbeafe;
-
-    border: 1px solid #cfe3f5;
-    border-bottom: 2px solid #93c5fd;
+    line-height: 1.2;
 
     text-align: center;
 
     white-space: normal;
     word-break: break-word;
 
-    line-height: 1.2;
+    color: #000000;
+
+    background: #dbeafe;
+
+    border: 1px solid #cfe3f5;
+    border-bottom: 2px solid #93c5fd;
 
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -761,12 +800,16 @@ body {
     line-height: 1.2;
 }
 
-/* ================= TABLE DATA ================= */
+/* ================= TABLE DATA CELLS ================= */
 
 .record-table td {
+    padding: 4px 5px;
+
     border: 1px solid #d6e6f5;
 
-    padding: 4px 5px;
+    font-size: 7pt;
+
+    line-height: 1.3;
 
     text-align: center;
     vertical-align: top;
@@ -775,20 +818,10 @@ body {
     overflow-wrap: break-word;
     white-space: normal;
 
-    line-height: 1.3;
-
     background: #ffffff;
 
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-}
-
-/* IMPORTANT */
-/* REMOVE ROW BREAK RESTRICTIONS */
-
-.record-table tbody tr {
-    page-break-inside: auto;
-    break-inside: auto;
 }
 
 /* ================= COLUMN WIDTHS ================= */
@@ -826,31 +859,29 @@ body {
 /* ================= GROUP CELL ================= */
 
 .group-cell {
-    font-weight: bold;
-
     background-color: #f0f9ff;
 
-    text-align: left;
-
-    padding-left: 8px;
+    font-weight: bold;
 
     color: #080808;
 
+    text-align: left;
     vertical-align: top;
+
+    padding-left: 8px;
 
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-/* ================= SUBGROUP ================= */
+/* ================= SUBGROUP CELL ================= */
 
 .subgroup-cell {
     background-color: #ffffff;
 
-    text-align: left;
-
     color: #000000;
 
+    text-align: left;
     vertical-align: top;
 
     font-size: 7pt;
@@ -865,7 +896,7 @@ body {
     print-color-adjust: exact;
 }
 
-/* ================= DESCRIPTION ================= */
+/* ================= DESCRIPTION CELL ================= */
 
 .record-table td.desc-cell {
     max-width: 170px;
@@ -875,7 +906,6 @@ body {
     line-height: 1.35;
 
     text-align: left;
-
     vertical-align: top;
 
     padding: 4px 5px;
@@ -893,16 +923,16 @@ body {
 
     line-height: 1.3;
 
-    padding: 4px;
-
     vertical-align: top;
+
+    padding: 4px;
 
     word-break: break-word;
     overflow-wrap: break-word;
     white-space: normal;
 }
 
-/* ================= ALT ROW BG ================= */
+/* ================= ALT BACKGROUND ================= */
 
 .bgcolor {
     background-color: #f8fbff;
@@ -924,21 +954,16 @@ body {
     }
 
     .health-page {
-        overflow: hidden;
+        overflow: visible;
     }
 
     .record-table {
-        page-break-inside: avoid;
-        break-inside: avoid;
+        page-break-inside: auto;
+        break-inside: auto;
     }
 
     .record-table thead {
         display: table-header-group;
-    }
-
-    .record-table tbody tr {
-        page-break-inside: auto;
-        break-inside: auto;
     }
 }
 
