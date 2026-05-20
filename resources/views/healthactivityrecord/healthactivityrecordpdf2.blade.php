@@ -149,159 +149,6 @@ foreach ($grouped as $groupName => $subGroups) {
 // }
 
 // 20-05-2026
-/* ── STEP 3: Smart page splitting ── */
-
-// $pageUsableHeight = 670;
-// $headerHeight     = 90;
-
-// $pages = [];
-// $currentPage = [];
-// $currentHeight = $headerHeight;
-
-// $currentGroup = null;
-// $currentSub   = null;
-
-// foreach ($flatRows as $row) {
-
-//     // Estimate dynamic row height
-//     $descLength = strlen(strip_tags($row['desc'] ?? ''));
-//     $descLines  = max(1, ceil($descLength / 35));
-
-//     $subSubLength = strlen($row['sub_sub'] ?? '');
-//     $subSubLines  = max(1, ceil($subSubLength / 22));
-
-//     $lineCount = max($descLines, $subSubLines);
-
-//     $rowHeight = 24 + (($lineCount - 1) * 14);
-
-//     /*
-//     ADD EXTRA HEIGHT
-//     when new group/subgroup starts
-//     because rowspan cells become taller visually
-//     */
-
-//     $extraHeight = 0;
-
-//     if ($currentGroup !== $row['group']) {
-//         $extraHeight += 12;
-//     }
-
-//     if (
-//         $currentGroup === $row['group'] &&
-//         $currentSub !== $row['sub_group']
-//     ) {
-//         $extraHeight += 8;
-//     }
-
-//     $requiredHeight = $rowHeight + $extraHeight;
-
-//     /*
-//     PAGE BREAK
-//     */
-
-//     if (
-//         ($currentHeight + $requiredHeight > $pageUsableHeight)
-//         && !empty($currentPage)
-//     ) {
-
-//         $pages[] = $currentPage;
-
-//         $currentPage = [];
-//         $currentHeight = $headerHeight;
-
-//         /*
-//         RESET
-//         so rowspan starts fresh
-//         */
-
-//         $currentGroup = null;
-//         $currentSub   = null;
-//     }
-
-//     $currentPage[] = $row;
-
-//     $currentHeight += $requiredHeight;
-
-//     $currentGroup = $row['group'];
-//     $currentSub   = $row['sub_group'];
-// }
-
-
-// 2nd 
-// foreach ($flatRows as $row) {
-
-//     /* ── Truncate description ── */
-//     $row['desc_full']    = $row['desc'];
-//     $row['desc_display'] = mb_strlen(strip_tags($row['desc'])) > 100
-//         ? mb_substr(strip_tags($row['desc']), 0, 97) . '…'
-//         : strip_tags($row['desc']);
-
-//     // Estimate dynamic row height
-//     $descLength = strlen($row['desc_display']);
-//     $descLines  = max(1, ceil($descLength / 35));
-
-//     $subSubLength = strlen($row['sub_sub'] ?? '');
-//     $subSubLines  = max(1, ceil($subSubLength / 22));
-
-//     $lineCount = max($descLines, $subSubLines);
-
-//     $rowHeight = 24 + (($lineCount - 1) * 14);
-
-//     /*
-//     ADD EXTRA HEIGHT
-//     when new group/subgroup starts
-//     because rowspan cells become taller visually
-//     */
-
-//     $extraHeight = 0;
-
-//     if ($currentGroup !== $row['group']) {
-//         $extraHeight += 12;
-//     }
-
-//     if (
-//         $currentGroup === $row['group'] &&
-//         $currentSub !== $row['sub_group']
-//     ) {
-//         $extraHeight += 8;
-//     }
-
-//     $requiredHeight = $rowHeight + $extraHeight;
-
-//     /*
-//     PAGE BREAK
-//     */
-
-//     if (
-//         ($currentHeight + $requiredHeight > $pageUsableHeight)
-//         && !empty($currentPage)
-//     ) {
-
-//         $pages[] = $currentPage;
-
-//         $currentPage = [];
-//         $currentHeight = $headerHeight;
-
-//         /*
-//         RESET
-//         so rowspan starts fresh
-//         */
-
-//         $currentGroup = null;
-//         $currentSub   = null;
-//     }
-
-//     $currentPage[] = $row;
-
-//     $currentHeight += $requiredHeight;
-
-//     $currentGroup = $row['group'];
-//     $currentSub   = $row['sub_group'];
-// }
-
-// if (!empty($currentPage)) {
-//     $pages[] = $currentPage;
-// }
 
 /* ── STEP 3: Smart page splitting ── */
 $pageUsableHeight = 670;
@@ -313,157 +160,6 @@ $currentHeight = $headerHeight;
 
 $currentGroup = null;
 $currentSub   = null;
-
-// foreach ($flatRows as $row) {
-
-//     /* ── Truncate description ── */
-//     $row['desc_full']    = $row['desc'];
-//     $row['desc_display'] = mb_strlen(strip_tags($row['desc'])) > 100
-//         ? mb_substr(strip_tags($row['desc']), 0, 97) . '…'
-//         : strip_tags($row['desc']);
-
-//     /* ── Truncate sub_sub ── */
-//     $row['sub_sub_full']    = $row['sub_sub'] ?? '';
-//     $row['sub_sub_display'] = mb_strlen($row['sub_sub'] ?? '') > 40
-//         ? mb_substr($row['sub_sub'] ?? '', 0, 37) . '…'
-//         : ($row['sub_sub'] ?? '');
-
-//     /* ── Truncate test ── */
-//     $row['test_full']    = $row['test'] ?? '';
-//     $row['test_display'] = mb_strlen($row['test'] ?? '') > 40
-//         ? mb_substr($row['test'] ?? '', 0, 37) . '…'
-//         : ($row['test'] ?? '');
-
-//     // Estimate dynamic row height using display values
-//     $descLength   = strlen($row['desc_display']);
-//     $descLines    = max(1, ceil($descLength / 30));
-
-//     $subSubLength = strlen($row['sub_sub_display']);
-//     $subSubLines  = max(1, ceil($subSubLength / 18));
-
-//     $lineCount = max($descLines, $subSubLines);
-
-//     $rowHeight = 22 + (($lineCount - 1) * 12);
-
-//     /*
-//     ADD EXTRA HEIGHT
-//     when new group/subgroup starts
-//     because rowspan cells become taller visually
-//     */
-
-//     $extraHeight = 0;
-
-//     if ($currentGroup !== $row['group']) {
-//         $extraHeight += 12;
-//     }
-
-//     if (
-//         $currentGroup === $row['group'] &&
-//         $currentSub !== $row['sub_group']
-//     ) {
-//         $extraHeight += 8;
-//     }
-
-//     $requiredHeight = $rowHeight + $extraHeight;
-
-//     /*
-//     PAGE BREAK
-//     */
-
-//     if (
-//         ($currentHeight + $requiredHeight > $pageUsableHeight)
-//         && !empty($currentPage)
-//     ) {
-
-//         $pages[] = $currentPage;
-
-//         $currentPage   = [];
-//         $currentHeight = $headerHeight;
-
-//         /*
-//         RESET
-//         so rowspan starts fresh
-//         */
-
-//         $currentGroup = null;
-//         $currentSub   = null;
-//     }
-
-//     $currentPage[] = $row;
-
-//     $currentHeight += $requiredHeight;
-
-//     $currentGroup = $row['group'];
-//     $currentSub   = $row['sub_group'];
-// }
-
-// 3rd
-// foreach ($flatRows as $row) {
-
-//     /* ── Clean and Truncate description ── */
-//     $cleanDesc = strip_tags($row['desc'] ?? '');  // strip HTML first
-//     $cleanDesc = preg_replace('/\s+/', ' ', $cleanDesc); // remove extra spaces/newlines
-//     $cleanDesc = trim($cleanDesc);
-
-//     $row['desc_full']    = $cleanDesc;
-//     $row['desc_display'] = mb_strlen($cleanDesc) > 100
-//         ? mb_substr($cleanDesc, 0, 97) . '…'
-//         : $cleanDesc;
-
-//     /* ── Truncate sub_sub ── */
-//     $row['sub_sub_full']    = $row['sub_sub'] ?? '';
-//     $row['sub_sub_display'] = mb_strlen($row['sub_sub'] ?? '') > 35
-//         ? mb_substr($row['sub_sub'] ?? '', 0, 32) . '…'
-//         : ($row['sub_sub'] ?? '');
-
-//     /* ── Truncate test ── */
-//     $row['test_full']    = $row['test'] ?? '';
-//     $row['test_display'] = mb_strlen($row['test'] ?? '') > 35
-//         ? mb_substr($row['test'] ?? '', 0, 32) . '…'
-//         : ($row['test'] ?? '');
-
-//     // Estimate dynamic row height
-//     $descLength   = strlen($row['desc_display']);
-//     $descLines    = max(1, ceil($descLength / 30));
-
-//     $subSubLength = strlen($row['sub_sub_display']);
-//     $subSubLines  = max(1, ceil($subSubLength / 18));
-
-//     $lineCount = max($descLines, $subSubLines);
-
-//     $rowHeight = 22 + (($lineCount - 1) * 12);
-
-//     $extraHeight = 0;
-
-//     if ($currentGroup !== $row['group']) {
-//         $extraHeight += 12;
-//     }
-
-//     if (
-//         $currentGroup === $row['group'] &&
-//         $currentSub !== $row['sub_group']
-//     ) {
-//         $extraHeight += 8;
-//     }
-
-//     $requiredHeight = $rowHeight + $extraHeight;
-
-//     if (
-//         ($currentHeight + $requiredHeight > $pageUsableHeight)
-//         && !empty($currentPage)
-//     ) {
-//         $pages[] = $currentPage;
-//         $currentPage   = [];
-//         $currentHeight = $headerHeight;
-//         $currentGroup  = null;
-//         $currentSub    = null;
-//     }
-
-//     $currentPage[] = $row;
-//     $currentHeight += $requiredHeight;
-//     $currentGroup   = $row['group'];
-//     $currentSub     = $row['sub_group'];
-// }
 
 foreach ($flatRows as $row) {
 
@@ -773,7 +469,7 @@ html, body {
     font-size: 7pt;
     vertical-align: top;
     padding: 3px 4px;
-    background-color: #f0f9ff;
+    background-color: #ffffff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
@@ -863,7 +559,8 @@ html, body {
 /* GROUP CELL */
 .group-cell {
     font-weight: bold;
-    background: #e0f2fe;
+    /* background: #e0f2fe; */
+    background-color: #f0f9ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
@@ -873,7 +570,7 @@ html, body {
 
 /* SUB GROUP */
 .subgroup-cell {
-    background-color: #f0f9ff;
+    background-color: #ffffff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
