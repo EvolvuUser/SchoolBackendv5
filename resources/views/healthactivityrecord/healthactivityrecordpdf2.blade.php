@@ -527,73 +527,129 @@ foreach ($grouped as $groupName => $subGroups) {
 // }
 
 /* ── STEP 3: Smart page splitting ── */
-$pageUsableHeight = 670;
-$headerHeight     = 90;
+// $pageUsableHeight = 670;
+// $headerHeight     = 90;
 
-$pages        = [];
-$currentPage  = [];
-$currentHeight = $headerHeight;
-$currentGroup  = null;
-$currentSub    = null;
+// $pages        = [];
+// $currentPage  = [];
+// $currentHeight = $headerHeight;
+// $currentGroup  = null;
+// $currentSub    = null;
 
-foreach ($flatRows as $row) {
+// foreach ($flatRows as $row) {
 
-    /* ── Clean description ── */
+//     /* ── Clean description ── */
+//     $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
+//     $row['desc_full']    = $cleanDesc;
+//     $row['desc_display'] = mb_strlen($cleanDesc) > 100
+//         ? mb_substr($cleanDesc, 0, 97) . '…'
+//         : $cleanDesc;
+
+//     /* ── Truncate sub_sub ── */
+//     $cleanSubSub = trim($row['sub_sub'] ?? '');
+//     $row['sub_sub_full']    = $cleanSubSub;
+//     $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
+//         ? mb_substr($cleanSubSub, 0, 32) . '…'
+//         : $cleanSubSub;
+
+//     /* ── Truncate test ── */
+//     $cleanTest = trim($row['test'] ?? '');
+//     $row['test_full']    = $cleanTest;
+//     $row['test_display'] = mb_strlen($cleanTest) > 35
+//         ? mb_substr($cleanTest, 0, 32) . '…'
+//         : $cleanTest;
+
+//     /* ── Fixed row height bucket based on desc length ── */
+//     $descLen = mb_strlen($row['desc_display']);
+
+//     if ($descLen <= 40) {
+//         $rowHeight = 30;    // 1 line
+//     } elseif ($descLen <= 80) {
+//         $rowHeight = 44;    // 2 lines
+//     } else {
+//         $rowHeight = 58;    // 3 lines (max since truncated at 100)
+//     }
+
+//     /* ── Extra height for new group/subgroup ── */
+//     $extraHeight = 0;
+
+//     if ($currentGroup !== $row['group']) {
+//         $extraHeight += 12;
+//     } elseif ($currentSub !== $row['sub_group']) {
+//         $extraHeight += 8;
+//     }
+
+//     $requiredHeight = $rowHeight + $extraHeight;
+
+//     /* ── Page break ── */
+//     if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
+//         $pages[]       = $currentPage;
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight;
+//         $currentGroup  = null;
+//         $currentSub    = null;
+//     }
+
+//     $currentPage[]  = $row;
+//     $currentHeight += $requiredHeight;
+//     $currentGroup   = $row['group'];
+//     $currentSub     = $row['sub_group'];
+// }
+
+/* ── NO MORE PHP PAGE SPLITTING ── */
+/* Just use flatRows directly, CSS will handle page breaks */
+
+// Still need desc/truncation processing
+foreach ($flatRows as &$row) {
     $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
     $row['desc_full']    = $cleanDesc;
     $row['desc_display'] = mb_strlen($cleanDesc) > 100
         ? mb_substr($cleanDesc, 0, 97) . '…'
         : $cleanDesc;
 
-    /* ── Truncate sub_sub ── */
     $cleanSubSub = trim($row['sub_sub'] ?? '');
     $row['sub_sub_full']    = $cleanSubSub;
     $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
         ? mb_substr($cleanSubSub, 0, 32) . '…'
         : $cleanSubSub;
 
-    /* ── Truncate test ── */
     $cleanTest = trim($row['test'] ?? '');
     $row['test_full']    = $cleanTest;
     $row['test_display'] = mb_strlen($cleanTest) > 35
         ? mb_substr($cleanTest, 0, 32) . '…'
         : $cleanTest;
+}
+unset($row);
 
-    /* ── Fixed row height bucket based on desc length ── */
-    $descLen = mb_strlen($row['desc_display']);
+// Calculate rowspans for the single flat table
+$groupCounts = [];
+$subCounts   = [];
 
-    if ($descLen <= 40) {
-        $rowHeight = 30;    // 1 line
-    } elseif ($descLen <= 80) {
-        $rowHeight = 44;    // 2 lines
-    } else {
-        $rowHeight = 58;    // 3 lines (max since truncated at 100)
-    }
+foreach ($flatRows as $row) {
+    $gKey  = $row['group'];
+    $sgKey = $row['group'] . '||' . $row['sub_group'];
+    $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
+    $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+}
 
-    /* ── Extra height for new group/subgroup ── */
-    $extraHeight = 0;
+$seenGroups  = [];
+$seenSubs    = [];
+$processedRows = [];
 
-    if ($currentGroup !== $row['group']) {
-        $extraHeight += 12;
-    } elseif ($currentSub !== $row['sub_group']) {
-        $extraHeight += 8;
-    }
+foreach ($flatRows as $row) {
+    $gKey  = $row['group'];
+    $sgKey = $row['group'] . '||' . $row['sub_group'];
 
-    $requiredHeight = $rowHeight + $extraHeight;
+    $row['show_group']    = !isset($seenGroups[$gKey]);
+    $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
 
-    /* ── Page break ── */
-    if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
-        $pages[]       = $currentPage;
-        $currentPage   = [];
-        $currentHeight = $headerHeight;
-        $currentGroup  = null;
-        $currentSub    = null;
-    }
+    $row['show_sub']    = !isset($seenSubs[$sgKey]);
+    $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
 
-    $currentPage[]  = $row;
-    $currentHeight += $requiredHeight;
-    $currentGroup   = $row['group'];
-    $currentSub     = $row['sub_group'];
+    $seenGroups[$gKey] = true;
+    $seenSubs[$sgKey]  = true;
+
+    $processedRows[] = $row;
 }
 
 if (!empty($currentPage)) {
@@ -955,143 +1011,127 @@ html, body {
 } */
 
 
+/* ================= PAGE ================= */
+.health-page {
+    width: 297mm;
+    margin: 0 auto;
+}
+
+.page-content {
+    width: 92%;
+    margin: auto;
+    padding-top: 20px;
+}
+
+.page-title {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    color: #1f2c7c;
+}
+
 /* ================= TABLE ================= */
 .record-table {
     width: 100%;
     border-collapse: collapse;
-    border-spacing: 0;
     table-layout: fixed;
     border: 1px solid #cfe3f5;
-    background: #f0f7ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    page-break-inside: auto;
-    break-inside: auto;
 }
 
-/* ================= FIXED COLUMN WIDTHS ================= */
-.record-table th:nth-child(1) { width: 55px; }   /* Fitness */
-.record-table th:nth-child(2) { width: 65px; }   /* Sub */
-.record-table th:nth-child(3) { width: 65px; }   /* Sub Sub */
-.record-table th:nth-child(4) { width: 65px; }   /* Test */
-.record-table th:nth-child(5) { width: 140px; }  /* Description */
-/* Class columns take remaining width automatically */
+/* ── Column widths ── */
+.record-table th:nth-child(1) { width: 55px; }
+.record-table th:nth-child(2) { width: 65px; }
+.record-table th:nth-child(3) { width: 65px; }
+.record-table th:nth-child(4) { width: 65px; }
+.record-table th:nth-child(5) { width: 130px; }
 
-/* ================= HEADER CELLS ================= */
+/* ── Header ── */
 .record-table thead {
     display: table-header-group;
 }
 
 .record-table th {
-    padding: 6px 4px;
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    color: #000000;
+    padding: 5px 3px;
+    font-size: 8px;
+    font-weight: 700;
+    color: #000;
     background: #dbeafe;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
     border: 1px solid #cfe3f5;
     border-bottom: 2px solid #93c5fd;
     text-align: center;
     white-space: normal;
     word-break: break-word;
-    vertical-align: middle;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
-.record-table th.class-col {
-    white-space: normal;
-    line-height: 1.2;
-}
-
-/* ================= DATA CELLS (base) ================= */
+/* ── All cells base ── */
 .record-table td {
     border: 1px solid #d6e6f5;
-    padding: 3px 4px;
+    padding: 3px 3px;
+    font-size: 7px;
+    line-height: 1.3;
     text-align: center;
     vertical-align: top;
-    overflow: hidden;
     word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    font-size: 7pt;
-    line-height: 1.3;
-    background: #ffffff;
+    overflow: hidden;
+    background: #f8fbff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-/* ================= GROUP CELL ================= */
+/* ── Group cell ── */
 .group-cell {
     font-weight: bold;
-    font-size: 7pt;
-    background: #e0f2fe;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    font-size: 7px;
+    background: #e0f2fe !important;
     text-align: left;
     padding-left: 4px;
     color: #080808;
-    word-break: break-word;
-    white-space: normal;
-    overflow: hidden;
-    vertical-align: top;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
-/* ================= SUB GROUP CELL ================= */
+/* ── Sub group cell ── */
 .subgroup-cell {
-    font-size: 7pt;
-    background-color: #f0f9ff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    font-size: 7px;
+    background: #f0f9ff !important;
     text-align: left;
-    color: #000000;
-    word-break: break-word;
-    white-space: normal;
-    overflow: hidden;
-    vertical-align: top;
-}
-
-/* ================= ALT ROW BG ================= */
-.bgcolor {
-    background-color: #f8fbff;
+    color: #000;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-/* ================= AVOID ROW BREAK ================= */
-.record-table tbody tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
-/* ================= PRINT MEDIA ================= */
+/* ================= PRINT ================= */
 @media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
     html, body {
-        overflow: visible;
+        width: 297mm;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .record-table {
-        table-layout: fixed;
-        font-size: 7pt;
         page-break-inside: auto;
-        break-inside: auto;
     }
 
     .record-table thead {
         display: table-header-group;
     }
 
+    /* THIS is the key — break BETWEEN rows, never inside */
     .record-table tbody tr {
         page-break-inside: avoid;
         break-inside: avoid;
-    }
-
-    .record-table td,
-    .record-table th {
-        overflow: hidden;
-        word-break: break-word;
     }
 }
 
@@ -1305,14 +1345,10 @@ html, body {
 </div>
 @endforeach --}}
 
-@foreach($finalPages as $pageIndex => $pageRows)
 <div class="health-page">
-    <img src="{{ $bgImage['file_path'] }}" class="bg-img">
     <div class="page-content">
 
-        <h2 style="text-align:center; font-size:20px; font-weight:bold; font-family:Georgia,'Times New Roman',Times,serif; margin-bottom:10px; letter-spacing:1px; color:#1f2c7c;">
-            HEALTH AND ACTIVITY RECORD
-        </h2>
+        <h2 class="page-title">HEALTH AND ACTIVITY RECORD</h2>
 
         <table class="record-table">
             <thead>
@@ -1323,13 +1359,13 @@ html, body {
                     <th>Test</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
-                        <th class="class-col">Class {{ $cls }}</th>
+                        <th>Class {{ $cls }}</th>
                     @endforeach
                 </tr>
             </thead>
 
             <tbody>
-                @foreach($pageRows as $row)
+                @foreach($processedRows as $row)
                 <tr>
                     @if($row['show_group'])
                         <td class="group-cell" rowspan="{{ $row['group_rowspan'] }}">
@@ -1343,20 +1379,12 @@ html, body {
                         </td>
                     @endif
 
-                    <td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
-                        {{ $row['sub_sub_display'] }}
-                    </td>
-
-                    <td class="bgcolor" title="{{ $row['test_full'] }}">
-                        {{ $row['test_display'] }}
-                    </td>
-
-                    <td class="bgcolor" title="{{ $row['desc_full'] }}">
-                        {{ $row['desc_display'] }}
-                    </td>
+                    <td title="{{ $row['sub_sub_full'] }}">{{ $row['sub_sub_display'] }}</td>
+                    <td title="{{ $row['test_full'] }}">{{ $row['test_display'] }}</td>
+                    <td title="{{ $row['desc_full'] }}">{{ $row['desc_display'] }}</td>
 
                     @foreach($student_id_array_new as $cls => $id)
-                        <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
+                        <td>{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach
                 </tr>
                 @endforeach
@@ -1365,7 +1393,6 @@ html, body {
 
     </div>
 </div>
-@endforeach
 
 </body>
 </html>
