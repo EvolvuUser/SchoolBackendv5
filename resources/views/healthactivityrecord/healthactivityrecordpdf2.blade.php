@@ -126,10 +126,10 @@ $descColWidth    = $pageWidth - $fixedColsWidth - $totalClassWidth;
 $descColWidth    = max(80, $descColWidth);        // minimum 80px safety net
 
 /* ── Row height calculation config ── */
-$avgCharWidth = 6;    // 7pt font ≈ 6px per character
-$lineHeight   = 12;   // px per line at 7pt
-$cellPadding  = 10;   // top + bottom cell padding combined
-$minRowHeight = 28;   // absolute minimum row height
+$avgCharWidth = 5;    // reduce → more chars per line → fewer lines
+$lineHeight   = 10;   // reduce → less height per line
+$cellPadding  = 6;    // reduce → less padding
+$minRowHeight = 22;   // reduce → smaller minimum
 
 $charsPerLine = max(1, floor($descColWidth / $avgCharWidth));
 
