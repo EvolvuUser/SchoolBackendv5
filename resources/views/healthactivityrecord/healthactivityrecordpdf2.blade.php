@@ -111,42 +111,125 @@ foreach ($grouped as $groupName => $subGroups) {
 }
 
 /* ── STEP 3: Chunk by estimated height for Puppeteer A4 landscape ── */
-$pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
-$headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
+// $pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
+// $headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
 
-$pages        = [];
-$currentPage  = [];
-$currentHeight = $headerHeight; // start with header already counted
+// $pages        = [];
+// $currentPage  = [];
+// $currentHeight = $headerHeight; // start with header already counted
+
+// foreach ($flatRows as $row) {
+
+//     // Estimate row height based on description length
+//     $descLength  = strlen($row['desc'] ?? '');
+//     $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
+//     $baseHeight  = 22;  // minimum row height in px
+//     $lineHeight  = 14;  // extra px per extra line
+//     $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+
+//     // Also account for sub_sub wrapping
+//     $subSubLength = strlen($row['sub_sub'] ?? '');
+//     $subSubLines  = max(1, ceil($subSubLength / 20));
+//     $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+
+//     // If adding this row exceeds page height, start a new page
+//     if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
+//         $pages[]       = $currentPage;
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight; // reset with header height for new page
+//     }
+
+//     $currentPage[] = $row;
+//     $currentHeight += $rowHeight;
+// }
+
+// // Add last page
+// if (!empty($currentPage)) {
+//     $pages[] = $currentPage;
+// }
+
+// 20-05-2026
+/* ── STEP 3: Smart page splitting ── */
+
+$pageUsableHeight = 670;
+$headerHeight     = 90;
+
+$pages = [];
+$currentPage = [];
+$currentHeight = $headerHeight;
+
+$currentGroup = null;
+$currentSub   = null;
 
 foreach ($flatRows as $row) {
 
-    // Estimate row height based on description length
-    $descLength  = strlen($row['desc'] ?? '');
-    $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
-    $baseHeight  = 22;  // minimum row height in px
-    $lineHeight  = 14;  // extra px per extra line
-    $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+    // Estimate dynamic row height
+    $descLength = strlen(strip_tags($row['desc'] ?? ''));
+    $descLines  = max(1, ceil($descLength / 35));
 
-    // Also account for sub_sub wrapping
     $subSubLength = strlen($row['sub_sub'] ?? '');
-    $subSubLines  = max(1, ceil($subSubLength / 20));
-    $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+    $subSubLines  = max(1, ceil($subSubLength / 22));
 
-    // If adding this row exceeds page height, start a new page
-    if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
-        $pages[]       = $currentPage;
-        $currentPage   = [];
-        $currentHeight = $headerHeight; // reset with header height for new page
+    $lineCount = max($descLines, $subSubLines);
+
+    $rowHeight = 24 + (($lineCount - 1) * 14);
+
+    /*
+    ADD EXTRA HEIGHT
+    when new group/subgroup starts
+    because rowspan cells become taller visually
+    */
+
+    $extraHeight = 0;
+
+    if ($currentGroup !== $row['group']) {
+        $extraHeight += 12;
+    }
+
+    if (
+        $currentGroup === $row['group'] &&
+        $currentSub !== $row['sub_group']
+    ) {
+        $extraHeight += 8;
+    }
+
+    $requiredHeight = $rowHeight + $extraHeight;
+
+    /*
+    PAGE BREAK
+    */
+
+    if (
+        ($currentHeight + $requiredHeight > $pageUsableHeight)
+        && !empty($currentPage)
+    ) {
+
+        $pages[] = $currentPage;
+
+        $currentPage = [];
+        $currentHeight = $headerHeight;
+
+        /*
+        RESET
+        so rowspan starts fresh
+        */
+
+        $currentGroup = null;
+        $currentSub   = null;
     }
 
     $currentPage[] = $row;
-    $currentHeight += $rowHeight;
+
+    $currentHeight += $requiredHeight;
+
+    $currentGroup = $row['group'];
+    $currentSub   = $row['sub_group'];
 }
 
-// Add last page
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
+
 
 /* ── Recalculate rowspans per page ── */
 $finalPages = [];
