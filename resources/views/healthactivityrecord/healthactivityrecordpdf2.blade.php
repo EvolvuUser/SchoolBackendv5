@@ -148,136 +148,14 @@ foreach ($grouped as $groupName => $subGroups) {
 //     $pages[] = $currentPage;
 // }
 
-// 20-05-2026 -> First try
+// 20-05-2026
 
 /* ── STEP 3: Smart page splitting ── */
-// $pageUsableHeight = 670;
-// $headerHeight     = 90;
-
-// $pages = [];
-// $currentPage = [];
-// $currentHeight = $headerHeight;
-
-// $currentGroup = null;
-// $currentSub   = null;
-
-// foreach ($flatRows as $row) {
-
-//     /* ── Truncate sub_group (Sub column) ── */
-//     $row['sub_group_full']    = $row['sub_group'] ?? '';
-//     $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
-//         ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
-//         : ($row['sub_group'] ?? '');
-
-//     /* ── Clean and Truncate description ── */
-//     $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
-//     $row['desc_full']    = $cleanDesc;
-//     $row['desc_display'] = mb_strlen($cleanDesc) > 100
-//         ? mb_substr($cleanDesc, 0, 97) . '…'
-//         : $cleanDesc;
-
-//     /* ── Truncate sub_sub ── */
-//     $cleanSubSub = trim($row['sub_sub'] ?? '');
-//     $row['sub_sub_full']    = $cleanSubSub;
-//     $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
-//         ? mb_substr($cleanSubSub, 0, 32) . '…'
-//         : $cleanSubSub;
-
-//     /* ── Truncate test ── */
-//     $cleanTest = trim($row['test'] ?? '');
-//     $row['test_full']    = $cleanTest;
-//     $row['test_display'] = mb_strlen($cleanTest) > 35
-//         ? mb_substr($cleanTest, 0, 32) . '…'
-//         : $cleanTest;
-
-//     /* ── Fixed height buckets based on desc length ── */
-//     $descLen = mb_strlen($row['desc_display']);
-//     if ($descLen <= 40) {
-//         $rowHeight = 30;
-//     } elseif ($descLen <= 80) {
-//         $rowHeight = 44;
-//     } else {
-//         $rowHeight = 58;
-//     }
-
-//     /* ── Extra height for new group/subgroup ── */
-//     $extraHeight = 0;
-//     if ($currentGroup !== $row['group']) {
-//         $extraHeight += 12;
-//     } elseif ($currentSub !== $row['sub_group']) {
-//         $extraHeight += 8;
-//     }
-
-//     $requiredHeight = $rowHeight + $extraHeight;
-
-//     /* ── Page break ── */
-//     if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
-//         $pages[]       = $currentPage;
-//         $currentPage   = [];
-//         $currentHeight = $headerHeight;
-//         $currentGroup  = null;
-//         $currentSub    = null;
-//     }
-
-//     $currentPage[]  = $row;
-//     $currentHeight += $requiredHeight;
-//     $currentGroup   = $row['group'];
-//     $currentSub     = $row['sub_group'];
-// }
-
-// if (!empty($currentPage)) {
-//     $pages[] = $currentPage;
-// }
-
-/* ── Recalculate rowspans per page ── */
-// $finalPages = [];
-// foreach ($pages as $pageRows) {
-//     $groupCounts = [];
-//     $subCounts   = [];
-
-//     foreach ($pageRows as $row) {
-//         $gKey  = $row['group'];
-//         $sgKey = $row['group'] . '||' . $row['sub_group'];
-//         $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
-//         $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
-//     }
-
-//     $seenGroups = [];
-//     $seenSubs   = [];
-//     $processed  = [];
-
-//     foreach ($pageRows as $row) {
-//         $gKey  = $row['group'];
-//         $sgKey = $row['group'] . '||' . $row['sub_group'];
-
-//         $row['show_group']    = !isset($seenGroups[$gKey]);
-//         $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
-
-//         $row['show_sub']    = !isset($seenSubs[$sgKey]);
-//         $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
-
-//         $seenGroups[$gKey] = true;
-//         $seenSubs[$sgKey]  = true;
-
-//         $processed[] = $row;
-//     }
-
-//     $finalPages[] = $processed;
-// }
-
-
-
-// 2 nd try
-/* ─────────────────────────────────────────────
-   STEP 3 : SMART PAGE SPLITTING
-───────────────────────────────────────────── */
-
-$pageUsableHeight = 730;
+$pageUsableHeight = 670;
 $headerHeight     = 90;
 
 $pages = [];
-
-$currentPage   = [];
+$currentPage = [];
 $currentHeight = $headerHeight;
 
 $currentGroup = null;
@@ -285,237 +163,118 @@ $currentSub   = null;
 
 foreach ($flatRows as $row) {
 
-    /* ─────────────────────────────────────────
-       CLEAN DATA
-    ───────────────────────────────────────── */
+    /* ── Truncate sub_group (Sub column) ── */
+    $row['sub_group_full']    = $row['sub_group'] ?? '';
+    $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
+        ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
+        : ($row['sub_group'] ?? '');
 
-    $row['group'] = trim($row['group'] ?? '');
+    /* ── Clean and Truncate description ── */
+    $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
+    $row['desc_full']    = $cleanDesc;
+    $row['desc_display'] = mb_strlen($cleanDesc) > 100
+        ? mb_substr($cleanDesc, 0, 97) . '…'
+        : $cleanDesc;
 
-    /* ---------- SUB GROUP ---------- */
-
-    $row['sub_group_full'] = trim($row['sub_group'] ?? '');
-
-    $row['sub_group_display'] =
-        mb_strlen($row['sub_group_full']) > 50
-        ? mb_substr($row['sub_group_full'], 0, 47) . '...'
-        : $row['sub_group_full'];
-
-    /* ---------- DESCRIPTION ---------- */
-
-    $cleanDesc = trim(
-        preg_replace(
-            '/\s+/',
-            ' ',
-            strip_tags($row['desc'] ?? '')
-        )
-    );
-
-    $row['desc_full'] = $cleanDesc;
-
-    /*
-    |--------------------------------------------------------------------------
-    | KEEP FULL DESCRIPTION
-    |--------------------------------------------------------------------------
-    */
-
-    $row['desc_display'] = $cleanDesc;
-
-    /* ---------- SUB SUB ---------- */
-
+    /* ── Truncate sub_sub ── */
     $cleanSubSub = trim($row['sub_sub'] ?? '');
-
-    $row['sub_sub_full'] = $cleanSubSub;
-
-    $row['sub_sub_display'] =
-        mb_strlen($cleanSubSub) > 40
-        ? mb_substr($cleanSubSub, 0, 37) . '...'
+    $row['sub_sub_full']    = $cleanSubSub;
+    $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
+        ? mb_substr($cleanSubSub, 0, 32) . '…'
         : $cleanSubSub;
 
-    /* ---------- TEST ---------- */
-
+    /* ── Truncate test ── */
     $cleanTest = trim($row['test'] ?? '');
-
-    $row['test_full'] = $cleanTest;
-
-    $row['test_display'] =
-        mb_strlen($cleanTest) > 40
-        ? mb_substr($cleanTest, 0, 37) . '...'
+    $row['test_full']    = $cleanTest;
+    $row['test_display'] = mb_strlen($cleanTest) > 35
+        ? mb_substr($cleanTest, 0, 32) . '…'
         : $cleanTest;
 
-    /* ─────────────────────────────────────────
-       STABLE ROW HEIGHT ESTIMATION
-    ───────────────────────────────────────── */
+    /* ── Fixed height buckets based on desc length ── */
+    // $descLen = mb_strlen($row['desc_display']);
+    // if ($descLen <= 40) {
+    //     $rowHeight = 30;
+    // } elseif ($descLen <= 80) {
+    //     $rowHeight = 44;
+    // } else {
+    //     $rowHeight = 58;
+    // }
 
-    $descLines = max(
-        1,
-        ceil(mb_strlen($row['desc_display']) / 55)
-    );
+    $descLen = mb_strlen(trim($row['desc_display'] ?? ''));
 
-    $subLines = max(
-        1,
-        ceil(mb_strlen($row['sub_group_display']) / 22)
-    );
+/* ── Row height based on description ── */
 
-    $subSubLines = max(
-        1,
-        ceil(mb_strlen($row['sub_sub_display']) / 22)
-    );
+if ($descLen == 0) {
+    $rowHeight = 22;
 
-    $testLines = max(
-        1,
-        ceil(mb_strlen($row['test_display']) / 22)
-    );
+} elseif ($descLen <= 40) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Take tallest wrapped column
-    |--------------------------------------------------------------------------
-    */
+    $rowHeight = 30;
 
-    $maxLines = max(
-        $descLines,
-        $subLines,
-        $subSubLines,
-        $testLines
-    );
+} elseif ($descLen <= 80) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Stable row heights
-    |--------------------------------------------------------------------------
-    */
+    $rowHeight = 44;
 
-    if ($maxLines <= 1) {
-        $rowHeight = 28;
-    }
-    elseif ($maxLines == 2) {
-        $rowHeight = 42;
-    }
-    elseif ($maxLines == 3) {
-        $rowHeight = 56;
-    }
-    elseif ($maxLines == 4) {
-        $rowHeight = 72;
-    }
-    else {
-        $rowHeight = 88;
-    }
+} else {
 
-    /* ─────────────────────────────────────────
-       EXTRA HEIGHT FOR NEW GROUPS
-    ───────────────────────────────────────── */
+    $rowHeight = 58;
+}
 
+    /* ── Extra height for new group/subgroup ── */
     $extraHeight = 0;
-
     if ($currentGroup !== $row['group']) {
         $extraHeight += 12;
-    }
-    elseif ($currentSub !== $row['sub_group']) {
+    } elseif ($currentSub !== $row['sub_group']) {
         $extraHeight += 8;
     }
 
     $requiredHeight = $rowHeight + $extraHeight;
 
-    /* ─────────────────────────────────────────
-       PAGE BREAK
-    ───────────────────────────────────────── */
-
-    if (
-        ($currentHeight + $requiredHeight > $pageUsableHeight)
-        && !empty($currentPage)
-    ) {
-
-        $pages[] = $currentPage;
-
+    /* ── Page break ── */
+    if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
+        $pages[]       = $currentPage;
         $currentPage   = [];
         $currentHeight = $headerHeight;
-
-        /*
-        |--------------------------------------------------------------------------
-        | Reset rowspan tracking
-        |--------------------------------------------------------------------------
-        */
-
-        $currentGroup = null;
-        $currentSub   = null;
+        $currentGroup  = null;
+        $currentSub    = null;
     }
 
-    /* ---------- ADD ROW ---------- */
-
-    $currentPage[] = $row;
-
+    $currentPage[]  = $row;
     $currentHeight += $requiredHeight;
-
-    $currentGroup = $row['group'];
-    $currentSub   = $row['sub_group'];
+    $currentGroup   = $row['group'];
+    $currentSub     = $row['sub_group'];
 }
-
-/* ---------- LAST PAGE ---------- */
 
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
 
-/* ─────────────────────────────────────────────
-   RECALCULATE ROWSPANS PAGE-WISE
-───────────────────────────────────────────── */
-
+/* ── Recalculate rowspans per page ── */
 $finalPages = [];
-
 foreach ($pages as $pageRows) {
-
     $groupCounts = [];
     $subCounts   = [];
 
-    /* ---------- COUNT ROWS ---------- */
-
     foreach ($pageRows as $row) {
-
         $gKey  = $row['group'];
-
-        $sgKey =
-            $row['group'] . '||' . $row['sub_group'];
-
-        $groupCounts[$gKey] =
-            ($groupCounts[$gKey] ?? 0) + 1;
-
-        $subCounts[$sgKey] =
-            ($subCounts[$sgKey] ?? 0) + 1;
+        $sgKey = $row['group'] . '||' . $row['sub_group'];
+        $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
+        $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
     }
-
-    /* ---------- APPLY ROWSPANS ---------- */
 
     $seenGroups = [];
     $seenSubs   = [];
-
-    $processed = [];
+    $processed  = [];
 
     foreach ($pageRows as $row) {
-
         $gKey  = $row['group'];
+        $sgKey = $row['group'] . '||' . $row['sub_group'];
 
-        $sgKey =
-            $row['group'] . '||' . $row['sub_group'];
+        $row['show_group']    = !isset($seenGroups[$gKey]);
+        $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
 
-        /* ---------- GROUP ---------- */
-
-        $row['show_group'] =
-            !isset($seenGroups[$gKey]);
-
-        $row['group_rowspan'] =
-            $row['show_group']
-            ? $groupCounts[$gKey]
-            : 0;
-
-        /* ---------- SUB GROUP ---------- */
-
-        $row['show_sub'] =
-            !isset($seenSubs[$sgKey]);
-
-        $row['sub_rowspan'] =
-            $row['show_sub']
-            ? $subCounts[$sgKey]
-            : 0;
+        $row['show_sub']    = !isset($seenSubs[$sgKey]);
+        $row['sub_rowspan'] = $row['show_sub'] ? $subCounts[$sgKey] : 0;
 
         $seenGroups[$gKey] = true;
         $seenSubs[$sgKey]  = true;
@@ -537,23 +296,17 @@ foreach ($student_id_array_new as $cls => $id) {
 <html>
 <head>
 <style>
-
 /* ================= PAGE SETUP ================= */
-
 @page {
     size: A4 landscape;
     margin: 0;
 }
 
-html,
-body {
+html, body {
     margin: 0;
     padding: 0;
-
     font-family: Arial, sans-serif;
-
     overflow: visible;
-
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
@@ -563,28 +316,21 @@ body {
 }
 
 /* ================= BACKGROUND IMAGE ================= */
-
 .bg-img {
     position: absolute;
-
-    inset: 0;
-
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100%;
-
+    height: 210mm;
     z-index: 1;
 }
 
 /* ================= FIRST PAGE ================= */
-
 .first {
     position: relative;
-
     width: 297mm;
     height: 210mm;
-
     overflow: hidden;
-
     page-break-after: always;
     break-after: page;
 }
@@ -592,15 +338,11 @@ body {
 .page-inner {
     position: relative;
     z-index: 2;
-
     padding: 30px 40px;
 }
 
-/* ================= SCHOOL HEADER ================= */
-
 .school-header {
     position: relative;
-
     width: 100%;
     height: 80px;
 }
@@ -611,7 +353,6 @@ body {
 
 .logo-box {
     position: absolute;
-
     left: 0;
     top: 0;
 }
@@ -623,18 +364,14 @@ body {
 
 .school-text {
     position: absolute;
-
     width: 100%;
-
     text-align: center;
-
     top: 0;
 }
 
 .school-name {
     font-size: 26px;
     font-weight: bold;
-
     color: #0b5fa5;
 }
 
@@ -647,11 +384,9 @@ body {
     font-size: 13px;
 }
 
-/* ================= TITLES ================= */
-
+/* ===== TITLE ===== */
 .certificate-title {
     text-align: center;
-
     margin-top: 10px;
     margin-bottom: 20px;
 }
@@ -659,67 +394,50 @@ body {
 .main-title {
     font-size: 20px;
     font-weight: bold;
-
     letter-spacing: 1px;
-
     color: #1f2c7c;
 }
 
 .sub-title {
     font-size: 16px;
     font-weight: bold;
-
     margin-top: 5px;
-
     color: #1f2c7c;
 }
 
-/* ================= FIRST PAGE CONTENT ================= */
-
+/* ===== FIRST PAGE CONTENT ===== */
 .first-content table {
     width: 85%;
-
     margin: auto;
-
     border-collapse: collapse;
 }
 
 .first-content td {
     padding: 6px 8px;
-
     vertical-align: top;
 }
 
 .first-content td:first-child {
-    width: 18%;
-
     white-space: nowrap;
+    width: 18%;
 }
 
 .statistics_line {
     display: block;
-
     width: 100%;
-
     border-bottom: 1px solid #000;
-
     padding: 2px 4px;
-
     min-height: 18px;
 }
 
-/* ================= HEALTH PAGE ================= */
-
+/* ================= HEALTH TABLE PAGES ================= */
 .health-page {
     position: relative;
-
     width: 297mm;
     min-height: 210mm;
-
-    overflow: visible;
-
     page-break-after: always;
     break-after: page;
+    overflow: visible;
 }
 
 .health-page:last-child {
@@ -727,72 +445,115 @@ body {
     break-after: auto;
 }
 
-/* ================= PAGE CONTENT ================= */
-
 .page-content {
     position: relative;
-
     z-index: 2;
-
     width: 92%;
-
-    margin: 0 auto;
-
+    margin: auto;
     padding-top: 30px;
-    padding-bottom: 20px;
 }
 
 /* ================= TABLE ================= */
-
 .record-table {
     width: 100%;
-
     border-collapse: collapse;
     border-spacing: 0;
-
+    font-size: 10px;
     table-layout: fixed;
-
-    font-size: 9px;
-
-    background: #f0f7ff;
-
     border: 1px solid #cfe3f5;
-
+    background: #f0f7ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-
     page-break-inside: auto;
     break-inside: auto;
 }
 
-/* ================= TABLE HEADER ================= */
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+/* Sub column */
+.record-table td.subgroup-cell {
+    max-width: 80px;
+    min-width: 50px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+    background-color: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    text-align: left;
+    color: #000000;
+}
 
+/* Sub Sub column */
+.record-table td:nth-child(3),
+.record-table td:nth-child(4) {
+    max-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Description column */
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Force fixed column widths so browser respects them */
+.record-table {
+    table-layout: fixed;
+}
+
+.record-table th:nth-child(1) { width: 60px; }   /* Fitness */
+.record-table th:nth-child(2) { width: 70px; }   /* Sub */
+.record-table th:nth-child(3) { width: 70px; }   /* Sub Sub */
+.record-table th:nth-child(4) { width: 70px; }   /* Test */
+.record-table th:nth-child(5) { width: 150px; }  /* Description */
+
+
+/* Repeat thead on every new page */
 .record-table thead {
     display: table-header-group;
 }
 
+/* Avoid cutting a single row in half */
+.record-table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* HEADER CELLS */
 .record-table th {
-    padding: 8px 6px;
-
-    font-size: 10px;
-    font-weight: 700;
-
-    line-height: 1.2;
-
-    text-align: center;
-
-    white-space: normal;
-    word-break: break-word;
-
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
     color: #000000;
-
     background: #dbeafe;
-
-    border: 1px solid #cfe3f5;
-    border-bottom: 2px solid #93c5fd;
-
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    border: 1px solid #cfe3f5;
+    border-bottom: 2px solid #93c5fd;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .record-table th.class-col {
@@ -800,164 +561,57 @@ body {
     line-height: 1.2;
 }
 
-/* ================= TABLE DATA CELLS ================= */
-
+/* DATA CELLS */
 .record-table td {
-    padding: 4px 5px;
-
     border: 1px solid #d6e6f5;
-
-    font-size: 7pt;
-
-    line-height: 1.3;
-
+    padding: 6px;
     text-align: center;
-    vertical-align: top;
-
-    word-break: break-word;
+    vertical-align: middle;
+    word-wrap: break-word;
     overflow-wrap: break-word;
-    white-space: normal;
-
     background: #ffffff;
-
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-/* ================= COLUMN WIDTHS ================= */
-
-.record-table th:nth-child(1) {
-    width: 70px;
-}
-
-/* Fitness */
-
-.record-table th:nth-child(2) {
-    width: 80px;
-}
-
-/* Sub Group */
-
-.record-table th:nth-child(3) {
-    width: 80px;
-}
-
-/* Sub Sub */
-
-.record-table th:nth-child(4) {
-    width: 80px;
-}
-
-/* Test */
-
-.record-table th:nth-child(5) {
-    width: 170px;
-}
-
-/* Description */
-
-/* ================= GROUP CELL ================= */
-
+/* GROUP CELL */
 .group-cell {
-    background-color: #f0f9ff;
-
     font-weight: bold;
-
-    color: #080808;
-
-    text-align: left;
-    vertical-align: top;
-
-    padding-left: 8px;
-
+    /* background: #e0f2fe; */
+    background-color: #f0f9ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    text-align: left;
+    padding-left: 8px;
+    color: #080808;
 }
 
-/* ================= SUBGROUP CELL ================= */
-
+/* SUB GROUP */
 .subgroup-cell {
     background-color: #ffffff;
-
-    color: #000000;
-
-    text-align: left;
-    vertical-align: top;
-
-    font-size: 7pt;
-
-    line-height: 1.3;
-
-    padding: 4px;
-
-    word-break: break-word;
-
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-}
-
-/* ================= DESCRIPTION CELL ================= */
-
-.record-table td.desc-cell {
-    max-width: 170px;
-
-    font-size: 7pt;
-
-    line-height: 1.35;
-
     text-align: left;
-    vertical-align: top;
-
-    padding: 4px 5px;
-
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
+    color: #000000;
 }
 
-/* ================= SUB SUB + TEST ================= */
-
-.record-table td:nth-child(3),
-.record-table td:nth-child(4) {
-    font-size: 7pt;
-
-    line-height: 1.3;
-
-    vertical-align: top;
-
-    padding: 4px;
-
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-}
-
-/* ================= ALT BACKGROUND ================= */
-
+/* ALT ROW BG */
 .bgcolor {
     background-color: #f8fbff;
-
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
-/* ================= PRINT ================= */
-
+/* ================= PRINT MEDIA ================= */
 @media print {
-
-    html,
-    body {
+    html, body {
         overflow: visible;
-
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    .health-page {
-        overflow: visible;
-    }
-
     .record-table {
+        font-size: 9px;
         page-break-inside: auto;
         break-inside: auto;
     }
@@ -965,8 +619,12 @@ body {
     .record-table thead {
         display: table-header-group;
     }
-}
 
+    .record-table tbody tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+}
 </style>
 </head>
 
@@ -1096,10 +754,10 @@ body {
         <table class="record-table">
             <thead>
                 <tr>
-                    <th>Fitness Component</th>
-                    <th>Sub Group</th>
-                    <th>Sub Sub Group</th>
-                    <th>Test Parameter</th>
+                    <th>Fitness</th>
+                    <th>Sub</th>
+                    <th>Sub Sub</th>
+                    <th>Test</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
                         <th class="class-col">Class {{ $cls }}</th>
