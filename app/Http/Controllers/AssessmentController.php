@@ -2654,6 +2654,13 @@ class AssessmentController extends Controller
         $hpc_sm_id = $request->input('hpc_sm_id');
         $name = $request->input('name');
         $curriculum_goal = $request->input('curriculum_goal');
+        $control_type = $request->input('control_type');
+        $options_data = $request->input('options');
+        if (in_array($control_type, ['checkbox', 'radio', 'rating'])) {
+            $options = json_encode($options_data);
+        } else {
+            $options = null;
+        }
 
         $dm_id = DB::table('domain_master')->insertGetId([
             'academic_yr' => $academicYr,
@@ -2661,6 +2668,8 @@ class AssessmentController extends Controller
             'HPC_sm_id' => $hpc_sm_id,
             'name' => $name,
             'curriculum_goal' => $curriculum_goal,
+            'control_type' => $control_type,
+            'options' => $options
         ]);
 
         $parameters = $request->input('parameters');
@@ -2693,7 +2702,7 @@ class AssessmentController extends Controller
             ->join('class', 'dm.class_id', '=', 'class.class_id')
             ->leftjoin('HPC_subject_master', 'HPC_subject_master.hpc_sm_id', '=', 'dm.HPC_sm_id')
             ->where('dm.academic_yr', $academicYr)
-            ->select('class.name as classname', 'dm.name as domainname', 'HPC_subject_master.name as subjectname', 'dm.dm_id')
+            ->select('class.name as classname', 'dm.name as domainname', 'HPC_subject_master.name as subjectname', 'dm.dm_id', 'dm.control_type', 'dm.options')
             ->get();
 
         return response()->json([
@@ -2725,7 +2734,6 @@ class AssessmentController extends Controller
         $parameters = DB::table('domain_parameter_details')
             ->leftjoin('domain_competencies', 'domain_competencies.dm_competency_id', '=', 'domain_parameter_details.dm_competency_id')
             ->where('domain_parameter_details.dm_id', $dm_id)
-            ->where('domain_parameter_details.academic_yr', $academicYr)
             ->get();
 
         return response()->json([
@@ -2743,6 +2751,13 @@ class AssessmentController extends Controller
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
+        $control_type = $request->input('control_type');
+        $options_data = $request->input('options');
+        if (in_array($control_type, ['checkbox', 'radio', 'rating'])) {
+            $options = json_encode($options_data);
+        } else {
+            $options = null;
+        }
 
         // Update main domain record
         DB::table('domain_master')
@@ -2753,6 +2768,8 @@ class AssessmentController extends Controller
                 'HPC_sm_id' => $request->input('hpc_sm_id'),
                 'name' => $request->input('name'),
                 'curriculum_goal' => $request->input('curriculum_goal'),
+                'control_type' => $control_type,
+                'options' => $options
             ]);
 
         // Delete old parameters
@@ -2851,7 +2868,9 @@ class AssessmentController extends Controller
             ->where('academic_yr', $academicYr)
             ->where('class_id', $class_id)
             ->where('section_id', $section_id)
-            ->where('hpc_sm_id', $subject_id)
+            ->when(!empty($subject_id), function ($query) use ($subject_id) {
+                $query->where('hpc_sm_id', $subject_id);
+            })
             ->where('dm_id', $dm_id)
             ->whereIn('parameter_id', $parameters->pluck('parameter_id'))
             ->get()
@@ -3082,7 +3101,7 @@ class AssessmentController extends Controller
             $query->where('dm.HPC_sm_id', $subject_id);
         }
 
-        $domains = $query->select('dm.name as domainname', 'dm.dm_id')->get();
+        $domains = $query->select('dm.name as domainname', 'dm.dm_id', 'dm.control_type', 'dm.options')->get();
 
         return response()->json([
             'status' => 200,
@@ -7916,15 +7935,14 @@ class AssessmentController extends Controller
         // $lessonplantemplate = DB::select('
         //     SELECT lpt.*, lptd.*, lph.name , lpt.reg_id as teacher_id
         //     FROM lesson_plan_template AS lpt
-        //     JOIN lesson_plan_template_details AS lptd 
+        //     JOIN lesson_plan_template_details AS lptd
         //         ON lpt.les_pln_temp_id = lptd.les_pln_temp_id
-        //     JOIN lesson_plan_heading AS lph 
+        //     JOIN lesson_plan_heading AS lph
         //         ON lph.lesson_plan_headings_id = lptd.lesson_plan_headings_id
         //     WHERE lpt.chapter_id = ?
         //     AND lpt.subject_id = ?
         //     AND lpt.class_id = ?
         // ', [$chapter_id, $subject_id, $class_id]);
-
 
         // Changed by Mahima 30-03-2026 for teacher name also show
         $lessonplantemplate = DB::select('
@@ -8450,7 +8468,6 @@ class AssessmentController extends Controller
         // Changed by Mahima 30-03-2026
 
         $groupedData = $lessonPlans->groupBy('les_pln_temp_id')->map(function ($items) {
-
             $templateId = $items[0]->les_pln_temp_id;
 
             //  Check if used in lesson_plan table
@@ -8464,10 +8481,8 @@ class AssessmentController extends Controller
                 'subject_id' => $items[0]->subject_id,
                 'chapter_id' => $items[0]->chapter_id,
                 'publish' => $items[0]->publish,
-
                 // New flag
                 'is_used' => $isUsed,
-
                 'details' => $items->map(function ($i) {
                     return [
                         'detail_id' => $i->detail_id,
@@ -8486,9 +8501,6 @@ class AssessmentController extends Controller
             'status' => 200
         ]);
     }
-
-
-
 
     public function getSubSubjectByClassSub(Request $request)
     {
