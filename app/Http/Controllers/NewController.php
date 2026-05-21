@@ -5133,7 +5133,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'Content-Disposition' => 'attachment; filename="event.csv"',
             ];
             ob_get_clean();
-            $columns = ['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Competition(Yes/No)', 'Notify(Yes/No)', 'Activity(Yes/No)'];
+            $columns = ['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Activity(Yes/No)', 'Competition(Yes/No - Allowed only if Activity = Yes)', 'Notify(Yes/No)'];
 
             $callback = function () use ($columns) {
                 $file = fopen('php://output', 'w');
@@ -5268,6 +5268,14 @@ ORDER BY Z.t_remark_id DESC;");
             $EventData['competition'] = strtolower($EventData['competition'] ?? 'no') === 'yes' ? 'Y' : 'N';
             $EventData['notify'] = strtolower($EventData['notify'] ?? 'no') === 'yes' ? 'Y' : 'N';
             $EventData['activity'] = strtolower($EventData['activity'] ?? 'no') === 'yes' ? 'Y' : 'N';
+
+            // Add this condition by Mahima - 21-05-2026
+            if (
+                $EventData['competition'] === 'Y' &&
+                $EventData['activity'] !== 'Y'
+            ) {
+                $errors[] = 'Competition can be Yes only when Activity is Yes.';
+            }
 
             // dd($errors);
             if (!empty($errors)) {
