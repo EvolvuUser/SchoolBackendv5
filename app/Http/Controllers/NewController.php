@@ -5185,7 +5185,7 @@ ORDER BY Z.t_remark_id DESC;");
             'Start Time(HH:MM:SS)' => 'start_time',
             'End Time(HH:MM:SS)' => 'end_time',
             "*Login Type({$roleNamesStr})" => 'login_type',
-            'Competition(Yes/No)' => 'competition',
+            'Competition(Yes/No - Allowed only if Activity = Yes)' => 'competition',
             'Notify(Yes/No)' => 'notify',
             'Activity(Yes/No)' => 'activity',
         ];
