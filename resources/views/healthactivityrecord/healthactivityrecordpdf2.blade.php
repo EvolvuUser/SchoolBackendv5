@@ -111,39 +111,140 @@ foreach ($grouped as $groupName => $subGroups) {
 }
 
 /* ── STEP 3: Chunk by estimated height for Puppeteer A4 landscape ── */
-$pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
-$headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
+// $pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
+// $headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
 
-$pages        = [];
-$currentPage  = [];
-$currentHeight = $headerHeight; // start with header already counted
+// $pages        = [];
+// $currentPage  = [];
+// $currentHeight = $headerHeight; // start with header already counted
+
+// foreach ($flatRows as $row) {
+
+//     // Estimate row height based on description length
+//     $descLength  = strlen($row['desc'] ?? '');
+//     $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
+//     $baseHeight  = 22;  // minimum row height in px
+//     $lineHeight  = 14;  // extra px per extra line
+//     $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+
+//     // Also account for sub_sub wrapping
+//     $subSubLength = strlen($row['sub_sub'] ?? '');
+//     $subSubLines  = max(1, ceil($subSubLength / 20));
+//     $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+
+//     // If adding this row exceeds page height, start a new page
+//     if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
+//         $pages[]       = $currentPage;
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight; // reset with header height for new page
+//     }
+
+//     $currentPage[] = $row;
+//     $currentHeight += $rowHeight;
+// }
+
+// // Add last page
+// if (!empty($currentPage)) {
+//     $pages[] = $currentPage;
+// }
+
+// 20-05-2026
+
+/* ── STEP 3: Smart page splitting ── */
+$pageUsableHeight = 670;
+$headerHeight     = 90;
+
+$pages = [];
+$currentPage = [];
+$currentHeight = $headerHeight;
+
+$currentGroup = null;
+$currentSub   = null;
 
 foreach ($flatRows as $row) {
 
-    // Estimate row height based on description length
-    $descLength  = strlen($row['desc'] ?? '');
-    $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
-    $baseHeight  = 22;  // minimum row height in px
-    $lineHeight  = 14;  // extra px per extra line
-    $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+    /* ── Truncate sub_group (Sub column) ── */
+    $row['sub_group_full']    = $row['sub_group'] ?? '';
+    $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
+        ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
+        : ($row['sub_group'] ?? '');
 
-    // Also account for sub_sub wrapping
-    $subSubLength = strlen($row['sub_sub'] ?? '');
-    $subSubLines  = max(1, ceil($subSubLength / 20));
-    $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+    /* ── Clean and Truncate description ── */
+    $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
+    $row['desc_full']    = $cleanDesc;
+    $row['desc_display'] = mb_strlen($cleanDesc) > 100
+        ? mb_substr($cleanDesc, 0, 97) . '…'
+        : $cleanDesc;
 
-    // If adding this row exceeds page height, start a new page
-    if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
-        $pages[]       = $currentPage;
-        $currentPage   = [];
-        $currentHeight = $headerHeight; // reset with header height for new page
-    }
+    /* ── Truncate sub_sub ── */
+    $cleanSubSub = trim($row['sub_sub'] ?? '');
+    $row['sub_sub_full']    = $cleanSubSub;
+    $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
+        ? mb_substr($cleanSubSub, 0, 32) . '…'
+        : $cleanSubSub;
 
-    $currentPage[] = $row;
-    $currentHeight += $rowHeight;
+    /* ── Truncate test ── */
+    $cleanTest = trim($row['test'] ?? '');
+    $row['test_full']    = $cleanTest;
+    $row['test_display'] = mb_strlen($cleanTest) > 35
+        ? mb_substr($cleanTest, 0, 32) . '…'
+        : $cleanTest;
+
+    /* ── Fixed height buckets based on desc length ── */
+    // $descLen = mb_strlen($row['desc_display']);
+    // if ($descLen <= 40) {
+    //     $rowHeight = 30;
+    // } elseif ($descLen <= 80) {
+    //     $rowHeight = 44;
+    // } else {
+    //     $rowHeight = 58;
+    // }
+
+    $descLen = mb_strlen(trim($row['desc_display'] ?? ''));
+
+/* ── Row height based on description ── */
+
+if ($descLen == 0) {
+    $rowHeight = 22;
+
+} elseif ($descLen <= 40) {
+
+    $rowHeight = 30;
+
+} elseif ($descLen <= 80) {
+
+    $rowHeight = 44;
+
+} else {
+
+    $rowHeight = 58;
 }
 
-// Add last page
+    /* ── Extra height for new group/subgroup ── */
+    $extraHeight = 0;
+    if ($currentGroup !== $row['group']) {
+        $extraHeight += 12;
+    } elseif ($currentSub !== $row['sub_group']) {
+        $extraHeight += 8;
+    }
+
+    $requiredHeight = $rowHeight + $extraHeight;
+
+    /* ── Page break ── */
+    if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
+        $pages[]       = $currentPage;
+        $currentPage   = [];
+        $currentHeight = $headerHeight;
+        $currentGroup  = null;
+        $currentSub    = null;
+    }
+
+    $currentPage[]  = $row;
+    $currentHeight += $requiredHeight;
+    $currentGroup   = $row['group'];
+    $currentSub     = $row['sub_group'];
+}
+
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
@@ -367,6 +468,76 @@ html, body {
     break-inside: auto;
 }
 
+.wrap-header {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+/* Sub column */
+.record-table td.subgroup-cell {
+    max-width: 80px;
+    min-width: 50px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+    background-color: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    text-align: left;
+    color: #000000;
+}
+
+/* Sub Sub column */
+.record-table td:nth-child(3),
+.record-table td:nth-child(4) {
+    max-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Description column */
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Force fixed column widths so browser respects them */
+.record-table {
+    table-layout: fixed;
+}
+
+.record-table th:nth-child(1) { width: 60px; }   /* Fitness */
+.record-table th:nth-child(2) { width: 70px; }   /* Sub */
+.record-table th:nth-child(3) { width: 70px; }   /* Sub Sub */
+.record-table th:nth-child(4) { width: 70px; }   /* Test */
+.record-table th:nth-child(5) { width: 150px; }  /* Description */
+
+
 /* Repeat thead on every new page */
 .record-table thead {
     display: table-header-group;
@@ -415,7 +586,8 @@ html, body {
 /* GROUP CELL */
 .group-cell {
     font-weight: bold;
-    background: #e0f2fe;
+    /* background: #e0f2fe; */
+    background-color: #f0f9ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
@@ -425,7 +597,7 @@ html, body {
 
 /* SUB GROUP */
 .subgroup-cell {
-    background-color: #f0f9ff;
+    background-color: #ffffff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     text-align: left;
@@ -590,14 +762,28 @@ html, body {
 
         <table class="record-table">
             <thead>
-                <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
+                {{-- <tr>
+                    <th>Fitness Parameter</th>
+                    <th>Sub Group</th>
+                    <th>Sub Sub Group</th>
+                    <th>Test Parameter</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
                         <th class="class-col">Class {{ $cls }}</th>
+                    @endforeach
+                </tr> --}}
+
+                <tr>
+                    <th class="wrap-header">Fitness Parameter</th>
+                    <th class="wrap-header">Sub Group</th>
+                    <th class="wrap-header">Sub Sub Group</th>
+                    <th class="wrap-header">Test Parameter</th>
+                    <th class="wrap-header">Description</th>
+
+                    @foreach($student_id_array_new as $cls => $id)
+                        <th class="class-col wrap-header">
+                          Class {{ $cls }}
+                        </th>
                     @endforeach
                 </tr>
             </thead>
@@ -617,10 +803,23 @@ html, body {
                         </td>
                     @endif
 
-                    <td class="bgcolor">{{ $row['sub_sub'] }}</td>
-                    <td class="bgcolor">{{ $row['test'] }}</td>
-                    <td class="bgcolor">{{ $row['desc'] }}</td>
+                    // {{-- <td class="bgcolor">{{ $row['sub_sub'] }}</td>
+                    // <td class="bgcolor">{{ $row['test'] }}</td>
+                    // <td class="bgcolor">{{ $row['desc'] }}</td> --}}
 
+                    // {{-- Sub Sub --}}
+  <td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
+      {{ $row['sub_sub_display'] }}
+   </td>
+
+
+   <td class="bgcolor" title="{{ $row['test_full'] }}">
+       {{ $row['test_display'] }}
+   </td>
+
+   <td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
+       {{ $row['desc_display'] }}
+  </td>
                     @foreach($student_id_array_new as $cls => $id)
                         <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach

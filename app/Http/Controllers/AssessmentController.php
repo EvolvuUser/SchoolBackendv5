@@ -3083,7 +3083,7 @@ class AssessmentController extends Controller
         ]);
     }
 
-    public function getDomainsClass(Request $request, $class_id)
+   public function getDomainsClass(Request $request, $class_id)
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
@@ -3091,7 +3091,11 @@ class AssessmentController extends Controller
 
         $query = DB::table('domain_master as dm')
             ->where('dm.class_id', $class_id)
-            ->where('dm.academic_yr', $academicYr);
+            ->where(function ($q) use ($academicYr) {
+                    $q->where('dm.academic_yr', $academicYr)
+                      ->orWhereNull('dm.academic_yr')
+                      ->orWhere('dm.academic_yr', '');
+                });
 
         if (!empty($subject_id)) {
             $query->where('dm.HPC_sm_id', $subject_id);
@@ -6074,6 +6078,8 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
+
+
 
     public function saveStudentMarks(Request $request)
     {
