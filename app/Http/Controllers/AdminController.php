@@ -9373,22 +9373,76 @@ class AdminController extends Controller
     }
 
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+    // public function getTeacherClassTimetable(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+    //         $teacher_id = $request->input('teacher_id');
+    //         $classdata = DB::table('subject')
+    //             ->join('class', 'class.class_id', '=', 'subject.class_id')
+    //             ->join('section', 'section.section_id', '=', 'subject.section_id')
+    //             ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+    //             ->where('subject.academic_yr', $customClaims)
+    //             ->where('subject.teacher_id', $teacher_id)
+    //             ->distinct()
+    //             ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
+    //             ->orderBy('class.class_id', 'DESC')
+    //             ->orderBy('section.section_id', 'DESC')
+    //             ->get();
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data' => $classdata,
+    //             'message' => 'Teachers Class',
+    //             'success' => true
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getTeacherClassTimetable(Request $request)
     {
         try {
+
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
             $teacher_id = $request->input('teacher_id');
+
             $classdata = DB::table('subject')
                 ->join('class', 'class.class_id', '=', 'subject.class_id')
                 ->join('section', 'section.section_id', '=', 'subject.section_id')
                 ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+
                 ->where('subject.academic_yr', $customClaims)
                 ->where('subject.teacher_id', $teacher_id)
-                ->distinct()
-                ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
+
+                ->select(
+                    'section.section_id',
+                    'class.class_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'teacher.name as teachername',
+                    'teacher.teacher_id'
+                )
+
+                ->groupBy(
+                    'section.section_id',
+                    'class.class_id',
+                    'class.name',
+                    'section.name',
+                    'teacher.name',
+                    'teacher.teacher_id'
+                )
+
+                ->orderBy('class.class_id', 'ASC')
+                ->orderBy('section.section_id', 'ASC')
+
                 ->get();
+
             return response()->json([
                 'status' => 200,
                 'data' => $classdata,
@@ -9396,10 +9450,18 @@ class AdminController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
+
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
+
 
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
     public function getDepartmentss(Request $request)

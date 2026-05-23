@@ -3083,7 +3083,7 @@ class AssessmentController extends Controller
         ]);
     }
 
-   public function getDomainsClass(Request $request, $class_id)
+    public function getDomainsClass(Request $request, $class_id)
     {
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
@@ -3092,10 +3092,10 @@ class AssessmentController extends Controller
         $query = DB::table('domain_master as dm')
             ->where('dm.class_id', $class_id)
             ->where(function ($q) use ($academicYr) {
-                    $q->where('dm.academic_yr', $academicYr)
-                      ->orWhereNull('dm.academic_yr')
-                      ->orWhere('dm.academic_yr', '');
-                });
+                $q->where('dm.academic_yr', $academicYr)
+                    ->orWhereNull('dm.academic_yr')
+                    ->orWhere('dm.academic_yr', '');
+            });
 
         if (!empty($subject_id)) {
             $query->where('dm.HPC_sm_id', $subject_id);
@@ -6285,7 +6285,8 @@ class AssessmentController extends Controller
     public function saveUploadsMarksCsv(Request $request)
     {
         $user = $this->authenticateUser();
-        $academicYr = '2025-2026';
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+        $shortName = JWTAuth::getPayload()->get('short_name');
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048'
         ]);
@@ -6482,185 +6483,106 @@ class AssessmentController extends Controller
                             $reportcard_highest_marks = '';
                             // echo "marks_obtained ".$marks_obtained."<br/>";
                             // echo "highest_marks ".$highest_marks."<br/>";
-                            switch ($class_name) {
-                                case 'Nursery':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        if ($highest_marks == 25) {
-                                            if ($marks_obtained <= 25 && $marks_obtained >= 24) {
-                                                // echo "msg 1<br/>";
-                                                $reportcard_marks = 3;
-                                            } elseif ($marks_obtained <= 23 && $marks_obtained >= 15) {
-                                                // echo "msg 2<br/>";
-                                                $reportcard_marks = 2;
-                                            } elseif ($marks_obtained < 15) {
-                                                // echo "msg 3<br/>";
-                                                $reportcard_marks = 1;
-                                            }
-                                            // Lija 28-02-22
-                                        } elseif ($highest_marks == 15) {
-                                            if ($marks_obtained <= 15 && $marks_obtained >= 14) {
-                                                $reportcard_marks = 3;
-                                            } elseif ($marks_obtained <= 13 && $marks_obtained >= 10) {
-                                                $reportcard_marks = 2;
-                                            } elseif ($marks_obtained < 10) {
-                                                $reportcard_marks = 1;
-                                            }
-                                        } elseif ($highest_marks == 10) {
-                                            if ($marks_obtained <= 10 && $marks_obtained >= 9) {
-                                                // echo "msg 4<br/>";
-                                                $reportcard_marks = 3;
-                                            } elseif ($marks_obtained <= 8 && $marks_obtained >= 6) {
-                                                // echo "msg 5<br/>";
-                                                $reportcard_marks = 2;
-                                            } elseif ($marks_obtained < 6) {
-                                                // echo "msg 6<br/>";
-                                                $reportcard_marks = 1;
-                                            }
-                                        } elseif ($highest_marks == 5) {
-                                            if ($marks_obtained <= 5 && $marks_obtained >= 4) {
-                                                // echo "msg 7<br/>";
-                                                $reportcard_marks = 3;
-                                            } elseif ($marks_obtained <= 3 && $marks_obtained >= 2) {
-                                                // echo "msg 8<br/>";
-                                                $reportcard_marks = 2;
-                                            } elseif ($marks_obtained < 2) {
-                                                // echo "msg 9<br/>";
-                                                $reportcard_marks = 1;
-                                            }
-                                        }
-                                    }
-                                    $reportcard_highest_marks = 3;
-                                    break;
-
-                                case 'LKG':
-                                    // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
-                                    $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
-                                        $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                case 'UKG':
-                                    // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
-                                    $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
-                                        $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                case '1':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                case '2':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                case '3':
-                                    if ($subject_type == 'Scholastic') {
-                                        if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
-                                                $reportcard_marks = $marks_obtained;  // Lija 10-07-21
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
-                                            $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                            // Lija added Term 2 condition 07-12-20
-                                        } else {
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        }
-                                    } elseif ($subject_type == 'Co-Scholastic') {
+                            if ($shortName == 'SACS') {
+                                switch ($class_name) {
+                                    case 'Nursery':
                                         if ($marks_obtained == '') {
                                             $reportcard_marks = 'Ab';
                                         } else {
-                                            $reportcard_marks = $marks_obtained;
-                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                        }
-                                        $reportcard_highest_marks = $highest_marks;
-                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-                                    break;
-                                case '4':
-                                    if ($subject_type == 'Scholastic') {
-                                        if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
-                                                $reportcard_marks = $marks_obtained;  // Lija 10-07-21
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
-                                            $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                            // Lija added Term 2 condition 07-12-20
-                                        } else {
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        }
-                                    } elseif ($subject_type == 'Co-Scholastic') {
-                                        if ($marks_obtained == '') {
-                                            $reportcard_marks = 'Ab';
-                                        } else {
-                                            $reportcard_marks = $marks_obtained;
-                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                        }
-                                        $reportcard_highest_marks = $highest_marks;
-                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-                                    break;
-                                case '5':
-                                    if ($subject_type == 'Scholastic') {
-                                        if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
-                                            if ($marks_headings_name == 'Internal') {
-                                                if ($marks_obtained == '') {
-                                                    $reportcard_marks = 'Ab';
-                                                } else {
-                                                    $reportcard_marks = $marks_obtained;
-                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            if ($highest_marks == 25) {
+                                                if ($marks_obtained <= 25 && $marks_obtained >= 24) {
+                                                    // echo "msg 1<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 23 && $marks_obtained >= 15) {
+                                                    // echo "msg 2<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 15) {
+                                                    // echo "msg 3<br/>";
+                                                    $reportcard_marks = 1;
                                                 }
-                                                $reportcard_highest_marks = $highest_marks;
-                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                            } else {
+                                                // Lija 28-02-22
+                                            } elseif ($highest_marks == 15) {
+                                                if ($marks_obtained <= 15 && $marks_obtained >= 14) {
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 13 && $marks_obtained >= 10) {
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 10) {
+                                                    $reportcard_marks = 1;
+                                                }
+                                            } elseif ($highest_marks == 10) {
+                                                if ($marks_obtained <= 10 && $marks_obtained >= 9) {
+                                                    // echo "msg 4<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 8 && $marks_obtained >= 6) {
+                                                    // echo "msg 5<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 6) {
+                                                    // echo "msg 6<br/>";
+                                                    $reportcard_marks = 1;
+                                                }
+                                            } elseif ($highest_marks == 5) {
+                                                if ($marks_obtained <= 5 && $marks_obtained >= 4) {
+                                                    // echo "msg 7<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 3 && $marks_obtained >= 2) {
+                                                    // echo "msg 8<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 2) {
+                                                    // echo "msg 9<br/>";
+                                                    $reportcard_marks = 1;
+                                                }
+                                            }
+                                        }
+                                        $reportcard_highest_marks = 3;
+                                        break;
+
+                                    case 'LKG':
+                                        // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                            $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case 'UKG':
+                                        // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                            $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '1':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '2':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '3':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
                                                 if ($marks_obtained == '') {
                                                     $reportcard_marks = 'Ab';
                                                 } else {
@@ -6671,10 +6593,19 @@ class AssessmentController extends Controller
                                                 // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
                                                 $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
                                                 $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                             }
-                                            // Lija added Term 2 condition 07-12-20
-                                        } else {
-                                            if ($present == 'N') {
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
                                                 $reportcard_marks = $marks_obtained;
@@ -6683,65 +6614,136 @@ class AssessmentController extends Controller
                                             $reportcard_highest_marks = $highest_marks;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
-                                    } elseif ($subject_type == 'Co-Scholastic') {
-                                        if ($marks_obtained == '') {
-                                            $reportcard_marks = 'Ab';
-                                        } else {
-                                            $reportcard_marks = $marks_obtained;
-                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                        }
-                                        $reportcard_highest_marks = $highest_marks;
-                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-                                    break;
-                                case '6':
-                                    // Lija 13-03-21
-                                    if ($subject_type == 'Scholastic') {
-                                        // if($term_id==1){ //Lija 10-09-21
-                                        // Lija term marks was doubled for Term 1 2020-2021
-                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                        break;
+                                    case '4':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_marks = $marks_obtained;  // Lija 10-07-21
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                        } elseif ($subject_type == 'Co-Scholastic') {
                                             if ($marks_obtained == '') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-                                                $reportcard_marks = $marks_obtained * 2;
+                                                $reportcard_marks = $marks_obtained;
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
-                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $reportcard_highest_marks = $highest_marks;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($marks_headings_name == 'Periodic Test') {
-                                            // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+                                        }
+                                        break;
+                                    case '5':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
+                                                if ($marks_headings_name == 'Internal') {
+                                                    if ($marks_obtained == '') {
+                                                        $reportcard_marks = 'Ab';
+                                                    } else {
+                                                        $reportcard_marks = $marks_obtained;
+                                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks = $highest_marks;
+                                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                } else {
+                                                    if ($marks_obtained == '') {
+                                                        $reportcard_marks = 'Ab';
+                                                    } else {
+                                                        // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                        $reportcard_marks = $marks_obtained;  // Lija 10-07-21
+                                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                    }
+                                                    // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
+                                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                }
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '6':
+                                        // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
 
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                                if ($marks_obtained == '') {
+                                                    // print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                             } else {
-                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                // print_r("In else present".$present."<br/>");
+                                                if ($marks_obtained == '') {
+                                                    // print_r("In else absentt<br/>");
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                             }
-                                            $reportcard_highest_marks = 10;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
-                                            if ($marks_obtained == '') {
-                                                // print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained * 2;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks * 2;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } else {
-                                            // print_r("In else present".$present."<br/>");
-                                            if ($marks_obtained == '') {
-                                                // print_r("In else absentt<br/>");
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        }
-                                        /*}elseif($term_id==2){
+                                            /*}elseif($term_id==2){
                                                 if($subject_name=='Computer Applications'){
                                                     if($marks_obtained==""){
                                                         //print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
@@ -6777,23 +6779,7 @@ class AssessmentController extends Controller
                                                     $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
                                                 }
                                             }*/
-                                    } elseif ($subject_type == 'Co-Scholastic') {
-                                        if ($marks_obtained == '') {
-                                            $reportcard_marks = 'Ab';
-                                        } else {
-                                            $reportcard_marks = $marks_obtained * 2;
-                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                        }
-                                        $reportcard_highest_marks = $highest_marks * 2;
-                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-
-                                    break;
-                                case '7':  // Lija 13-03-21
-                                    if ($subject_type == 'Scholastic') {
-                                        // if($term_id==1){ //Lija 10-09-21
-                                        // Lija term marks was doubled for Term 1 2020-2021
-                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                        } elseif ($subject_type == 'Co-Scholastic') {
                                             if ($marks_obtained == '') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
@@ -6802,37 +6788,53 @@ class AssessmentController extends Controller
                                             }
                                             $reportcard_highest_marks = $highest_marks * 2;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($marks_headings_name == 'Periodic Test') {
-                                            // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
-
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = 10;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained * 2;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks * 2;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } else {
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
-                                        /*}elseif($term_id==2){
+
+                                        break;
+                                    case '7':  // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } else {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                            /*}elseif($term_id==2){
                                                 if($subject_name=='Computer Applications'){
                                                     if($marks_obtained==""){
                                                         $reportcard_marks='Ab';
@@ -6865,22 +6867,7 @@ class AssessmentController extends Controller
                                                     $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
                                                 }
                                             }*/
-                                    } elseif ($subject_type == 'Co-Scholastic') {
-                                        if ($marks_obtained == '') {
-                                            $reportcard_marks = 'Ab';
-                                        } else {
-                                            $reportcard_marks = $marks_obtained * 2;
-                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                        }
-                                        $reportcard_highest_marks = $highest_marks * 2;
-                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-                                    break;
-                                case '8':  // Lija 13-03-21
-                                    if ($subject_type == 'Scholastic') {
-                                        // if($term_id==1){ //Lija 10-09-21
-                                        // Lija term marks was doubled for Term 1 2020-2021
-                                        if (($marks_headings_name == 'Term' || $marks_headings_name == 'Internal') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                        } elseif ($subject_type == 'Co-Scholastic') {
                                             if ($marks_obtained == '') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
@@ -6889,37 +6876,52 @@ class AssessmentController extends Controller
                                             }
                                             $reportcard_highest_marks = $highest_marks * 2;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($marks_headings_name == 'Periodic Test') {
-                                            // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+                                        }
+                                        break;
+                                    case '8':  // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Internal') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
 
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Artificial Intelligence') {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                             } else {
-                                                $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                             }
-                                            $reportcard_highest_marks = 10;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } elseif ($subject_name == 'Artificial Intelligence') {
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained * 2;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks * 2;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } else {
-                                            if ($marks_obtained == '') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        }
-                                        /*}elseif($term_id==2){
+                                            /*}elseif($term_id==2){
                                                 if($subject_name=='Artificial Intelligence'){
                                                     if($marks_obtained==""){
                                                         $reportcard_marks='Ab';
@@ -6952,61 +6954,885 @@ class AssessmentController extends Controller
                                                     $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
                                                 }
                                             }*/
-                                    } elseif ($subject_type == 'Co-Scholastic') {
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '9':
                                         if ($marks_obtained == '') {
                                             $reportcard_marks = 'Ab';
                                         } else {
-                                            $reportcard_marks = $marks_obtained * 2;
+                                            $reportcard_marks = $marks_obtained;
                                             $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                         }
-                                        $reportcard_highest_marks = $highest_marks * 2;
+                                        $reportcard_highest_marks = $highest_marks;
                                         $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    }
-                                    break;
-                                case '9':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                case '10':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                // Lija 15-07-21
-                                case '11':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                // Lija 14-07-22
-                                case '12':
-                                    if ($marks_obtained == '') {
-                                        $reportcard_marks = 'Ab';
-                                    } else {
-                                        $reportcard_marks = $marks_obtained;
-                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                    }
-                                    $reportcard_highest_marks = $highest_marks;
-                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                    break;
-                                default:
+                                        break;
+                                    case '10':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    // Lija 15-07-21
+                                    case '11':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    // Lija 14-07-22
+                                    case '12':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    default:
+                                }
+                            } elseif ($shortName == 'HSCS') {
+                                switch ($class_name) {
+                                    case "Nursery":
+                                        $reportcard_highest_marks = $highest_marks;
+                                        if ($present == 'N') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+
+                                    case "LKG":
+                                        $reportcard_highest_marks = $highest_marks;
+                                        if ($present == 'N') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case "UKG":
+                                        $reportcard_highest_marks = $highest_marks;
+                                        if ($present == 'N') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    //Lija 22-08-23
+                                    case "1":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "2":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            //echo "msg1";
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            //echo "highest_marks ".$highest_marks;
+                                            //echo "total_reportcard_highest_marks ".$total_reportcard_highest_marks;
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "3":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "4":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "5":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "6":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "7":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "8": //Lija 13-03-21
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "9":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 5, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 5;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "10":
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 5, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 5;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case "11 - Science":
+
+                                        if ($present == 'N') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+
+                                        break;
+                                    case "11 - Commerce":
+
+                                        if ($present == 'N') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+
+                                        break;
+                                    default:
+                                }
+                            } else {
+                                switch ($class_name) {
+                                    case 'Nursery':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            if ($highest_marks == 25) {
+                                                if ($marks_obtained <= 25 && $marks_obtained >= 24) {
+                                                    // echo "msg 1<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 23 && $marks_obtained >= 15) {
+                                                    // echo "msg 2<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 15) {
+                                                    // echo "msg 3<br/>";
+                                                    $reportcard_marks = 1;
+                                                }
+                                                // Lija 28-02-22
+                                            } elseif ($highest_marks == 15) {
+                                                if ($marks_obtained <= 15 && $marks_obtained >= 14) {
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 13 && $marks_obtained >= 10) {
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 10) {
+                                                    $reportcard_marks = 1;
+                                                }
+                                            } elseif ($highest_marks == 10) {
+                                                if ($marks_obtained <= 10 && $marks_obtained >= 9) {
+                                                    // echo "msg 4<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 8 && $marks_obtained >= 6) {
+                                                    // echo "msg 5<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 6) {
+                                                    // echo "msg 6<br/>";
+                                                    $reportcard_marks = 1;
+                                                }
+                                            } elseif ($highest_marks == 5) {
+                                                if ($marks_obtained <= 5 && $marks_obtained >= 4) {
+                                                    // echo "msg 7<br/>";
+                                                    $reportcard_marks = 3;
+                                                } elseif ($marks_obtained <= 3 && $marks_obtained >= 2) {
+                                                    // echo "msg 8<br/>";
+                                                    $reportcard_marks = 2;
+                                                } elseif ($marks_obtained < 2) {
+                                                    // echo "msg 9<br/>";
+                                                    $reportcard_marks = 1;
+                                                }
+                                            }
+                                        }
+                                        $reportcard_highest_marks = 3;
+                                        break;
+
+                                    case 'LKG':
+                                        // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                            $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case 'UKG':
+                                        // $reportcard_highest_marks=100;//22-09-22 Lija This was till acd yr 2021-2022
+                                        $reportcard_highest_marks = $highest_marks;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            // $reportcard_marks = $marks_obtained * 100 / $highest_marks;//22-09-22 Lija This was till acd yr 2021-2022
+                                            $reportcard_marks = $marks_obtained;  // 22-09-22 Lija This is from acd yr 2022-2023
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '1':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '2':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '3':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_marks = $marks_obtained;  // Lija 10-07-21
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '4':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_marks = $marks_obtained;  // Lija 10-07-21
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '5':
+                                        if ($subject_type == 'Scholastic') {
+                                            if ($term_id == 1) {  // Lija seperated Term 1 n Term 2 condition 07-12-20
+                                                if ($marks_headings_name == 'Internal') {
+                                                    if ($marks_obtained == '') {
+                                                        $reportcard_marks = 'Ab';
+                                                    } else {
+                                                        $reportcard_marks = $marks_obtained;
+                                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks = $highest_marks;
+                                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                } else {
+                                                    if ($marks_obtained == '') {
+                                                        $reportcard_marks = 'Ab';
+                                                    } else {
+                                                        // $reportcard_marks = $marks_obtained*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                        $reportcard_marks = $marks_obtained;  // Lija 10-07-21
+                                                        $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                    }
+                                                    // $reportcard_highest_marks=$highest_marks*2;// for acd_yr 2020-21 //Lija 10-07-21
+                                                    $reportcard_highest_marks = $highest_marks;  // Lija 10-07-21
+                                                    $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                                }
+                                                // Lija added Term 2 condition 07-12-20
+                                            } else {
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '6':
+                                        // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                                if ($marks_obtained == '') {
+                                                    // print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } else {
+                                                // print_r("In else present".$present."<br/>");
+                                                if ($marks_obtained == '') {
+                                                    // print_r("In else absentt<br/>");
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                            /*}elseif($term_id==2){
+                                                if($subject_name=='Computer Applications'){
+                                                    if($marks_obtained==""){
+                                                        //print_r("In Absent Term Practical not Marathi, Sanslrit<br/>");
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained*2;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks*2;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }elseif($marks_headings_name=='Periodic Test'){
+                                                    //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                    if($present=='N'){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+
+                                                        $reportcard_marks = ($marks_obtained/$highest_marks)*10;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=10;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }else{
+                                                    //print_r("In else present".$present."<br/>");
+                                                    if($marks_obtained==""){
+                                                        //print_r("In else absentt<br/>");
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }
+                                            }*/
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+
+                                        break;
+                                    case '7':  // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Practical') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Computer Applications' || $subject_name == 'Computer') {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } else {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                            /*}elseif($term_id==2){
+                                                if($subject_name=='Computer Applications'){
+                                                    if($marks_obtained==""){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained*2;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks*2;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }elseif($marks_headings_name=='Periodic Test'){
+                                                    //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                    if($present=='N'){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+
+                                                        $reportcard_marks = ($marks_obtained/$highest_marks)*10;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=10;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }else{
+                                                    if($marks_obtained==""){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }
+                                            }*/
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '8':  // Lija 13-03-21
+                                        if ($subject_type == 'Scholastic') {
+                                            // if($term_id==1){ //Lija 10-09-21
+                                            // Lija term marks was doubled for Term 1 2020-2021
+                                            if (($marks_headings_name == 'Term' || $marks_headings_name == 'Internal') && !($subject_name == 'Marathi' || $subject_name == 'Sanskrit') && $acd_yr == '2020-2021' && $term_id == 1) {  // Lija 10-09-21
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($marks_headings_name == 'Periodic Test') {
+                                                // 07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                if ($present == 'N') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = ($marks_obtained / $highest_marks) * 10;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = 10;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } elseif ($subject_name == 'Artificial Intelligence') {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained * 2;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks * 2;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            } else {
+                                                if ($marks_obtained == '') {
+                                                    $reportcard_marks = 'Ab';
+                                                } else {
+                                                    $reportcard_marks = $marks_obtained;
+                                                    $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                                }
+                                                $reportcard_highest_marks = $highest_marks;
+                                                $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                            }
+                                            /*}elseif($term_id==2){
+                                                if($subject_name=='Artificial Intelligence'){
+                                                    if($marks_obtained==""){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained*2;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks*2;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }elseif($marks_headings_name=='Periodic Test'){
+                                                    //07-12-20 Convert periodic marks out of 50 to 10 n save as report card marks
+
+                                                    if($present=='N'){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+
+                                                        $reportcard_marks = ($marks_obtained/$highest_marks)*10;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=10;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }else{
+                                                    if($marks_obtained==""){
+                                                        $reportcard_marks='Ab';
+                                                    }else{
+                                                        $reportcard_marks = $marks_obtained;
+                                                        $total_reportcard_marks_obtained=$total_reportcard_marks_obtained+$reportcard_marks;
+                                                    }
+                                                    $reportcard_highest_marks=$highest_marks;
+                                                    $total_reportcard_highest_marks=$total_reportcard_highest_marks+$reportcard_highest_marks;
+                                                }
+                                            }*/
+                                        } elseif ($subject_type == 'Co-Scholastic') {
+                                            if ($marks_obtained == '') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained * 2;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks * 2;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '9':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    case '10':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    // Lija 15-07-21
+                                    case '11':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    // Lija 14-07-22
+                                    case '12':
+                                        if ($marks_obtained == '') {
+                                            $reportcard_marks = 'Ab';
+                                        } else {
+                                            $reportcard_marks = $marks_obtained;
+                                            $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                        }
+                                        $reportcard_highest_marks = $highest_marks;
+                                        $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        break;
+                                    default:
+                                }
                             }
+
 
                             $reportcard_marks_string = $reportcard_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_marks . '",';
                             $reportcard_highest_marks_string = $reportcard_highest_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_highest_marks . '",';
