@@ -2453,7 +2453,7 @@ class AdminController extends Controller
         if ($students->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No student found matching the search criteria.',
+                'message' => 'No student found.',
             ], 404);
         }
 
@@ -9403,7 +9403,6 @@ class AdminController extends Controller
     public function getTeacherClassTimetable(Request $request)
     {
         try {
-
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
@@ -9413,10 +9412,8 @@ class AdminController extends Controller
                 ->join('class', 'class.class_id', '=', 'subject.class_id')
                 ->join('section', 'section.section_id', '=', 'subject.section_id')
                 ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
-
                 ->where('subject.academic_yr', $customClaims)
                 ->where('subject.teacher_id', $teacher_id)
-
                 ->select(
                     'section.section_id',
                     'class.class_id',
@@ -9425,7 +9422,6 @@ class AdminController extends Controller
                     'teacher.name as teachername',
                     'teacher.teacher_id'
                 )
-
                 ->groupBy(
                     'section.section_id',
                     'class.class_id',
@@ -9434,10 +9430,8 @@ class AdminController extends Controller
                     'teacher.name',
                     'teacher.teacher_id'
                 )
-
                 ->orderBy('class.class_id', 'ASC')
                 ->orderBy('section.section_id', 'ASC')
-
                 ->get();
 
             return response()->json([
@@ -9447,7 +9441,6 @@ class AdminController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
-
             \Log::error($e);
 
             return response()->json([
@@ -9458,7 +9451,6 @@ class AdminController extends Controller
             ], 500);
         }
     }
-
 
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
     public function getDepartmentss(Request $request)
