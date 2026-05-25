@@ -98,6 +98,16 @@ return [
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
         ],
+        'STCS' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_STCS'),
+            'database' => env('DB_DATABASE_STCS'),
+            'username' => env('DB_USERNAME_STCS'),
+            'password' => env('DB_PASSWORD_STCS'),
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::ATTR_PERSISTENT => true,
+            ]) : [],
+        ],
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
