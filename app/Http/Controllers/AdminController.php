@@ -9129,23 +9129,20 @@ class AdminController extends Controller
             // });
             // Step 3: Attach files only for Remark type
             $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
-
                 // Always return attachments key
                 $remark->attachments = [];
 
                 // Attach files only for Remark type
                 if ($remark->remark_type == 'Remark') {
-
                     $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
                     $remark->attachments = collect($files[$remark->remark_id] ?? [])
                         ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
-
                             return [
                                 'image_name' => $file->image_name,
                                 'file_size' => $file->file_size,
-                                'file_url' => $codeigniter_app_url .
-                                    "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
+                                'file_url' => $codeigniter_app_url
+                                    . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
                             ];
                         })
                         ->values();
@@ -13226,8 +13223,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16658,19 +16655,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
