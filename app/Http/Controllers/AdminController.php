@@ -2471,30 +2471,162 @@ class AdminController extends Controller
         ]);
     }
 
+    // public function getStudentByGRN($reg_no)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //         $student = Student::with(['parents.user', 'getClass', 'getDivision'])
+    //             ->where('reg_no', $reg_no)
+    //             ->where('academic_yr', $customClaims)
+    //             ->first();
+
+    //         if (!$student) {
+    //             return response()->json(['error' => 'Student not found'], 404);
+    //         }
+    //         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+    //         $student->student_image_url = $student->image_name
+    //             ? $concatprojecturl . $student->image_name
+    //             : null;
+    //         return response()->json(['student' => [$student]]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getStudentByGRN($reg_no)
     {
         try {
             $user = $this->authenticateUser();
+
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            $student = Student::with(['parents.user', 'getClass', 'getDivision'])
-                ->where('reg_no', $reg_no)
-                ->where('academic_yr', $customClaims)
-                ->first();
 
-            if (!$student) {
-                return response()->json(['error' => 'Student not found'], 404);
+            // ============================================
+            // GET USER ROLE
+            // ============================================
+            $role_id = $user->role_id ?? null;
+
+            // ============================================
+            // ADMIN / MANAGEMENT USERS
+            // A = Admin
+            // M = Management
+            // U = User
+            // ============================================
+            if (in_array($role_id, ['A', 'M', 'U'])) {
+
+                $student = Student::with([
+                    'parents.user',
+                    'getClass',
+                    'getDivision'
+                ])
+                    ->where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
             }
+
+            // ============================================
+            // TEACHER LOGIN
+            // T = Teacher
+            // Teacher can only search students
+            // from classes/sections they teach
+            // ============================================
+            else if ($role_id == 'T') {
+
+                // Teacher ID from logged-in user
+                $teacher_id = $user->reg_id;
+
+                // Get classes/sections assigned to teacher
+                $teacherClasses = DB::table('subject')
+                    ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+
+                        $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                            ->on('class_teachers.section_id', '=', 'subject.section_id')
+                            ->where('class_teachers.teacher_id', '=', $teacher_id);
+                    })
+
+                    ->where('subject.academic_yr', $customClaims)
+
+                    ->where(function ($query) use ($teacher_id) {
+
+                        $query->where('subject.teacher_id', $teacher_id)
+                            ->orWhere('class_teachers.teacher_id', $teacher_id);
+                    })
+
+                    ->select(
+                        'subject.class_id',
+                        'subject.section_id'
+                    )
+
+                    ->distinct()
+                    ->get();
+
+                // Student Query
+                $studentQuery = Student::with([
+                    'parents.user',
+                    'getClass',
+                    'getDivision'
+                ])
+                    ->where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims);
+
+                // Filter only teacher assigned classes
+                $studentQuery->where(function ($query) use ($teacherClasses) {
+
+                    foreach ($teacherClasses as $class) {
+
+                        $query->orWhere(function ($subQuery) use ($class) {
+
+                            $subQuery->where('class_id', $class->class_id)
+                                ->where('section_id', $class->section_id);
+                        });
+                    }
+                });
+
+                $student = $studentQuery->first();
+            } else {
+
+                return response()->json([
+                    'error' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // ============================================
+            // STUDENT NOT FOUND
+            // ============================================
+            if (!$student) {
+
+                return response()->json([
+                    'error' => 'Student not found or access denied'
+                ], 404);
+            }
+
+            // ============================================
+            // IMAGE URL
+            // ============================================
             $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
             $student->student_image_url = $student->image_name
                 ? $concatprojecturl . $student->image_name
                 : null;
-            return response()->json(['student' => [$student]]);
+
+            return response()->json([
+                'student' => [$student]
+            ]);
         } catch (Exception $e) {
+
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -13277,8 +13409,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                . $sibling_student->mid_name . ' '
-                                . $sibling_student->last_name
+                                    . $sibling_student->mid_name . ' '
+                                    . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16709,19 +16841,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'

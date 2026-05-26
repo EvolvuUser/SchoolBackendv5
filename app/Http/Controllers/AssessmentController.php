@@ -11446,19 +11446,101 @@ class AssessmentController extends Controller
         // $pdf = PDF::loadView('pdf.template', compact('data'));
     }
 
+
+    // Manish
+    // public function checkPublishStatusOfReportCard(Request $request)
+    // {
+    //     $class_id = $request->input('class_id');
+    //     $section_id = $request->input('section_id');
+    //     $short_name = JWTAuth::getPayload()->get('short_name');
+    //     $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
+    //     if ($class_name == '9' || $class_name == '11') {
+    //         $publish = check_cbse_rc_publish_of_a_class($class_id, $section_id);
+    //         // dd($publish);
+    //     } else {
+    //         $publish = check_rc_publish_of_a_class($class_id, $section_id, '');
+    //     }
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Publish status of report card',
+    //         'data' => $publish,
+    //         'success' => true
+    //     ]);
+    // }
+
     public function checkPublishStatusOfReportCard(Request $request)
     {
         $class_id = $request->input('class_id');
         $section_id = $request->input('section_id');
-        $short_name = JWTAuth::getPayload()->get('short_name');
-        $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
 
-        if ($class_name == '9' || $class_name == '11') {
-            $publish = check_cbse_rc_publish_of_a_class($class_id, $section_id);
-            // dd($publish);
-        } else {
-            $publish = check_rc_publish_of_a_class($class_id, $section_id, '');
+        $short_name = JWTAuth::getPayload()->get('short_name');
+
+        $class_name = DB::table('class')
+            ->where('class_id', $class_id)
+            ->value('name');
+
+        $publish = 'N';
+
+        if ($short_name == 'SACS') {
+
+            // HPC Classes
+            if (in_array(strtolower($class_name), ['nursery', 'lkg', 'ukg', '1', '2'])) {
+
+                $hpc_publish = check_hpc_rc_publish_of_a_class(
+                    $class_id,
+                    $section_id
+                );
+
+                // If HPC published then use HPC
+                if ($hpc_publish == 'Y') {
+
+                    $publish = 'HPC';
+                } else {
+
+                    // fallback normal report card
+                    $publish = check_rc_publish_of_a_class(
+                        $class_id,
+                        $section_id,
+                        ''
+                    );
+                }
+            }
+            // CBSE Classes
+            elseif ($class_name == '9' || $class_name == '11') {
+
+                $publish = check_cbse_rc_publish_of_a_class(
+                    $class_id,
+                    $section_id
+                );
+            }
+            // Normal Classes
+            else {
+
+                $publish = check_rc_publish_of_a_class(
+                    $class_id,
+                    $section_id,
+                    ''
+                );
+            }
+        } elseif ($short_name == 'HSCS') {
+
+            if ($class_name == '9' || $class_name == '11') {
+
+                $publish = check_cbse_rc_publish_of_a_class(
+                    $class_id,
+                    $section_id
+                );
+            } else {
+
+                $publish = check_rc_publish_of_a_class(
+                    $class_id,
+                    $section_id,
+                    ''
+                );
+            }
         }
+
         return response()->json([
             'status' => 200,
             'message' => 'Publish status of report card',
