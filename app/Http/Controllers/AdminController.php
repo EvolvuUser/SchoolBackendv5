@@ -2591,20 +2591,39 @@ class AdminController extends Controller
                 });
 
                 $student = $studentQuery->first();
+
+                // ============================================
+                // TEACHER SPECIFIC MESSAGE
+                // ============================================
+                if (!$student) {
+
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => 'Student not found in your assigned class or section',
+                        'data' => null
+                    ], 422);
+                }
             } else {
 
                 return response()->json([
-                    'error' => 'Unauthorized access'
+                    'status' => 403,
+                    'success' => false,
+                    'message' => 'Unauthorized access',
+                    'data' => null
                 ], 403);
             }
 
             // ============================================
-            // STUDENT NOT FOUND
+            // STUDENT NOT FOUND FOR OTHER ROLES
             // ============================================
             if (!$student) {
 
                 return response()->json([
-                    'error' => 'Student not found or access denied'
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Student not found',
+                    'data' => null
                 ], 404);
             }
 
