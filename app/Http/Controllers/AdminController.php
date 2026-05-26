@@ -2598,11 +2598,11 @@ class AdminController extends Controller
                 if (!$student) {
 
                     return response()->json([
-                        'status' => 404,
+                        'status' => 422,
                         'success' => false,
                         'message' => 'Student not found in your assigned class or section',
                         'data' => null
-                    ], 404);
+                    ], 422);
                 }
             } else {
 
