@@ -5061,7 +5061,6 @@ class CertificateController extends Controller
                         foreach ($tokens as $tokenItem) {
 
                             if (!empty($tokenItem->token)) {
-
                                 sendnotificationusinghttpv1([
                                     'token' => $tokenItem->token,
                                     'notification' => [
