@@ -4509,7 +4509,8 @@ class CertificateController extends Controller
                 )
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('events.academic_yr', $academicYear)
-                ->where('events.competition', 'Y')
+                ->where('events.activity', 'Y')
+                // ->where('events.competition', 'Y')
                 ->where('events.isDelete', 'N')
                 ->where('events.publish', 'Y')
                 ->get();
@@ -4895,6 +4896,108 @@ class CertificateController extends Controller
     }
 
 
+    // public function publishCertificates(Request $request)
+    // {
+    //     try {
+
+    //         $user = $this->authenticateUser();
+
+    //         // Validate Request
+    //         $request->validate([
+    //             'ids' => 'required|array',
+    //             'ids.*' => 'required|integer'
+    //         ]);
+
+    //         $ids = $request->ids;
+
+    //         // Get certificates
+    //         $certificates = DB::table('achievements')
+    //             ->whereIn('achievement_id', $ids)
+    //             ->get();
+
+    //         if ($certificates->isEmpty()) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Certificates not found'
+    //             ], 404);
+    //         }
+
+
+    //         foreach ($certificates as $certificate) {
+    //             // Publish certificate
+    //             DB::table('achievements')
+    //                 ->where('achievement_id', $certificate->achievement_id)
+    //                 ->update([
+    //                     'publish' => 'Y',
+    //                 ]);
+
+    //             // Get student-parent data
+    //             $achieveData = DB::table('student as s')
+    //                 ->join('parent as p', 'p.parent_id', '=', 's.parent_id')
+    //                 ->select(
+    //                     's.student_id',
+    //                     's.parent_id',
+    //                     'p.f_mobile'
+    //                 )
+    //                 ->where('s.student_id', $certificate->student_id)
+    //                 ->get();
+
+
+    //             foreach ($achieveData as $item) {
+    //                 $smsData = DB::table('daily_sms')
+    //                     ->where('parent_id', $item->parent_id)
+    //                     ->where('student_id', $item->student_id)
+    //                     ->first();
+
+    //                 if (!$smsData) {
+
+    //                     // Insert new record
+    //                     DB::table('daily_sms')->insert([
+    //                         'student_id' => $item->student_id,
+    //                         'parent_id' => $item->parent_id,
+    //                         'phone' => $item->f_mobile,
+    //                         'homework' => 0,
+    //                         'remark' => 0,
+    //                         'notice' => 0,
+    //                         'note' => 0,
+    //                         'achievement' => 1,
+    //                         'sms_date' => now(),
+
+    //                     ]);
+    //                 } else {
+
+    //                     // Update existing record
+    //                     DB::table('daily_sms')
+    //                         ->where('parent_id', $smsData->parent_id)
+    //                         ->where('student_id', $smsData->student_id)
+    //                         ->update([
+    //                             'achievement' => $smsData->achievement + 1,
+    //                             'sms_date' => now(),
+    //                         ]);
+    //                 }
+    //             }
+    //         }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Certificates published successfully'
+    //         ], 200);
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Validation failed',
+    //             'errors' => $e->errors()
+    //         ], 422);
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to publish certificates',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     public function publishCertificates(Request $request)
     {
         try {
@@ -4921,8 +5024,8 @@ class CertificateController extends Controller
                 ], 404);
             }
 
-
             foreach ($certificates as $certificate) {
+
                 // Publish certificate
                 DB::table('achievements')
                     ->where('achievement_id', $certificate->achievement_id)
@@ -4930,19 +5033,49 @@ class CertificateController extends Controller
                         'publish' => 'Y',
                     ]);
 
-                // Get student-parent data
+                // Get student-parent data with FCM token
                 $achieveData = DB::table('student as s')
                     ->join('parent as p', 'p.parent_id', '=', 's.parent_id')
                     ->select(
                         's.student_id',
                         's.parent_id',
-                        'p.f_mobile'
+                        's.first_name',
+                        'p.f_mobile',
                     )
                     ->where('s.student_id', $certificate->student_id)
                     ->get();
 
-
                 foreach ($achieveData as $item) {
+
+                    // =========================
+                    // GET TOKENS USING HELPER
+                    // =========================
+                    $tokens = getTokenDataParentId($item->student_id);
+                    // dd($tokens);
+
+                    // =========================
+                    // SEND PUSH NOTIFICATION
+                    // =========================
+                    if (!empty($tokens)) {
+
+                        foreach ($tokens as $tokenItem) {
+
+                            if (!empty($tokenItem->token)) {
+
+                                sendnotificationusinghttpv1([
+                                    'token' => $tokenItem->token,
+                                    'notification' => [
+                                        'title' => $certificate->event,
+                                        'description' => $certificate->description
+                                    ]
+                                ]);
+                            }
+                        }
+                    }
+
+                    // =========================
+                    // DAILY SMS TABLE
+                    // =========================
                     $smsData = DB::table('daily_sms')
                         ->where('parent_id', $item->parent_id)
                         ->where('student_id', $item->student_id)
@@ -4950,7 +5083,6 @@ class CertificateController extends Controller
 
                     if (!$smsData) {
 
-                        // Insert new record
                         DB::table('daily_sms')->insert([
                             'student_id' => $item->student_id,
                             'parent_id' => $item->parent_id,
@@ -4961,11 +5093,9 @@ class CertificateController extends Controller
                             'note' => 0,
                             'achievement' => 1,
                             'sms_date' => now(),
-
                         ]);
                     } else {
 
-                        // Update existing record
                         DB::table('daily_sms')
                             ->where('parent_id', $smsData->parent_id)
                             ->where('student_id', $smsData->student_id)
@@ -4976,6 +5106,7 @@ class CertificateController extends Controller
                     }
                 }
             }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Certificates published successfully'
@@ -5062,7 +5193,7 @@ class CertificateController extends Controller
         ], 400);
     }
 
-    public function uploadCertificatesFromCSV(Request $request)
+    public function uploadCertificatesFromCsv(Request $request)
     {
         // Validate File
         $request->validate([

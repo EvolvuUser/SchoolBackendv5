@@ -11533,6 +11533,45 @@ class AssessmentController extends Controller
             ];
         }
 
+        // HPC REPORT CARD
+
+        if (
+            in_array(strtolower($class_name), ['nursery', 'lkg', 'ukg', '1', '2'])
+        ) {
+
+            $hpc_publish = check_hpc_rc_publish_of_a_class($class_id, $section_id);
+
+            if ($hpc_publish === 'Y') {
+
+                $url = url('api/gethpcreportcard')
+                    . "?student_id=$student_id";
+
+                $response['hpc_report_card'] = [
+                    'enabled' => true,
+                    'url' => $url
+                ];
+            }
+        }
+
+        if ($class_name == '9' || $class_name == '11') {
+            $cbse_publish = check_cbse_rc_publish_of_a_class($class_id, $section_id);
+
+            if (count($exams_list) > 0 && $cbse_publish === 'Y') {
+                if ($class_name == '11') {
+                    $url = url('api/show_reportcard_class11_cbseformat')
+                        . "?class_id=$class_id&student_id=$student_id";
+                } else {
+                    $url = url('api/show_reportcard_class9_cbseformat')
+                        . "?class_id=$class_id&student_id=$student_id";
+                }
+
+                $response['cbse_report_card'] = [
+                    'enabled' => true,
+                    'url' => $url
+                ];
+            }
+        }
+
         /* -------------------------
         CBSE REPORT CARD
         --------------------------*/

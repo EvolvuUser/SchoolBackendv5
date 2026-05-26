@@ -6,6 +6,7 @@
 /storage/*.key
 /vendor
 .env
+.env1
 .env.backup
 .env.production
 .phpactor.json
@@ -23,5 +24,6 @@ yarn-error.log
 /public/fcm.json
 fcm.json
 app/Http/Middleware/ConnectSchoolDatabase.php
+app/Http/Middleware/ConnectSchoolDatabase1.php
 composer.lock
 composer.phar
