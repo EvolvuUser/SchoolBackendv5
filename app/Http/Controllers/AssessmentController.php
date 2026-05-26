@@ -11543,7 +11543,7 @@ class AssessmentController extends Controller
 
             if ($hpc_publish === 'Y') {
 
-                $url = url('api/gethpcreportcard')
+                $url = url('api/get_hpcreportcard')
                     . "?student_id=$student_id";
 
                 $response['hpc_report_card'] = [
