@@ -451,7 +451,7 @@ foreach ($student_info as $row1):
                         ?>
 						    <tr>
 						        <!--<td></td>-->
-						        <th class="th" style="width:35%;"><b><?php echo $r->name; ?></b><br><?php echo $r->description; ?></th>
+						        <th class="th" style="width:35%;"><b><?php echo $r->name; ?></b><br><?php echo $r->curriculum_goal; ?></th>
 						        <th class="th" style="text-align:center;padding:2px;width:10%;">Beginner</th>
                                 <th class="th" style="text-align:center;padding:2px;width:10%;">Progressing</th>
                                 <th class="th" style="text-align:center;padding:2px;width:10%;">Proficient</th>
@@ -465,7 +465,7 @@ foreach ($student_info as $row1):
 						    <tr>
 						         
 						        <!--<td></td>-->
-						        <td class="td" style="word-wrap:normal;"><?php echo $p->parameter; ?></td>
+						        <td class="td" style="word-wrap:normal;"><?php echo $p->learning_outcomes; ?></td>
 
                                 <?php
                                 echo ('-----------------------');
@@ -1084,9 +1084,11 @@ foreach ($student_info as $row1):
 							<td style="text-align:center;font-size:14px;width:10%!important;">
 							<div class="statistics_line">
 							<?php
-                            $term_id = get_term_of_exam($exam_list[1]->exam_id);
-                            // print_r($term_id);
-                            echo get_promote_to_of_a_student($row1['student_id'], $term_id);
+                            if (!empty($exam_list[1]->exam_id)) {
+                                $term_id = get_term_of_exam($exam_list[1]->exam_id);
+                                // print_r($term_id);
+                                echo get_promote_to_of_a_student($row1['student_id'], $term_id);
+                            }
                             ?>&nbsp;
 							&nbsp;</div> </td>
 							<td style="text-align:center;font-size:14px;width:25%;"><b> Date Of Reopening :</b></td>

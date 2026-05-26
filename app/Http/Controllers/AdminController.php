@@ -2453,7 +2453,7 @@ class AdminController extends Controller
         if ($students->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No student found matching the search criteria.',
+                'message' => 'No student found.',
             ], 404);
         }
 
@@ -9129,23 +9129,20 @@ class AdminController extends Controller
             // });
             // Step 3: Attach files only for Remark type
             $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
-
                 // Always return attachments key
                 $remark->attachments = [];
 
                 // Attach files only for Remark type
                 if ($remark->remark_type == 'Remark') {
-
                     $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
 
                     $remark->attachments = collect($files[$remark->remark_id] ?? [])
                         ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
-
                             return [
                                 'image_name' => $file->image_name,
                                 'file_size' => $file->file_size,
-                                'file_url' => $codeigniter_app_url .
-                                    "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
+                                'file_url' => $codeigniter_app_url
+                                    . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
                             ];
                         })
                         ->values();
@@ -9406,7 +9403,6 @@ class AdminController extends Controller
     public function getTeacherClassTimetable(Request $request)
     {
         try {
-
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
@@ -9416,10 +9412,8 @@ class AdminController extends Controller
                 ->join('class', 'class.class_id', '=', 'subject.class_id')
                 ->join('section', 'section.section_id', '=', 'subject.section_id')
                 ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
-
                 ->where('subject.academic_yr', $customClaims)
                 ->where('subject.teacher_id', $teacher_id)
-
                 ->select(
                     'section.section_id',
                     'class.class_id',
@@ -9428,7 +9422,6 @@ class AdminController extends Controller
                     'teacher.name as teachername',
                     'teacher.teacher_id'
                 )
-
                 ->groupBy(
                     'section.section_id',
                     'class.class_id',
@@ -9437,10 +9430,8 @@ class AdminController extends Controller
                     'teacher.name',
                     'teacher.teacher_id'
                 )
-
                 ->orderBy('class.class_id', 'ASC')
                 ->orderBy('section.section_id', 'ASC')
-
                 ->get();
 
             return response()->json([
@@ -9450,7 +9441,6 @@ class AdminController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
-
             \Log::error($e);
 
             return response()->json([
@@ -9461,7 +9451,6 @@ class AdminController extends Controller
             ], 500);
         }
     }
-
 
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
     public function getDepartmentss(Request $request)
@@ -13288,8 +13277,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16720,19 +16709,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
