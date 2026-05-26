@@ -1197,71 +1197,71 @@ function get_students($class_id, $section_id, $acd_yr)
     return $query;
 }
 
-// function get_student_id_of_a_student_in_particular_yr($present_student_id, $search_for_acd_yr)
-// {
-//     $prev_yr_student_id = '';
-//     $first_name = '';
-//     $reg_no = '';
-//     $query = DB::select('select parent_id,first_name, reg_no,class_id,section_id from student where student_id=' . $present_student_id);
-//     $result = $query;
-//     foreach ($result as $row) {
-//         $parent_id = $row->parent_id;
-//         $first_name = $row->first_name;
-//         $reg_no = $row->reg_no;
-//     }
-//     $s_query = DB::select("select student_id,parent_id,academic_yr,class_id,section_id from student where academic_yr='" . $search_for_acd_yr . "' and parent_id=" . $parent_id . " and (first_name='" . $first_name . "' or reg_no='" . $reg_no . "')");
-
-//     $s_result = $s_query;
-//     foreach ($s_result as $s_row)
-//         $prev_yr_student_data = $s_row;
-//     return $prev_yr_student_data ?? null;
-// }
-
 function get_student_id_of_a_student_in_particular_yr($present_student_id, $search_for_acd_yr)
 {
-    $prev_yr_student_data = null;
-
-    $query = DB::table('student')
-        ->where('student_id', $present_student_id)
-        ->select(
-            'parent_id',
-            'first_name',
-            'reg_no',
-            'class_id',
-            'section_id'
-        )
-        ->first();
-
-    if (!$query) {
-        return null;
+    $prev_yr_student_id = '';
+    $first_name = '';
+    $reg_no = '';
+    $query = DB::select('select parent_id,first_name, reg_no,class_id,section_id from student where student_id=' . $present_student_id);
+    $result = $query;
+    foreach ($result as $row) {
+        $parent_id = $row->parent_id;
+        $first_name = $row->first_name;
+        $reg_no = $row->reg_no;
     }
+    $s_query = DB::select("select student_id,parent_id,academic_yr,class_id,section_id from student where academic_yr='" . $search_for_acd_yr . "' and parent_id=" . $parent_id . " and (first_name='" . $first_name . "' or reg_no='" . $reg_no . "')");
 
-    $parent_id = $query->parent_id;
-    $first_name = $query->first_name;
-    $reg_no = $query->reg_no;
-
-    $prev_yr_student_data = DB::table('student')
-        ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
-        ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
-        ->where('student.academic_yr', $search_for_acd_yr)
-        ->where('student.parent_id', $parent_id)
-        ->where(function ($q) use ($first_name, $reg_no) {
-            $q->where('student.first_name', $first_name)
-                ->orWhere('student.reg_no', $reg_no);
-        })
-        ->select(
-            'student.student_id',
-            'student.parent_id',
-            'student.academic_yr',
-            'student.class_id',
-            'student.section_id',
-            'class.name as classname',
-            'section.name as sectionname'
-        )
-        ->first();
-
-    return $prev_yr_student_data;
+    $s_result = $s_query;
+    foreach ($s_result as $s_row)
+        $prev_yr_student_data = $s_row;
+    return $prev_yr_student_data ?? null;
 }
+
+// function get_student_id_of_a_student_in_particular_yr($present_student_id, $search_for_acd_yr)
+// {
+//     $prev_yr_student_data = null;
+
+//     $query = DB::table('student')
+//         ->where('student_id', $present_student_id)
+//         ->select(
+//             'parent_id',
+//             'first_name',
+//             'reg_no',
+//             'class_id',
+//             'section_id'
+//         )
+//         ->first();
+
+//     if (!$query) {
+//         return null;
+//     }
+
+//     $parent_id = $query->parent_id;
+//     $first_name = $query->first_name;
+//     $reg_no = $query->reg_no;
+
+//     $prev_yr_student_data = DB::table('student')
+//         ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
+//         ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+//         ->where('student.academic_yr', $search_for_acd_yr)
+//         ->where('student.parent_id', $parent_id)
+//         ->where(function ($q) use ($first_name, $reg_no) {
+//             $q->where('student.first_name', $first_name)
+//                 ->orWhere('student.reg_no', $reg_no);
+//         })
+//         ->select(
+//             'student.student_id',
+//             'student.parent_id',
+//             'student.academic_yr',
+//             'student.class_id',
+//             'student.section_id',
+//             'class.name as classname',
+//             'section.name as sectionname'
+//         )
+//         ->first();
+
+//     return $prev_yr_student_data;
+// }
 
 function get_total_workingdays_from_dailyattendance_classwise($class_id, $section_id, $date_from, $date_to, $acd_yr)
 {
