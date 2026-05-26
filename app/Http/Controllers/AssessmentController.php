@@ -5060,6 +5060,8 @@ class AssessmentController extends Controller
         return $pdf->download($dynamicFilename);
     }
 
+    
+
     public function saveClassTeacherRemarkMaster(Request $request)
     {
         $user = $this->authenticateUser();
@@ -11075,119 +11077,457 @@ class AssessmentController extends Controller
         }
     }
 
+    // public function showReportCard(Request $request)
+    // {
+    //     $short_name = JWTAuth::getPayload()->get('short_name');
+    //     $class_id = $request->input('class_id');
+    //     $academic_yr = $request->input('academic_yr');
+    //     $student_id = $request->input('student_id');
+    //     $globalVariables = App::make('global_variables');
+    //     $parent_app_url = $globalVariables['parent_app_url'];
+    //     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //     $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+    //     if ($short_name == 'SACS') {
+    //         switch ($class_name) {
+    //             case 'Nursery':
+    //                 return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case 'LKG':
+    //                 return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case 'UKG':
+    //                 return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '1':
+    //             case '2':
+    //                 return PDF::loadView('reportcard.SACS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '3':
+    //             case '4':
+    //             case '5':
+    //                 return PDF::loadView('reportcard.SACS.class3to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '6':
+    //             case '7':
+    //             case '8':
+    //                 return PDF::loadView('reportcard.SACS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '9':
+    //             case '10':
+    //                 return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             default:
+    //                 abort(404, 'Invalid class');
+    //         }
+    //     } elseif ($short_name == 'HSCS') {
+    //         switch ($class_name) {
+    //             case 'Nursery':
+    //                 return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+    //                 break;
+
+    //             case 'LKG':
+    //                 return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+    //                 break;
+
+    //             case 'UKG':
+    //                 return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+    //                 break;
+
+    //             case '1':
+    //             case '2':
+    //                 return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+    //                 break;
+
+    //             case '3':
+    //             case '4':
+    //             case '5':
+    //                 return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '6':
+    //             case '7':
+    //             case '8':
+    //                 return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             case '9':
+    //             case '10':
+    //                 return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '11 - Science':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '11 - Commerce':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '11 - Arts':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '12 - Science':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '12 - Commerce':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+    //             case '12 - Arts':
+    //                 return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+    //                 break;
+
+    //             default:
+    //                 abort(404, 'Invalid class');
+    //         }
+    //     } else {
+    //     }
+
+    //     $pdf = PDF::loadView('pdf.template', compact('data'));
+
+    //     // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+    // }
+
+    // Changed by Mahima 26-05-2026
     public function showReportCard(Request $request)
     {
         $short_name = JWTAuth::getPayload()->get('short_name');
+
         $class_id = $request->input('class_id');
         $academic_yr = $request->input('academic_yr');
         $student_id = $request->input('student_id');
+
         $globalVariables = App::make('global_variables');
+
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-        $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
+        $class_name = DB::table('class')
+            ->where('class_id', $class_id)
+            ->value('name');
+
+        /* =========================================
+       HPC REPORT CARD LOGIC
+    ========================================= */
+
+        $hpc_publish = check_hpc_rc_publish_of_a_class($class_id, $student_id);
+
+        if (
+            $short_name == 'SACS' &&
+            in_array(strtolower($class_name), ['nursery', 'lkg', 'ukg', '1', '2']) &&
+            $hpc_publish == 'Y'
+        ) {
+
+            $studentdata = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->where('student.student_id', $student_id)
+                ->select(
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.dob',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'student.academic_yr'
+                )
+                ->first();
+
+            $studentDetails = DB::table('student')
+                ->where('student_id', $student_id)
+                ->first();
+
+            $classId = $studentDetails->class_id;
+            $sectionId = $studentDetails->section_id;
+
+            $publishedTerms = DB::table('hpc_report_card_publish')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('publish', 'Y')
+                ->pluck('term_id')
+                ->toArray();
+
+            $studentData = DB::table('student')
+                ->leftJoin('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->where('student.student_id', $student_id)
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.dob',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'student.image_name',
+                    'parent.family_image_name'
+                )
+                ->first();
+
+            $allAboutMe = DB::table('allaboutme_master')
+                ->leftJoin('student_allaboutme_details', function ($join) use ($student_id) {
+                    $join
+                        ->on('allaboutme_master.am_id', '=', 'student_allaboutme_details.am_id')
+                        ->where('student_allaboutme_details.student_id', '=', $student_id)
+                        ->where('student_allaboutme_details.publish', '=', 'Y');
+                })
+                ->where('allaboutme_master.class_id', $classId)
+                ->select(
+                    'allaboutme_master.am_id',
+                    'allaboutme_master.name',
+                    'student_allaboutme_details.aboutme_value',
+                    'student_allaboutme_details.publish'
+                )
+                ->get();
+
+            $termList = DB::table('term')
+                ->whereIn('term_id', $publishedTerms)
+                ->get();
+
+            $termDates = get_term_dates($studentdata->academic_yr, count($termList)) ?? [];
+
+            $attendanceData = [];
+
+            foreach ($termDates as $index => $term) {
+
+                $present = get_total_stu_attendance(
+                    $student_id,
+                    $term['from'],
+                    $term['to'],
+                    $studentdata->academic_yr
+                );
+
+                $working = get_total_stu_workingdays(
+                    $student_id,
+                    $term['from'],
+                    $term['to'],
+                    $studentdata->academic_yr
+                );
+
+                $attendanceData[] = [
+                    'term' => 'Term ' . ($index + 1),
+                    'from' => $term['from'],
+                    'to' => $term['to'],
+                    'present' => $present,
+                    'working' => $working,
+                ];
+            }
+
+            $baseUrl = 'https://sms.arnoldcentralschool.org/';
+
+            $studentImage = $studentData->image_name
+                ? $baseUrl . 'uploads/student_image/' . $studentData->image_name
+                : null;
+
+            $familyImage = $studentData->family_image_name
+                ? $baseUrl . 'uploads/family_image/' . $studentData->family_image_name
+                : null;
+
+            $data = [
+                'student' => [
+                    'student_id' => $studentData->student_id,
+                    'first_name' => $studentData->first_name,
+                    'mid_name' => $studentData->mid_name,
+                    'last_name' => $studentData->last_name,
+                    'dob' => $studentData->dob,
+                    'classname' => $studentData->classname,
+                    'sectionname' => $studentData->sectionname,
+                    'studentimage' => $studentImage,
+                    'familyimage' => $familyImage,
+                ],
+                'attendance' => $attendanceData,
+                'allAboutMe' => $allAboutMe
+            ];
+
+            $academicYr = $studentdata->academic_yr;
+
+            // Remaining HPC Logic Here
+            // subjectsGrouped
+            // results
+            // peerfeedback
+            // parentfeedback
+            // classteacherremark
+
+            // KEEP SAME CODE FROM gethpcreportcard()
+
+            if (strtolower($studentdata->classname ?? '') == '2') {
+
+                $pdf = PDF::loadView(
+                    'hpcreportcard.sacsstd2hpcreportcard',
+                    compact(
+                        'studentdata',
+                        'data',
+                        'subjectsGrouped',
+                        'results',
+                        'peerfeedback',
+                        'parentfeedback',
+                        'classteacherremark'
+                    )
+                );
+            } elseif (strtolower($studentdata->classname ?? '') == '1') {
+
+                $pdf = PDF::loadView(
+                    'hpcreportcard.sacsstd1hpcreportcard',
+                    compact(
+                        'studentdata',
+                        'data',
+                        'subjectsGrouped',
+                        'results',
+                        'peerfeedback',
+                        'parentfeedback',
+                        'classteacherremark'
+                    )
+                );
+            } elseif (strtolower($studentdata->classname ?? '') == 'nursery') {
+
+                $pdf = PDF::loadView(
+                    'hpcreportcard.sacsnurseryhpcreportcard',
+                    compact(
+                        'studentdata',
+                        'data',
+                        'subjectsGrouped',
+                        'results',
+                        'peerfeedback',
+                        'parentfeedback',
+                        'classteacherremark'
+                    )
+                );
+            } elseif (strtolower($studentdata->classname ?? '') == 'lkg') {
+
+                $pdf = PDF::loadView(
+                    'hpcreportcard.sacslkghpcreportcard',
+                    compact(
+                        'studentdata',
+                        'data',
+                        'subjectsGrouped',
+                        'results',
+                        'peerfeedback',
+                        'parentfeedback',
+                        'classteacherremark'
+                    )
+                );
+            } elseif (strtolower($studentdata->classname ?? '') == 'ukg') {
+
+                $pdf = PDF::loadView(
+                    'hpcreportcard.sacsukghpcreportcard',
+                    compact(
+                        'studentdata',
+                        'data',
+                        'subjectsGrouped',
+                        'results',
+                        'peerfeedback',
+                        'parentfeedback',
+                        'classteacherremark'
+                    )
+                );
+            }
+
+            return $pdf->stream();
+        }
+
+        /* =========================================
+       NORMAL REPORT CARD LOGIC
+    ========================================= */
+
         if ($short_name == 'SACS') {
+
             switch ($class_name) {
+
                 case 'Nursery':
-                    return PDF::loadView('reportcard.SACS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                    return PDF::loadView(
+                        'reportcard.SACS.nursery_report_card_pdf',
+                        compact('student_id', 'class_id', 'academic_yr')
+                    )->stream();
 
                 case 'LKG':
-                    return PDF::loadView('reportcard.SACS.lkg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                    return PDF::loadView(
+                        'reportcard.SACS.lkg_report_card_pdf',
+                        compact('student_id', 'class_id', 'academic_yr')
+                    )->stream();
 
                 case 'UKG':
-                    return PDF::loadView('reportcard.SACS.ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                    return PDF::loadView(
+                        'reportcard.SACS.ukg_report_card_pdf',
+                        compact('student_id', 'class_id', 'academic_yr')
+                    )->stream();
 
                 case '1':
                 case '2':
-                    return PDF::loadView('reportcard.SACS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-
-                case '3':
-                case '4':
-                case '5':
-                    return PDF::loadView('reportcard.SACS.class3to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-
-                case '6':
-                case '7':
-                case '8':
-                    return PDF::loadView('reportcard.SACS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-
-                case '9':
-                case '10':
-                    return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                    return PDF::loadView(
+                        'reportcard.SACS.class1to2_report_card_pdf',
+                        compact('student_id', 'class_id', 'academic_yr')
+                    )->stream();
 
                 default:
                     abort(404, 'Invalid class');
             }
         } elseif ($short_name == 'HSCS') {
-            switch ($class_name) {
-                case 'Nursery':
-                    return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
-                    break;
+                 switch ($class_name) {
+                        case 'Nursery':
+                            return PDF::loadView('reportcard.HSCS.nursery_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+                            break;
 
-                case 'LKG':
-                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
-                    break;
+                        case 'LKG':
+                            return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+                            break;
 
-                case 'UKG':
-                    return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
-                    break;
+                        case 'UKG':
+                            return PDF::loadView('reportcard.HSCS.lkg_ukg_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+                            break;
 
-                case '1':
-                case '2':
-                    return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
-                    break;
+                        case '1':
+                        case '2':
+                            return PDF::loadView('reportcard.HSCS.class1to2_report_card_pdf', compact('student_id', 'class_id', 'academic_yr', 'codeigniter_app_url'))->stream();
+                            break;
 
-                case '3':
-                case '4':
-                case '5':
-                    return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                        case '3':
+                        case '4':
+                        case '5':
+                            return PDF::loadView('reportcard.HSCS.class1to5_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
 
-                case '6':
-                case '7':
-                case '8':
-                    return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                        case '6':
+                        case '7':
+                        case '8':
+                            return PDF::loadView('reportcard.HSCS.class6to8_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
 
-                case '9':
-                case '10':
-                    return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '11 - Science':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '11 - Commerce':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '11 - Arts':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '12 - Science':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '12 - Commerce':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
-                case '12 - Arts':
-                    return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                        case '9':
+                        case '10':
+                            return PDF::loadView('reportcard.HSCS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '11 - Science':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '11 - Commerce':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '11 - Arts':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '12 - Science':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '12 - Commerce':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
+                        case '12 - Arts':
+                            return PDF::loadView('reportcard.HSCS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                            break;
 
-                default:
-                    abort(404, 'Invalid class');
-            }
-        } else {
+                        default:
+                            abort(404, 'Invalid class');
+
         }
 
-        $pdf = PDF::loadView('pdf.template', compact('data'));
-
-        // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+        abort(404, 'Invalid report card');
     }
+
+
 
     // tecaher data using reg_id for teacher id card detials
     // public function teacherDataIdCard($id)
