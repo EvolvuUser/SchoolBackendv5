@@ -2543,7 +2543,27 @@ class AdminController extends Controller
                 // Teacher ID from logged-in user
                 $teacher_id = $user->reg_id;
 
-                // Get classes/sections assigned to teacher
+                // ============================================
+                // CHECK STUDENT EXISTS OR NOT
+                // ============================================
+                $studentExists = Student::where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
+
+                // Invalid GR No
+                if (!$studentExists) {
+
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => 'Invalid GR No',
+                        'data' => null
+                    ], 422);
+                }
+
+                // ============================================
+                // GET TEACHER ASSIGNED CLASSES
+                // ============================================
                 $teacherClasses = DB::table('subject')
                     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
 
@@ -2568,7 +2588,9 @@ class AdminController extends Controller
                     ->distinct()
                     ->get();
 
-                // Student Query
+                // ============================================
+                // FETCH STUDENT ONLY FROM ASSIGNED CLASS
+                // ============================================
                 $studentQuery = Student::with([
                     'parents.user',
                     'getClass',
@@ -2577,7 +2599,6 @@ class AdminController extends Controller
                     ->where('reg_no', $reg_no)
                     ->where('academic_yr', $customClaims);
 
-                // Filter only teacher assigned classes
                 $studentQuery->where(function ($query) use ($teacherClasses) {
 
                     foreach ($teacherClasses as $class) {
@@ -2593,16 +2614,16 @@ class AdminController extends Controller
                 $student = $studentQuery->first();
 
                 // ============================================
-                // TEACHER SPECIFIC MESSAGE
+                // STUDENT EXISTS BUT NOT ACCESSIBLE
                 // ============================================
                 if (!$student) {
 
                     return response()->json([
-                        'status' => 422,
+                        'status' => 403,
                         'success' => false,
                         'message' => 'Student not found in your assigned class or section',
                         'data' => null
-                    ], 422);
+                    ], 403);
                 }
             } else {
 
@@ -2612,19 +2633,6 @@ class AdminController extends Controller
                     'message' => 'Unauthorized access',
                     'data' => null
                 ], 403);
-            }
-
-            // ============================================
-            // STUDENT NOT FOUND FOR OTHER ROLES
-            // ============================================
-            if (!$student) {
-
-                return response()->json([
-                    'status' => 404,
-                    'success' => false,
-                    'message' => 'Student not found',
-                    'data' => null
-                ], 404);
             }
 
             // ============================================
