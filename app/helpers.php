@@ -967,6 +967,8 @@ function getTokenDataParentId($student_id)
         ->toArray();
 }
 
+
+
 function getFeesCategoryStudentAllotment($class_id, $section_id, $acd_yr)
 {
     $directAllotment = DB::table('fees_student_category as a')

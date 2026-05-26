@@ -361,6 +361,26 @@ function check_rc_publish_of_a_class($class_id, $section_id, $term_id = '')
     }
 }
 
+function check_hpc_rc_publish_of_a_class($class_id, $section_id, $term_id = '')
+{
+    $query = DB::table('hpc_report_card_publish')
+        ->where('class_id', $class_id)
+        ->where('section_id', $section_id)
+        ->where('publish', 'Y');
+
+    if ($term_id !== '') {
+        $query->where('term_id', $term_id);
+    }
+
+    $res = $query->get();
+
+    if ($res->count() > 0) {
+        return 'Y';
+    } else {
+        return 'N';
+    }
+}
+
 function get_current_exams($student_id, $acd_yr)
 {
     $query = DB::table('student_marks')
