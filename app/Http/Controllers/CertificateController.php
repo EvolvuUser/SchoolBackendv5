@@ -4585,8 +4585,8 @@ class CertificateController extends Controller
                     'class_teachers.section_id',
 
                     // Separate Class & Section
-                    'class.name',
-                    'section.name',
+                    DB::raw('class.name as classname'),
+                    DB::raw('section.name as sectionname'),
 
                     'events.*',
 
@@ -4600,22 +4600,23 @@ class CertificateController extends Controller
 
                     // Combined Class + Section
                     DB::raw("
-                    CONCAT(
-                        class.name,
-                        ' ',
-                        section.name
-                    ) as class_section
-                "),
+        CONCAT(
+            class.name,
+            ' ',
+            section.name
+        ) as class_section
+    "),
 
                     // Combined Payload Format
                     DB::raw("
-                    CONCAT(
-                        class_teachers.class_id,
-                        '^',
-                        class_teachers.section_id
-                    ) as class_id_manage
-                ")
+        CONCAT(
+            class_teachers.class_id,
+            '^',
+            class_teachers.section_id
+        ) as class_id_manage
+    ")
                 )
+
 
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('events.academic_yr', $academicYear)
