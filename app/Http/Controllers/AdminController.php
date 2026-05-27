@@ -2448,6 +2448,13 @@ class AdminController extends Controller
             } else {
                 $student->SetEmailIDAsUsername = $userMaster->user_id;
             }
+
+            $lastAddressChange = DB::table('permanent_address_change_log')
+                ->where('student_id', $student->student_id)
+                ->orderBy('changed_at', 'desc')
+                ->first();
+
+            $student->last_permanent_address_change = $lastAddressChange;
         });
 
         if ($students->isEmpty()) {
@@ -2521,7 +2528,6 @@ class AdminController extends Controller
             // U = User
             // ============================================
             if (in_array($role_id, ['A', 'M', 'U'])) {
-
                 $student = Student::with([
                     'parents.user',
                     'getClass',
@@ -2531,7 +2537,6 @@ class AdminController extends Controller
                     ->where('academic_yr', $customClaims)
                     ->first();
             }
-
             // ============================================
             // TEACHER LOGIN
             // T = Teacher
@@ -2539,7 +2544,6 @@ class AdminController extends Controller
             // from classes/sections they teach
             // ============================================
             else if ($role_id == 'T') {
-
                 // Teacher ID from logged-in user
                 $teacher_id = $user->reg_id;
 
@@ -2552,7 +2556,6 @@ class AdminController extends Controller
 
                 // Invalid GR No
                 if (!$studentExists) {
-
                     return response()->json([
                         'status' => 422,
                         'success' => false,
@@ -2566,25 +2569,21 @@ class AdminController extends Controller
                 // ============================================
                 $teacherClasses = DB::table('subject')
                     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-
-                        $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                        $join
+                            ->on('class_teachers.class_id', '=', 'subject.class_id')
                             ->on('class_teachers.section_id', '=', 'subject.section_id')
                             ->where('class_teachers.teacher_id', '=', $teacher_id);
                     })
-
                     ->where('subject.academic_yr', $customClaims)
-
                     ->where(function ($query) use ($teacher_id) {
-
-                        $query->where('subject.teacher_id', $teacher_id)
+                        $query
+                            ->where('subject.teacher_id', $teacher_id)
                             ->orWhere('class_teachers.teacher_id', $teacher_id);
                     })
-
                     ->select(
                         'subject.class_id',
                         'subject.section_id'
                     )
-
                     ->distinct()
                     ->get();
 
@@ -2600,12 +2599,10 @@ class AdminController extends Controller
                     ->where('academic_yr', $customClaims);
 
                 $studentQuery->where(function ($query) use ($teacherClasses) {
-
                     foreach ($teacherClasses as $class) {
-
                         $query->orWhere(function ($subQuery) use ($class) {
-
-                            $subQuery->where('class_id', $class->class_id)
+                            $subQuery
+                                ->where('class_id', $class->class_id)
                                 ->where('section_id', $class->section_id);
                         });
                     }
@@ -2617,7 +2614,6 @@ class AdminController extends Controller
                 // STUDENT EXISTS BUT NOT ACCESSIBLE
                 // ============================================
                 if (!$student) {
-
                     return response()->json([
                         'status' => 403,
                         'success' => false,
@@ -2626,7 +2622,6 @@ class AdminController extends Controller
                     ], 403);
                 }
             } else {
-
                 return response()->json([
                     'status' => 403,
                     'success' => false,
@@ -2648,7 +2643,6 @@ class AdminController extends Controller
                 'student' => [$student]
             ]);
         } catch (Exception $e) {
-
             \Log::error($e);
 
             return response()->json([
@@ -3167,6 +3161,7 @@ class AdminController extends Controller
                 'apaar_id' => 'nullable|string|max:12',
                 'reg_no' => 'nullable|string',
                 'blood_group' => 'nullable|string',
+                'current_address' => 'nullable|string',
                 'permant_add' => 'nullable|string',
                 'transport_mode' => 'nullable|string',
                 // Parent model fields
@@ -3191,6 +3186,7 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
+                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
 
@@ -3339,6 +3335,24 @@ class AdminController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             // Update student information
+            $oldPermanentAddress = trim((string) $student->permant_add);
+            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
+
+            // Check if permanent address changed
+            if (
+                isset($validatedData['permant_add']) &&
+                $oldPermanentAddress != $newPermanentAddress
+            ) {
+                DB::table('permanent_address_change_log')->insert([
+                    'student_id' => $student->student_id,
+                    'old_address' => $oldPermanentAddress,
+                    'remark' => $request->address_remark,
+                    'changed_by' => $user->reg_id ?? null,
+                    'changed_at' => now(),
+                ]);
+
+                Log::info("Permanent address changed for student ID: {$student->student_id}");
+            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -13529,8 +13543,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -16961,19 +16975,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
