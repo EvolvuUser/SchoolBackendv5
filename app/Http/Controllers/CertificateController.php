@@ -4795,11 +4795,9 @@ class CertificateController extends Controller
             // Validate Request
             $request->validate([
                 'event' => 'required',
-                'description' => 'required',
                 'student_id' => 'required',
                 'class_id' => 'required',
                 'position' => 'required',
-                'achievement' => 'required',
                 'date' => 'required|date'
             ]);
 
