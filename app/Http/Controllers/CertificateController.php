@@ -4689,8 +4689,8 @@ class CertificateController extends Controller
                     'student.last_name',
 
                     // Class & Section
-                    'class.classname',
-                    'section.sectionname',
+                    'class.name',
+                    'section.name',
 
                     // Combined Class Section Name
                     DB::raw("
