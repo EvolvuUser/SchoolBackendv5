@@ -4568,14 +4568,14 @@ class CertificateController extends Controller
                     'events.class_id'
                 )
                 ->join(
-                    'classes',
-                    'classes.class_id',
+                    'class',
+                    'class.class_id',
                     '=',
                     'events.class_id'
                 )
                 ->join(
-                    'sections',
-                    'sections.section_id',
+                    'section',
+                    'section.section_id',
                     '=',
                     'class_teachers.section_id'
                 )
