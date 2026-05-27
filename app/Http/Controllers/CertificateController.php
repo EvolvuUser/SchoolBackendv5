@@ -4695,8 +4695,8 @@ class CertificateController extends Controller
                     // Combined Class Section Name
                     DB::raw("
                     CONCAT(
-                        class.classname, ' ',
-                        section.sectionname
+                        class.name, ' ',
+                        section.name
                     ) as class_section
                 "),
 
