@@ -4489,9 +4489,70 @@ class CertificateController extends Controller
 
 
     // Co-Curriculum Certificate Dev Name - Mahima Chaudhari 12-05-2026
+    // public function getEventsForCertificate(Request $request)
+    // {
+    //     try {
+    //         // Authenticate User
+    //         $user = $this->authenticateUser();
+
+    //         // Get values from JWT token
+    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
+    //         $teacherId = $user->reg_id;
+
+    //         // $data = DB::table('events')
+    //         //     ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+    //         //     ->select(
+    //         //         'class_teachers.class_id',
+    //         //         'events.*',
+    //         //         DB::raw('events.title as label'),
+    //         //         DB::raw('events.event_id as value')
+    //         //     )
+    //         //     ->where('class_teachers.teacher_id', $teacherId)
+    //         //     ->where('events.academic_yr', $academicYear)
+    //         //     ->where('events.activity', 'Y')
+    //         //     // ->where('events.competition', 'Y')
+    //         //     ->where('events.isDelete', 'N')
+    //         //     ->where('events.publish', 'Y')
+    //         //     ->get();
+    //         $data = DB::table('events')
+    //             ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+    //             ->select(
+    //                 'class_teachers.class_id',
+    //                 'events.*',
+    //                 DB::raw('events.title as label'),
+    //                 DB::raw('events.event_id as value')
+    //             )
+    //             ->where('class_teachers.teacher_id', $teacherId)
+    //             ->where('events.academic_yr', $academicYear)
+
+    //             // Activity OR Competition
+    //             ->where(function ($query) {
+    //                 $query->where('events.activity', 'Y')
+    //                     ->orWhere('events.competition', 'Y');
+    //             })
+
+    //             ->where('events.isDelete', 'N')
+    //             ->where('events.publish', 'Y')
+    //             ->get();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Events fetched successfully',
+    //             'data' => $data
+    //         ], 200);
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to fetch events',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
     public function getEventsForCertificate(Request $request)
     {
         try {
+
             // Authenticate User
             $user = $this->authenticateUser();
 
@@ -4499,29 +4560,63 @@ class CertificateController extends Controller
             $academicYear = JWTAuth::getPayload()->get('academic_year');
             $teacherId = $user->reg_id;
 
-            // $data = DB::table('events')
-            //     ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
-            //     ->select(
-            //         'class_teachers.class_id',
-            //         'events.*',
-            //         DB::raw('events.title as label'),
-            //         DB::raw('events.event_id as value')
-            //     )
-            //     ->where('class_teachers.teacher_id', $teacherId)
-            //     ->where('events.academic_yr', $academicYear)
-            //     ->where('events.activity', 'Y')
-            //     // ->where('events.competition', 'Y')
-            //     ->where('events.isDelete', 'N')
-            //     ->where('events.publish', 'Y')
-            //     ->get();
             $data = DB::table('events')
-                ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+                ->join(
+                    'class_teachers',
+                    'class_teachers.class_id',
+                    '=',
+                    'events.class_id'
+                )
+                ->join(
+                    'classes',
+                    'classes.class_id',
+                    '=',
+                    'events.class_id'
+                )
+                ->join(
+                    'sections',
+                    'sections.section_id',
+                    '=',
+                    'class_teachers.section_id'
+                )
+
                 ->select(
                     'class_teachers.class_id',
+                    'class_teachers.section_id',
+
+                    // Separate Class & Section
+                    'classes.name',
+                    'sections.name',
+
                     'events.*',
+
+                    // React Select
                     DB::raw('events.title as label'),
-                    DB::raw('events.event_id as value')
+                    DB::raw('events.event_id as value'),
+
+                    // Custom Response
+                    DB::raw('events.title as event'),
+                    DB::raw('events.event_id as event_id_manage'),
+
+                    // Combined Class + Section
+                    DB::raw("
+                    CONCAT(
+                        classes.name,
+                        ' ',
+                        sections.name
+                    ) as class_section
+                "),
+
+                    // Combined Payload Format
+                    DB::raw("
+                    CONCAT(
+                        class_teachers.class_id,
+                        '^',
+                        class_teachers.section_id
+                    ) as class_id_manage
+                ")
                 )
+
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('events.academic_yr', $academicYear)
 
@@ -4533,6 +4628,7 @@ class CertificateController extends Controller
 
                 ->where('events.isDelete', 'N')
                 ->where('events.publish', 'Y')
+
                 ->get();
 
             return response()->json([
