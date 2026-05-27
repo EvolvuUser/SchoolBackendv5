@@ -6671,54 +6671,147 @@ class AdminController extends Controller
         }
     }
 
+    // public function sendUserIdParents(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //     $checkbx = $request->input('studentId');
+    //     foreach ($checkbx as $parent_id) {
+    //         $student = DB::table('student')
+    //             ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
+    //             ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
+    //             ->where('student.student_id', $parent_id)
+    //             ->select('student.isNew', 'student.first_name', 'contact_details.email_id', 'contact_details.m_emailid', 'user_master.user_id', 'user_master.password')
+    //             ->first();
+    //         // dd($student);
+    //         $f_emailid = $student->email_id ?? null;
+    //         $m_emailid = $student->m_emailid ?? null;
+    //         $user_id = $student->user_id ?? null;
+    //         $isNew = $student->isNew ?? null;
+    //         $first_name = $student->first_name ?? null;
+    //         if ($f_emailid && $m_emailid && $user_id && $isNew && $first_name) {
+    //             // $decryptedPassword = Crypt::decrypt($password);
+    //             // dd($decryptedPassword);
+
+    //             $settingsData = getSchoolSettingsData();
+    //             $schoolName = $settingsData->institute_name;
+    //             $defaultpassword = $settingsData->default_pwd;
+    //             $shortName = $settingsData->short_name;
+
+    //             if ($isNew == 'Y') {
+    //                 $subject = 'Welcome to ' . $schoolName . ' online application';
+    //                 $textmsg = 'Dear Parent,<br/><br/>Welcome to ' . $schoolName . " online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+    //             } else {
+    //                 $subject = 'Your login details for ' . $schoolName;
+    //                 $textmsg = 'Dear Parent,<br/><br/>Your user id for ' . $schoolName . " online application is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+    //             }
+    //             $emailData = [
+    //                 'subject' => $subject,
+    //                 'textmsg' => $textmsg,
+    //             ];
+
+    //             if ($f_emailid) {
+    //                 smart_mail($f_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+    //             }
+
+    //             if ($m_emailid) {
+    //                 smart_mail($m_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+    //             }
+    //         }
+    //     }
+    //     return response()->json([
+    //         'status' => '200',
+    //         'message' => 'Emails sent to selected parents successfully.',
+    //         'success' => true
+    //     ], 200);
+    // }
+
     public function sendUserIdParents(Request $request)
     {
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
         $checkbx = $request->input('studentId');
+
         foreach ($checkbx as $parent_id) {
+
             $student = DB::table('student')
                 ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
                 ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
                 ->where('student.student_id', $parent_id)
-                ->select('student.isNew', 'student.first_name', 'contact_details.email_id', 'contact_details.m_emailid', 'user_master.user_id', 'user_master.password')
+                ->select(
+                    'student.isNew',
+                    'student.first_name',
+                    'contact_details.email_id',
+                    'contact_details.m_emailid',
+                    'user_master.user_id',
+                    'user_master.password'
+                )
                 ->first();
+
             // dd($student);
+
             $f_emailid = $student->email_id ?? null;
             $m_emailid = $student->m_emailid ?? null;
             $user_id = $student->user_id ?? null;
             $isNew = $student->isNew ?? null;
             $first_name = $student->first_name ?? null;
-            if ($f_emailid && $m_emailid && $user_id && $isNew && $first_name) {
-                // $decryptedPassword = Crypt::decrypt($password);
-                // dd($decryptedPassword);
+
+            if ($user_id && $isNew && $first_name) {
 
                 $settingsData = getSchoolSettingsData();
+
                 $schoolName = $settingsData->institute_name;
                 $defaultpassword = $settingsData->default_pwd;
                 $shortName = $settingsData->short_name;
 
                 if ($isNew == 'Y') {
+
                     $subject = 'Welcome to ' . $schoolName . ' online application';
-                    $textmsg = 'Dear Parent,<br/><br/>Welcome to ' . $schoolName . " online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+
+                    $textmsg = 'Dear Parent,<br/><br/>
+                    Welcome to ' . $schoolName . ' online application.
+                    <br/><br/>
+                    "' . $first_name . '" is registered in the application.
+                    Your user id is ' . $user_id . ' and password is ' . $defaultpassword . '.
+                    <br/><br/>
+                    Regards,<br/>' . $shortName . ' Support';
                 } else {
+
                     $subject = 'Your login details for ' . $schoolName;
-                    $textmsg = 'Dear Parent,<br/><br/>Your user id for ' . $schoolName . " online application is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+
+                    $textmsg = 'Dear Parent,<br/><br/>
+                    Your user id for ' . $schoolName . ' online application is ' . $user_id . '
+                    and password is ' . $defaultpassword . '.
+                    <br/><br/>
+                    Regards,<br/>' . $shortName . ' Support';
                 }
+
                 $emailData = [
                     'subject' => $subject,
                     'textmsg' => $textmsg,
                 ];
 
                 if ($f_emailid) {
-                    smart_mail($f_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+                    smart_mail(
+                        $f_emailid,
+                        'Login Details',
+                        'emails.parentUserEmail',
+                        $emailData
+                    );
                 }
 
                 if ($m_emailid) {
-                    smart_mail($m_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+                    smart_mail(
+                        $m_emailid,
+                        'Login Details',
+                        'emails.parentUserEmail',
+                        $emailData
+                    );
                 }
             }
         }
+
         return response()->json([
             'status' => '200',
             'message' => 'Emails sent to selected parents successfully.',

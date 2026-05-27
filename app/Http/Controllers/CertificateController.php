@@ -4499,6 +4499,21 @@ class CertificateController extends Controller
             $academicYear = JWTAuth::getPayload()->get('academic_year');
             $teacherId = $user->reg_id;
 
+            // $data = DB::table('events')
+            //     ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+            //     ->select(
+            //         'class_teachers.class_id',
+            //         'events.*',
+            //         DB::raw('events.title as label'),
+            //         DB::raw('events.event_id as value')
+            //     )
+            //     ->where('class_teachers.teacher_id', $teacherId)
+            //     ->where('events.academic_yr', $academicYear)
+            //     ->where('events.activity', 'Y')
+            //     // ->where('events.competition', 'Y')
+            //     ->where('events.isDelete', 'N')
+            //     ->where('events.publish', 'Y')
+            //     ->get();
             $data = DB::table('events')
                 ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
                 ->select(
@@ -4509,8 +4524,13 @@ class CertificateController extends Controller
                 )
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('events.academic_yr', $academicYear)
-                ->where('events.activity', 'Y')
-                // ->where('events.competition', 'Y')
+
+                // Activity OR Competition
+                ->where(function ($query) {
+                    $query->where('events.activity', 'Y')
+                        ->orWhere('events.competition', 'Y');
+                })
+
                 ->where('events.isDelete', 'N')
                 ->where('events.publish', 'Y')
                 ->get();
@@ -4571,12 +4591,15 @@ class CertificateController extends Controller
         }
     }
 
+
+
     // public function getCertificates(Request $request)
     // {
     //     try {
 
     //         // Authenticate User
     //         $user = $this->authenticateUser();
+
     //         // Get values from JWT
     //         $academicYear = JWTAuth::getPayload()->get('academic_year');
     //         $teacherId = $user->reg_id;
@@ -4586,9 +4609,28 @@ class CertificateController extends Controller
     //                 $join->on('class_teachers.class_id', '=', 'achievements.class_id')
     //                     ->on('class_teachers.section_id', '=', 'achievements.section_id');
     //             })
+
+    //             // Student table join
+    //             ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
+
     //             ->select(
     //                 'class_teachers.class_id',
-    //                 'achievements.*'
+    //                 'achievements.*',
+
+    //                 // Student details
+    //                 'student.student_id',
+    //                 'student.first_name',
+    //                 'student.mid_name',
+    //                 'student.last_name',
+
+    //                 // Full name
+    //                 DB::raw("
+    //                 CONCAT(
+    //                     student.first_name, ' ',
+    //                     COALESCE(student.mid_name, ''), ' ',
+    //                     student.last_name
+    //                 ) as student_name
+    //             ")
     //             )
     //             ->where('class_teachers.teacher_id', $teacherId)
     //             ->where('achievements.academic_yr', $academicYear)
@@ -4621,6 +4663,7 @@ class CertificateController extends Controller
             $teacherId = $user->reg_id;
 
             $data = DB::table('achievements')
+
                 ->join('class_teachers', function ($join) {
                     $join->on('class_teachers.class_id', '=', 'achievements.class_id')
                         ->on('class_teachers.section_id', '=', 'achievements.section_id');
@@ -4628,6 +4671,12 @@ class CertificateController extends Controller
 
                 // Student table join
                 ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
+
+                // Class table join
+                ->leftJoin('class', 'class.class_id', '=', 'achievements.class_id')
+
+                // Section table join
+                ->leftJoin('section', 'section.section_id', '=', 'achievements.section_id')
 
                 ->select(
                     'class_teachers.class_id',
@@ -4639,7 +4688,19 @@ class CertificateController extends Controller
                     'student.mid_name',
                     'student.last_name',
 
-                    // Full name
+                    // Class & Section
+                    'class.classname',
+                    'section.sectionname',
+
+                    // Combined Class Section Name
+                    DB::raw("
+                    CONCAT(
+                        class.classname, ' ',
+                        section.sectionname
+                    ) as class_section
+                "),
+
+                    // Full student name
                     DB::raw("
                     CONCAT(
                         student.first_name, ' ',
@@ -4648,6 +4709,7 @@ class CertificateController extends Controller
                     ) as student_name
                 ")
                 )
+
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('achievements.academic_yr', $academicYear)
                 ->get();
@@ -4667,52 +4729,6 @@ class CertificateController extends Controller
         }
     }
 
-
-    // public function getCertificateId($id)
-    // {
-    //     try {
-
-    //         // Authenticate User
-    //         $user = $this->authenticateUser();
-
-    //         if (!$user) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Unauthorized user'
-    //             ], 401);
-    //         }
-
-    //         // Get academic year from JWT
-    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
-
-    //         // Fetch certificate record
-    //         $certificate = DB::table('achievements')
-    //             ->where('achievement_id', $id)
-    //             ->where('academic_yr', $academicYear)
-    //             ->first();
-
-    //         // Check record exists
-    //         if (!$certificate) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Certificate not found'
-    //             ], 404);
-    //         }
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'message' => 'Certificate fetched successfully',
-    //             'data' => $certificate
-    //         ], 200);
-    //     } catch (\Exception $e) {
-
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Failed to fetch certificate',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     public function getCertificateId($id)
     {
