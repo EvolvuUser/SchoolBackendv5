@@ -4585,8 +4585,8 @@ class CertificateController extends Controller
                     'class_teachers.section_id',
 
                     // Separate Class & Section
-                    'classes.name',
-                    'sections.name',
+                    'class.name',
+                    'section.name',
 
                     'events.*',
 
@@ -4601,9 +4601,9 @@ class CertificateController extends Controller
                     // Combined Class + Section
                     DB::raw("
                     CONCAT(
-                        classes.name,
+                        class.name,
                         ' ',
-                        sections.name
+                        section.name
                     ) as class_section
                 "),
 
