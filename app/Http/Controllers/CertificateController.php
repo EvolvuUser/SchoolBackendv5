@@ -5812,73 +5812,8 @@ class CertificateController extends Controller
             $achievement = trim($filesop[2] ?? '');
             $description = trim($filesop[3] ?? '');
 
-            // DEBUG
-            // dd([
-            //     // EVENT DATA
-            //     'event_name' => $event_name,
-            //     'event_date' => $event_date,
-
-            //     // CLASS & SECTION
-            //     'class_name' => $class_name,
-            //     'section_name' => $section_name,
-            //     'academic_yr' => $academic_yr,
-
-            //     // CLASS QUERY RESULT
-            //     'class' => $class,
-            //     'section' => $section,
-
-            //     // STUDENT CSV DATA
-            //     'student_name_from_csv' => $student_name,
-
-            //     // SPLIT NAME
-            //     'first_name' => $first_name,
-            //     'last_name' => $last_name,
-
-            //     // STUDENT QUERY RESULT
-            //     'student' => $student,
-            //     'student_id' => $student_id,
-
-            //     // POSITION
-            //     'position_name' => $position_name,
-            //     'position' => $position,
-
-            //     // OTHER FIELDS
-            //     'achievement' => $achievement,
-            //     'description' => $description,
-
-            //     // FINAL INSERT DATA
-            //     'insert_data' => [
-
-            //         'event' => $event_name,
-            //         'date' => $event_date,
-            //         'class_id' => $class_id,
-            //         'section_id' => $section_id,
-            //         'student_id' => $student_id,
-            //         'position' => $position,
-            //         'achievement' => $achievement,
-            //         'description' => $description,
-            //         'publish' => 'N',
-            //         'academic_yr' => $academic_yr,
-            //     ]
-            // ]);
 
             // ================= INSERT =================
-
-            // $inserted = DB::table('achievements')->insert([
-
-            //     'event' => $event_name,
-            //     'date' => $event_date,
-            //     'class_id' => $class_section_id,
-            //     'student_id' => $student_id,
-            //     'position' => $position,
-            //     'achievement' => $achievement,
-            //     'description' => $description,
-            //     'publish' => 'N',
-            //     'academic_yr' => $academic_yr,
-            // ]);
-
-
-
 
             $inserted = DB::table('achievements')->insert([
 
@@ -5917,5 +5852,155 @@ class CertificateController extends Controller
             'status' => true,
             'message' => $insertCount . ' certificate(s) uploaded successfully.'
         ]);
+    }
+
+    public function downloadCertificatePdf(Request $request)
+    {
+        try {
+
+            $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+
+            // ================= VALIDATION =================
+
+            $request->validate([
+                'achievement_id' => 'required|integer'
+            ]);
+
+            // ================= GET CERTIFICATE DATA =================
+
+            $data = DB::table('achievements')
+                ->join('student', 'student.student_id', '=', 'achievements.student_id')
+                ->join('class', 'class.class_id', '=', 'achievements.class_id')
+                ->join('section', 'section.section_id', '=', 'achievements.section_id')
+                ->select(
+
+                    // Achievement Data
+                    'achievements.*',
+
+                    // Student Data
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.reg_no',
+
+                    // Class Data
+                    'class.name as class_name',
+
+                    // Section Data
+                    'section.name as section_name',
+                )
+                ->where('achievements.achievement_id', $request->achievement_id)
+                ->where('achievements.academic_yr', $academic_yr)
+                ->first();
+
+            // ================= CHECK DATA =================
+
+            if (!$data) {
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Certificate data not found'
+                ], 404);
+            }
+
+            // ================= FULL STUDENT NAME =================
+
+            $student_name = trim(
+                $data->first_name . ' ' .
+                    $data->mid_name . ' ' .
+                    $data->last_name
+            );
+
+            // ================= CLASS SECTION =================
+
+            $class_section = $data->class_name . ' ' . $data->section_name;
+
+            // ================= POSITION NAME =================
+
+            $position_name = '';
+
+            if ($data->position == 1) {
+                $position_name = 'First';
+            } elseif ($data->position == 2) {
+                $position_name = 'Second';
+            } elseif ($data->position == 3) {
+                $position_name = 'Third';
+            } elseif ($data->position == 4) {
+                $position_name = "Consolation Prize";
+            } elseif ($data->position == 5) {
+                $position_name = "Paricipation";
+            }
+
+            // ================= DYNAMIC FILE NAME =================
+
+            $dynamicFilename =
+                'Certificate_' .
+                str_replace(' ', '_', $student_name) .
+                '.pdf';
+
+            // ================= PDF DATA =================
+
+            $pdfData = [
+
+                'student_name' => $student_name,
+
+                'reg_no' => $data->reg_no,
+
+                'event' => $data->event,
+
+                'event_date' => $data->date,
+
+                'class_section' => $class_section,
+
+                'position' => $position_name,
+
+                'achievement' => $data->achievement,
+
+                'description' => $data->description,
+
+                'publish' => $data->publish,
+            ];
+
+            // ================= COMMON PDF VIEW FOR ALL SCHOOLS =================
+
+            $pdf = PDF::loadView(
+                'pdf.participationcertificate',
+                compact('pdfData')
+            )->setPaper('A4', 'landscape');
+
+            // ================= RETURN PDF =================
+
+            return response()->stream(
+
+                function () use ($pdf) {
+
+                    echo $pdf->output();
+                },
+
+                200,
+
+                [
+                    'Content-Type' => 'application/pdf',
+
+                    'Content-Disposition' =>
+                    'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        } catch (Exception $e) {
+
+            \Log::error($e);
+
+            return response()->json([
+
+                'status' => false,
+
+                'message' => 'An error occurred',
+
+                'error' => $e->getMessage()
+
+            ], 500);
+        }
     }
 }
