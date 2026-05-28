@@ -4600,21 +4600,21 @@ class CertificateController extends Controller
 
                     // Combined Class + Section
                     DB::raw("
-        CONCAT(
+            CONCAT(
             class.name,
             ' ',
             section.name
-        ) as class_section
-    "),
+                ) as class_section
+                "),
 
                     // Combined Payload Format
                     DB::raw("
-        CONCAT(
-            class_teachers.class_id,
-            '^',
-            class_teachers.section_id
-        ) as class_id_manage
-    ")
+              CONCAT(
+              class_teachers.class_id,
+              '^',
+               class_teachers.section_id
+              ) as class_id_manage
+            ")
                 )
 
 
@@ -5287,7 +5287,7 @@ class CertificateController extends Controller
                 fputcsv($file, ['']);
 
                 // Heading Row
-                $headingString = "Student Name(FirstName LastName),Position(First/Second/Third), Certificate Description, Event Description";
+                $headingString = "Student Name(FirstName LastName),Position(First/Second/Third/Consolation Prize/Paricipation), Certificate Description, Event Description";
 
                 fputcsv($file, explode(",", $headingString));
 
@@ -5303,220 +5303,619 @@ class CertificateController extends Controller
         ], 400);
     }
 
+    // public function uploadCertificatesFromCsv(Request $request)
+    // {
+    //     // Validate File
+    //     $request->validate([
+    //         'file' => 'required|mimes:csv,txt'
+    //     ]);
+
+    //     // Get Academic Year From JWT
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     if ($request->hasFile('file')) {
+
+    //         $file = $request->file('file');
+
+    //         $handle = fopen($file->getRealPath(), "r");
+
+    //         $c = 1;
+    //         $flag = false;
+    //         $errorMessage = '';
+
+    //         $event_name = '';
+    //         $event_date = '';
+    //         $class_section = '';
+
+    //         // ================= VALIDATION LOOP =================
+
+    //         while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+    //             if ($c == 1) {
+
+    //                 $all_ids = trim($filesop[0]);
+
+    //                 if ($all_ids == '') {
+
+    //                     return response()->json([
+    //                         'status' => false,
+    //                         'message' => 'Please do not delete the contents of cell 0.'
+    //                     ], 400);
+    //                 }
+
+    //                 $all_ids_array = explode('/', $all_ids);
+
+    //                 $event_name = $all_ids_array[0] ?? '';
+    //                 $event_date = $all_ids_array[1] ?? '';
+    //                 $class_section = $all_ids_array[2] ?? '';
+
+    //                 if ($event_name == '' || $event_date == '') {
+
+    //                     return response()->json([
+    //                         'status' => false,
+    //                         'message' => 'Please do not change the contents of cell 0.'
+    //                     ], 400);
+    //                 }
+    //             }
+
+    //             if ($c >= 4) {
+
+    //                 $student_name = trim($filesop[0] ?? '');
+    //                 $position = trim($filesop[1] ?? '');
+
+    //                 // STUDENT NAME VALIDATION
+    //                 if ($student_name == '') {
+
+    //                     $flag = true;
+    //                     $errorMessage .= "Student Name, ";
+    //                 } else {
+
+    //                     $first_last_name_array = explode(" ", $student_name);
+
+    //                     $first_name = $first_last_name_array[0] ?? '';
+    //                     $last_name = $first_last_name_array[1] ?? '';
+
+    //                     $student = DB::table('student')
+    //                         ->select('student_id')
+    //                         ->where('first_name', 'LIKE', '%' . $first_name . '%')
+    //                         ->where('last_name', 'LIKE', '%' . $last_name . '%')
+    //                         ->first();
+
+    //                     if (!$student) {
+
+    //                         $flag = true;
+    //                         $errorMessage .= "Student's First Name and Last Name, ";
+    //                     }
+    //                 }
+
+    //                 // POSITION VALIDATION
+    //                 if (
+    //                     $position == '' ||
+    //                     !in_array($position, ['First', 'Second', 'Third'])
+    //                 ) {
+
+    //                     $flag = true;
+    //                     $errorMessage .= "Position, ";
+    //                 }
+
+    //                 if ($errorMessage != '') {
+
+    //                     $errorMessage = rtrim($errorMessage, ", ");
+    //                     $errorMessage .= " for row no. " . $c . ", ";
+    //                 }
+    //             }
+
+    //             $c++;
+    //         }
+
+    //         // Validation Error
+    //         if ($flag == true) {
+
+    //             $errorMessage = rtrim($errorMessage, ", ");
+    //             $errorMessage = "Enter " . $errorMessage . " correctly.";
+
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => $errorMessage
+    //             ], 400);
+    //         }
+
+    //         fclose($handle);
+
+    //         // ================= INSERT LOOP =================
+
+    //         $handle = fopen($file->getRealPath(), "r");
+
+    //         $d = 1;
+
+    //         while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+    //             if ($d >= 4) {
+
+    //                 $class_section_array = explode(" ", $class_section);
+
+    //                 $class_name = trim($class_section_array[0] ?? '');
+    //                 $section_name = trim($class_section_array[1] ?? '');
+
+    //                 // GET CLASS ID
+    //                 $class = DB::table('class')
+    //                     ->select('class_id')
+    //                     ->where('name', $class_name)
+    //                     ->where('academic_yr', $academic_yr)
+    //                     ->first();
+
+    //                 $class_id = $class->class_id ?? '';
+
+    //                 // GET SECTION ID
+    //                 $section = DB::table('section')
+    //                     ->select('section_id')
+    //                     ->where('class_id', $class_id)
+    //                     ->where('name', $section_name)
+    //                     ->where('academic_yr', $academic_yr)
+    //                     ->first();
+
+    //                 $section_id = $section->section_id ?? '';
+
+    //                 $class_section_id = $class_id . "^" . $section_id;
+
+    //                 // STUDENT
+    //                 $student_name = trim($filesop[0]);
+
+    //                 $first_last_name_array = explode(" ", $student_name);
+
+    //                 $first_name = $first_last_name_array[0] ?? '';
+    //                 $last_name = $first_last_name_array[1] ?? '';
+
+    //                 $student = DB::table('student')
+    //                     ->select('student_id')
+    //                     ->where('first_name', 'LIKE', '%' . $first_name . '%')
+    //                     ->where('last_name', 'LIKE', '%' . $last_name . '%')
+    //                     ->first();
+
+    //                 $student_id = $student->student_id ?? null;
+
+    //                 // POSITION
+    //                 $position_name = trim($filesop[1]);
+
+    //                 if ($position_name == 'First') {
+    //                     $position = 1;
+    //                 } elseif ($position_name == 'Second') {
+    //                     $position = 2;
+    //                 } else {
+    //                     $position = 3;
+    //                 }
+
+    //                 $achievement = $filesop[2] ?? null;
+    //                 $description = $filesop[3] ?? null;
+
+    //                 // INSERT
+    //                 DB::table('achievements')->insert([
+
+    //                     'event' => $event_name,
+    //                     'date' => $event_date,
+    //                     'class_id' => $class_section_id,
+    //                     'student_id' => $student_id,
+    //                     'position' => $position,
+    //                     'achievement' => $achievement,
+    //                     'description' => $description,
+    //                     'publish' => 'N',
+    //                     'academic_yr' => $academic_yr,
+    //                 ]);
+    //             }
+
+    //             $d++;
+    //         }
+
+    //         fclose($handle);
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Certificates are created successfully'
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => false,
+    //         'message' => 'File not found'
+    //     ], 400);
+    // }
+
     public function uploadCertificatesFromCsv(Request $request)
     {
-        // Validate File
+        // ================= VALIDATION =================
+
         $request->validate([
             'file' => 'required|mimes:csv,txt'
         ]);
 
-        // Get Academic Year From JWT
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-        if ($request->hasFile('file')) {
+        if (!$request->hasFile('file')) {
 
-            $file = $request->file('file');
+            return response()->json([
+                'status' => false,
+                'message' => 'File not found'
+            ], 400);
+        }
 
-            $handle = fopen($file->getRealPath(), "r");
+        $file = $request->file('file');
 
-            $c = 1;
-            $flag = false;
-            $errorMessage = '';
+        // ================= VALIDATION LOOP =================
 
-            $event_name = '';
-            $event_date = '';
-            $class_section = '';
+        $handle = fopen($file->getRealPath(), "r");
 
-            // ================= VALIDATION LOOP =================
+        $c = 1;
 
-            while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+        $flag = false;
 
-                if ($c == 1) {
+        $errorMessages = [];
 
-                    $all_ids = trim($filesop[0]);
+        $event_name = '';
+        $event_date = '';
+        $class_section = '';
 
-                    if ($all_ids == '') {
+        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
 
-                        return response()->json([
-                            'status' => false,
-                            'message' => 'Please do not delete the contents of cell 0.'
-                        ], 400);
-                    }
+            // Skip fully empty rows
+            if (empty(array_filter($filesop))) {
+                $c++;
+                continue;
+            }
 
-                    $all_ids_array = explode('/', $all_ids);
+            // ================= FIRST ROW =================
 
-                    $event_name = $all_ids_array[0] ?? '';
-                    $event_date = $all_ids_array[1] ?? '';
-                    $class_section = $all_ids_array[2] ?? '';
+            if ($c == 1) {
 
-                    if ($event_name == '' || $event_date == '') {
+                $all_ids = trim($filesop[0] ?? '');
 
-                        return response()->json([
-                            'status' => false,
-                            'message' => 'Please do not change the contents of cell 0.'
-                        ], 400);
-                    }
+                if ($all_ids == '') {
+
+                    fclose($handle);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please do not delete the contents of cell 0.'
+                    ], 400);
                 }
 
-                if ($c >= 4) {
+                $all_ids_array = explode('/', $all_ids);
 
-                    $student_name = trim($filesop[0] ?? '');
-                    $position = trim($filesop[1] ?? '');
+                $event_name = trim($all_ids_array[0] ?? '');
+                $event_date = trim($all_ids_array[1] ?? '');
+                $class_section = trim($all_ids_array[2] ?? '');
 
-                    // STUDENT NAME VALIDATION
-                    if ($student_name == '') {
+                if (
+                    $event_name == '' ||
+                    $event_date == '' ||
+                    $class_section == ''
+                ) {
 
-                        $flag = true;
-                        $errorMessage .= "Student Name, ";
-                    } else {
+                    fclose($handle);
 
-                        $first_last_name_array = explode(" ", $student_name);
-
-                        $first_name = $first_last_name_array[0] ?? '';
-                        $last_name = $first_last_name_array[1] ?? '';
-
-                        $student = DB::table('student')
-                            ->select('student_id')
-                            ->where('first_name', 'LIKE', '%' . $first_name . '%')
-                            ->where('last_name', 'LIKE', '%' . $last_name . '%')
-                            ->first();
-
-                        if (!$student) {
-
-                            $flag = true;
-                            $errorMessage .= "Student's First Name and Last Name, ";
-                        }
-                    }
-
-                    // POSITION VALIDATION
-                    if (
-                        $position == '' ||
-                        !in_array($position, ['First', 'Second', 'Third'])
-                    ) {
-
-                        $flag = true;
-                        $errorMessage .= "Position, ";
-                    }
-
-                    if ($errorMessage != '') {
-
-                        $errorMessage = rtrim($errorMessage, ", ");
-                        $errorMessage .= " for row no. " . $c . ", ";
-                    }
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please do not change the contents of cell 0.'
+                    ], 400);
                 }
 
                 $c++;
+                continue;
             }
 
-            // Validation Error
-            if ($flag == true) {
+            // ================= SKIP HEADER ROW =================
 
-                $errorMessage = rtrim($errorMessage, ", ");
-                $errorMessage = "Enter " . $errorMessage . " correctly.";
+            if (
+                isset($filesop[0]) &&
+                str_contains(
+                    trim($filesop[0]),
+                    'Student Name'
+                )
+            ) {
 
-                return response()->json([
-                    'status' => false,
-                    'message' => $errorMessage
-                ], 400);
+                $c++;
+                continue;
             }
 
-            fclose($handle);
+            // ================= STUDENT DATA =================
 
-            // ================= INSERT LOOP =================
+            $student_name = trim($filesop[0] ?? '');
+            $position = trim($filesop[1] ?? '');
 
-            $handle = fopen($file->getRealPath(), "r");
+            // Skip blank student rows
+            if ($student_name == '' && $position == '') {
+                $c++;
+                continue;
+            }
 
-            $d = 1;
+            $rowErrors = [];
 
-            while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+            // ================= STUDENT VALIDATION =================
 
-                if ($d >= 4) {
+            if ($student_name == '') {
 
-                    $class_section_array = explode(" ", $class_section);
+                $rowErrors[] = "Student Name";
+            } else {
 
-                    $class_name = trim($class_section_array[0] ?? '');
-                    $section_name = trim($class_section_array[1] ?? '');
+                $first_last_name_array = preg_split('/\s+/', $student_name);
 
-                    // GET CLASS ID
-                    $class = DB::table('class')
-                        ->select('class_id')
-                        ->where('name', $class_name)
-                        ->where('academic_yr', $academic_yr)
-                        ->first();
+                $first_name = $first_last_name_array[0] ?? '';
+                $last_name = $first_last_name_array[1] ?? '';
 
-                    $class_id = $class->class_id ?? '';
+                $student = DB::table('student')
+                    ->select('student_id')
+                    ->where('first_name', 'LIKE', '%' . $first_name . '%')
+                    ->where('last_name', 'LIKE', '%' . $last_name . '%')
+                    ->first();
 
-                    // GET SECTION ID
-                    $section = DB::table('section')
-                        ->select('section_id')
-                        ->where('class_id', $class_id)
-                        ->where('name', $section_name)
-                        ->where('academic_yr', $academic_yr)
-                        ->first();
+                if (!$student) {
 
-                    $section_id = $section->section_id ?? '';
-
-                    $class_section_id = $class_id . "^" . $section_id;
-
-                    // STUDENT
-                    $student_name = trim($filesop[0]);
-
-                    $first_last_name_array = explode(" ", $student_name);
-
-                    $first_name = $first_last_name_array[0] ?? '';
-                    $last_name = $first_last_name_array[1] ?? '';
-
-                    $student = DB::table('student')
-                        ->select('student_id')
-                        ->where('first_name', 'LIKE', '%' . $first_name . '%')
-                        ->where('last_name', 'LIKE', '%' . $last_name . '%')
-                        ->first();
-
-                    $student_id = $student->student_id ?? null;
-
-                    // POSITION
-                    $position_name = trim($filesop[1]);
-
-                    if ($position_name == 'First') {
-                        $position = 1;
-                    } elseif ($position_name == 'Second') {
-                        $position = 2;
-                    } else {
-                        $position = 3;
-                    }
-
-                    $achievement = $filesop[2] ?? null;
-                    $description = $filesop[3] ?? null;
-
-                    // INSERT
-                    DB::table('achievements')->insert([
-
-                        'event' => $event_name,
-                        'date' => $event_date,
-                        'class_id' => $class_section_id,
-                        'student_id' => $student_id,
-                        'position' => $position,
-                        'achievement' => $achievement,
-                        'description' => $description,
-                        'publish' => 'N',
-                        'academic_yr' => $academic_yr,
-                    ]);
+                    $rowErrors[] = "Invalid Student Name. First Name and Last Name Enter";
                 }
-
-                $d++;
             }
 
-            fclose($handle);
+            // ================= POSITION VALIDATION =================
+
+            if (
+                $position == '' ||
+                !in_array($position, ['First', 'Second', 'Third', 'Consolation Prize', 'Paricipation'])
+            ) {
+
+                $rowErrors[] = "Invalid Position";
+            }
+
+            // ================= STORE ERRORS =================
+
+            if (!empty($rowErrors)) {
+
+                $flag = true;
+
+                $errorMessages[] =
+                    implode(", ", $rowErrors) . " at row no. " . $c;
+            }
+
+            $c++;
+        }
+
+        fclose($handle);
+
+        // ================= RETURN VALIDATION ERRORS =================
+
+        if ($flag == true) {
 
             return response()->json([
-                'status' => true,
-                'message' => 'Certificates are created successfully'
+                'status' => false,
+                'message' => implode(" | ", $errorMessages)
+            ], 400);
+        }
+
+        // ================= INSERT LOOP =================
+
+        $handle = fopen($file->getRealPath(), "r");
+
+        $d = 1;
+
+        $insertCount = 0;
+
+        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+            // Skip fully empty rows
+            if (empty(array_filter($filesop))) {
+                $d++;
+                continue;
+            }
+
+            // Skip first row
+            if ($d == 1) {
+                $d++;
+                continue;
+            }
+
+            // Skip heading row
+            if (
+                isset($filesop[0]) &&
+                str_contains(
+                    trim($filesop[0]),
+                    'Student Name'
+                )
+            ) {
+
+                $d++;
+                continue;
+            }
+
+            // ================= STUDENT DATA =================
+
+            $student_name = trim($filesop[0] ?? '');
+            $position_name = trim($filesop[1] ?? '');
+
+            // Skip blank student rows
+            if ($student_name == '' && $position_name == '') {
+                $d++;
+                continue;
+            }
+
+            // ================= CLASS & SECTION =================
+
+            $class_section_array = explode(" ", trim($class_section));
+
+            $section_name = array_pop($class_section_array);
+
+            $class_name = implode(" ", $class_section_array);
+
+            // ================= GET CLASS =================
+
+            $class = DB::table('class')
+                ->select('class_id')
+                ->where('name', $class_name)
+                ->where('academic_yr', $academic_yr)
+                ->first();
+
+            $class_id = $class->class_id ?? null;
+
+            // ================= GET SECTION =================
+
+            $section = DB::table('section')
+                ->select('section_id')
+                ->where('class_id', $class_id)
+                ->where('name', $section_name)
+                ->where('academic_yr', $academic_yr)
+                ->first();
+
+            $section_id = $section->section_id ?? null;
+
+            if (!$class_id || !$section_id) {
+                $d++;
+                continue;
+            }
+
+            $class_section_id = $class_id . "^" . $section_id;
+
+            // ================= GET STUDENT =================
+
+            $first_last_name_array = preg_split('/\s+/', $student_name);
+
+            $first_name = $first_last_name_array[0] ?? '';
+            $last_name = $first_last_name_array[1] ?? '';
+
+            $student = DB::table('student')
+                ->select('student_id')
+                ->where('first_name', 'LIKE', '%' . $first_name . '%')
+                ->where('last_name', 'LIKE', '%' . $last_name . '%')
+                ->first();
+
+            $student_id = $student->student_id ?? null;
+
+            if (!$student_id) {
+                $d++;
+                continue;
+            }
+
+            // ================= POSITION =================
+
+            $position = null;
+
+            if ($position_name == 'First') {
+                $position = 1;
+            } elseif ($position_name == 'Second') {
+                $position = 2;
+            } elseif ($position_name == 'Third') {
+                $position = 3;
+            } elseif ($position_name == 'Consolation Prize') {
+                $position = 4;
+            } elseif ($position_name == 'Paricipation') {
+                $position = 5;
+            }
+
+
+            // ================= OTHER DATA =================
+
+            $achievement = trim($filesop[2] ?? '');
+            $description = trim($filesop[3] ?? '');
+
+            // DEBUG
+            // dd([
+            //     // EVENT DATA
+            //     'event_name' => $event_name,
+            //     'event_date' => $event_date,
+
+            //     // CLASS & SECTION
+            //     'class_name' => $class_name,
+            //     'section_name' => $section_name,
+            //     'academic_yr' => $academic_yr,
+
+            //     // CLASS QUERY RESULT
+            //     'class' => $class,
+            //     'section' => $section,
+
+            //     // STUDENT CSV DATA
+            //     'student_name_from_csv' => $student_name,
+
+            //     // SPLIT NAME
+            //     'first_name' => $first_name,
+            //     'last_name' => $last_name,
+
+            //     // STUDENT QUERY RESULT
+            //     'student' => $student,
+            //     'student_id' => $student_id,
+
+            //     // POSITION
+            //     'position_name' => $position_name,
+            //     'position' => $position,
+
+            //     // OTHER FIELDS
+            //     'achievement' => $achievement,
+            //     'description' => $description,
+
+            //     // FINAL INSERT DATA
+            //     'insert_data' => [
+
+            //         'event' => $event_name,
+            //         'date' => $event_date,
+            //         'class_id' => $class_id,
+            //         'section_id' => $section_id,
+            //         'student_id' => $student_id,
+            //         'position' => $position,
+            //         'achievement' => $achievement,
+            //         'description' => $description,
+            //         'publish' => 'N',
+            //         'academic_yr' => $academic_yr,
+            //     ]
+            // ]);
+
+            // ================= INSERT =================
+
+            // $inserted = DB::table('achievements')->insert([
+
+            //     'event' => $event_name,
+            //     'date' => $event_date,
+            //     'class_id' => $class_section_id,
+            //     'student_id' => $student_id,
+            //     'position' => $position,
+            //     'achievement' => $achievement,
+            //     'description' => $description,
+            //     'publish' => 'N',
+            //     'academic_yr' => $academic_yr,
+            // ]);
+
+
+
+
+            $inserted = DB::table('achievements')->insert([
+
+                'event' => $event_name,
+                'date' => $event_date,
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'student_id' => $student_id,
+                'position' => $position,
+                'achievement' => $achievement,
+                'description' => $description,
+                'publish' => 'N',
+                'academic_yr' => $academic_yr,
             ]);
+
+            if ($inserted) {
+                $insertCount++;
+            }
+
+            $d++;
+        }
+
+        fclose($handle);
+
+        // ================= FINAL RESPONSE =================
+
+        if ($insertCount == 0) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'No certificate data was inserted.'
+            ], 400);
         }
 
         return response()->json([
-            'status' => false,
-            'message' => 'File not found'
-        ], 400);
+            'status' => true,
+            'message' => $insertCount . ' certificate(s) uploaded successfully.'
+        ]);
     }
 }
