@@ -1601,6 +1601,12 @@ Route::middleware(['school.db'])->group(function () {
         // 25-05-2026
         Route::post('/upload_certificate_csv', [CertificateController::class, 'uploadCertificatesFromCsv']);
 
+        // 28-05-2026
+        Route::post(
+            '/download_certificate_pdf',
+            [CertificateController::class, 'downloadCertificatePdf']
+        );
+
 
         // Testing
         Route::get('/testPayload', function (Request $request) {
