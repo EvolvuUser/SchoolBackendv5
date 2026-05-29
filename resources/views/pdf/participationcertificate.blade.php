@@ -466,13 +466,78 @@ $academic_year = $pdfData['academic_yr'] ?? '';
 </html> --}}
 
 
-
 @php
 
 $school = getSchoolDetails();
 
-$bgImage = getPercentageBgImage();
+$bgAchievementImage = getAchievementBgImage();
 
+$bgParticipationImage = getParticipationBgImage();
+
+$student_name = $pdfData['student_name'] ?? '';
+
+$classname = $pdfData['class_section'] ?? '';
+
+$event = $pdfData['event'] ?? '';
+
+$event_date = $pdfData['event_date'] ?? '';
+
+$academic_year = $pdfData['academic_yr'] ?? '';
+
+$position = $pdfData['position'] ?? '';
+
+/*
+|--------------------------------------------------------------------------
+| Dynamic Background According To Position
+|--------------------------------------------------------------------------
+|
+| Achievement Certificate:
+| First / Second / Third / Consolation Prize
+|
+| Participation Certificate:
+| Other Positions
+|
+*/
+
+$isAchievementCertificate =
+    in_array($position, [1, 2, 3]) ||
+    in_array(
+        strtolower(trim($position)),
+        [
+            'first',
+            'second',
+            'third',
+            'consolation prize'
+        ]
+    );
+
+if ($isAchievementCertificate) {
+
+    $bgPath =
+        !empty($bgAchievementImage) &&
+        !empty($bgAchievementImage['file_path'])
+            ? asset($bgAchievementImage['file_path'])
+            : asset('health3_bg.jpg');
+
+} else {
+
+    $bgPath =
+        !empty($bgParticipationImage) &&
+        !empty($bgParticipationImage['file_path'])
+            ? asset($bgParticipationImage['file_path'])
+            : asset('health3_bg.jpg');
+}
+
+@endphp
+
+
+{{-- @php
+
+$school = getSchoolDetails();
+
+$bgAchievementImage = getAchievementBgImage();
+
+$bgAchievementImage = getParticipationBgImage();
 // $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 //     ? asset($bgImage['file_path'])
 //     : asset('health3_bg.jpg');
@@ -493,7 +558,9 @@ $position = $pdfData['position'] ?? '';
 
 // dd($position);
 
-@endphp
+@endphp --}}
+
+
 
 <!DOCTYPE html>
 <html>
