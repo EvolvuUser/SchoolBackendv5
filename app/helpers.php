@@ -1953,3 +1953,65 @@ function getProficiencyBronzeBgImage()
         'file_path' => asset($defaultImage),
     ];
 }
+
+function getAchievementBgImage()
+{
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Achievement Certificate')
+        ->first();
+
+    // Default image
+    $defaultImage = 'health3_bg.jpg';
+
+    if ($bgImage && $bgImage->file_name) {
+
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
+}
+
+function getParticipationBgImage()
+{
+    $shortName = JWTAuth::getPayload()->get('short_name');
+
+    $bgImage = DB::table('background_images')
+        ->where('module', 'Participation Certificate')
+        ->first();
+
+    // Default image
+    $defaultImage = 'health3_bg.jpg';
+
+    if ($bgImage && $bgImage->file_name) {
+
+        $encodedModule = rawurlencode($bgImage->module);
+
+        return [
+            'file_name' => $bgImage->file_name,
+
+            'file_path' => asset(
+                "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
+            ),
+        ];
+    }
+
+    return [
+        'file_name' => 'default',
+
+        'file_path' => asset($defaultImage),
+    ];
+}
