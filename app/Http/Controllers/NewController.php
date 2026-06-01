@@ -4810,7 +4810,7 @@ ORDER BY Z.t_remark_id DESC;");
             'end_time' => $request->input('end_time'),
             'competition' => $request->input('competition'),
             'notify' => $request->input('notify'),
-            'activity' => $request->inpput('activity'),
+            'activity' => $request->input('activity'),
             'isDelete' => 'N',
             'publish' => 'Y',
             'created_by' => $user->reg_id,
