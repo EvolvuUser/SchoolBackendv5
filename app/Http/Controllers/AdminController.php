@@ -5801,12 +5801,13 @@ class AdminController extends Controller
                 'has_specs' => 'nullable|string|max:1',
                 'allergies' => 'nullable|string|max:200',
                 'nationality' => 'nullable|string|max:100',
+                'current_address' => 'nullable|string',
                 'permant_add' => 'nullable|string|max:200',
                 'city' => 'nullable|string|max:100',
                 'state' => 'nullable|string|max:100',
                 'pincode' => 'nullable|max:6',
                 'reg_no' => 'nullable|max:10',
-                'house' => 'nullable|string|max:1',
+                'house' => 'nullable',
                 'stu_aadhaar_no' => 'nullable|string|max:14',
                 'category' => 'nullable|string|max:8',
                 'image_name' => 'nullable|string',
@@ -5834,6 +5835,7 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
+                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
             $payload = getTokenPayload($request);
@@ -6249,6 +6251,24 @@ class AdminController extends Controller
             // Update student information
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $oldPermanentAddress = trim((string) $student->permant_add);
+            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
+
+            // Check if permanent address changed
+            if (
+                isset($validatedData['permant_add']) &&
+                $oldPermanentAddress != $newPermanentAddress
+            ) {
+                DB::table('permanent_address_change_log')->insert([
+                    'student_id' => $student->student_id,
+                    'old_address' => $oldPermanentAddress,
+                    'remark' => $request->address_remark,
+                    'changed_by' => $user->reg_id ?? null,
+                    'changed_at' => now(),
+                ]);
+
+                Log::info("Permanent address changed for student ID: {$student->student_id}");
+            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -6734,7 +6754,6 @@ class AdminController extends Controller
         $checkbx = $request->input('studentId');
 
         foreach ($checkbx as $parent_id) {
-
             $student = DB::table('student')
                 ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
                 ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
@@ -6758,7 +6777,6 @@ class AdminController extends Controller
             $first_name = $student->first_name ?? null;
 
             if ($user_id && $isNew && $first_name) {
-
                 $settingsData = getSchoolSettingsData();
 
                 $schoolName = $settingsData->institute_name;
@@ -6766,7 +6784,6 @@ class AdminController extends Controller
                 $shortName = $settingsData->short_name;
 
                 if ($isNew == 'Y') {
-
                     $subject = 'Welcome to ' . $schoolName . ' online application';
 
                     $textmsg = 'Dear Parent,<br/><br/>
@@ -6777,7 +6794,6 @@ class AdminController extends Controller
                     <br/><br/>
                     Regards,<br/>' . $shortName . ' Support';
                 } else {
-
                     $subject = 'Your login details for ' . $schoolName;
 
                     $textmsg = 'Dear Parent,<br/><br/>
