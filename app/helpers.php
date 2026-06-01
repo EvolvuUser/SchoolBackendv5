@@ -65,7 +65,8 @@ function sendnotificationusinghttpv1($data)
                 'token' => $data['token'],
                 'notification' => [
                     'title' => $data['notification']['title'],
-                    'body' => $data['notification']['description']
+                    // 'body' => $data['notification']['description']
+                    'body' => strip_tags($data['notification']['description'])
                 ]
             ]
         ];
