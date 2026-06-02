@@ -56,6 +56,11 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/editprofile', [AuthController::class, 'editUser']);
         Route::put('/update_profile', [AuthController::class, 'updateUser']);
 
+
+        // Parent Profile Dev Name - Mahima Chaudhari 
+        Route::get('/parent_profile', [AuthController::class, 'getParentProfile']);
+        Route::post('/update_parent_profile', [AuthController::class, 'updateParentProfile']);
+
         // Master and its sub module routes  Module Routes
         // Section model Routes
         Route::post('/check_section_name', [AdminController::class, 'checkSectionName']);
