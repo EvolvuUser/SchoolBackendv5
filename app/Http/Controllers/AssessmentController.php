@@ -3083,6 +3083,33 @@ class AssessmentController extends Controller
         ]);
     }
 
+    // public function getDomainsClass(Request $request, $class_id)
+    // {
+    //     $payload = getTokenPayload($request);
+    //     $academicYr = $payload->get('academic_year');
+    //     $subject_id = $request->input('subject_id');
+
+    //     $query = DB::table('domain_master as dm')
+    //         ->where('dm.class_id', $class_id)
+    //         ->where(function ($q) use ($academicYr) {
+    //             $q->where('dm.academic_yr', $academicYr)
+    //                 ->orWhereNull('dm.academic_yr')
+    //                 ->orWhere('dm.academic_yr', '');
+    //         });
+
+    //     if (!empty($subject_id)) {
+    //         $query->where('dm.HPC_sm_id', $subject_id);
+    //     }
+
+    //     $domains = $query->select('dm.name as domainname', 'dm.dm_id', 'dm.control_type', 'dm.options')->get();
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'success' => true,
+    //         'data' => $domains
+    //     ]);
+    // }
+
     public function getDomainsClass(Request $request, $class_id)
     {
         $payload = getTokenPayload($request);
@@ -3101,7 +3128,33 @@ class AssessmentController extends Controller
             $query->where('dm.HPC_sm_id', $subject_id);
         }
 
-        $domains = $query->select('dm.name as domainname', 'dm.dm_id', 'dm.control_type', 'dm.options')->get();
+        // Default fetch by dm_id
+        $domains = $query
+            ->select(
+                'dm.name as domainname',
+                'dm.dm_id',
+                'dm.control_type',
+                'dm.options'
+            )
+            ->orderBy('dm.dm_id')
+            ->get();
+
+        // Check if all domains follow pattern:
+        // Domain 1, Domain 2, Domain 4.1, Domain 10, etc.
+        $allAreDomainPattern = $domains->every(function ($item) {
+            return preg_match('/^Domain\s+\d+(\.\d+)?$/i', trim($item->domainname));
+        });
+
+        // If all domains match the pattern, sort by the numeric value
+        if ($allAreDomainPattern) {
+            $domains = $domains->sortBy(function ($item) {
+                preg_match('/(\d+(?:\.\d+)?)/', $item->domainname, $matches);
+
+                return isset($matches[1])
+                    ? (float) $matches[1]
+                    : PHP_INT_MAX;
+            })->values();
+        }
 
         return response()->json([
             'status' => 200,

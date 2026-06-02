@@ -404,4 +404,166 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+
+    public function getParentProfile(Request $request)
+    {
+        try {
+
+            $parent_id = auth()->user()->reg_id;
+
+            $parentProfile = DB::table('parent as p')
+                ->leftJoin('contact_details as cd', 'cd.id', '=', 'p.parent_id')
+                ->select(
+                    'p.*',
+                    'cd.phone_no',
+                    'cd.email_id',
+                    'cd.m_emailid'
+                )
+                ->where('p.parent_id', $parent_id)
+                ->first();
+
+            if (!$parentProfile) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parent profile not found.'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $parentProfile
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function updateParentProfile(Request $request)
+    {
+        try {
+
+            $validatedData = $request->validate([
+                'father_name'        => 'required|string|max:255',
+                'foccupation'        => 'nullable|string|max:255',
+                'f_office_add'       => 'nullable|string|max:255',
+                'f_office_tel'       => 'nullable|string|max:20',
+                'f_mobile'           => 'nullable|string|max:15',
+                'f_email'            => 'nullable|email|max:255',
+                'adharcard_no'       => 'nullable|string|max:20',
+
+                'mother_name'        => 'required|string|max:255',
+                'mother_occupation'  => 'nullable|string|max:255',
+                'm_office_add'       => 'nullable|string|max:255',
+                'm_office_tel'       => 'nullable|string|max:20',
+                'm_mobile'           => 'nullable|string|max:15',
+                'm_emailid'          => 'nullable|email|max:255',
+                'm_adharcard_no'     => 'nullable|string|max:20',
+
+                'f_dob'              => 'nullable|date',
+                'm_dob'              => 'nullable|date',
+
+                'f_blood_group'      => 'nullable|string|max:10',
+                'm_blood_group'      => 'nullable|string|max:10',
+
+                'parent_mobile'      => 'nullable|in:f_mobile,m_mobile',
+            ]);
+
+            $parent_id = auth()->user()->reg_id;
+
+            $parent = DB::table('parent')
+                ->where('parent_id', $parent_id)
+                ->first();
+
+            if (!$parent) {
+                return response()->json([
+                    'message' => 'Parent profile not found.'
+                ], 404);
+            }
+
+            $parentData = [
+                'father_name'        => strtoupper($validatedData['father_name']),
+                'father_occupation'  => strtoupper($validatedData['foccupation'] ?? ''),
+                'f_office_add'       => strtoupper($validatedData['f_office_add'] ?? ''),
+                'f_office_tel'       => $validatedData['f_office_tel'] ?? null,
+                'f_mobile'           => $validatedData['f_mobile'] ?? null,
+                'f_email'            => $validatedData['f_email'] ?? null,
+                'parent_adhar_no'    => $validatedData['adharcard_no'] ?? null,
+
+                'mother_name'        => strtoupper($validatedData['mother_name']),
+                'mother_occupation'  => strtoupper($validatedData['mother_occupation'] ?? ''),
+                'm_office_add'       => strtoupper($validatedData['m_office_add'] ?? ''),
+                'm_office_tel'       => $validatedData['m_office_tel'] ?? null,
+                'm_mobile'           => $validatedData['m_mobile'] ?? null,
+                'm_emailid'          => $validatedData['m_emailid'] ?? null,
+                'm_adhar_no'         => $validatedData['m_adharcard_no'] ?? null,
+
+                'f_dob'              => $validatedData['f_dob'] ?? null,
+                'm_dob'              => $validatedData['m_dob'] ?? null,
+
+                'f_blood_group'      => $validatedData['f_blood_group'] ?? null,
+                'm_blood_group'      => $validatedData['m_blood_group'] ?? null,
+
+                'IsDelete'           => 'N',
+            ];
+
+            DB::table('parent')
+                ->where('parent_id', $parent_id)
+                ->update($parentData);
+
+            // Communication Mobile
+            $phone_no = '';
+
+            if (($validatedData['parent_mobile'] ?? '') === 'm_mobile') {
+                $phone_no = $validatedData['m_mobile'] ?? '';
+            } elseif (($validatedData['parent_mobile'] ?? '') === 'f_mobile') {
+                $phone_no = $validatedData['f_mobile'] ?? '';
+            }
+
+            $contactData = [
+                'phone_no'  => $phone_no,
+                'email_id'  => $validatedData['f_email'] ?? null,
+                'm_emailid' => $validatedData['m_emailid'] ?? null,
+            ];
+
+            $contactExists = DB::table('contact_details')
+                ->where('id', $parent_id)
+                ->exists();
+
+            if ($contactExists) {
+
+                DB::table('contact_details')
+                    ->where('id', $parent_id)
+                    ->update($contactData);
+            } else {
+
+                $contactData['id'] = $parent_id;
+
+                DB::table('contact_details')
+                    ->insert($contactData);
+            }
+
+            return response()->json([
+                'message' => 'Parent profile updated successfully.',
+                'parent_id' => $parent_id
+            ], 200);
+        } catch (\Exception $e) {
+
+            Log::error('Error updating parent profile', [
+                'parent_id' => auth()->user()->reg_id ?? null,
+                'request_data' => $request->all(),
+                'exception' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating parent profile.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

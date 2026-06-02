@@ -308,8 +308,8 @@ foreach ($student_info as $row1):
         </div>
         <div class="col-md-12 pdfdiv bgimg1">
 <div class="col-md-2"></div>
-	<div class="col-md-8 table-responsive " style="text-align:center;">
-	     <table class="table-responsive" style="width:90%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; margin-top: 3%;" cellpadding="0" cellspacing="0" >
+	<div class="col-md-8 table-responsive  " style="text-align:center; ">
+	     <table class="table-responsive" style="width:90%; margin-left: 5%; margin-right:auto; border-spacing: 0px; background-color:white; margin-top: 3%;" cellpadding="0" cellspacing="0" >
 			
 						<tr>
 						    <th class="th" style="font-size:12px;width:25%;;text-align: center;valign:top;inline-block;padding:1%;">DOMAINS</th>
