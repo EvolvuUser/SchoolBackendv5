@@ -4030,7 +4030,9 @@ class AdminController extends Controller
 
                 if ($detail['teacher_id'] === null) {
                     if ($subjectAllotment) {
-                        $subjectAllotment->delete();
+                        $subjectAllotment->update([
+                            'teacher_id' => $detail['teacher_id'],
+                        ]);
                     }
                 } else {
                     if ($subjectAllotment) {
@@ -4039,15 +4041,18 @@ class AdminController extends Controller
                             'teacher_id' => $detail['teacher_id'],
                         ]);
                     } else {
-                        // Create a new record if it doesn't exist
-                        SubjectAllotment::create([
-                            'subject_id' => $detail['subject_id'],
-                            'class_id' => $classId,
-                            'section_id' => $sectionId,
-                            'teacher_id' => $detail['teacher_id'],
-                            'academic_yr' => $academicYr,
-                            'sm_id' => $sm_id
-                        ]);
+                        SubjectAllotment::updateOrCreate(
+                            [
+                                'subject_id' => $detail['subject_id'],
+                                'class_id' => $classId,
+                                'section_id' => $sectionId,
+                                'academic_yr' => $academicYr,
+                                'sm_id' => $sm_id,
+                            ],
+                            [
+                                'teacher_id' => $detail['teacher_id'],
+                            ]
+                        );
                     }
                 }
             }
@@ -4072,13 +4077,13 @@ class AdminController extends Controller
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    $record->teacher_id,
+                    // $record->teacher_id,
                     $record->sm_id,
                 ]);
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            $recordsToDelete->each->delete();
+            //  $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -6144,7 +6149,7 @@ class AdminController extends Controller
                         $validatedData['m_emailid'] ?? null,
                     ]);
 
-                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . ".The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at " . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
+                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . '. You can also directly access it at ' . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
                     Mail::raw($messageemail, function ($mail) use ($recipients) {
                         $mail
                             ->to($recipients)
