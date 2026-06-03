@@ -56,8 +56,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/editprofile', [AuthController::class, 'editUser']);
         Route::put('/update_profile', [AuthController::class, 'updateUser']);
 
-
-        // Parent Profile Dev Name - Mahima Chaudhari 
+        // Parent Profile Dev Name - Mahima Chaudhari
         Route::get('/parent_profile', [AuthController::class, 'getParentProfile']);
         Route::post('/update_parent_profile', [AuthController::class, 'updateParentProfile']);
 
@@ -1293,22 +1292,22 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/library/reminder/search', [LibraryController::class, 'searchReminderRemark']);
         Route::post('/library/reminder/send', [LibraryController::class, 'sendReminderRemark']);
 
-            // ##############################
-            // Library Module
-            // ##############################
-            // ------------------------------------
+        // ##############################
+        // Library Module
+        // ##############################
+        // ------------------------------------
 
-            // ============================
-            // Dashboard - Menu
-            // ============================
+        // ============================
+        // Dashboard - Menu
+        // ============================
         /** #START */
         Route::get('/library/dashboard/subscription_reminder', [LibraryController::class, 'subscriptionReminder']);
         Route::get('/library/dashboard/periodical_not_received_report', [LibraryController::class, 'dashboardPeriodicalNotReceivedReport']);
         /** #END */
 
-            // ============================
-            // Periodicals - Menu
-            // ============================
+        // ============================
+        // Periodicals - Menu
+        // ============================
         /** Tabs - START */
         // // Periodicals - Tab - START
         Route::get('/library/periodicals', [LibraryController::class, 'periodicalsIndex']);  // Listing
@@ -1337,7 +1336,7 @@ Route::middleware(['school.db'])->group(function () {
         // // Periodical Not Received Report - Tab - END
         // // Periodical Report - Tab - START
         Route::get('/library/periodicals_report', [LibraryController::class, 'periodicalsReport']);
-            // // Periodical Report - Tab - END
+        // // Periodical Report - Tab - END
         /** Tabs - END */
 
         // ------------------------------------
@@ -1590,7 +1589,6 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/update_background_image_by_id', [LibraryController::class, 'updateBackgroundImageById']);
         Route::post('/delete_background_image_by_id', [LibraryController::class, 'deleteBackgroundImageById']);
 
-
         // Certificates Dev Name : Mahima Chaudhari 12-05-2026
         Route::get('/get_events_for_certificates', [CertificateController::class, 'getEventsForCertificate']);
         Route::post('/create_certificates', [CertificateController::class, 'createCertificates']);
@@ -1612,12 +1610,6 @@ Route::middleware(['school.db'])->group(function () {
             [CertificateController::class, 'downloadCertificatePdf']
         );
 
-
-        // Parent Dev Name : Mahima Chaudhari 03-06-2026
-        Route::get('/get_parent_student_details_idcard', [AuthController::class, 'getParentDetailsForIdCard']);
-        Route::post('/save_parent_student_details_idcard', [AuthController::class, 'saveParentStudentIdCardDetails']);
-
-
         // Testing
         Route::get('/testPayload', function (Request $request) {
             $payload = JWTAuth::getPayload();
@@ -1637,10 +1629,11 @@ Route::middleware(['school.db'])->group(function () {
         // Master Drop Down Module
         // ########################
         // ------------------------- Tables Used
+
         /*
-             * dropdown_master - To store module data to which the drop down belongs.
-             * dropdown_options - To store the options.
-             */
+         * dropdown_master - To store module data to which the drop down belongs.
+         * dropdown_options - To store the options.
+         */
         // --------------------------------- Routes
         // Dropdowns
         Route::get('/master/dropdowns', [DropdownController::class, 'index']);
@@ -1663,6 +1656,7 @@ Route::middleware(['school.db'])->group(function () {
 
         Route::get('/teacher/download-csv', [BulkUploading::class, 'downloadTeacherCsvTemplate']);
         Route::post('/teacher/upload-csv', [BulkUploading::class, 'uploadTeacherCsv']);
+        Route::get('/database-audit', [AdminController::class, 'audit']);
 
         // --------------------------------- Routes
 
@@ -1670,20 +1664,21 @@ Route::middleware(['school.db'])->group(function () {
         // Extracurricular Activities Module
         // ########################
         // ------------------------- Tables Used
+
         /*
-                student_achievements
-                achievement_files
-            */
+         * student_achievements
+         * achievement_files
+         */
         // --------------------------------- Routes
         Route::prefix('student/achievements')->group(function () {
             Route::get('childrens', [StudentAchievementController::class, 'childrens']);
-            Route::get('/', [StudentAchievementController::class, 'index']);              // list (filterable)
-            Route::post('/', [StudentAchievementController::class, 'store']);             // create
-            Route::get('{id}', [StudentAchievementController::class, 'show']);            // single
-            Route::put('{id}', [StudentAchievementController::class, 'update']);          // update
-            Route::delete('{id}', [StudentAchievementController::class, 'destroy']);      // delete
-            Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']); // upload file
-            Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);    // list files
+            Route::get('/', [StudentAchievementController::class, 'index']);  // list (filterable)
+            Route::post('/', [StudentAchievementController::class, 'store']);  // create
+            Route::get('{id}', [StudentAchievementController::class, 'show']);  // single
+            Route::put('{id}', [StudentAchievementController::class, 'update']);  // update
+            Route::delete('{id}', [StudentAchievementController::class, 'destroy']);  // delete
+            Route::post('{id}/files', [StudentAchievementController::class, 'uploadFile']);  // upload file
+            Route::get('{id}/files', [StudentAchievementController::class, 'getFiles']);  // list files
             Route::delete('files/{fileId}', [StudentAchievementController::class, 'deleteFile']);
             Route::post('{id}/verify', [StudentAchievementController::class, 'verify']);  // verify
         });
@@ -1714,10 +1709,10 @@ Route::middleware(['school.db'])->group(function () {
     // ------------------------- Tables Used
 
     /*
-         * impersonation_sessions - To store start , end.
-         * impersonation_route_logs - To store GET routes accessed.
-         * impersonation_blocked_actions - To store Transactions access routes.
-         */
+     * impersonation_sessions - To store start , end.
+     * impersonation_route_logs - To store GET routes accessed.
+     * impersonation_blocked_actions - To store Transactions access routes.
+     */
     // -------------------------
     // --------------------------------- Routes
     Route::middleware(['jwt.auth', 'prevent.impersonation.abuse'])->group(function () {
