@@ -6149,7 +6149,7 @@ class AdminController extends Controller
                         $validatedData['m_emailid'] ?? null,
                     ]);
 
-                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . ".The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at " . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
+                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . '. You can also directly access it at ' . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
                     Mail::raw($messageemail, function ($mail) use ($recipients) {
                         $mail
                             ->to($recipients)
