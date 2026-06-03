@@ -1613,6 +1613,11 @@ Route::middleware(['school.db'])->group(function () {
         );
 
 
+        // Parent Dev Name : Mahima Chaudhari 03-06-2026
+        Route::get('/get_parent_student_details_idcard', [AuthController::class, 'getParentDetailsForIdCard']);
+        Route::post('/save_parent_student_details_idcard', [AuthController::class, 'saveParentStudentIdCardDetails']);
+
+
         // Testing
         Route::get('/testPayload', function (Request $request) {
             $payload = JWTAuth::getPayload();
