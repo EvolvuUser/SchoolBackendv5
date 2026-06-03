@@ -20100,4 +20100,153 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ]);
         }
     }
+
+    public function audit()
+    {
+        $masterConnection = 'SACS';
+
+        $connections = [
+            'HSCS',
+            'DEMONEW',
+            'STCS'
+        ];
+
+        $masterTables = $this->getTables($masterConnection);
+
+        $result = [];
+
+        foreach ($connections as $connection) {
+            $targetTables = $this->getTables($connection);
+
+            $comparison = [
+                'missing_tables' => [],
+                'extra_tables' => [],
+                'table_differences' => []
+            ];
+
+            $comparison['missing_tables'] = array_values(
+                array_diff($masterTables, $targetTables)
+            );
+
+            $comparison['extra_tables'] = array_values(
+                array_diff($targetTables, $masterTables)
+            );
+
+            $commonTables = array_intersect(
+                $masterTables,
+                $targetTables
+            );
+
+            foreach ($commonTables as $table) {
+                $masterColumns = $this->getColumns(
+                    $masterConnection,
+                    $table
+                );
+
+                $targetColumns = $this->getColumns(
+                    $connection,
+                    $table
+                );
+
+                $missingColumns = array_values(
+                    array_diff(
+                        array_keys($masterColumns),
+                        array_keys($targetColumns)
+                    )
+                );
+
+                $extraColumns = array_values(
+                    array_diff(
+                        array_keys($targetColumns),
+                        array_keys($masterColumns)
+                    )
+                );
+
+                $columnDifferences = [];
+
+                foreach ($masterColumns as $columnName => $masterColumn) {
+                    if (!isset($targetColumns[$columnName])) {
+                        continue;
+                    }
+
+                    $targetColumn = $targetColumns[$columnName];
+
+                    if (
+                        $masterColumn['Type'] !== $targetColumn['Type'] ||
+                        $masterColumn['Null'] !== $targetColumn['Null'] ||
+                        $masterColumn['Default'] !== $targetColumn['Default']
+                    ) {
+                        $columnDifferences[$columnName] = [
+                            'master' => $masterColumn,
+                            'target' => $targetColumn
+                        ];
+                    }
+                }
+
+                $masterCount = DB::connection($masterConnection)
+                    ->table($table)
+                    ->count();
+
+                $targetCount = DB::connection($connection)
+                    ->table($table)
+                    ->count();
+
+                if (
+                    !empty($missingColumns) ||
+                    !empty($extraColumns) ||
+                    !empty($columnDifferences) ||
+                    $masterCount != $targetCount
+                ) {
+                    $comparison['table_differences'][$table] = [
+                        'missing_columns' => $missingColumns,
+                        'extra_columns' => $extraColumns,
+                        'column_definition_differences' => $columnDifferences,
+                        'row_count' => [
+                            'master' => $masterCount,
+                            'target' => $targetCount
+                        ]
+                    ];
+                }
+            }
+
+            $result[$connection] = $comparison;
+        }
+
+        return response()->json([
+            'master_database' => $masterConnection,
+            'comparison' => $result
+        ]);
+    }
+
+    private function getTables($connection)
+    {
+        $database = DB::connection($connection)->getDatabaseName();
+
+        $tables = DB::connection($connection)
+            ->select('SHOW TABLES');
+
+        $key = 'Tables_in_' . $database;
+
+        return collect($tables)
+            ->pluck($key)
+            ->toArray();
+    }
+
+    private function getColumns($connection, $table)
+    {
+        $columns = DB::connection($connection)
+            ->select("SHOW COLUMNS FROM `$table`");
+
+        $result = [];
+
+        foreach ($columns as $column) {
+            $result[$column->Field] = [
+                'Type' => $column->Type,
+                'Null' => $column->Null,
+                'Default' => $column->Default
+            ];
+        }
+
+        return $result;
+    }
 }
