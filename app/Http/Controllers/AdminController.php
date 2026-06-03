@@ -20103,119 +20103,124 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
     public function audit()
     {
-        $masterConnection = 'SACS';
-
         $connections = [
+            'SACS',
             'HSCS',
             'DEMONEW',
             'STCS'
         ];
 
-        $masterTables = $this->getTables($masterConnection);
-
         $result = [];
 
-        foreach ($connections as $connection) {
-            $targetTables = $this->getTables($connection);
+        for ($i = 0; $i < count($connections); $i++) {
+            for ($j = $i + 1; $j < count($connections); $j++) {
+                $source = $connections[$i];
+                $target = $connections[$j];
 
-            $comparison = [
-                'missing_tables' => [],
-                'extra_tables' => [],
-                'table_differences' => []
-            ];
+                $result["{$source}_vs_{$target}"] =
+                    $this->compareDatabases($source, $target);
+            }
+        }
 
-            $comparison['missing_tables'] = array_values(
-                array_diff($masterTables, $targetTables)
+        return response()->json([
+            'success' => true,
+            'data' => $result
+        ]);
+    }
+
+    private function compareDatabases($source, $target)
+    {
+        $sourceTables = $this->getTables($source);
+        $targetTables = $this->getTables($target);
+
+        $comparison = [
+            'missing_in_' . $target => array_values(
+                array_diff($sourceTables, $targetTables)
+            ),
+            'extra_in_' . $target => array_values(
+                array_diff($targetTables, $sourceTables)
+            ),
+            'table_differences' => []
+        ];
+
+        $commonTables = array_intersect(
+            $sourceTables,
+            $targetTables
+        );
+
+        foreach ($commonTables as $table) {
+            $sourceColumns = $this->getColumns(
+                $source,
+                $table
             );
 
-            $comparison['extra_tables'] = array_values(
-                array_diff($targetTables, $masterTables)
+            $targetColumns = $this->getColumns(
+                $target,
+                $table
             );
 
-            $commonTables = array_intersect(
-                $masterTables,
-                $targetTables
+            $missingColumns = array_values(
+                array_diff(
+                    array_keys($sourceColumns),
+                    array_keys($targetColumns)
+                )
             );
 
-            foreach ($commonTables as $table) {
-                $masterColumns = $this->getColumns(
-                    $masterConnection,
-                    $table
-                );
+            $extraColumns = array_values(
+                array_diff(
+                    array_keys($targetColumns),
+                    array_keys($sourceColumns)
+                )
+            );
 
-                $targetColumns = $this->getColumns(
-                    $connection,
-                    $table
-                );
+            $columnDifferences = [];
 
-                $missingColumns = array_values(
-                    array_diff(
-                        array_keys($masterColumns),
-                        array_keys($targetColumns)
-                    )
-                );
-
-                $extraColumns = array_values(
-                    array_diff(
-                        array_keys($targetColumns),
-                        array_keys($masterColumns)
-                    )
-                );
-
-                $columnDifferences = [];
-
-                foreach ($masterColumns as $columnName => $masterColumn) {
-                    if (!isset($targetColumns[$columnName])) {
-                        continue;
-                    }
-
-                    $targetColumn = $targetColumns[$columnName];
-
-                    if (
-                        $masterColumn['Type'] !== $targetColumn['Type'] ||
-                        $masterColumn['Null'] !== $targetColumn['Null'] ||
-                        $masterColumn['Default'] !== $targetColumn['Default']
-                    ) {
-                        $columnDifferences[$columnName] = [
-                            'master' => $masterColumn,
-                            'target' => $targetColumn
-                        ];
-                    }
+            foreach ($sourceColumns as $column => $sourceDefinition) {
+                if (!isset($targetColumns[$column])) {
+                    continue;
                 }
 
-                $masterCount = DB::connection($masterConnection)
-                    ->table($table)
-                    ->count();
-
-                $targetCount = DB::connection($connection)
-                    ->table($table)
-                    ->count();
+                $targetDefinition = $targetColumns[$column];
 
                 if (
-                    !empty($missingColumns) ||
-                    !empty($extraColumns) ||
-                    !empty($columnDifferences) ||
-                    $masterCount != $targetCount
+                    $sourceDefinition['Type'] != $targetDefinition['Type'] ||
+                    $sourceDefinition['Null'] != $targetDefinition['Null'] ||
+                    $sourceDefinition['Default'] != $targetDefinition['Default']
                 ) {
-                    $comparison['table_differences'][$table] = [
-                        'missing_columns' => $missingColumns,
-                        'extra_columns' => $extraColumns,
-                        'column_definition_differences' => $columnDifferences,
-                        'row_count' => [
-                            'master' => $masterCount,
-                            'target' => $targetCount
-                        ]
+                    $columnDifferences[$column] = [
+                        'source' => $sourceDefinition,
+                        'target' => $targetDefinition
                     ];
                 }
             }
 
-            $result[$connection] = $comparison;
+            $sourceCount = DB::connection($source)
+                ->table($table)
+                ->count();
+
+            $targetCount = DB::connection($target)
+                ->table($table)
+                ->count();
+
+            if (
+                !empty($missingColumns) ||
+                !empty($extraColumns) ||
+                !empty($columnDifferences) ||
+                $sourceCount != $targetCount
+            ) {
+                $comparison['table_differences'][$table] = [
+                    'missing_columns' => $missingColumns,
+                    'extra_columns' => $extraColumns,
+                    'column_differences' => $columnDifferences,
+                    'row_count_difference' => [
+                        $source => $sourceCount,
+                        $target => $targetCount
+                    ]
+                ];
+            }
         }
 
-        return response()->json([
-            'master_database' => $masterConnection,
-            'comparison' => $result
-        ]);
+        return $comparison;
     }
 
     private function getTables($connection)
@@ -20223,13 +20228,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $database = DB::connection($connection)->getDatabaseName();
 
         $tables = DB::connection($connection)
-            ->select('SHOW TABLES');
-
-        $key = 'Tables_in_' . $database;
-
-        return collect($tables)
-            ->pluck($key)
+            ->table('information_schema.TABLES')
+            ->select('TABLE_NAME')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_TYPE', 'BASE TABLE')
+            ->pluck('TABLE_NAME')
             ->toArray();
+
+        return $tables;
     }
 
     private function getColumns($connection, $table)
