@@ -3119,7 +3119,8 @@ class AssessmentController extends Controller
         $query = DB::table('domain_master as dm')
             ->where('dm.class_id', $class_id)
             ->where(function ($q) use ($academicYr) {
-                $q->where('dm.academic_yr', $academicYr)
+                $q
+                    ->where('dm.academic_yr', $academicYr)
                     ->orWhereNull('dm.academic_yr')
                     ->orWhere('dm.academic_yr', '');
             });
@@ -5113,8 +5114,6 @@ class AssessmentController extends Controller
         return $pdf->download($dynamicFilename);
     }
 
-
-
     public function saveClassTeacherRemarkMaster(Request $request)
     {
         $user = $this->authenticateUser();
@@ -6134,8 +6133,6 @@ class AssessmentController extends Controller
         ]);
     }
 
-
-
     public function saveStudentMarks(Request $request)
     {
         $user = $this->authenticateUser();
@@ -7066,48 +7063,44 @@ class AssessmentController extends Controller
                                 }
                             } elseif ($shortName == 'HSCS') {
                                 switch ($class_name) {
-                                    case "Nursery":
+                                    case 'Nursery':
                                         $reportcard_highest_marks = $highest_marks;
                                         if ($present == 'N') {
                                             $reportcard_marks = 'Ab';
                                         } else {
-
                                             $reportcard_marks = $marks_obtained;
                                             $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                         }
                                         $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         break;
 
-                                    case "LKG":
+                                    case 'LKG':
                                         $reportcard_highest_marks = $highest_marks;
                                         if ($present == 'N') {
                                             $reportcard_marks = 'Ab';
                                         } else {
-
                                             $reportcard_marks = $marks_obtained;
                                             $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                         }
                                         $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         break;
-                                    case "UKG":
+                                    case 'UKG':
                                         $reportcard_highest_marks = $highest_marks;
                                         if ($present == 'N') {
                                             $reportcard_marks = 'Ab';
                                         } else {
-
                                             $reportcard_marks = $marks_obtained;
                                             $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                         }
                                         $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         break;
-                                    //Lija 22-08-23
-                                    case "1":
+                                    // Lija 22-08-23
+                                    case '1':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7124,62 +7117,37 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "2":
+                                    case '2':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
                                             $reportcard_highest_marks = 10;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         } else {
-                                            //echo "msg1";
+                                            // echo "msg1";
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
                                                 $reportcard_marks = $marks_obtained;
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
-                                            //echo "highest_marks ".$highest_marks;
-                                            //echo "total_reportcard_highest_marks ".$total_reportcard_highest_marks;
+                                            // echo "highest_marks ".$highest_marks;
+                                            // echo "total_reportcard_highest_marks ".$total_reportcard_highest_marks;
                                             $reportcard_highest_marks = $highest_marks;
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "3":
+                                    case '3':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
-                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = 10;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        } else {
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-                                                $reportcard_marks = $marks_obtained;
-                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
-                                            }
-                                            $reportcard_highest_marks = $highest_marks;
-                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
-                                        }
-                                        break;
-                                    case "4":
-                                        if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
-                                            if ($present == 'N') {
-                                                $reportcard_marks = 'Ab';
-                                            } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7196,13 +7164,12 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "5":
+                                    case '4':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7219,13 +7186,12 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "6":
+                                    case '5':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7242,13 +7208,12 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "7":
+                                    case '6':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            // Convert periodic marks out of 40 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7265,13 +7230,12 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "8": //Lija 13-03-21
+                                    case '7':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 40 to 10 n save as report card marks
+                                            // Convert periodic marks out of 40 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7288,13 +7252,34 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "9":
+                                    case '8':  // Lija 13-03-21
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 40 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
+                                                $reportcard_marks = round(($marks_obtained / $highest_marks) * 10, 1);
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = 10;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        } else {
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
+                                                $reportcard_marks = $marks_obtained;
+                                                $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
+                                            }
+                                            $reportcard_highest_marks = $highest_marks;
+                                            $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
+                                        }
+                                        break;
+                                    case '9':
+                                        if ($marks_headings_name == 'Pen Paper') {
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
+                                            if ($present == 'N') {
+                                                $reportcard_marks = 'Ab';
+                                            } else {
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 5, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7311,13 +7296,12 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "10":
+                                    case '10':
                                         if ($marks_headings_name == 'Pen Paper') {
-                                            //Convert periodic marks out of 20 to 10 n save as report card marks
+                                            // Convert periodic marks out of 20 to 10 n save as report card marks
                                             if ($present == 'N') {
                                                 $reportcard_marks = 'Ab';
                                             } else {
-
                                                 $reportcard_marks = round(($marks_obtained / $highest_marks) * 5, 1);
                                                 $total_reportcard_marks_obtained = $total_reportcard_marks_obtained + $reportcard_marks;
                                             }
@@ -7334,8 +7318,7 @@ class AssessmentController extends Controller
                                             $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
                                         }
                                         break;
-                                    case "11 - Science":
-
+                                    case '11 - Science':
                                         if ($present == 'N') {
                                             $reportcard_marks = 'Ab';
                                         } else {
@@ -7346,8 +7329,7 @@ class AssessmentController extends Controller
                                         $total_reportcard_highest_marks = $total_reportcard_highest_marks + $reportcard_highest_marks;
 
                                         break;
-                                    case "11 - Commerce":
-
+                                    case '11 - Commerce':
                                         if ($present == 'N') {
                                             $reportcard_marks = 'Ab';
                                         } else {
@@ -7887,7 +7869,6 @@ class AssessmentController extends Controller
                                     default:
                                 }
                             }
-
 
                             $reportcard_marks_string = $reportcard_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_marks . '",';
                             $reportcard_highest_marks_string = $reportcard_highest_marks_string . '"' . $marks_headings_name . '":"' . $reportcard_highest_marks . '",';
@@ -11244,8 +11225,6 @@ class AssessmentController extends Controller
         // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
     }
 
-
-
     // tecaher data using reg_id for teacher id card detials
     // public function teacherDataIdCard($id)
     // {
@@ -11499,7 +11478,6 @@ class AssessmentController extends Controller
         // $pdf = PDF::loadView('pdf.template', compact('data'));
     }
 
-
     // Manish
     // public function checkPublishStatusOfReportCard(Request $request)
     // {
@@ -11551,7 +11529,6 @@ class AssessmentController extends Controller
 
         $response['normal_report_card'] = $normal_publish;
 
-
         /* =========================================
        HPC REPORT CARD
        ONLY FOR SACS
@@ -11562,7 +11539,6 @@ class AssessmentController extends Controller
             $short_name == 'SACS' &&
             in_array(strtolower($class_name), ['nursery', 'lkg', 'ukg', '1', '2'])
         ) {
-
             $hpc_publish = check_hpc_rc_publish_of_a_class(
                 $class_id,
                 $section_id
@@ -11571,13 +11547,11 @@ class AssessmentController extends Controller
             $response['hpc_report_card'] = $hpc_publish;
         }
 
-
         /* =========================================
        CBSE REPORT CARD
     ========================================= */
 
         if ($class_name == '9' || $class_name == '11') {
-
             $cbse_publish = check_cbse_rc_publish_of_a_class(
                 $class_id,
                 $section_id
@@ -11669,11 +11643,9 @@ class AssessmentController extends Controller
         if (
             in_array(strtolower($class_name), ['nursery', 'lkg', 'ukg', '1', '2'])
         ) {
-
             $hpc_publish = check_hpc_rc_publish_of_a_class($class_id, $section_id);
 
             if ($hpc_publish === 'Y') {
-
                 $url = url('api/get_hpcreportcard')
                     . "?student_id=$student_id";
 
@@ -11744,6 +11716,55 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => 200,
             'data' => $studentreportcard,
+            'success' => true
+        ]);
+    }
+
+    public function getClassesOfClassTeacherWithSubstitute(Request $request)
+    {
+        $user = $this->authenticateUser();
+        $academicYr = JWTAuth::getPayload()->get('academic_year');
+        $teacher_id = $request->input('teacher_id');
+
+        // Original class teacher classes
+        $classTeacherClasses = DB::table('class_teachers')
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id',
+                DB::raw('1 as is_class_teacher')
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $academicYr);
+
+        // Substitute class teacher classes
+        $substituteClasses = DB::table('class_teacher_substitute as cts')
+            ->join('class_teachers as ct', 'cts.class_teacher_id', '=', 'ct.teacher_id')
+            ->join('class', 'ct.class_id', '=', 'class.class_id')
+            ->join('section', 'ct.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'ct.class_id',
+                'ct.section_id',
+                DB::raw('0 as is_class_teacher')
+            )
+            ->where('cts.teacher_id', $teacher_id)
+            ->where('cts.academic_yr', $academicYr)
+            ->whereDate('cts.start_date', '<=', now())
+            ->whereDate('cts.end_date', '>=', now());
+
+        $classes = $classTeacherClasses
+            ->union($substituteClasses)
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'data' => $classes,
+            'message' => 'Classes by class teacher.',
             'success' => true
         ]);
     }
