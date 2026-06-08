@@ -4194,7 +4194,9 @@ class AdminController extends Controller
     // Allot teacher Tab APIs
     public function getTeacherNames(Request $request)
     {
-        $teacherList = UserMaster::Where('role_id', 'T')->where('IsDelete', 'N')->get();
+        $teacherList = UserMaster::whereIn('role_id', ['T', 'L'])
+            ->where('IsDelete', 'N')
+            ->get();
         return response()->json($teacherList);
     }
 
@@ -6338,6 +6340,22 @@ class AdminController extends Controller
                     'required'
                 ],
             ], $messages);
+            $existingTeacherAssignment = Class_teachers::with(['getClass', 'getDivision'])
+                ->where('teacher_id', $validatedData['teacher_id'])
+                ->where('academic_yr', $academicYr)
+                ->first();
+
+            if ($existingTeacherAssignment) {
+                $className = $existingTeacherAssignment->getClass->name ?? '';
+                $sectionName = $existingTeacherAssignment->getDivision->name ?? '';
+
+                return response()->json([
+                    'status' => 422,
+                    'errors' => [
+                        "This teacher is already allotted as class teacher for {$className} - {$sectionName}."
+                    ]
+                ], 422);
+            }
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => 422,
@@ -6369,6 +6387,8 @@ class AdminController extends Controller
 
     public function updateClassTeacher(Request $request, $class_id, $section_id)
     {
+        $payload = getTokenPayload($request);
+        $academic_yr = $payload->get('academic_year');
         $messages = [
             'class_id.required' => 'Class field is required.',
             'section_id.required' => 'Section field is required.',
@@ -6387,6 +6407,37 @@ class AdminController extends Controller
                     'required'
                 ],
             ], $messages);
+            $teacher_id = $validatedData['teacher_id'];
+            $existingAssignment = Class_teachers::with(['getClass', 'getDivision'])
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $academic_yr)
+                ->whereNot(function ($query) use ($validatedData) {
+                    $query
+                        ->where('class_id', $validatedData['class_id'])
+                        ->where('section_id', $validatedData['section_id']);
+                })
+                ->first();
+            \Log::info('Class Teacher Validation', [
+                'teacher_id' => $teacher_id,
+                'academic_yr' => $academic_yr,
+                'class_id' => $validatedData['class_id'],
+                'section_id' => $validatedData['section_id'],
+                'existing' => $existingAssignment
+            ]);
+
+            if ($existingAssignment) {
+                $className = $existingAssignment->getClass->name ?? '';
+                $sectionName = $existingAssignment->getDivision->name ?? '';
+
+                return response()->json([
+                    'status' => 422,
+                    'errors' => [
+                        "This teacher is already allotted as class teacher for {$className} - {$sectionName}."
+                    ]
+                ], 422);
+            }
+
+            $teacher_id = $validatedData['teacher_id'];
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'status' => 422,
@@ -6766,6 +6817,7 @@ class AdminController extends Controller
                 ->select(
                     'student.isNew',
                     'student.first_name',
+                    'student.last_name',
                     'contact_details.email_id',
                     'contact_details.m_emailid',
                     'user_master.user_id',
@@ -6779,7 +6831,9 @@ class AdminController extends Controller
             $m_emailid = $student->m_emailid ?? null;
             $user_id = $student->user_id ?? null;
             $isNew = $student->isNew ?? null;
-            $first_name = $student->first_name ?? null;
+            $first_name = $student->first_name ?? '';
+            $last_name = $student->last_name ?? '';
+            $studentName = trim($first_name . ' ' . $last_name);
 
             if ($user_id && $isNew && $first_name) {
                 $settingsData = getSchoolSettingsData();
@@ -6787,25 +6841,46 @@ class AdminController extends Controller
                 $schoolName = $settingsData->institute_name;
                 $defaultpassword = $settingsData->default_pwd;
                 $shortName = $settingsData->short_name;
+                $supportEmail = $settingsData->support_email_id;
 
                 if ($isNew == 'Y') {
-                    $subject = 'Welcome to ' . $schoolName . ' online application';
+                    $subject = 'Welcome to the' . $schoolName . 'application powered by EvolvU.';
 
                     $textmsg = 'Dear Parent,<br/><br/>
-                    Welcome to ' . $schoolName . ' online application.
+                    Welcome to ' . $schoolName . ' application powered by EvolvU.
                     <br/><br/>
-                    "' . $first_name . '" is registered in the application.
-                    Your user id is ' . $user_id . ' and password is ' . $defaultpassword . '.
+                    ' . $studentName . ' is registered in the application.<br/><br/>
+                    You can download our app from play store and app store,<br/>
+                    For Android Users:<a> https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool</a> <br/>
+                    For Iphone Users: <a>https://apps.apple.com/in/app/evolvu-smart-school-parent/id6738838553</a> <br/><br>
+                    Here are your login credentials:</br>
+                    User Id:' . $user_id . '  </br>
+                    Password: ' . $defaultpassword . '.
                     <br/><br/>
-                    Regards,<br/>' . $shortName . ' Support';
+                    You may change your password after login.<br/>
+                    If you face any issues please write to us  on ' . $supportEmail . '</br></br>
+                    
+                    Regards,<br/>' . $shortName . ' Support<br/>
+                    Team Evolvu';
                 } else {
-                    $subject = 'Your login details for ' . $schoolName;
+                    $subject = 'Welcome to the' . $schoolName . 'application powered by EvolvU.';
 
                     $textmsg = 'Dear Parent,<br/><br/>
-                    Your user id for ' . $schoolName . ' online application is ' . $user_id . '
-                    and password is ' . $defaultpassword . '.
+                    Welcome to ' . $schoolName . ' application powered by EvolvU.
                     <br/><br/>
-                    Regards,<br/>' . $shortName . ' Support';
+                    ' . $studentName . ' is registered in the application.<br/><br/>
+                    You can download our app from play store and app store,<br/>
+                    For Android Users:<a> https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool</a> <br/>
+                    For Iphone Users: <a>https://apps.apple.com/in/app/evolvu-smart-school-parent/id6738838553</a> <br/><br>
+                    Here are your login credentials:</br>
+                    User Id:' . $user_id . '  </br>
+                    Password: ' . $defaultpassword . '.
+                    <br/><br/>
+                    You may change your password after login.<br/>
+                    If you face any issues please write to us  on ' . $supportEmail . '</br></br>
+                    
+                    Regards,<br/>' . $shortName . ' Support<br/>
+                    Team Evolvu';
                 }
 
                 $emailData = [
@@ -7618,9 +7693,9 @@ class AdminController extends Controller
 
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
-                ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id')
+                ->join('teacher', 'holidaylist.created_by', '=', 'teacher.teacher_id')
                 ->where('holidaylist.academic_yr', $customClaims)
-                ->select('holidaylist.*', 'user_master.name as created_by_name')  // Select the necessary columns
+                ->select('holidaylist.*', 'teacher.name as created_by_name')  // Select the necessary columns
                 ->groupBy('holidaylist.holiday_id')
                 ->orderBy('holiday_id', 'Desc')
                 ->get();
@@ -17812,8 +17887,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $totalNumberOfTeachers = DB::table('subject as s')
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn('s.sm_id', function ($query) {
@@ -17830,8 +17904,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -17863,8 +17936,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
@@ -17898,8 +17970,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->whereIn(
                     DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
                     function ($query) use ($nextMonday) {
@@ -17978,8 +18049,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $totalNumberOfTeachers = DB::table('subject as s')
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn('s.sm_id', function ($query) {
@@ -18049,8 +18119,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -18131,8 +18200,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
@@ -18212,8 +18280,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -18673,8 +18740,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $nextMonday = now()->next('Monday')->format('d-m-Y');
         $totalNumberOfTeachers = DB::table('subject as s')
             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereNotIn('s.sm_id', function ($query) {
@@ -18690,8 +18756,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('class as c', 's.class_id', '=', 'c.class_id')
             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereIn(
@@ -18722,8 +18787,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('class as c', 's.class_id', '=', 'c.class_id')
             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereNotIn(
@@ -18756,8 +18820,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->whereIn(
                 DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
                 function ($query) use ($nextMonday) {

@@ -61,9 +61,14 @@ return [
         'SACS' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST_SACS'),
+            'port' => env('DB_PORT_STCS', '3306'),
             'database' => env('DB_DATABASE_SACS'),
             'username' => env('DB_USERNAME_SACS'),
             'password' => env('DB_PASSWORD_SACS'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
@@ -76,9 +81,14 @@ return [
         'HSCS' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST_HSCS'),
+            'port' => env('DB_PORT_STCS', '3306'),
             'database' => env('DB_DATABASE_HSCS'),
             'username' => env('DB_USERNAME_HSCS'),
             'password' => env('DB_PASSWORD_HSCS'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
@@ -91,9 +101,14 @@ return [
         'DEMONEW' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST_DEMONEW'),
+            'port' => env('DB_PORT_STCS', '3306'),
             'database' => env('DB_DATABASE_DEMONEW'),
             'username' => env('DB_USERNAME_DEMONEW'),
             'password' => env('DB_PASSWORD_DEMONEW'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
@@ -101,9 +116,14 @@ return [
         'STCS' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST_STCS'),
+            'port' => env('DB_PORT_STCS', '3306'),
             'database' => env('DB_DATABASE_STCS'),
             'username' => env('DB_USERNAME_STCS'),
             'password' => env('DB_PASSWORD_STCS'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
