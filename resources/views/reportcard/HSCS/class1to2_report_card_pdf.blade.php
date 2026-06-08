@@ -308,8 +308,8 @@ foreach ($student_info as $row1):
         </div>
         <div class="col-md-12 pdfdiv bgimg1">
 <div class="col-md-2"></div>
-	<div class="col-md-8 table-responsive " style="text-align:center;">
-	     <table class="table-responsive" style="width:90%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; margin-top: 3%;" cellpadding="0" cellspacing="0" >
+	<div class="col-md-8 table-responsive  " style="text-align:center; ">
+	     <table class="table-responsive" style="width:90%; margin-left: 5%; margin-right:auto; border-spacing: 0px; background-color:white; margin-top: 3%;" cellpadding="0" cellspacing="0" >
 			
 						<tr>
 						    <th class="th" style="font-size:12px;width:25%;;text-align: center;valign:top;inline-block;padding:1%;">DOMAINS</th>
@@ -346,7 +346,7 @@ foreach ($student_info as $row1):
                             ?>
 						    <tr>
 						        <!--<td></td>-->
-						        <th class="td" style="font-size:12px;padding:2px;"><b><?php echo $r->name; ?></b><br><?php echo $r->description; ?></th>
+						        <th class="td" style="font-size:12px;padding:2px;"><b><?php echo $r->name; ?></b><br><?php echo $r->curriculum_goal; ?></th>
 						        <th class="td" style="font-size:12px;padding:2px;" colspan="6"><b></th>
 						        </tr>
 						        </tr>
@@ -357,7 +357,7 @@ foreach ($student_info as $row1):
 						    <tr>
 						         
 						        <!--<td></td>-->
-						        <td class="td" style="word-wrap:normal;font-size:12px;padding:2px;"><?php echo $p->parameter; ?></td>
+						        <td class="td" style="word-wrap:normal;font-size:12px;padding:2px;"><?php echo $p->learning_outcomes; ?></td>
 
                                 <?php
                                 foreach ($term as $row) {
@@ -638,6 +638,13 @@ foreach ($student_info as $row1):
                                     foreach ($term_list as $term) {
                                         ${'mark_obtained_array_' . $term->term_id} = array();
                                         $exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
+                                        \Log::info('Exam list data', [
+                                            'student_id' => $row1['student_id'],
+                                            'class_id' => $row1['class_id'],
+                                            'term_id' => $term->term_id,
+                                            'academic_yr' => $row1['academic_yr'],
+                                            'exam_list' => $exam_list
+                                        ]);
                                         $coscholastic_grade = '';
                                         foreach ($exam_list as $exam) {
                                             ${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
@@ -1103,10 +1110,11 @@ foreach ($student_info as $row1):
 							<td style="text-align:left;white-space:nowrap;width: 20% !important" class="signtag"><b> Promoted To : </b></td>
 							<td style="white-space:nowrap;width:25%;margin-right:2%;text-align:center;" class="signtag"><div class="statistics_line">
 							<?php
-
-                            $term_id = get_term_of_exam($exam_list[1]->exam_id);
-                            // print_r($term_id);
-                            echo get_promote_to_of_a_student($row1['student_id'], $term_id);
+                            if (!empty($exam_list[1]->exam_id)) {
+                                $term_id = get_term_of_exam($exam_list[1]->exam_id);
+                                // print_r($term_id);
+                                echo get_promote_to_of_a_student($row1['student_id'], $term_id);
+                            }
                             ?>&nbsp;
 							</div> 
 							</td>

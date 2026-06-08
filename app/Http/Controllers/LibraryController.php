@@ -4777,11 +4777,38 @@ class LibraryController extends Controller
             ->get();
 
         // ================= PARAMETERS =================
+        // $parameters = DB::table('health_activity_parameter')
+        //     ->where('is_active', 'Y')
+        //     ->orderBy('group_id')
+        //     ->orderBy('sequence')
+        //     ->get();
+
+        // Changed by Mahima 19-05-2026
+        // ================= PARAMETERS =================
+        $allParameters = DB::table('health_activity_parameter')->get();
+
+        // Check if no parameter exists
+        if ($allParameters->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please create health and activity parameter and then download'
+            ], 400);
+        }
+
         $parameters = DB::table('health_activity_parameter')
             ->where('is_active', 'Y')
             ->orderBy('group_id')
             ->orderBy('sequence')
             ->get();
+
+
+        // Check if no active parameter exists
+        if ($parameters->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please Active the parameter to download the excel'
+            ], 400);
+        }
 
         // ================= GROUPS =================
         $groups = DB::table('health_activity_group')
@@ -4880,6 +4907,197 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function uploadHealthActivityRecord(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $validator = Validator::make($request->all(), [
+    //         'file' => 'required|file|mimes:csv,txt|max:2048'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => $validator->errors()->first(),
+    //         ]);
+    //     }
+
+    //     $file = $request->file('file');
+    //     $handle = fopen($file->getRealPath(), 'r');
+
+    //     $row = 1;
+    //     $errors = [];
+    //     $headers = [];
+
+    //     // ================= PARAMETERS =================
+    //     $parameters = DB::table('health_activity_parameter as p')
+    //         ->join('health_activity_group as g', 'p.group_id', '=', 'g.id')
+    //         ->where('p.is_active', 'Y')
+    //         ->select(
+    //             'p.id',
+    //             'p.test_parameter',
+    //             'p.param_data',
+    //             'p.description',
+    //             'p.group_id',
+    //             'g.group_name'
+    //         )
+    //         ->get()
+    //         ->keyBy('test_parameter');
+
+    //     while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+
+    //         // ================= HEADER =================
+    //         // if ($row == 1) {
+
+    //         //     if (trim($data[0]) != 'Code') {
+    //         //         return response()->json([
+    //         //             'status' => 422,
+    //         //             'message' => 'Invalid CSV format. Please download the correct format.'
+    //         //         ]);
+    //         //     }
+
+    //         //     $headers = $data;
+    //         //     $row++;
+    //         //     continue;
+    //         // }
+
+    //         // 19-05-2026
+    //         // ================= HEADER =================
+    //         if ($row == 1) {
+
+    //             if (trim($data[0]) != 'Code') {
+    //                 return response()->json([
+    //                     'status' => 422,
+    //                     'message' => 'Invalid CSV format. Please download the correct format.'
+    //                 ]);
+    //             }
+
+    //             $headers = array_map('trim', $data);
+
+    //             // ================= ACTIVE PARAMETERS =================
+    //             $activeParameterNames = $parameters->keys()->toArray();
+
+    //             // ================= CSV PARAMETERS =================
+    //             $csvParameters = array_diff(
+    //                 $headers,
+    //                 ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name']
+    //             );
+
+    //             // ================= COUNTS =================
+    //             $activeCount = count($activeParameterNames);
+    //             $uploadedCount = count($csvParameters);
+
+    //             // ================= MISSING PARAMETERS =================
+    //             $missingParameters = array_diff($activeParameterNames, $csvParameters);
+
+    //             // ================= VALIDATION =================
+    //             if (!empty($missingParameters)) {
+
+    //                 return response()->json([
+    //                     'status' => 422,
+    //                     'message' => 'Some parameter columns are missing in uploaded file.',
+
+    //                     // COUNTS
+    //                     'active_parameter_count' => $activeCount,
+    //                     'uploaded_parameter_count' => $uploadedCount,
+
+    //                     // PARAMETER NAMES
+    //                     'active_parameters' => array_values($activeParameterNames),
+    //                     'uploaded_parameters' => array_values($csvParameters),
+    //                     'missing_parameters' => array_values($missingParameters)
+
+    //                 ]);
+    //             }
+
+    //             $row++;
+    //             continue;
+    //         }
+
+    //         // ================= STUDENT =================
+    //         $student_id = isset($data[0]) ? trim($data[0]) : null;
+
+    //         if (!$student_id) {
+    //             $errors[] = "Row $row: Student Code is missing.";
+    //             $row++;
+    //             continue;
+    //         }
+
+    //         // ================= INIT =================
+    //         $paramValues     = [];
+    //         $paramMeta       = [];
+    //         $groupData       = [];
+    //         $descriptionData = [];
+
+    //         // ================= LOOP =================
+    //         foreach ($headers as $index => $columnName) {
+
+    //             $columnName = trim($columnName);
+
+    //             if (in_array($columnName, ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name'])) {
+    //                 continue;
+    //             }
+
+    //             if (isset($parameters[$columnName])) {
+
+    //                 $param = $parameters[$columnName];
+    //                 $value = $data[$index] ?? null;
+
+    //                 // VALUE
+    //                 $paramValues[$columnName] = $value;
+
+    //                 // PARAM META
+    //                 $paramMeta[$columnName] = $param->param_data
+    //                     ? json_decode($param->param_data, true)
+    //                     : null;
+
+    //                 // GROUP DATA
+    //                 $groupData[$columnName] = [
+    //                     'group_id'   => $param->group_id,
+    //                     'group_name' => $param->group_name
+    //                 ];
+
+    //                 // FIXED DESCRIPTION
+    //                 $descriptionData[$columnName] = !empty(trim($param->description))
+    //                     ? $param->description
+    //                     : null;
+    //             }
+    //         }
+
+    //         // ================= SAVE =================
+    //         DB::table('health_activity_record')->updateOrInsert(
+    //             [
+    //                 'student_id'  => $student_id,
+    //                 'academic_yr' => $academic_yr
+    //             ],
+    //             [
+    //                 'value'       => json_encode($paramValues),
+    //                 'group_data'  => json_encode($groupData),
+    //                 'param_data'  => json_encode($paramMeta),
+    //                 'description' => json_encode($descriptionData)
+    //             ]
+    //         );
+
+    //         $row++;
+    //     }
+
+    //     fclose($handle);
+
+    //     if (!empty($errors)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => implode(', ', $errors)
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health Activity Records uploaded successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
+    // 20-05-2026
     public function uploadHealthActivityRecord(Request $request)
     {
         $user = $this->authenticateUser();
@@ -4895,6 +5113,8 @@ class LibraryController extends Controller
                 'message' => $validator->errors()->first(),
             ]);
         }
+
+        $forceUpload = $request->force_upload ?? false;
 
         $file = $request->file('file');
         $handle = fopen($file->getRealPath(), 'r');
@@ -4930,7 +5150,48 @@ class LibraryController extends Controller
                     ]);
                 }
 
-                $headers = $data;
+                $headers = array_map('trim', $data);
+
+                // ================= ACTIVE PARAMETERS =================
+                $activeParameterNames = $parameters->keys()->toArray();
+
+                // ================= CSV PARAMETERS =================
+                $csvParameters = array_diff(
+                    $headers,
+                    ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name']
+                );
+
+                // ================= COUNTS =================
+                $activeCount = count($activeParameterNames);
+                $uploadedCount = count($csvParameters);
+
+                // ================= MISSING PARAMETERS =================
+                $missingParameters = array_diff($activeParameterNames, $csvParameters);
+
+                // ================= WARNING ONLY =================
+                if (!empty($missingParameters) && !$forceUpload) {
+
+                    fclose($handle);
+
+                    return response()->json([
+
+                        'status' => 409,
+                        'warning' => true,
+
+                        'message' => 'Some parameter columns are missing in uploaded file. Do you want to continue upload?',
+
+                        // COUNTS
+                        'active_parameter_count' => $activeCount,
+                        'uploaded_parameter_count' => $uploadedCount,
+
+                        // PARAMETER NAMES
+                        'active_parameters' => array_values($activeParameterNames),
+                        'uploaded_parameters' => array_values($csvParameters),
+                        'missing_parameters' => array_values($missingParameters)
+
+                    ]);
+                }
+
                 $row++;
                 continue;
             }
@@ -4955,7 +5216,13 @@ class LibraryController extends Controller
 
                 $columnName = trim($columnName);
 
-                if (in_array($columnName, ['Code', 'Roll No', 'First Name', 'Middle Name', 'Last Name'])) {
+                if (in_array($columnName, [
+                    'Code',
+                    'Roll No',
+                    'First Name',
+                    'Middle Name',
+                    'Last Name'
+                ])) {
                     continue;
                 }
 
@@ -4978,7 +5245,7 @@ class LibraryController extends Controller
                         'group_name' => $param->group_name
                     ];
 
-                    // FIXED DESCRIPTION
+                    // DESCRIPTION
                     $descriptionData[$columnName] = !empty(trim($param->description))
                         ? $param->description
                         : null;
@@ -5004,6 +5271,7 @@ class LibraryController extends Controller
 
         fclose($handle);
 
+        // ================= ERRORS =================
         if (!empty($errors)) {
             return response()->json([
                 'status' => 422,
@@ -5011,6 +5279,7 @@ class LibraryController extends Controller
             ]);
         }
 
+        // ================= SUCCESS =================
         return response()->json([
             'status' => 200,
             'message' => 'Health Activity Records uploaded successfully',
@@ -6644,7 +6913,7 @@ class LibraryController extends Controller
 
             $data = $images->map(function ($img) use ($shortName) {
 
-                // ✅ encode module for URL
+                //  encode module for URL
                 $encodedModule = rawurlencode($img->module);
 
                 return [

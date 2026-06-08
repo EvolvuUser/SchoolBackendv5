@@ -1,3 +1,12 @@
+ @php
+$school = getSchoolDetails();
+$bgImage = getPercentageBgImage();
+
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+@endphp
+
 <style>
 @page {
     /*size: A4;*/
@@ -8,7 +17,8 @@
     /*padding: 0;*/
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/HSCS/lc_bg.jpg');
+    /* background-image: url('https://sms.evolvu.in/public/HSCS/lc_bg.jpg'); */
+    background-image: url('{{ asset($bgImage['file_path']) }}');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;

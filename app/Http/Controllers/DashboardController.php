@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use DB;
 
 class DashboardController extends Controller
@@ -40,6 +41,11 @@ class DashboardController extends Controller
             ->where('dashboard_id', $dashboard->dashboard_id)
             ->orderBy('section_order')
             ->get();
+        Log::info('Dashboard DB Connection Check', [
+            'short_name' => $shortName,
+            'default_connection' => config('database.default'),
+            'connection_config' => config('database.connections.' . $shortName),
+        ]);
 
         // 3. Widgets
         $widgets = DB::table('dashboard_widgets as dw')

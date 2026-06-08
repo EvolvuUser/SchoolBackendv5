@@ -4438,11 +4438,11 @@ ORDER BY Z.t_remark_id DESC;");
                 $result->smslogid = $smssent->sms_log_id ?? null;
                 $result->smssentdates = isset($result->smslogid)
                     ? DB::table('sms_log_for_outstanding_fees_details')
-                        ->select('date_sms_sent')
-                        ->where('sms_log_id', $result->smslogid)
-                        ->orderBy('date_sms_sent', 'asc')
-                        ->get()
-                        ->toArray()
+                    ->select('date_sms_sent')
+                    ->where('sms_log_id', $result->smslogid)
+                    ->orderBy('date_sms_sent', 'asc')
+                    ->get()
+                    ->toArray()
                     : null;
                 $classname = DB::table('section')
                     ->join('class', 'class.class_id', '=', 'section.class_id')
@@ -4765,6 +4765,7 @@ ORDER BY Z.t_remark_id DESC;");
             'end_time' => $request->input('end_time'),
             'competition' => $request->input('competition'),
             'notify' => $request->input('notify'),
+            'activity' => $request->input('activity'),
             'isDelete' => 'N',
             'publish' => 'N',
             'created_by' => $user->reg_id,
@@ -4809,6 +4810,7 @@ ORDER BY Z.t_remark_id DESC;");
             'end_time' => $request->input('end_time'),
             'competition' => $request->input('competition'),
             'notify' => $request->input('notify'),
+            'activity' => $request->input('activity'),
             'isDelete' => 'N',
             'publish' => 'Y',
             'created_by' => $user->reg_id,
@@ -4901,6 +4903,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.publish',
                 'e.competition',
                 'e.notify',
+                'e.activity',
                 'e.academic_yr',
                 'e.created_by',
                 'e.class_id',
@@ -4930,6 +4933,7 @@ ORDER BY Z.t_remark_id DESC;");
                     'publish' => $first->publish,
                     'competition' => $first->competition,
                     'notify' => $first->notify,
+                    'activity' => $first->activity,
                     'academic_yr' => $first->academic_yr,
                     'created_by' => $first->created_by,
                     'created_by_name' => $first->createdbyname,
@@ -4973,6 +4977,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'e.publish',
                 'e.competition',
                 'e.notify',
+                'e.activity',
                 'e.academic_yr',
                 'e.created_by',
                 'e.class_id',
@@ -4995,6 +5000,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'publish' => $first->publish,
                 'competition' => $first->competition,
                 'notify' => $first->notify,
+                'activity' => $first->activity,
                 'academic_yr' => $first->academic_yr,
                 'created_by' => $first->created_by,
                 'created_by_name' => $first->createdbyname,
@@ -5099,6 +5105,7 @@ ORDER BY Z.t_remark_id DESC;");
             'end_time' => $request->input('end_time', $event->end_time),
             'competition' => $request->input('competition'),
             'notify' => $request->input('notify'),
+            'activity' => $request->input('activity'),
             'publish' => 'N',
             'isDelete' => 'N',
         ];
@@ -5126,7 +5133,7 @@ ORDER BY Z.t_remark_id DESC;");
                 'Content-Disposition' => 'attachment; filename="event.csv"',
             ];
             ob_get_clean();
-            $columns = ['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Competition(Yes/No)', 'Notify(Yes/No)'];
+            $columns = ['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Activity(Yes/No)', 'Competition(Yes/No - Allowed only if Activity = Yes)', 'Notify(Yes/No)'];
 
             $callback = function () use ($columns) {
                 $file = fopen('php://output', 'w');
@@ -5178,8 +5185,9 @@ ORDER BY Z.t_remark_id DESC;");
             'Start Time(HH:MM:SS)' => 'start_time',
             'End Time(HH:MM:SS)' => 'end_time',
             "*Login Type({$roleNamesStr})" => 'login_type',
-            'Competition(Yes/No)' => 'competition',
+            'Competition(Yes/No - Allowed only if Activity = Yes)' => 'competition',
             'Notify(Yes/No)' => 'notify',
+            'Activity(Yes/No)' => 'activity',
         ];
         // dd($columnMap);
         $invalidRows = [];
@@ -5259,6 +5267,15 @@ ORDER BY Z.t_remark_id DESC;");
 
             $EventData['competition'] = strtolower($EventData['competition'] ?? 'no') === 'yes' ? 'Y' : 'N';
             $EventData['notify'] = strtolower($EventData['notify'] ?? 'no') === 'yes' ? 'Y' : 'N';
+            $EventData['activity'] = strtolower($EventData['activity'] ?? 'no') === 'yes' ? 'Y' : 'N';
+
+            // Add this condition by Mahima - 21-05-2026
+            if (
+                $EventData['competition'] === 'Y' &&
+                $EventData['activity'] !== 'Y'
+            ) {
+                $errors[] = 'Competition can be Yes only when Activity is Yes.';
+            }
 
             // dd($errors);
             if (!empty($errors)) {
@@ -5316,6 +5333,7 @@ ORDER BY Z.t_remark_id DESC;");
                         'end_time' => !empty($EventData['end_time']) ? $EventData['end_time'] : '00:00:00',
                         'competition' => $EventData['competition'],
                         'notify' => $EventData['notify'],
+                        'activity' => $EventData['activity'],
                         'isDelete' => 'N',
                         'publish' => 'N',
                         'created_by' => $user->reg_id,
@@ -5336,7 +5354,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         if (!empty($invalidRows)) {
             $csv = Writer::createFromString('');
-            $csv->insertOne(['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Competition(Yes/No)', 'Notify(Yes/No)', 'error']);
+            $csv->insertOne(['*Event Title', '*Event Description', '*Start date(in dd-mm-yyyy format)', 'End date(in dd-mm-yyyy format)', 'Start Time(HH:MM:SS)', 'End Time(HH:MM:SS)', "*Login Type({$roleNamesStr})", 'Competition(Yes/No)', 'Notify(Yes/No)', 'Activity(Yes/No)', 'error']);
             foreach ($invalidRows as $invalidRow) {
                 $csv->insertOne($invalidRow);
             }

@@ -74,7 +74,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
     $env = config('app.env');
 
     for ($i = 0; $i < count($str_classes); $i++) {
-
         $data['class_id'] = substr($str_classes[$i], 0, strpos($str_classes[$i], '^'));
         $data['section_id'] = substr($str_classes[$i], strpos($str_classes[$i], '^') + 1);
 
@@ -84,7 +83,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
         ]);
 
         if ($filenamelist != '') {
-
             Log::channel('upload_logs')->info('Processing filenames');
 
             $filenamelist1 = str_replace(['"', '[', ']'], '', $filenamelist);
@@ -119,6 +117,11 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
                     $filePath = ($env == 'dev') ? '/test/hscs_test/uploads/daily_notes/' : '/uploads/daily_notes/';
                     $filePath = $basePath . $filePath;
                     break;
+                case 'STCS':
+                    $basePath = rtrim(config('externalapis.STCS_PATH'), '/');
+                    $filePath = ($env == 'dev') ? '/test/uploads/daily_notes/' : '/uploads/daily_notes/';
+                    $filePath = $basePath . $filePath;
+                    break;
                 default:
                     $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
                     $filePath = '/uploads/daily_notes/';
@@ -140,7 +143,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
             }
 
             for ($j = 0; $j < count($filename_str); $j++) {
-
                 $imgNameEnd = $filename_str[$j];
                 $uploaded_file = $destination . '/' . $imgNameEnd;
 
@@ -150,7 +152,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
                 ]);
 
                 if (file_exists($uploaded_file)) {
-
                     $file_size = filesize($uploaded_file);
 
                     Log::channel('upload_logs')->info('File found', [
@@ -178,7 +179,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
             $last_value = 1 + $i;
 
             if ($last_value == count($str_classes)) {
-
                 Log::channel('upload_logs')->info('Cleanup started');
 
                 for ($j = 0; $j < count($filename_str); $j++) {
@@ -196,7 +196,6 @@ function daily_notes_create($data, $str_classes, $filelist = '', $filenamelist =
                     Log::channel('upload_logs')->info('Deleted temp folder', ['folder' => $destination]);
                 }
             }
-
         } else {
             Log::channel('upload_logs')->info('No filenames provided');
 
@@ -624,14 +623,38 @@ function homework_create($data, $filelist, $filenamelist = '', $random_no = null
             'Missing required parameters: data or random_no'
         );
     }
+    $env = config('app.env');
+    $short_name = JWTAuth::getPayload()->get('short_name');
     $globalVariables = App::make('global_variables');
     $parent_app_url = $globalVariables['parent_app_url'];
     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-    if (str_contains($codeigniter_app_url, 'SACSv4test')) {
-        $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
-    } else {
-        $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+    switch ($short_name) {
+        case 'SACS':
+            $basePath = rtrim(config('externalapis.SACS_PATH'), '/');
+            $filePath = ($env == 'dev') ? '/SACSv4test/' : '';
+            $filePath = $basePath . $filePath;
+            break;
+        case 'HSCS':
+            $basePath = rtrim(config('externalapis.HSCS_PATH'), '/');
+            $filePath = ($env == 'dev') ? '/test/hscs_test/' : '';
+            $filePath = $basePath . $filePath;
+            break;
+        case 'STCS':
+            $basePath = rtrim(config('externalapis.STCS_PATH'), '/');
+            $filePath = ($env == 'dev') ? '/test/' : '';
+            $filePath = $basePath . $filePath;
+            break;
+        default:
+            $basePath = '/home/u333015459/domains/arnolds.evolvu.in/public_html';
+            $filePath = '';
+            $filePath = $basePath . $filePath;
+            break;
     }
+    // if (str_contains($codeigniter_app_url, 'SACSv4test')) {
+    //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/SACSv4test/';
+    // } else {
+    //     $filePath = '/home/u333015459/domains/sms.arnoldcentralschool.org/public_html/';
+    // }
     if ($filenamelist != '') {
         // $filenamelist1 = str_replace([' ', '"', '[', ']'], "", $filenamelist);
         // $filename_str = explode(",", $filenamelist1);
@@ -1217,6 +1240,52 @@ function get_student_id_of_a_student_in_particular_yr($present_student_id, $sear
         $prev_yr_student_data = $s_row;
     return $prev_yr_student_data ?? null;
 }
+
+// function get_student_id_of_a_student_in_particular_yr($present_student_id, $search_for_acd_yr)
+// {
+//     $prev_yr_student_data = null;
+
+//     $query = DB::table('student')
+//         ->where('student_id', $present_student_id)
+//         ->select(
+//             'parent_id',
+//             'first_name',
+//             'reg_no',
+//             'class_id',
+//             'section_id'
+//         )
+//         ->first();
+
+//     if (!$query) {
+//         return null;
+//     }
+
+//     $parent_id = $query->parent_id;
+//     $first_name = $query->first_name;
+//     $reg_no = $query->reg_no;
+
+//     $prev_yr_student_data = DB::table('student')
+//         ->leftJoin('class', 'student.class_id', '=', 'class.class_id')
+//         ->leftJoin('section', 'student.section_id', '=', 'section.section_id')
+//         ->where('student.academic_yr', $search_for_acd_yr)
+//         ->where('student.parent_id', $parent_id)
+//         ->where(function ($q) use ($first_name, $reg_no) {
+//             $q->where('student.first_name', $first_name)
+//                 ->orWhere('student.reg_no', $reg_no);
+//         })
+//         ->select(
+//             'student.student_id',
+//             'student.parent_id',
+//             'student.academic_yr',
+//             'student.class_id',
+//             'student.section_id',
+//             'class.name as classname',
+//             'section.name as sectionname'
+//         )
+//         ->first();
+
+//     return $prev_yr_student_data;
+// }
 
 function get_total_workingdays_from_dailyattendance_classwise($class_id, $section_id, $date_from, $date_to, $acd_yr)
 {

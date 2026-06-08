@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{{-- <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -153,6 +153,279 @@
 
     <div class="signature">
         Clerk <span>Principal</span>
+    </div>
+
+</div>
+
+</body>
+</html> --}}
+
+@php
+    $school = getSchoolDetails();
+    $bgImage = getBonafideBgImage();
+
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+@endphp
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bonafide Certificate</title>
+
+<style>
+    @page {
+        size: A4;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('{{ asset($bgImage['file_path']) }}');
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+    }
+
+    .certificate-container {
+        width: 90%;
+        margin: 0 auto;
+        padding: 40px 30px;
+        min-height: 1000px;
+        box-sizing: border-box;
+    }
+
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .header-table td {
+        vertical-align: middle;
+    }
+
+    .header-left {
+        width: 20%;
+        text-align: center;
+    }
+
+    .header-left img {
+        max-width: 120px;
+        max-height: 120px;
+    }
+
+    .school-name {
+        font-size: 30px;
+        color: #c00000;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .school-details {
+        font-size: 14px;
+        text-align: center;
+        line-height: 22px;
+    }
+
+    .info-table {
+        width: 100%;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    .info-table td {
+        padding: 5px;
+    }
+
+    .title {
+        text-align: center;
+        font-size: 22px;
+        font-weight: bold;
+        margin-top: 40px;
+        margin-bottom: 25px;
+        text-decoration: underline;
+
+    }
+
+    .content-text {
+        font-size: 15px;
+        line-height: 28px;
+        text-align: justify;
+    }
+
+    .details-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    .details-table td {
+        padding: 7px 5px;
+        font-size: 15px;
+        vertical-align: top;
+    }
+
+    .details-table tr td:first-child {
+        width: 35%;
+        font-weight: bold;
+    }
+
+    .signature-section {
+        margin-top: 60px;
+        width: 100%;
+    }
+
+    .signature-table {
+        width: 100%;
+    }
+
+    .signature-table td {
+        font-size: 15px;
+    }
+
+    .right-sign {
+        text-align: right;
+        padding-right: 50px;
+    }
+
+    hr.dotted {
+        border: 1px dotted #000;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="certificate-container">
+
+   
+
+    <!-- TITLE -->
+    <div class="title">
+        BONAFIDE CERTIFICATE
+    </div>
+
+    <!-- BASIC INFO -->
+    <p class="content-text">
+        G. R. No.: <b>{{ $data->reg_no }}</b>
+    </p>
+
+    <p class="content-text">
+        Date:
+        <b>
+            {{ \Carbon\Carbon::parse($data->issue_date_bonafide)->format('d-m-Y') }}
+        </b>
+    </p>
+
+    <!-- DESCRIPTION -->
+    <p class="content-text">
+        This is to certify that the student whose details are given below is a
+        Bonafide student of this school studying in Std
+        <b>{{ $data->class_division }}</b>.
+
+        His / Her progress in the studies is good and to the best of our
+        knowledge he / she bears a good moral character.
+
+        The details given below are as per our general register.
+    </p>
+
+    <p class="content-text">
+        <b>Details:</b>
+    </p>
+
+    <!-- DETAILS TABLE -->
+    <table class="details-table">
+
+        <tr>
+            <td>Student's Name</td>
+            <td>: {{ $data->stud_name }}</td>
+        </tr>
+
+        <tr>
+            <td>Father’s Name</td>
+            <td>: {{ $data->father_name }}</td>
+        </tr>
+
+        <tr>
+            <td>Mother’s Name</td>
+            <td>: {{ $data->mother_name }}</td>
+        </tr>
+
+        <tr>
+            <td>Date of Birth (Figures)</td>
+            <td>:
+                {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') }}
+            </td>
+        </tr>
+
+        <tr>
+            <td>Date of Birth (Words)</td>
+            <td>: {{ $data->dob_words }}</td>
+        </tr>
+
+        <tr>
+            <td>Place of Birth</td>
+            <td>: {{ $data->birth_place }}</td>
+        </tr>
+
+        <tr>
+            <td>State</td>
+            <td>: {{ $data->state }}</td>
+        </tr>
+
+        <tr>
+            <td>Religion</td>
+            <td>: {{ $data->religion }}</td>
+        </tr>
+
+        <tr>
+            <td>Caste</td>
+            <td>: {{ $data->caste }}</td>
+        </tr>
+
+        <tr>
+            <td>Sub-Caste</td>
+            <td>: {{ $data->subcaste }}</td>
+        </tr>
+
+        <tr>
+            <td>Nationality</td>
+            <td>: {{ $data->nationality }}</td>
+        </tr>
+
+        <tr>
+            <td>Address</td>
+            <td>: {{ $data->permant_add }}</td>
+        </tr>
+
+    </table>
+
+    <!-- FOOTER -->
+    <div class="signature-section">
+
+        <p class="content-text">
+            Place: Pune
+        </p>
+
+        <table class="signature-table">
+            <tr>
+                <td>
+                    Clerk
+                </td>
+
+                <td class="right-sign">
+                    Principal
+                </td>
+            </tr>
+        </table>
+
     </div>
 
 </div>

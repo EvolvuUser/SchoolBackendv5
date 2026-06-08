@@ -40,7 +40,7 @@ class StudentController extends Controller
         $classes = DB::table('subject')
             ->select('class_id', 'section_id')
             ->where('teacher_id', $teacher_id)
-            ->where('academic_yr', '2025-2026')
+            ->where('academic_yr', $customClaims)
             ->distinct()
             ->get();
 

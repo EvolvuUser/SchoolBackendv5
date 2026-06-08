@@ -1,7 +1,6 @@
 @php
 $school = getSchoolDetails();
 $bgImage = getHealthBgImage();
-// dd($school);
 
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
@@ -111,77 +110,141 @@ foreach ($grouped as $groupName => $subGroups) {
     }
 }
 
-/* ── STEP 3: Chunk and calculate rowspans per page ── */
-$rowsPerPage = 22;
-$chunks      = array_chunk($flatRows, $rowsPerPage);
-$pages       = [];
+/* ── STEP 3: Chunk by estimated height for Puppeteer A4 landscape ── */
+// $pageUsableHeight = 670; // A4 landscape at 96dpi (~794px) minus padding/title/thead
+// $headerHeight     = 90;  // title h2 (~40px) + thead row (~50px)
 
-// foreach ($chunks as $pageRows) {
-//     $groupCounts = [];
-//     $subCounts   = [];
+// $pages        = [];
+// $currentPage  = [];
+// $currentHeight = $headerHeight; // start with header already counted
 
-//     foreach ($pageRows as $row) {
-//         $gKey  = $row['group'];
-//         $sgKey = $row['group'] . '||' . $row['sub_group'];
-//         $groupCounts[$gKey]  = ($groupCounts[$gKey]  ?? 0) + 1;
-//         $subCounts[$sgKey]   = ($subCounts[$sgKey]   ?? 0) + 1;
+// foreach ($flatRows as $row) {
+
+//     // Estimate row height based on description length
+//     $descLength  = strlen($row['desc'] ?? '');
+//     $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line
+//     $baseHeight  = 22;  // minimum row height in px
+//     $lineHeight  = 14;  // extra px per extra line
+//     $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+
+//     // Also account for sub_sub wrapping
+//     $subSubLength = strlen($row['sub_sub'] ?? '');
+//     $subSubLines  = max(1, ceil($subSubLength / 20));
+//     $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+
+//     // If adding this row exceeds page height, start a new page
+//     if ($currentHeight + $rowHeight > $pageUsableHeight && count($currentPage) > 0) {
+//         $pages[]       = $currentPage;
+//         $currentPage   = [];
+//         $currentHeight = $headerHeight; // reset with header height for new page
 //     }
 
-//     $seenGroups = [];
-//     $seenSubs   = [];
-//     $processed  = [];
-
-//     foreach ($pageRows as $row) {
-//         $gKey  = $row['group'];
-//         $sgKey = $row['group'] . '||' . $row['sub_group'];
-
-//         $row['show_group']    = !isset($seenGroups[$gKey]);
-//         $row['group_rowspan'] = $row['show_group'] ? $groupCounts[$gKey] : 0;
-
-//         $row['show_sub']      = !isset($seenSubs[$sgKey]);
-//         $row['sub_rowspan']   = $row['show_sub'] ? $subCounts[$sgKey] : 0;
-
-//         $seenGroups[$gKey] = true;
-//         $seenSubs[$sgKey]  = true;
-
-//         $processed[] = $row;
-//     }
-
-//     $pages[] = $processed;
+//     $currentPage[] = $row;
+//     $currentHeight += $rowHeight;
 // }
 
-/* ── STEP 3: Chunk by estimated height, not row count ── */
-$pageHeightLimit = 480; // tune this (usable px inside page-content)
-$pages           = [];
-$currentPage     = [];
-$currentHeight   = 0;
+// // Add last page
+// if (!empty($currentPage)) {
+//     $pages[] = $currentPage;
+// }
+
+// 20-05-2026
+
+/* ── STEP 3: Smart page splitting ── */
+$pageUsableHeight = 670;
+$headerHeight     = 90;
+
+$pages = [];
+$currentPage = [];
+$currentHeight = $headerHeight;
+
+$currentGroup = null;
+$currentSub   = null;
 
 foreach ($flatRows as $row) {
 
-    // Estimate row height based on description length
-    $descLength  = strlen($row['desc'] ?? '');
-    $descLines   = max(1, ceil($descLength / 30)); // ~30 chars per line in your font/column width
-    $baseHeight  = 22;  // minimum row height in px
-    $lineHeight  = 14;  // extra px per extra line
-    $rowHeight   = $baseHeight + (($descLines - 1) * $lineHeight);
+    /* ── Truncate sub_group (Sub column) ── */
+    $row['sub_group_full']    = $row['sub_group'] ?? '';
+    $row['sub_group_display'] = mb_strlen($row['sub_group'] ?? '') > 35
+        ? mb_substr($row['sub_group'] ?? '', 0, 32) . '…'
+        : ($row['sub_group'] ?? '');
 
-    // Also account for sub_sub wrapping (if long)
-    $subSubLength = strlen($row['sub_sub'] ?? '');
-    $subSubLines  = max(1, ceil($subSubLength / 20));
-    $rowHeight    = max($rowHeight, $baseHeight + (($subSubLines - 1) * $lineHeight));
+    /* ── Clean and Truncate description ── */
+    $cleanDesc = trim(preg_replace('/\s+/', ' ', strip_tags($row['desc'] ?? '')));
+    $row['desc_full']    = $cleanDesc;
+    $row['desc_display'] = mb_strlen($cleanDesc) > 100
+        ? mb_substr($cleanDesc, 0, 97) . '…'
+        : $cleanDesc;
 
-    // If adding this row exceeds page, start new page
-    if ($currentHeight + $rowHeight > $pageHeightLimit && count($currentPage) > 0) {
-        $pages[]       = $currentPage;
-        $currentPage   = [];
-        $currentHeight = 0;
-    }
+    /* ── Truncate sub_sub ── */
+    $cleanSubSub = trim($row['sub_sub'] ?? '');
+    $row['sub_sub_full']    = $cleanSubSub;
+    $row['sub_sub_display'] = mb_strlen($cleanSubSub) > 35
+        ? mb_substr($cleanSubSub, 0, 32) . '…'
+        : $cleanSubSub;
 
-    $currentPage[] = $row;
-    $currentHeight += $rowHeight;
+    /* ── Truncate test ── */
+    $cleanTest = trim($row['test'] ?? '');
+    $row['test_full']    = $cleanTest;
+    $row['test_display'] = mb_strlen($cleanTest) > 35
+        ? mb_substr($cleanTest, 0, 32) . '…'
+        : $cleanTest;
+
+    /* ── Fixed height buckets based on desc length ── */
+    // $descLen = mb_strlen($row['desc_display']);
+    // if ($descLen <= 40) {
+    //     $rowHeight = 30;
+    // } elseif ($descLen <= 80) {
+    //     $rowHeight = 44;
+    // } else {
+    //     $rowHeight = 58;
+    // }
+
+    $descLen = mb_strlen(trim($row['desc_display'] ?? ''));
+
+/* ── Row height based on description ── */
+
+if ($descLen == 0) {
+    $rowHeight = 22;
+
+} elseif ($descLen <= 40) {
+
+    $rowHeight = 30;
+
+} elseif ($descLen <= 80) {
+
+    $rowHeight = 44;
+
+} else {
+
+    $rowHeight = 58;
 }
 
-// Add last page
+    /* ── Extra height for new group/subgroup ── */
+    $extraHeight = 0;
+    if ($currentGroup !== $row['group']) {
+        $extraHeight += 12;
+    } elseif ($currentSub !== $row['sub_group']) {
+        $extraHeight += 8;
+    }
+
+    $requiredHeight = $rowHeight + $extraHeight;
+
+    /* ── Page break ── */
+    if (($currentHeight + $requiredHeight > $pageUsableHeight) && !empty($currentPage)) {
+        $pages[]       = $currentPage;
+        $currentPage   = [];
+        $currentHeight = $headerHeight;
+        $currentGroup  = null;
+        $currentSub    = null;
+    }
+
+    $currentPage[]  = $row;
+    $currentHeight += $requiredHeight;
+    $currentGroup   = $row['group'];
+    $currentSub     = $row['sub_group'];
+}
+
 if (!empty($currentPage)) {
     $pages[] = $currentPage;
 }
@@ -243,30 +306,16 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
+    overflow: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
-/* Prevent overflow issues */
 * {
     box-sizing: border-box;
 }
-  /* .statistics_line {
-    display: block;              
-    width: 100%;
-    border-bottom: 1px solid #000;
-    padding: 2px 0;
-    min-height: 16px;  
- } */
-/* ================= COMMON BACKGROUND ================= */
-/* .bg-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-} */
 
+/* ================= BACKGROUND IMAGE ================= */
 .bg-img {
     position: absolute;
     top: 0;
@@ -283,21 +332,42 @@ html, body {
     height: 210mm;
     overflow: hidden;
     page-break-after: always;
+    break-after: page;
 }
 
-/* Wrapper to avoid absolute stacking issues */
 .page-inner {
     position: relative;
     z-index: 2;
     padding: 30px 40px;
 }
 
-
+.school-header {
+    position: relative;
+    width: 100%;
+    height: 80px;
+}
 
 .school-header table {
     width: 100%;
-} 
+}
 
+.logo-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.school-logo {
+    height: 70px;
+    margin-left: 15px;
+}
+
+.school-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 0;
+}
 
 .school-name {
     font-size: 26px;
@@ -312,32 +382,6 @@ html, body {
 
 .school-phone {
     font-size: 13px;
-} 
-
-.school-header {
-    position: relative;
-    width: 100%;
-    height: 80px;
-}
-
-/* LOGO */
-.logo-box {
-    position: absolute;
-    left: 0;
-    top: 0;
-}
-
-.school-logo {
-    height: 70px;
-    margin-left: 15px;
-}
-
-/* CENTER TEXT (TRUE CENTER) */
-.school-text {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    top: 0;
 }
 
 /* ===== TITLE ===== */
@@ -366,7 +410,6 @@ html, body {
     width: 85%;
     margin: auto;
     border-collapse: collapse;
-    /* font-size: 14px; */
 }
 
 .first-content td {
@@ -376,7 +419,6 @@ html, body {
 
 .first-content td:first-child {
     white-space: nowrap;
-    /* font-weight: bold; */
     width: 18%;
 }
 
@@ -387,150 +429,140 @@ html, body {
     padding: 2px 4px;
     min-height: 18px;
 }
-   
-/* Underline effect */
-/* .statistics_line {
-    border-bottom: 1px solid #000;
-    min-height: 16px;
-    display: block;
-} */
 
-/* ================= TABLE PAGES ================= */
-/* .health-page {
+/* ================= HEALTH TABLE PAGES ================= */
+.health-page {
     position: relative;
     width: 297mm;
     min-height: 210mm;
     page-break-after: always;
     break-after: page;
-} */
-
-.health-page {
-    position: relative;
-    width: 297mm;
-    height: 210mm; /* FIXED height (important) */
-    page-break-after: always;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .health-page:last-child {
     page-break-after: auto;
+    break-after: auto;
 }
 
-/* Content above background */
 .page-content {
     position: relative;
     z-index: 2;
     width: 92%;
     margin: auto;
     padding-top: 30px;
-    padding-right: 1px;
-    padding-left: 1px;
-    
 }
 
 /* ================= TABLE ================= */
-
-/* .record-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10px;
-    table-layout: fixed;
-} */
-
 .record-table {
     width: 100%;
     border-collapse: collapse;
+    border-spacing: 0;
     font-size: 10px;
     table-layout: fixed;
-     /* page-break-after: auto; */
-    break-after: auto;
+    border: 1px solid #cfe3f5;
+    background: #f0f7ff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    page-break-inside: auto;
+    break-inside: auto;
 }
 
-/* HEADER */
+.wrap-header {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+/* Sub column */
+.record-table td.subgroup-cell {
+    max-width: 80px;
+    min-width: 50px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+    background-color: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    text-align: left;
+    color: #000000;
+}
+
+/* Sub Sub column */
+.record-table td:nth-child(3),
+.record-table td:nth-child(4) {
+    max-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Description column */
+.record-table td.desc-cell {
+    max-width: 160px;
+    min-width: 80px;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    font-size: 7pt;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+/* Force fixed column widths so browser respects them */
+.record-table {
+    table-layout: fixed;
+}
+
+.record-table th:nth-child(1) { width: 60px; }   /* Fitness */
+.record-table th:nth-child(2) { width: 70px; }   /* Sub */
+.record-table th:nth-child(3) { width: 70px; }   /* Sub Sub */
+.record-table th:nth-child(4) { width: 70px; }   /* Test */
+.record-table th:nth-child(5) { width: 150px; }  /* Description */
+
+
+/* Repeat thead on every new page */
 .record-table thead {
     display: table-header-group;
 }
 
-/* CELLS */
-/* .record-table th {
-    border: 1px solid #000;
-    padding: 6px;
-    background-color: #f2f2f2;
-    font-weight: bold;
-    text-align: center;
-    vertical-align: middle;
+/* Avoid cutting a single row in half */
+.record-table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
-.record-table td {
-    border: 1px solid #000;
-    padding: 4px;
-    text-align: center;
-    vertical-align: middle;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-} */
-
-
-/* GROUP ROW */
-/* .group-cell {
-    font-weight: bold;
-    background-color: #efefef;
-    text-align: left;
-    padding-left: 6px;
-} */
-
-/* SUB GROUP ROW */
-/* .subgroup-cell {
-    background-color: #fafafa;
-    text-align: left;
-}
-
-.bgcolor {
-    background-color: #fafafa;
-
-} */
-
-/* REMOVE ANY GLOBAL TABLE OVERRIDE ISSUES */
-/* table {
-    width: 100%;
-    border-collapse: collapse;
-} */
-
-/* REMOVE PAGE CUTTING ISSUE */
-/* body {
-    overflow: visible;
-    
-} */
-
-
-/* TABLE BASE */
-.record-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: #f0f7ff; /* light blue base */
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* 3D effect */
-}
-
-/* HEADER */
+/* HEADER CELLS */
 .record-table th {
     padding: 10px 14px;
     font-size: 14px;
     font-weight: 600;
-    /* text-transform: uppercase; */
     letter-spacing: 0.05em;
     color: #000000;
-
-    background: linear-gradient(145deg, #dbeafe, #bfdbfe); /* light blue gradient */
+    background: #dbeafe;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     border: 1px solid #cfe3f5;
     border-bottom: 2px solid #93c5fd;
-
     text-align: center;
     white-space: nowrap;
-
-    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); /* depth */
 }
 
 .record-table th.class-col {
@@ -538,79 +570,68 @@ html, body {
     line-height: 1.2;
 }
 
-/* CELLS */
+/* DATA CELLS */
 .record-table td {
-    border: 1px solid #d6e6f5; /* light border */
+    border: 1px solid #d6e6f5;
     padding: 6px;
     text-align: center;
     vertical-align: middle;
     word-wrap: break-word;
     overflow-wrap: break-word;
-
     background: #ffffff;
-    transition: all 0.2s ease;
-}
-
-/* ROW HOVER EFFECT */
-.record-table tr:hover td {
-    background: #eaf4ff;
-    transform: scale(1.002); /* slight lift */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
 /* GROUP CELL */
 .group-cell {
     font-weight: bold;
-    background: linear-gradient(145deg, #e0f2fe, #bae6fd);
+    /* background: #e0f2fe; */
+    background-color: #f0f9ff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     text-align: left;
     padding-left: 8px;
     color: #080808;
-
-    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
 }
 
 /* SUB GROUP */
 .subgroup-cell {
-    background-color: #f0f9ff;
+    background-color: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
     text-align: left;
     color: #000000;
 }
 
-/* NORMAL ALT BG */
+/* ALT ROW BG */
 .bgcolor {
     background-color: #f8fbff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
-/* TABLE BORDER RADIUS FIX */
-.record-table tr:first-child th:first-child {
-    border-top-left-radius: 8px;
-}
-.record-table tr:first-child th:last-child {
-    border-top-right-radius: 8px;
-}
-
-/* SOFT OUTER BORDER */
-.record-table {
-    border: 1px solid #cfe3f5;
-}
-
-/* BODY FIX */
-body {
-    overflow: visible;
-}
-
-
-/* OPTIONAL: BETTER PRINT CONTROL */
+/* ================= PRINT MEDIA ================= */
 @media print {
+    html, body {
+        overflow: visible;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
     .record-table {
         font-size: 9px;
+        page-break-inside: auto;
+        break-inside: auto;
     }
 
-    .record-table tr {
-        page-break-inside: avoid;
-    }
-
-    thead {
+    .record-table thead {
         display: table-header-group;
+    }
+
+    .record-table tbody tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
     }
 }
 </style>
@@ -620,218 +641,150 @@ body {
 
 {{-- ================= FIRST PAGE ================= --}}
 <div class="first">
-    {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
-    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
+    <img src="{{ $bgImage['file_path'] }}" class="bg-img">
 
     <div class="page-inner">
 
-        {{-- HEADER --}}
-        {{-- <div class="school-header">
-            <table width="100%">
-                <tr>
-                    <td width="15%">
-                        <img src="{{ $school['logo'] ?? '' }}" class="school-logo">
-                    </td>
-                    <td align="center">
-                        <div class="school-name">{{ $school['school_name'] ?? '' }}</div>
-                        <div class="school-address">{{ $school['address'] ?? '' }}</div>
-                        <div class="school-phone">Phone: {{ $school['phone'] ?? '' }}</div>
-                    </td>
-                </tr>
-            </table>
-        </div> --}}
-    {{-- <div class="bgcolor"> --}}
-         <div class="school-header">
-
-        <div class="logo-box">
-           <img src="{{ $school['logo'] ?? '' }}" class="school-logo">
+        <div class="school-header">
+            <div class="logo-box">
+                <img src="{{ $school['logo'] ?? '' }}" class="school-logo">
+            </div>
+            <div class="school-text">
+                <div class="school-name">{{ $school['school_name'] ?? '' }}</div>
+                <div class="school-address">{{ $school['address'] ?? '' }}</div>
+                <div class="school-phone">Phone: {{ $school['phone'] ?? '' }}</div>
+            </div>
         </div>
 
-        <div class="school-text">
-           <div class="school-name">{{ $school['school_name'] ?? '' }}</div>
-           <div class="school-address">{{ $school['address'] ?? '' }}</div>
-        <div class="school-phone">Phone: {{ $school['phone'] ?? '' }}</div>
-    </div>
-
-   </div> 
         <div class="certificate-title">
             <div class="main-title">HEALTH AND ACTIVITY CARD</div>
             <div class="sub-title">GENERAL INFORMATION</div>
-        </div>    
+        </div>
+
         <div class="first-content">
-         <table>
+            <table>
 
-       
-          <tr>
-            <td>NAME :</td>
-            <td colspan="3">
-                <span class="statistics_line">
-                    {{ ($parent->first_name ?? '') . ' ' . ($parent->mid_name ?? '') . ' ' . ($parent->last_name ?? '') }}
-                </span>
-            </td>
-          </tr>
-
-       
-          <tr>
-            <td>ADMISSION DATE :</td>
-            <td>
-                <span class="statistics_line">
-                    {{ !empty($parent->admission_date) ? date('d-m-Y', strtotime($parent->admission_date)) : '' }}
-                </span>
-            </td>
-
-            <td>DATE OF BIRTH :</td>
-            <td>
-                <span class="statistics_line">
-                    {{ !empty($parent->dob) ? date('d-m-Y', strtotime($parent->dob)) : '' }}
-                </span>
-            </td>
-          </tr>
-
-          <tr>
-            <td>M F T :</td>
-            <td>
-                <span class="statistics_line">{{ $parent->gender ?? '' }}</span>
-            </td>
-
-            <td>BLOOD GROUP :</td>
-            <td>
-                <span class="statistics_line">{{ $parent->blood_group ?? '' }}</span>
-            </td>
-          </tr>
-
-        
-          <tr>
-            <td>MOTHER'S NAME :</td>
-            <td colspan="3">
-                <span class="statistics_line">{{ $parent->mother_name ?? '' }}</span>
-            </td>
-          </tr>
-
-          <tr>
-            <td>FATHER'S NAME :</td>
-            <td colspan="3">
-                <span class="statistics_line">{{ $parent->father_name ?? '' }}</span>
-            </td>
-           </tr>
-
-        @php $chunks = array_chunk($basicInfo, 2); @endphp
-        @foreach($chunks as $rowItem)
-        <tr>
-            @foreach($rowItem as $item)
-                <td>{{ strtoupper($item['label']) }} :</td>
-                <td>
-                    <span class="statistics_line">{{ $item['value'] }}</span>
-                </td>
-            @endforeach
-
-            @if(count($rowItem) < 2)
-                <td></td><td></td>
-            @endif
-        </tr>
-        @endforeach
-
-        <!-- FULL WIDTH ADDRESS -->
-        <tr>
-            <td>ADDRESS :</td>
-            <td colspan="3">
-                <span class="statistics_line">{{ $parent->permant_add ?? '' }}</span>
-            </td>
-        </tr>
-
-        <tr>
-            <td>PHONE NO :</td>
-            <td colspan="3">
-                <span class="statistics_line">
-                    {{ $parent->f_mobile ?? $parent->m_mobile ?? '' }}
-                </span>
-            </td>
-        </tr>
-
-           </table>
-      </div>
-    </div>
-        
-    {{-- </div> --}}
-
-  
-</div>
-
-{{-- ================= TABLE ================= --}}
-{{-- @foreach($pages as $pageIndex => $pageRows)
-<div class="health-page">
-    <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img">
-    <div class="page-content">
-          <h2 style="text-align: center; font-size: 20px; font-weight: bold; font-family: Georgia, 'Times New Roman', Times, serif; margin-bottom: 10px; letter-spacing: 1px; color: #1f2c7c;">
-             HEALTH AND ACTIVITY RECORD
-          </h2>
-        <table class="record-table">
-            <thead>
                 <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
-                    <th>Description</th>
-                    @foreach($student_id_array_new as $cls => $id)
-                        <th>Class {{ $cls }}</th>
-                    @endforeach
+                    <td>NAME :</td>
+                    <td colspan="3">
+                        <span class="statistics_line">
+                            {{ ($parent->first_name ?? '') . ' ' . ($parent->mid_name ?? '') . ' ' . ($parent->last_name ?? '') }}
+                        </span>
+                    </td>
                 </tr>
-            </thead>
 
-            <tbody>
-                @foreach($pageRows as $row)
                 <tr>
-                    @if($row['show_group'])
-                        <td class="group-cell" rowspan="{{ $row['group_rowspan'] }}">
-                            {{ $row['group'] }}
+                    <td>ADMISSION DATE :</td>
+                    <td>
+                        <span class="statistics_line">
+                            {{ !empty($parent->admission_date) ? date('d-m-Y', strtotime($parent->admission_date)) : '' }}
+                        </span>
+                    </td>
+                    <td>DATE OF BIRTH :</td>
+                    <td>
+                        <span class="statistics_line">
+                            {{ !empty($parent->dob) ? date('d-m-Y', strtotime($parent->dob)) : '' }}
+                        </span>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>M F T :</td>
+                    <td>
+                        <span class="statistics_line">{{ $parent->gender ?? '' }}</span>
+                    </td>
+                    <td>BLOOD GROUP :</td>
+                    <td>
+                        <span class="statistics_line">{{ $parent->blood_group ?? '' }}</span>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>MOTHER'S NAME :</td>
+                    <td colspan="3">
+                        <span class="statistics_line">{{ $parent->mother_name ?? '' }}</span>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>FATHER'S NAME :</td>
+                    <td colspan="3">
+                        <span class="statistics_line">{{ $parent->father_name ?? '' }}</span>
+                    </td>
+                </tr>
+
+                @php $chunks = array_chunk($basicInfo, 2); @endphp
+                @foreach($chunks as $rowItem)
+                <tr>
+                    @foreach($rowItem as $item)
+                        <td>{{ strtoupper($item['label']) }} :</td>
+                        <td>
+                            <span class="statistics_line">{{ $item['value'] }}</span>
                         </td>
-                    @endif
-
-                    @if($row['show_sub'])
-                        <td class="subgroup-cell" rowspan="{{ $row['sub_rowspan'] }}">
-                            {{ $row['sub_group'] }}
-                        </td>
-                    @endif
-
-                    <td>{{ $row['sub_sub'] }}</td>
-                    <td>{{ $row['test'] }}</td>
-                    <td>{{ $row['desc'] }}</td>
-
-                    @foreach($student_id_array_new as $cls => $id)
-                        <td>{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach
+                    @if(count($rowItem) < 2)
+                        <td></td><td></td>
+                    @endif
                 </tr>
                 @endforeach
-            </tbody>
-        </table>
+
+                <tr>
+                    <td>ADDRESS :</td>
+                    <td colspan="3">
+                        <span class="statistics_line">{{ $parent->permant_add ?? '' }}</span>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>PHONE NO :</td>
+                    <td colspan="3">
+                        <span class="statistics_line">
+                            {{ $parent->f_mobile ?? $parent->m_mobile ?? '' }}
+                        </span>
+                    </td>
+                </tr>
+
+            </table>
+        </div>
+
     </div>
 </div>
-@endforeach --}}
 
+{{-- ================= TABLE PAGES ================= --}}
 @foreach($finalPages as $pageIndex => $pageRows)
 <div class="health-page">
-    {{-- <img src="{{ public_path('health3_bg.jpg') }}" class="bg-img"> --}}
-    <img src="{{ public_path($bgImage['file_path']) }}" class="bg-img">
+    <img src="{{ $bgImage['file_path'] }}" class="bg-img">
     <div class="page-content">
 
-        {{-- @if($pageIndex === 0) --}}
         <h2 style="text-align: center; font-size: 20px; font-weight: bold; font-family: Georgia, 'Times New Roman', Times, serif; margin-bottom: 10px; letter-spacing: 1px; color: #1f2c7c;">
             HEALTH AND ACTIVITY RECORD
         </h2>
-        {{-- @endif --}}
 
         <table class="record-table">
             <thead>
-                <tr>
-                    <th>Fitness</th>
-                    <th>Sub</th>
-                    <th>Sub Sub</th>
-                    <th>Test</th>
+                {{-- <tr>
+                    <th>Fitness Parameter</th>
+                    <th>Sub Group</th>
+                    <th>Sub Sub Group</th>
+                    <th>Test Parameter</th>
                     <th>Description</th>
                     @foreach($student_id_array_new as $cls => $id)
                         <th class="class-col">Class {{ $cls }}</th>
                     @endforeach
+                </tr> --}}
+
+                <tr>
+                    <th class="wrap-header">Fitness Parameter</th>
+                    <th class="wrap-header">Sub Group</th>
+                    <th class="wrap-header">Sub Sub Group</th>
+                    <th class="wrap-header">Test Parameter</th>
+                    <th class="wrap-header">Description</th>
+
+                    @foreach($student_id_array_new as $cls => $id)
+                        <th class="class-col wrap-header">
+                          Class {{ $cls }}
+                        </th>
+                    @endforeach
                 </tr>
             </thead>
 
@@ -850,10 +803,23 @@ body {
                         </td>
                     @endif
 
-                    <td class="bgcolor">{{ $row['sub_sub'] }}</td>
-                    <td class="bgcolor">{{ $row['test'] }}</td>
-                    <td class="bgcolor">{{ $row['desc'] }}</td>
+                    // {{-- <td class="bgcolor">{{ $row['sub_sub'] }}</td>
+                    // <td class="bgcolor">{{ $row['test'] }}</td>
+                    // <td class="bgcolor">{{ $row['desc'] }}</td> --}}
 
+                    // {{-- Sub Sub --}}
+  <td class="bgcolor" title="{{ $row['sub_sub_full'] }}">
+      {{ $row['sub_sub_display'] }}
+   </td>
+
+
+   <td class="bgcolor" title="{{ $row['test_full'] }}">
+       {{ $row['test_display'] }}
+   </td>
+
+   <td class="bgcolor desc-cell" title="{{ $row['desc_full'] }}">
+       {{ $row['desc_display'] }}
+  </td>
                     @foreach($student_id_array_new as $cls => $id)
                         <td class="bgcolor">{{ $allClassHealth[$cls][$row['test']] ?? '' }}</td>
                     @endforeach
@@ -861,6 +827,7 @@ body {
                 @endforeach
             </tbody>
         </table>
+
     </div>
 </div>
 @endforeach

@@ -1,3 +1,13 @@
+@php
+$school = getSchoolDetails();
+$bgImage = getCharacterBgImage();
+
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+@endphp
+
+
 <style>
 @page {
     margin-top:0;
@@ -7,7 +17,8 @@
     /*padding: 0;*/
   }
     body{
-    background-image: url('https://sms.evolvu.in/public/character_certificate.jpg');
+    /* background-image: url('https://sms.evolvu.in/public/character_certificate.jpg'); */
+    background-image: url('{{ asset($bgImage['file_path']) }}');
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;

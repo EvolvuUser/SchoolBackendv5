@@ -903,6 +903,7 @@ class TeacherDashboardController extends Controller
             ->where('academic_yr', $customClaims)
             ->whereIn('class_id', $classIds)
             ->whereIn('section_id', $sectionIds)
+            ->where('isDelete', 'N')
             ->count();
 
         // Count total number of students present today in those classes

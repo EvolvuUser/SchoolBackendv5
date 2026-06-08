@@ -2448,12 +2448,19 @@ class AdminController extends Controller
             } else {
                 $student->SetEmailIDAsUsername = $userMaster->user_id;
             }
+
+            $lastAddressChange = DB::table('permanent_address_change_log')
+                ->where('student_id', $student->student_id)
+                ->orderBy('changed_at', 'desc')
+                ->first();
+
+            $student->last_permanent_address_change = $lastAddressChange;
         });
 
         if ($students->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No student found matching the search criteria.',
+                'message' => 'No student found.',
             ], 404);
         }
 
@@ -2471,30 +2478,176 @@ class AdminController extends Controller
         ]);
     }
 
+    // public function getStudentByGRN($reg_no)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //         $student = Student::with(['parents.user', 'getClass', 'getDivision'])
+    //             ->where('reg_no', $reg_no)
+    //             ->where('academic_yr', $customClaims)
+    //             ->first();
+
+    //         if (!$student) {
+    //             return response()->json(['error' => 'Student not found'], 404);
+    //         }
+    //         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+    //         $student->student_image_url = $student->image_name
+    //             ? $concatprojecturl . $student->image_name
+    //             : null;
+    //         return response()->json(['student' => [$student]]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getStudentByGRN($reg_no)
     {
         try {
             $user = $this->authenticateUser();
+
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+
             $globalVariables = App::make('global_variables');
             $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-            $student = Student::with(['parents.user', 'getClass', 'getDivision'])
-                ->where('reg_no', $reg_no)
-                ->where('academic_yr', $customClaims)
-                ->first();
 
-            if (!$student) {
-                return response()->json(['error' => 'Student not found'], 404);
+            // ============================================
+            // GET USER ROLE
+            // ============================================
+            $role_id = $user->role_id ?? null;
+
+            // ============================================
+            // ADMIN / MANAGEMENT USERS
+            // A = Admin
+            // M = Management
+            // U = User
+            // ============================================
+            if (in_array($role_id, ['A', 'M', 'U'])) {
+                $student = Student::with([
+                    'parents.user',
+                    'getClass',
+                    'getDivision'
+                ])
+                    ->where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
             }
+            // ============================================
+            // TEACHER LOGIN
+            // T = Teacher
+            // Teacher can only search students
+            // from classes/sections they teach
+            // ============================================
+            else if ($role_id == 'T') {
+                // Teacher ID from logged-in user
+                $teacher_id = $user->reg_id;
+
+                // ============================================
+                // CHECK STUDENT EXISTS OR NOT
+                // ============================================
+                $studentExists = Student::where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims)
+                    ->first();
+
+                // Invalid GR No
+                if (!$studentExists) {
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => 'Invalid GR No',
+                        'data' => null
+                    ], 422);
+                }
+
+                // ============================================
+                // GET TEACHER ASSIGNED CLASSES
+                // ============================================
+                $teacherClasses = DB::table('subject')
+                    ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+                        $join
+                            ->on('class_teachers.class_id', '=', 'subject.class_id')
+                            ->on('class_teachers.section_id', '=', 'subject.section_id')
+                            ->where('class_teachers.teacher_id', '=', $teacher_id);
+                    })
+                    ->where('subject.academic_yr', $customClaims)
+                    ->where(function ($query) use ($teacher_id) {
+                        $query
+                            ->where('subject.teacher_id', $teacher_id)
+                            ->orWhere('class_teachers.teacher_id', $teacher_id);
+                    })
+                    ->select(
+                        'subject.class_id',
+                        'subject.section_id'
+                    )
+                    ->distinct()
+                    ->get();
+
+                // ============================================
+                // FETCH STUDENT ONLY FROM ASSIGNED CLASS
+                // ============================================
+                $studentQuery = Student::with([
+                    'parents.user',
+                    'getClass',
+                    'getDivision'
+                ])
+                    ->where('reg_no', $reg_no)
+                    ->where('academic_yr', $customClaims);
+
+                $studentQuery->where(function ($query) use ($teacherClasses) {
+                    foreach ($teacherClasses as $class) {
+                        $query->orWhere(function ($subQuery) use ($class) {
+                            $subQuery
+                                ->where('class_id', $class->class_id)
+                                ->where('section_id', $class->section_id);
+                        });
+                    }
+                });
+
+                $student = $studentQuery->first();
+
+                // ============================================
+                // STUDENT EXISTS BUT NOT ACCESSIBLE
+                // ============================================
+                if (!$student) {
+                    return response()->json([
+                        'status' => 403,
+                        'success' => false,
+                        'message' => 'Student not found in your assigned class or section',
+                        'data' => null
+                    ], 403);
+                }
+            } else {
+                return response()->json([
+                    'status' => 403,
+                    'success' => false,
+                    'message' => 'Unauthorized access',
+                    'data' => null
+                ], 403);
+            }
+
+            // ============================================
+            // IMAGE URL
+            // ============================================
             $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
             $student->student_image_url = $student->image_name
                 ? $concatprojecturl . $student->image_name
                 : null;
-            return response()->json(['student' => [$student]]);
+
+            return response()->json([
+                'student' => [$student]
+            ]);
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -3008,6 +3161,7 @@ class AdminController extends Controller
                 'apaar_id' => 'nullable|string|max:12',
                 'reg_no' => 'nullable|string',
                 'blood_group' => 'nullable|string',
+                'current_address' => 'nullable|string',
                 'permant_add' => 'nullable|string',
                 'transport_mode' => 'nullable|string',
                 // Parent model fields
@@ -3032,6 +3186,7 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
+                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
 
@@ -3180,6 +3335,24 @@ class AdminController extends Controller
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
             // Update student information
+            $oldPermanentAddress = trim((string) $student->permant_add);
+            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
+
+            // Check if permanent address changed
+            if (
+                isset($validatedData['permant_add']) &&
+                $oldPermanentAddress != $newPermanentAddress
+            ) {
+                DB::table('permanent_address_change_log')->insert([
+                    'student_id' => $student->student_id,
+                    'old_address' => $oldPermanentAddress,
+                    'remark' => $request->address_remark,
+                    'changed_by' => $user->reg_id ?? null,
+                    'changed_at' => now(),
+                ]);
+
+                Log::info("Permanent address changed for student ID: {$student->student_id}");
+            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -3857,7 +4030,9 @@ class AdminController extends Controller
 
                 if ($detail['teacher_id'] === null) {
                     if ($subjectAllotment) {
-                        $subjectAllotment->delete();
+                        $subjectAllotment->update([
+                            'teacher_id' => $detail['teacher_id'],
+                        ]);
                     }
                 } else {
                     if ($subjectAllotment) {
@@ -3866,15 +4041,18 @@ class AdminController extends Controller
                             'teacher_id' => $detail['teacher_id'],
                         ]);
                     } else {
-                        // Create a new record if it doesn't exist
-                        SubjectAllotment::create([
-                            'subject_id' => $detail['subject_id'],
-                            'class_id' => $classId,
-                            'section_id' => $sectionId,
-                            'teacher_id' => $detail['teacher_id'],
-                            'academic_yr' => $academicYr,
-                            'sm_id' => $sm_id
-                        ]);
+                        SubjectAllotment::updateOrCreate(
+                            [
+                                'subject_id' => $detail['subject_id'],
+                                'class_id' => $classId,
+                                'section_id' => $sectionId,
+                                'academic_yr' => $academicYr,
+                                'sm_id' => $sm_id,
+                            ],
+                            [
+                                'teacher_id' => $detail['teacher_id'],
+                            ]
+                        );
                     }
                 }
             }
@@ -3899,13 +4077,13 @@ class AdminController extends Controller
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    $record->teacher_id,
+                    // $record->teacher_id,
                     $record->sm_id,
                 ]);
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            $recordsToDelete->each->delete();
+            //  $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -4016,7 +4194,9 @@ class AdminController extends Controller
     // Allot teacher Tab APIs
     public function getTeacherNames(Request $request)
     {
-        $teacherList = UserMaster::Where('role_id', 'T')->where('IsDelete', 'N')->get();
+        $teacherList = UserMaster::whereIn('role_id', ['T', 'L'])
+            ->where('IsDelete', 'N')
+            ->get();
         return response()->json($teacherList);
     }
 
@@ -5628,12 +5808,13 @@ class AdminController extends Controller
                 'has_specs' => 'nullable|string|max:1',
                 'allergies' => 'nullable|string|max:200',
                 'nationality' => 'nullable|string|max:100',
+                'current_address' => 'nullable|string',
                 'permant_add' => 'nullable|string|max:200',
                 'city' => 'nullable|string|max:100',
                 'state' => 'nullable|string|max:100',
                 'pincode' => 'nullable|max:6',
                 'reg_no' => 'nullable|max:10',
-                'house' => 'nullable|string|max:1',
+                'house' => 'nullable',
                 'stu_aadhaar_no' => 'nullable|string|max:14',
                 'category' => 'nullable|string|max:8',
                 'image_name' => 'nullable|string',
@@ -5661,6 +5842,7 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
+                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
             $payload = getTokenPayload($request);
@@ -5969,7 +6151,7 @@ class AdminController extends Controller
                         $validatedData['m_emailid'] ?? null,
                     ]);
 
-                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . ".The application can be accessed from school website by clicking 'ACEVENTURA LOGIN'. You can also directly access it at " . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
+                    $messageemail = 'Dear Parent,Welcome to ' . $schoolName . " online application.'" . $validatedData['first_name'] . "' is registered in the application. Your user id is " . $user_id . ' and password is ' . $defaultPassword . '. You can also directly access it at ' . $websiteUrl . " .Please READ THE INSTRUCTIONS on the login page and refer to the help once you login into the application.Please make sure to update your profile and your child's profile.Regards," . $shortName . ' Support';
                     Mail::raw($messageemail, function ($mail) use ($recipients) {
                         $mail
                             ->to($recipients)
@@ -6076,6 +6258,24 @@ class AdminController extends Controller
             // Update student information
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $oldPermanentAddress = trim((string) $student->permant_add);
+            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
+
+            // Check if permanent address changed
+            if (
+                isset($validatedData['permant_add']) &&
+                $oldPermanentAddress != $newPermanentAddress
+            ) {
+                DB::table('permanent_address_change_log')->insert([
+                    'student_id' => $student->student_id,
+                    'old_address' => $oldPermanentAddress,
+                    'remark' => $request->address_remark,
+                    'changed_by' => $user->reg_id ?? null,
+                    'changed_at' => now(),
+                ]);
+
+                Log::info("Permanent address changed for student ID: {$student->student_id}");
+            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -6140,6 +6340,22 @@ class AdminController extends Controller
                     'required'
                 ],
             ], $messages);
+            $existingTeacherAssignment = Class_teachers::with(['getClass', 'getDivision'])
+                ->where('teacher_id', $validatedData['teacher_id'])
+                ->where('academic_yr', $academicYr)
+                ->first();
+
+            if ($existingTeacherAssignment) {
+                $className = $existingTeacherAssignment->getClass->name ?? '';
+                $sectionName = $existingTeacherAssignment->getDivision->name ?? '';
+
+                return response()->json([
+                    'status' => 422,
+                    'errors' => [
+                        "This teacher is already allotted as class teacher for {$className} - {$sectionName}."
+                    ]
+                ], 422);
+            }
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => 422,
@@ -6171,6 +6387,8 @@ class AdminController extends Controller
 
     public function updateClassTeacher(Request $request, $class_id, $section_id)
     {
+        $payload = getTokenPayload($request);
+        $academic_yr = $payload->get('academic_year');
         $messages = [
             'class_id.required' => 'Class field is required.',
             'section_id.required' => 'Section field is required.',
@@ -6189,6 +6407,37 @@ class AdminController extends Controller
                     'required'
                 ],
             ], $messages);
+            $teacher_id = $validatedData['teacher_id'];
+            $existingAssignment = Class_teachers::with(['getClass', 'getDivision'])
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_yr', $academic_yr)
+                ->whereNot(function ($query) use ($validatedData) {
+                    $query
+                        ->where('class_id', $validatedData['class_id'])
+                        ->where('section_id', $validatedData['section_id']);
+                })
+                ->first();
+            \Log::info('Class Teacher Validation', [
+                'teacher_id' => $teacher_id,
+                'academic_yr' => $academic_yr,
+                'class_id' => $validatedData['class_id'],
+                'section_id' => $validatedData['section_id'],
+                'existing' => $existingAssignment
+            ]);
+
+            if ($existingAssignment) {
+                $className = $existingAssignment->getClass->name ?? '';
+                $sectionName = $existingAssignment->getDivision->name ?? '';
+
+                return response()->json([
+                    'status' => 422,
+                    'errors' => [
+                        "This teacher is already allotted as class teacher for {$className} - {$sectionName}."
+                    ]
+                ], 422);
+            }
+
+            $teacher_id = $validatedData['teacher_id'];
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'status' => 422,
@@ -6498,54 +6747,167 @@ class AdminController extends Controller
         }
     }
 
+    // public function sendUserIdParents(Request $request)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $customClaims = JWTAuth::getPayload()->get('academic_year');
+    //     $checkbx = $request->input('studentId');
+    //     foreach ($checkbx as $parent_id) {
+    //         $student = DB::table('student')
+    //             ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
+    //             ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
+    //             ->where('student.student_id', $parent_id)
+    //             ->select('student.isNew', 'student.first_name', 'contact_details.email_id', 'contact_details.m_emailid', 'user_master.user_id', 'user_master.password')
+    //             ->first();
+    //         // dd($student);
+    //         $f_emailid = $student->email_id ?? null;
+    //         $m_emailid = $student->m_emailid ?? null;
+    //         $user_id = $student->user_id ?? null;
+    //         $isNew = $student->isNew ?? null;
+    //         $first_name = $student->first_name ?? null;
+    //         if ($f_emailid && $m_emailid && $user_id && $isNew && $first_name) {
+    //             // $decryptedPassword = Crypt::decrypt($password);
+    //             // dd($decryptedPassword);
+
+    //             $settingsData = getSchoolSettingsData();
+    //             $schoolName = $settingsData->institute_name;
+    //             $defaultpassword = $settingsData->default_pwd;
+    //             $shortName = $settingsData->short_name;
+
+    //             if ($isNew == 'Y') {
+    //                 $subject = 'Welcome to ' . $schoolName . ' online application';
+    //                 $textmsg = 'Dear Parent,<br/><br/>Welcome to ' . $schoolName . " online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+    //             } else {
+    //                 $subject = 'Your login details for ' . $schoolName;
+    //                 $textmsg = 'Dear Parent,<br/><br/>Your user id for ' . $schoolName . " online application is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+    //             }
+    //             $emailData = [
+    //                 'subject' => $subject,
+    //                 'textmsg' => $textmsg,
+    //             ];
+
+    //             if ($f_emailid) {
+    //                 smart_mail($f_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+    //             }
+
+    //             if ($m_emailid) {
+    //                 smart_mail($m_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+    //             }
+    //         }
+    //     }
+    //     return response()->json([
+    //         'status' => '200',
+    //         'message' => 'Emails sent to selected parents successfully.',
+    //         'success' => true
+    //     ], 200);
+    // }
+
     public function sendUserIdParents(Request $request)
     {
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
         $checkbx = $request->input('studentId');
+
         foreach ($checkbx as $parent_id) {
             $student = DB::table('student')
                 ->join('contact_details', 'student.parent_id', '=', 'contact_details.id')
                 ->join('user_master', 'student.parent_id', '=', 'user_master.reg_id')
                 ->where('student.student_id', $parent_id)
-                ->select('student.isNew', 'student.first_name', 'contact_details.email_id', 'contact_details.m_emailid', 'user_master.user_id', 'user_master.password')
+                ->select(
+                    'student.isNew',
+                    'student.first_name',
+                    'student.last_name',
+                    'contact_details.email_id',
+                    'contact_details.m_emailid',
+                    'user_master.user_id',
+                    'user_master.password'
+                )
                 ->first();
+
             // dd($student);
+
             $f_emailid = $student->email_id ?? null;
             $m_emailid = $student->m_emailid ?? null;
             $user_id = $student->user_id ?? null;
             $isNew = $student->isNew ?? null;
-            $first_name = $student->first_name ?? null;
-            if ($f_emailid && $m_emailid && $user_id && $isNew && $first_name) {
-                // $decryptedPassword = Crypt::decrypt($password);
-                // dd($decryptedPassword);
+            $first_name = $student->first_name ?? '';
+            $last_name = $student->last_name ?? '';
+            $studentName = trim($first_name . ' ' . $last_name);
 
+            if ($user_id && $isNew && $first_name) {
                 $settingsData = getSchoolSettingsData();
+
                 $schoolName = $settingsData->institute_name;
                 $defaultpassword = $settingsData->default_pwd;
                 $shortName = $settingsData->short_name;
+                $supportEmail = $settingsData->support_email_id;
 
                 if ($isNew == 'Y') {
-                    $subject = 'Welcome to ' . $schoolName . ' online application';
-                    $textmsg = 'Dear Parent,<br/><br/>Welcome to ' . $schoolName . " online application. <br/><br/>'{$first_name}' is registered in the application. Your user id is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+                    $subject = 'Welcome to the' . $schoolName . 'application powered by EvolvU.';
+
+                    $textmsg = 'Dear Parent,<br/><br/>
+                    Welcome to ' . $schoolName . ' application powered by EvolvU.
+                    <br/><br/>
+                    ' . $studentName . ' is registered in the application.<br/><br/>
+                    You can download our app from play store and app store,<br/>
+                    For Android Users:<a> https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool</a> <br/>
+                    For Iphone Users: <a>https://apps.apple.com/in/app/evolvu-smart-school-parent/id6738838553</a> <br/><br>
+                    Here are your login credentials:</br>
+                    User Id:' . $user_id . '  </br>
+                    Password: ' . $defaultpassword . '.
+                    <br/><br/>
+                    You may change your password after login.<br/>
+                    If you face any issues please write to us  on ' . $supportEmail . '</br></br>
+                    
+                    Regards,<br/>' . $shortName . ' Support<br/>
+                    Team Evolvu';
                 } else {
-                    $subject = 'Your login details for ' . $schoolName;
-                    $textmsg = 'Dear Parent,<br/><br/>Your user id for ' . $schoolName . " online application is {$user_id} and password is " . $defaultpassword . '.<br/><br/>Regards,<br/>' . $shortName . ' Support';
+                    $subject = 'Welcome to the' . $schoolName . 'application powered by EvolvU.';
+
+                    $textmsg = 'Dear Parent,<br/><br/>
+                    Welcome to ' . $schoolName . ' application powered by EvolvU.
+                    <br/><br/>
+                    ' . $studentName . ' is registered in the application.<br/><br/>
+                    You can download our app from play store and app store,<br/>
+                    For Android Users:<a> https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool</a> <br/>
+                    For Iphone Users: <a>https://apps.apple.com/in/app/evolvu-smart-school-parent/id6738838553</a> <br/><br>
+                    Here are your login credentials:</br>
+                    User Id:' . $user_id . '  </br>
+                    Password: ' . $defaultpassword . '.
+                    <br/><br/>
+                    You may change your password after login.<br/>
+                    If you face any issues please write to us  on ' . $supportEmail . '</br></br>
+                    
+                    Regards,<br/>' . $shortName . ' Support<br/>
+                    Team Evolvu';
                 }
+
                 $emailData = [
                     'subject' => $subject,
                     'textmsg' => $textmsg,
                 ];
 
                 if ($f_emailid) {
-                    smart_mail($f_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+                    smart_mail(
+                        $f_emailid,
+                        'Login Details',
+                        'emails.parentUserEmail',
+                        $emailData
+                    );
                 }
 
                 if ($m_emailid) {
-                    smart_mail($m_emailid, 'Login Details', 'emails.parentUserEmail', $emailData);
+                    smart_mail(
+                        $m_emailid,
+                        'Login Details',
+                        'emails.parentUserEmail',
+                        $emailData
+                    );
                 }
             }
         }
+
         return response()->json([
             'status' => '200',
             'message' => 'Emails sent to selected parents successfully.',
@@ -7331,9 +7693,9 @@ class AdminController extends Controller
 
             // $holidaylist = DB::table('holidaylist')->where('academic_yr',$customClaims)->get();
             $holidaylist = DB::table('holidaylist')
-                ->join('user_master', 'holidaylist.created_by', '=', 'user_master.reg_id')
+                ->join('teacher', 'holidaylist.created_by', '=', 'teacher.teacher_id')
                 ->where('holidaylist.academic_yr', $customClaims)
-                ->select('holidaylist.*', 'user_master.name as created_by_name')  // Select the necessary columns
+                ->select('holidaylist.*', 'teacher.name as created_by_name')  // Select the necessary columns
                 ->groupBy('holidaylist.holiday_id')
                 ->orderBy('holiday_id', 'Desc')
                 ->get();
@@ -9074,7 +9436,7 @@ class AdminController extends Controller
             $globalVariables = App::make('global_variables');
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
-            // 🔹 Step 1: Get remarks (NO remark_detail join)
+            //  Step 1: Get remarks (NO remark_detail join)
             $remarks = DB::table('remark')
                 ->leftJoin('student', 'student.student_id', '=', 'remark.student_id')
                 ->leftJoin('subject_master', 'remark.subject_id', '=', 'subject_master.sm_id')
@@ -9105,7 +9467,7 @@ class AdminController extends Controller
                 )
                 ->get();
 
-            // 🔹 Step 2: Get all files
+            // Step 2: Get all files
             $remarkIds = $remarks->pluck('remark_id')->toArray();
 
             $files = DB::table('remark_detail')
@@ -9113,17 +9475,40 @@ class AdminController extends Controller
                 ->get()
                 ->groupBy('remark_id');
 
-            // 🔹 Step 3: Attach multiple files
-            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
-                $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
+            // Step 3: Attach multiple files
+            // $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+            //     $dateFolder = Carbon::parse($remark->publish_date)->format('Y-m-d');
 
-                $remark->files = collect($files[$remark->remark_id] ?? [])
-                    ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
-                        return [
-                            'image_name' => $file->image_name,
-                            'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
-                        ];
-                    });
+            //     $remark->files = collect($files[$remark->remark_id] ?? [])
+            //         ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+            //             return [
+            //                 'image_name' => $file->image_name,
+            //                 'file_url' => $codeigniter_app_url . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}"
+            //             ];
+            //         });
+
+            //     return $remark;
+            // });
+            // Step 3: Attach files only for Remark type
+            $remarks->transform(function ($remark) use ($files, $codeigniter_app_url) {
+                // Always return attachments key
+                $remark->attachments = [];
+
+                // Attach files only for Remark type
+                if ($remark->remark_type == 'Remark') {
+                    $dateFolder = Carbon::parse($remark->remark_date)->format('Y-m-d');
+
+                    $remark->attachments = collect($files[$remark->remark_id] ?? [])
+                        ->map(function ($file) use ($remark, $codeigniter_app_url, $dateFolder) {
+                            return [
+                                'image_name' => $file->image_name,
+                                'file_size' => $file->file_size,
+                                'file_url' => $codeigniter_app_url
+                                    . "uploads/remark/{$dateFolder}/{$remark->remark_id}/{$file->image_name}",
+                            ];
+                        })
+                        ->values();
+                }
 
                 return $remark;
             });
@@ -9347,6 +9732,36 @@ class AdminController extends Controller
     }
 
     // Teachers Period Allocation Dev Name- Manish Kumar Sharma 29-03-2025
+    // public function getTeacherClassTimetable(Request $request)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+    //         $teacher_id = $request->input('teacher_id');
+    //         $classdata = DB::table('subject')
+    //             ->join('class', 'class.class_id', '=', 'subject.class_id')
+    //             ->join('section', 'section.section_id', '=', 'subject.section_id')
+    //             ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
+    //             ->where('subject.academic_yr', $customClaims)
+    //             ->where('subject.teacher_id', $teacher_id)
+    //             ->distinct()
+    //             ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
+    //             ->orderBy('class.class_id', 'DESC')
+    //             ->orderBy('section.section_id', 'DESC')
+    //             ->get();
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data' => $classdata,
+    //             'message' => 'Teachers Class',
+    //             'success' => true
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+    //     }
+    // }
+
     public function getTeacherClassTimetable(Request $request)
     {
         try {
@@ -9354,15 +9769,33 @@ class AdminController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
             $teacher_id = $request->input('teacher_id');
+
             $classdata = DB::table('subject')
                 ->join('class', 'class.class_id', '=', 'subject.class_id')
                 ->join('section', 'section.section_id', '=', 'subject.section_id')
                 ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
                 ->where('subject.academic_yr', $customClaims)
                 ->where('subject.teacher_id', $teacher_id)
-                ->distinct()
-                ->select('section.section_id', 'class.name as classname', 'section.name as sectionname', 'teacher.name as teachername', 'teacher.teacher_id', 'class.class_id')
+                ->select(
+                    'section.section_id',
+                    'class.class_id',
+                    'class.name as classname',
+                    'section.name as sectionname',
+                    'teacher.name as teachername',
+                    'teacher.teacher_id'
+                )
+                ->groupBy(
+                    'section.section_id',
+                    'class.class_id',
+                    'class.name',
+                    'section.name',
+                    'teacher.name',
+                    'teacher.teacher_id'
+                )
+                ->orderBy('class.class_id', 'ASC')
+                ->orderBy('section.section_id', 'ASC')
                 ->get();
+
             return response()->json([
                 'status' => 200,
                 'data' => $classdata,
@@ -9371,7 +9804,13 @@ class AdminController extends Controller
             ]);
         } catch (Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -17448,8 +17887,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $totalNumberOfTeachers = DB::table('subject as s')
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn('s.sm_id', function ($query) {
@@ -17466,8 +17904,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -17499,8 +17936,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
@@ -17534,8 +17970,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->whereIn(
                     DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
                     function ($query) use ($nextMonday) {
@@ -17614,8 +18049,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $totalNumberOfTeachers = DB::table('subject as s')
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn('s.sm_id', function ($query) {
@@ -17685,8 +18119,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -17767,8 +18200,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
@@ -17848,8 +18280,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-                ->where('tc.teaching', 'Y')
+                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
@@ -18309,8 +18740,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         $nextMonday = now()->next('Monday')->format('d-m-Y');
         $totalNumberOfTeachers = DB::table('subject as s')
             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereNotIn('s.sm_id', function ($query) {
@@ -18326,8 +18756,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('class as c', 's.class_id', '=', 'c.class_id')
             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereIn(
@@ -18358,8 +18787,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('class as c', 's.class_id', '=', 'c.class_id')
             ->join('section as sc', 's.section_id', '=', 'sc.section_id')
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereNotIn(
@@ -18392,8 +18820,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
-            ->join('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('tc.teaching', 'Y')
+            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->whereIn(
                 DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
                 function ($query) use ($nextMonday) {
@@ -19735,5 +20162,160 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'success' => false
             ]);
         }
+    }
+
+    public function audit()
+    {
+        $connections = [
+            'SACS',
+            'HSCS',
+            'DEMONEW',
+            'STCS'
+        ];
+
+        $result = [];
+
+        for ($i = 0; $i < count($connections); $i++) {
+            for ($j = $i + 1; $j < count($connections); $j++) {
+                $source = $connections[$i];
+                $target = $connections[$j];
+
+                $result["{$source}_vs_{$target}"] =
+                    $this->compareDatabases($source, $target);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $result
+        ]);
+    }
+
+    private function compareDatabases($source, $target)
+    {
+        $sourceTables = $this->getTables($source);
+        $targetTables = $this->getTables($target);
+
+        $comparison = [
+            'missing_in_' . $target => array_values(
+                array_diff($sourceTables, $targetTables)
+            ),
+            'extra_in_' . $target => array_values(
+                array_diff($targetTables, $sourceTables)
+            ),
+            'table_differences' => []
+        ];
+
+        $commonTables = array_intersect(
+            $sourceTables,
+            $targetTables
+        );
+
+        foreach ($commonTables as $table) {
+            $sourceColumns = $this->getColumns(
+                $source,
+                $table
+            );
+
+            $targetColumns = $this->getColumns(
+                $target,
+                $table
+            );
+
+            $missingColumns = array_values(
+                array_diff(
+                    array_keys($sourceColumns),
+                    array_keys($targetColumns)
+                )
+            );
+
+            $extraColumns = array_values(
+                array_diff(
+                    array_keys($targetColumns),
+                    array_keys($sourceColumns)
+                )
+            );
+
+            $columnDifferences = [];
+
+            foreach ($sourceColumns as $column => $sourceDefinition) {
+                if (!isset($targetColumns[$column])) {
+                    continue;
+                }
+
+                $targetDefinition = $targetColumns[$column];
+
+                if (
+                    $sourceDefinition['Type'] != $targetDefinition['Type'] ||
+                    $sourceDefinition['Null'] != $targetDefinition['Null'] ||
+                    $sourceDefinition['Default'] != $targetDefinition['Default']
+                ) {
+                    $columnDifferences[$column] = [
+                        'source' => $sourceDefinition,
+                        'target' => $targetDefinition
+                    ];
+                }
+            }
+
+            $sourceCount = DB::connection($source)
+                ->table($table)
+                ->count();
+
+            $targetCount = DB::connection($target)
+                ->table($table)
+                ->count();
+
+            if (
+                !empty($missingColumns) ||
+                !empty($extraColumns) ||
+                !empty($columnDifferences) ||
+                $sourceCount != $targetCount
+            ) {
+                $comparison['table_differences'][$table] = [
+                    'missing_columns' => $missingColumns,
+                    'extra_columns' => $extraColumns,
+                    'column_differences' => $columnDifferences,
+                    'row_count_difference' => [
+                        $source => $sourceCount,
+                        $target => $targetCount
+                    ]
+                ];
+            }
+        }
+
+        return $comparison;
+    }
+
+    private function getTables($connection)
+    {
+        $database = DB::connection($connection)->getDatabaseName();
+
+        $tables = DB::connection($connection)
+            ->table('information_schema.TABLES')
+            ->select('TABLE_NAME')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_TYPE', 'BASE TABLE')
+            ->pluck('TABLE_NAME')
+            ->toArray();
+
+        return $tables;
+    }
+
+    private function getColumns($connection, $table)
+    {
+        $columns = DB::connection($connection)
+            ->select("SHOW COLUMNS FROM `$table`");
+
+        $result = [];
+
+        foreach ($columns as $column) {
+            $result[$column->Field] = [
+                'Type' => $column->Type,
+                'Null' => $column->Null,
+                'Default' => $column->Default
+            ];
+        }
+
+        return $result;
     }
 }

@@ -138,15 +138,36 @@ class CertificateController extends Controller
         function dayToWords($day)
         {
             $days = [
-                1 => 'First', 2 => 'Second', 3 => 'Third', 4 => 'Fourth',
-                5 => 'Fifth', 6 => 'Sixth', 7 => 'Seventh', 8 => 'Eighth',
-                9 => 'Ninth', 10 => 'Tenth', 11 => 'Eleventh', 12 => 'Twelfth',
-                13 => 'Thirteenth', 14 => 'Fourteenth', 15 => 'Fifteenth',
-                16 => 'Sixteenth', 17 => 'Seventeenth', 18 => 'Eighteenth',
-                19 => 'Nineteenth', 20 => 'Twentieth', 21 => 'Twenty-First',
-                22 => 'Twenty-Second', 23 => 'Twenty-Third', 24 => 'Twenty-Fourth',
-                25 => 'Twenty-Fifth', 26 => 'Twenty-Sixth', 27 => 'Twenty-Seventh',
-                28 => 'Twenty-Eighth', 29 => 'Twenty-Ninth', 30 => 'Thirtieth',
+                1 => 'First',
+                2 => 'Second',
+                3 => 'Third',
+                4 => 'Fourth',
+                5 => 'Fifth',
+                6 => 'Sixth',
+                7 => 'Seventh',
+                8 => 'Eighth',
+                9 => 'Ninth',
+                10 => 'Tenth',
+                11 => 'Eleventh',
+                12 => 'Twelfth',
+                13 => 'Thirteenth',
+                14 => 'Fourteenth',
+                15 => 'Fifteenth',
+                16 => 'Sixteenth',
+                17 => 'Seventeenth',
+                18 => 'Eighteenth',
+                19 => 'Nineteenth',
+                20 => 'Twentieth',
+                21 => 'Twenty-First',
+                22 => 'Twenty-Second',
+                23 => 'Twenty-Third',
+                24 => 'Twenty-Fourth',
+                25 => 'Twenty-Fifth',
+                26 => 'Twenty-Sixth',
+                27 => 'Twenty-Seventh',
+                28 => 'Twenty-Eighth',
+                29 => 'Twenty-Ninth',
+                30 => 'Thirtieth',
                 31 => 'Thirty-first'
             ];
 
@@ -4463,6 +4484,1523 @@ class CertificateController extends Controller
         } catch (Exception $e) {
             \Log::error($e);  // Log the exception
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    // Co-Curriculum Certificate Dev Name - Mahima Chaudhari 12-05-2026
+    // public function getEventsForCertificate(Request $request)
+    // {
+    //     try {
+    //         // Authenticate User
+    //         $user = $this->authenticateUser();
+
+    //         // Get values from JWT token
+    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
+    //         $teacherId = $user->reg_id;
+
+    //         // $data = DB::table('events')
+    //         //     ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+    //         //     ->select(
+    //         //         'class_teachers.class_id',
+    //         //         'events.*',
+    //         //         DB::raw('events.title as label'),
+    //         //         DB::raw('events.event_id as value')
+    //         //     )
+    //         //     ->where('class_teachers.teacher_id', $teacherId)
+    //         //     ->where('events.academic_yr', $academicYear)
+    //         //     ->where('events.activity', 'Y')
+    //         //     // ->where('events.competition', 'Y')
+    //         //     ->where('events.isDelete', 'N')
+    //         //     ->where('events.publish', 'Y')
+    //         //     ->get();
+    //         $data = DB::table('events')
+    //             ->join('class_teachers', 'class_teachers.class_id', '=', 'events.class_id')
+    //             ->select(
+    //                 'class_teachers.class_id',
+    //                 'events.*',
+    //                 DB::raw('events.title as label'),
+    //                 DB::raw('events.event_id as value')
+    //             )
+    //             ->where('class_teachers.teacher_id', $teacherId)
+    //             ->where('events.academic_yr', $academicYear)
+
+    //             // Activity OR Competition
+    //             ->where(function ($query) {
+    //                 $query->where('events.activity', 'Y')
+    //                     ->orWhere('events.competition', 'Y');
+    //             })
+
+    //             ->where('events.isDelete', 'N')
+    //             ->where('events.publish', 'Y')
+    //             ->get();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Events fetched successfully',
+    //             'data' => $data
+    //         ], 200);
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to fetch events',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+    public function getEventsForCertificate(Request $request)
+    {
+        try {
+
+            // Authenticate User
+            $user = $this->authenticateUser();
+
+            // Get values from JWT token
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+            $teacherId = $user->reg_id;
+
+            $data = DB::table('events')
+                ->join(
+                    'class_teachers',
+                    'class_teachers.class_id',
+                    '=',
+                    'events.class_id'
+                )
+                ->join(
+                    'class',
+                    'class.class_id',
+                    '=',
+                    'events.class_id'
+                )
+                ->join(
+                    'section',
+                    'section.section_id',
+                    '=',
+                    'class_teachers.section_id'
+                )
+
+                ->select(
+                    'class_teachers.class_id',
+                    'class_teachers.section_id',
+
+                    // Separate Class & Section
+                    DB::raw('class.name as classname'),
+                    DB::raw('section.name as sectionname'),
+
+                    'events.*',
+
+                    // React Select
+                    DB::raw('events.title as label'),
+                    DB::raw('events.event_id as value'),
+
+                    // Custom Response
+                    DB::raw('events.title as event'),
+                    DB::raw('events.event_id as event_id_manage'),
+
+                    // Combined Class + Section
+                    DB::raw("
+            CONCAT(
+            class.name,
+            ' ',
+            section.name
+                ) as class_section
+                "),
+
+                    // Combined Payload Format
+                    DB::raw("
+              CONCAT(
+              class_teachers.class_id,
+              '^',
+               class_teachers.section_id
+              ) as class_id_manage
+            ")
+                )
+
+
+                ->where('class_teachers.teacher_id', $teacherId)
+                ->where('events.academic_yr', $academicYear)
+
+                // Activity OR Competition
+                ->where(function ($query) {
+                    $query->where('events.activity', 'Y')
+                        ->orWhere('events.competition', 'Y');
+                })
+
+                ->where('events.isDelete', 'N')
+                ->where('events.publish', 'Y')
+
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Events fetched successfully',
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch events',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function createCertificates(Request $request)
+    {
+        try {
+            // Authenticate User
+            $user = $this->authenticateUser();
+            // Get academic year from token
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Split class_id and section_id
+            $classData = explode('^', $request->class_id);
+
+            $data = [
+                'event'        => $request->event,
+                'description'  => $request->description,
+                'student_id'   => $request->student_id,
+                'class_id'     => $classData[0] ?? null,
+                'section_id'   => $classData[1] ?? null,
+                'position'     => $request->position,
+                'achievement'  => $request->achievement,
+                'date'         => date('Y-m-d', strtotime($request->date)),
+                'academic_yr'  => $academicYear,
+                'publish'      => 'N'
+            ];
+
+            DB::table('achievements')->insert($data);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificate created successfully'
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to create certificate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    // public function getCertificates(Request $request)
+    // {
+    //     try {
+
+    //         // Authenticate User
+    //         $user = $this->authenticateUser();
+
+    //         // Get values from JWT
+    //         $academicYear = JWTAuth::getPayload()->get('academic_year');
+    //         $teacherId = $user->reg_id;
+
+    //         $data = DB::table('achievements')
+    //             ->join('class_teachers', function ($join) {
+    //                 $join->on('class_teachers.class_id', '=', 'achievements.class_id')
+    //                     ->on('class_teachers.section_id', '=', 'achievements.section_id');
+    //             })
+
+    //             // Student table join
+    //             ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
+
+    //             ->select(
+    //                 'class_teachers.class_id',
+    //                 'achievements.*',
+
+    //                 // Student details
+    //                 'student.student_id',
+    //                 'student.first_name',
+    //                 'student.mid_name',
+    //                 'student.last_name',
+
+    //                 // Full name
+    //                 DB::raw("
+    //                 CONCAT(
+    //                     student.first_name, ' ',
+    //                     COALESCE(student.mid_name, ''), ' ',
+    //                     student.last_name
+    //                 ) as student_name
+    //             ")
+    //             )
+    //             ->where('class_teachers.teacher_id', $teacherId)
+    //             ->where('achievements.academic_yr', $academicYear)
+    //             ->get();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Certificates fetched successfully',
+    //             'data' => $data
+    //         ], 200);
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to fetch certificates',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function getCertificates(Request $request)
+    {
+        try {
+
+            // Authenticate User
+            $user = $this->authenticateUser();
+
+            // Get values from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+            $teacherId = $user->reg_id;
+
+            $data = DB::table('achievements')
+
+                ->join('class_teachers', function ($join) {
+                    $join->on('class_teachers.class_id', '=', 'achievements.class_id')
+                        ->on('class_teachers.section_id', '=', 'achievements.section_id');
+                })
+
+                // Student table join
+                ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
+
+                // Class table join
+                ->leftJoin('class', 'class.class_id', '=', 'achievements.class_id')
+
+                // Section table join
+                ->leftJoin('section', 'section.section_id', '=', 'achievements.section_id')
+
+                ->select(
+                    'class_teachers.class_id',
+                    'achievements.*',
+
+                    // Student details
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+
+                    // Class & Section
+                    'class.name',
+                    'section.name',
+
+                    // Combined Class Section Name
+                    DB::raw("
+                    CONCAT(
+                        class.name, ' ',
+                        section.name
+                    ) as class_section
+                "),
+
+                    // Full student name
+                    DB::raw("
+                    CONCAT(
+                        student.first_name, ' ',
+                        COALESCE(student.mid_name, ''), ' ',
+                        student.last_name
+                    ) as student_name
+                ")
+                )
+
+                ->where('class_teachers.teacher_id', $teacherId)
+                ->where('achievements.academic_yr', $academicYear)
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificates fetched successfully',
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch certificates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function getCertificateId($id)
+    {
+        try {
+
+            // Authenticate User
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized user'
+                ], 401);
+            }
+
+            // Get academic year from JWT
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Fetch certificate record with student details
+            $certificate = DB::table('achievements')
+
+                // Student table join
+                ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
+
+                ->select(
+                    'achievements.*',
+
+                    // Student details
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+
+                    // Full name
+                    DB::raw("
+                    CONCAT(
+                        student.first_name, ' ',
+                        COALESCE(student.mid_name, ''), ' ',
+                        student.last_name
+                    ) as student_name
+                ")
+                )
+
+                ->where('achievements.achievement_id', $id)
+                ->where('achievements.academic_yr', $academicYear)
+                ->first();
+
+            // Check record exists
+            if (!$certificate) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Certificate not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificate fetched successfully',
+                'data' => $certificate
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch certificate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function updateCertificates(Request $request, $id)
+    {
+        try {
+
+            // Authenticate User
+            $user = $this->authenticateUser();
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            // Validate Request
+            $request->validate([
+                'event' => 'required',
+                'student_id' => 'required',
+                'class_id' => 'required',
+                'position' => 'required',
+                'date' => 'required|date'
+            ]);
+
+            // Check Achievement Exists
+            $achievement = DB::table('achievements')
+                ->where('achievement_id', $id)
+                ->first();
+
+            if (!$achievement) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Achievement not found'
+                ], 404);
+            }
+
+
+            $classData = explode('^', $request->class_id);
+
+            // Update Data
+            $data = [
+                'event'        => $request->event,
+                'description'  => $request->description,
+                'student_id'   => $request->student_id,
+                'class_id'     => $classData[0],
+                'section_id'   => $classData[1] ?? null,
+                'position'     => $request->position,
+                'achievement'  => $request->achievement,
+                'date'         => date('Y-m-d', strtotime($request->date)),
+                'academic_yr'  => $academicYear,
+            ];
+
+            DB::table('achievements')
+                ->where('achievement_id', $id)
+                ->update($data);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificate updated successfully'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update certificate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function deleteCertificates($id)
+    {
+        try {
+
+            // Authenticate User
+            $user = $this->authenticateUser();
+
+            // Check certificate exists
+            $certificate = DB::table('achievements')
+                ->where('achievement_id', $id)
+                ->first();
+
+            if (!$certificate) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Certificate not found'
+                ], 404);
+            }
+
+            // Delete certificate
+            DB::table('achievements')
+                ->where('achievement_id', $id)
+                ->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificate deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete certificate',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // public function publishCertificates(Request $request)
+    // {
+    //     try {
+
+    //         $user = $this->authenticateUser();
+
+    //         // Validate Request
+    //         $request->validate([
+    //             'ids' => 'required|array',
+    //             'ids.*' => 'required|integer'
+    //         ]);
+
+    //         $ids = $request->ids;
+
+    //         // Get certificates
+    //         $certificates = DB::table('achievements')
+    //             ->whereIn('achievement_id', $ids)
+    //             ->get();
+
+    //         if ($certificates->isEmpty()) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Certificates not found'
+    //             ], 404);
+    //         }
+
+
+    //         foreach ($certificates as $certificate) {
+    //             // Publish certificate
+    //             DB::table('achievements')
+    //                 ->where('achievement_id', $certificate->achievement_id)
+    //                 ->update([
+    //                     'publish' => 'Y',
+    //                 ]);
+
+    //             // Get student-parent data
+    //             $achieveData = DB::table('student as s')
+    //                 ->join('parent as p', 'p.parent_id', '=', 's.parent_id')
+    //                 ->select(
+    //                     's.student_id',
+    //                     's.parent_id',
+    //                     'p.f_mobile'
+    //                 )
+    //                 ->where('s.student_id', $certificate->student_id)
+    //                 ->get();
+
+
+    //             foreach ($achieveData as $item) {
+    //                 $smsData = DB::table('daily_sms')
+    //                     ->where('parent_id', $item->parent_id)
+    //                     ->where('student_id', $item->student_id)
+    //                     ->first();
+
+    //                 if (!$smsData) {
+
+    //                     // Insert new record
+    //                     DB::table('daily_sms')->insert([
+    //                         'student_id' => $item->student_id,
+    //                         'parent_id' => $item->parent_id,
+    //                         'phone' => $item->f_mobile,
+    //                         'homework' => 0,
+    //                         'remark' => 0,
+    //                         'notice' => 0,
+    //                         'note' => 0,
+    //                         'achievement' => 1,
+    //                         'sms_date' => now(),
+
+    //                     ]);
+    //                 } else {
+
+    //                     // Update existing record
+    //                     DB::table('daily_sms')
+    //                         ->where('parent_id', $smsData->parent_id)
+    //                         ->where('student_id', $smsData->student_id)
+    //                         ->update([
+    //                             'achievement' => $smsData->achievement + 1,
+    //                             'sms_date' => now(),
+    //                         ]);
+    //                 }
+    //             }
+    //         }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Certificates published successfully'
+    //         ], 200);
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Validation failed',
+    //             'errors' => $e->errors()
+    //         ], 422);
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to publish certificates',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    public function publishCertificates(Request $request)
+    {
+        try {
+
+            $user = $this->authenticateUser();
+
+            // Validate Request
+            $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'required|integer'
+            ]);
+
+            $ids = $request->ids;
+
+            // Get certificates
+            $certificates = DB::table('achievements')
+                ->whereIn('achievement_id', $ids)
+                ->get();
+
+            if ($certificates->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Certificates not found'
+                ], 404);
+            }
+
+            foreach ($certificates as $certificate) {
+
+                // Publish certificate
+                DB::table('achievements')
+                    ->where('achievement_id', $certificate->achievement_id)
+                    ->update([
+                        'publish' => 'Y',
+                    ]);
+
+                // Get student-parent data with FCM token
+                $achieveData = DB::table('student as s')
+                    ->join('parent as p', 'p.parent_id', '=', 's.parent_id')
+                    ->select(
+                        's.student_id',
+                        's.parent_id',
+                        's.first_name',
+                        'p.f_mobile',
+                    )
+                    ->where('s.student_id', $certificate->student_id)
+                    ->get();
+
+                foreach ($achieveData as $item) {
+
+                    // =========================
+                    // GET TOKENS USING HELPER
+                    // =========================
+                    $tokens = getTokenDataParentId($item->student_id);
+                    // dd($tokens);
+
+                    // =========================
+                    // SEND PUSH NOTIFICATION
+                    // =========================
+                    if (!empty($tokens)) {
+
+                        foreach ($tokens as $tokenItem) {
+
+                            if (!empty($tokenItem->token)) {
+                                sendnotificationusinghttpv1([
+                                    'token' => $tokenItem->token,
+                                    'notification' => [
+                                        'title' => $certificate->event,
+                                        'description' => $certificate->description
+                                    ]
+                                ]);
+                            }
+                        }
+                    }
+
+                    // =========================
+                    // DAILY SMS TABLE
+                    // =========================
+                    $smsData = DB::table('daily_sms')
+                        ->where('parent_id', $item->parent_id)
+                        ->where('student_id', $item->student_id)
+                        ->first();
+
+                    if (!$smsData) {
+
+                        DB::table('daily_sms')->insert([
+                            'student_id' => $item->student_id,
+                            'parent_id' => $item->parent_id,
+                            'phone' => $item->f_mobile,
+                            'homework' => 0,
+                            'remark' => 0,
+                            'notice' => 0,
+                            'note' => 0,
+                            'achievement' => 1,
+                            'sms_date' => now(),
+                        ]);
+                    } else {
+
+                        DB::table('daily_sms')
+                            ->where('parent_id', $smsData->parent_id)
+                            ->where('student_id', $smsData->student_id)
+                            ->update([
+                                'achievement' => $smsData->achievement + 1,
+                                'sms_date' => now(),
+                            ]);
+                    }
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificates published successfully'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to publish certificates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function generateCertificateCsv(Request $request)
+    {
+        // Validation
+        $request->validate([
+            'event' => 'required|string',
+            'event_id_manage' => 'required|integer',
+            'class_name' => 'required|string',
+        ]);
+
+        $event = $request->event;
+        $eventId = $request->event_id_manage;
+        $className = $request->class_name;
+
+        // Exact same logic as CodeIgniter
+        $eventData = DB::table('events')
+            ->select('start_date')
+            ->where('event_id', $eventId)
+            ->get()
+            ->toArray();
+
+        $date = '';
+
+        foreach ($eventData as $row) {
+            $date = $row->start_date;
+        }
+
+        if ($event != '') {
+
+            $fileName = $event . '.csv';
+
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            ];
+
+            $callback = function () use ($event, $date, $className) {
+
+                $file = fopen('php://output', 'w');
+
+                // First Row
+                fputcsv($file, [
+                    $event . "/" . $date . "/" . $className
+                ]);
+
+                // Empty Row
+                fputcsv($file, ['']);
+
+                // Heading Row
+                $headingString = "Student Name(FirstName LastName),Position(First/Second/Third/Consolation Prize/Paricipation), Certificate Description, Event Description";
+
+                fputcsv($file, explode(",", $headingString));
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Event is required'
+        ], 400);
+    }
+
+    // public function uploadCertificatesFromCsv(Request $request)
+    // {
+    //     // Validate File
+    //     $request->validate([
+    //         'file' => 'required|mimes:csv,txt'
+    //     ]);
+
+    //     // Get Academic Year From JWT
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     if ($request->hasFile('file')) {
+
+    //         $file = $request->file('file');
+
+    //         $handle = fopen($file->getRealPath(), "r");
+
+    //         $c = 1;
+    //         $flag = false;
+    //         $errorMessage = '';
+
+    //         $event_name = '';
+    //         $event_date = '';
+    //         $class_section = '';
+
+    //         // ================= VALIDATION LOOP =================
+
+    //         while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+    //             if ($c == 1) {
+
+    //                 $all_ids = trim($filesop[0]);
+
+    //                 if ($all_ids == '') {
+
+    //                     return response()->json([
+    //                         'status' => false,
+    //                         'message' => 'Please do not delete the contents of cell 0.'
+    //                     ], 400);
+    //                 }
+
+    //                 $all_ids_array = explode('/', $all_ids);
+
+    //                 $event_name = $all_ids_array[0] ?? '';
+    //                 $event_date = $all_ids_array[1] ?? '';
+    //                 $class_section = $all_ids_array[2] ?? '';
+
+    //                 if ($event_name == '' || $event_date == '') {
+
+    //                     return response()->json([
+    //                         'status' => false,
+    //                         'message' => 'Please do not change the contents of cell 0.'
+    //                     ], 400);
+    //                 }
+    //             }
+
+    //             if ($c >= 4) {
+
+    //                 $student_name = trim($filesop[0] ?? '');
+    //                 $position = trim($filesop[1] ?? '');
+
+    //                 // STUDENT NAME VALIDATION
+    //                 if ($student_name == '') {
+
+    //                     $flag = true;
+    //                     $errorMessage .= "Student Name, ";
+    //                 } else {
+
+    //                     $first_last_name_array = explode(" ", $student_name);
+
+    //                     $first_name = $first_last_name_array[0] ?? '';
+    //                     $last_name = $first_last_name_array[1] ?? '';
+
+    //                     $student = DB::table('student')
+    //                         ->select('student_id')
+    //                         ->where('first_name', 'LIKE', '%' . $first_name . '%')
+    //                         ->where('last_name', 'LIKE', '%' . $last_name . '%')
+    //                         ->first();
+
+    //                     if (!$student) {
+
+    //                         $flag = true;
+    //                         $errorMessage .= "Student's First Name and Last Name, ";
+    //                     }
+    //                 }
+
+    //                 // POSITION VALIDATION
+    //                 if (
+    //                     $position == '' ||
+    //                     !in_array($position, ['First', 'Second', 'Third'])
+    //                 ) {
+
+    //                     $flag = true;
+    //                     $errorMessage .= "Position, ";
+    //                 }
+
+    //                 if ($errorMessage != '') {
+
+    //                     $errorMessage = rtrim($errorMessage, ", ");
+    //                     $errorMessage .= " for row no. " . $c . ", ";
+    //                 }
+    //             }
+
+    //             $c++;
+    //         }
+
+    //         // Validation Error
+    //         if ($flag == true) {
+
+    //             $errorMessage = rtrim($errorMessage, ", ");
+    //             $errorMessage = "Enter " . $errorMessage . " correctly.";
+
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => $errorMessage
+    //             ], 400);
+    //         }
+
+    //         fclose($handle);
+
+    //         // ================= INSERT LOOP =================
+
+    //         $handle = fopen($file->getRealPath(), "r");
+
+    //         $d = 1;
+
+    //         while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+    //             if ($d >= 4) {
+
+    //                 $class_section_array = explode(" ", $class_section);
+
+    //                 $class_name = trim($class_section_array[0] ?? '');
+    //                 $section_name = trim($class_section_array[1] ?? '');
+
+    //                 // GET CLASS ID
+    //                 $class = DB::table('class')
+    //                     ->select('class_id')
+    //                     ->where('name', $class_name)
+    //                     ->where('academic_yr', $academic_yr)
+    //                     ->first();
+
+    //                 $class_id = $class->class_id ?? '';
+
+    //                 // GET SECTION ID
+    //                 $section = DB::table('section')
+    //                     ->select('section_id')
+    //                     ->where('class_id', $class_id)
+    //                     ->where('name', $section_name)
+    //                     ->where('academic_yr', $academic_yr)
+    //                     ->first();
+
+    //                 $section_id = $section->section_id ?? '';
+
+    //                 $class_section_id = $class_id . "^" . $section_id;
+
+    //                 // STUDENT
+    //                 $student_name = trim($filesop[0]);
+
+    //                 $first_last_name_array = explode(" ", $student_name);
+
+    //                 $first_name = $first_last_name_array[0] ?? '';
+    //                 $last_name = $first_last_name_array[1] ?? '';
+
+    //                 $student = DB::table('student')
+    //                     ->select('student_id')
+    //                     ->where('first_name', 'LIKE', '%' . $first_name . '%')
+    //                     ->where('last_name', 'LIKE', '%' . $last_name . '%')
+    //                     ->first();
+
+    //                 $student_id = $student->student_id ?? null;
+
+    //                 // POSITION
+    //                 $position_name = trim($filesop[1]);
+
+    //                 if ($position_name == 'First') {
+    //                     $position = 1;
+    //                 } elseif ($position_name == 'Second') {
+    //                     $position = 2;
+    //                 } else {
+    //                     $position = 3;
+    //                 }
+
+    //                 $achievement = $filesop[2] ?? null;
+    //                 $description = $filesop[3] ?? null;
+
+    //                 // INSERT
+    //                 DB::table('achievements')->insert([
+
+    //                     'event' => $event_name,
+    //                     'date' => $event_date,
+    //                     'class_id' => $class_section_id,
+    //                     'student_id' => $student_id,
+    //                     'position' => $position,
+    //                     'achievement' => $achievement,
+    //                     'description' => $description,
+    //                     'publish' => 'N',
+    //                     'academic_yr' => $academic_yr,
+    //                 ]);
+    //             }
+
+    //             $d++;
+    //         }
+
+    //         fclose($handle);
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Certificates are created successfully'
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status' => false,
+    //         'message' => 'File not found'
+    //     ], 400);
+    // }
+
+    public function uploadCertificatesFromCsv(Request $request)
+    {
+        // ================= VALIDATION =================
+
+        $request->validate([
+            'file' => 'required|mimes:csv,txt'
+        ]);
+
+        $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+        if (!$request->hasFile('file')) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'File not found'
+            ], 400);
+        }
+
+        $file = $request->file('file');
+
+        // ================= VALIDATION LOOP =================
+
+        $handle = fopen($file->getRealPath(), "r");
+
+        $c = 1;
+
+        $flag = false;
+
+        $errorMessages = [];
+
+        $event_name = '';
+        $event_date = '';
+        $class_section = '';
+
+        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+            // Skip fully empty rows
+            if (empty(array_filter($filesop))) {
+                $c++;
+                continue;
+            }
+
+            // ================= FIRST ROW =================
+
+            if ($c == 1) {
+
+                $all_ids = trim($filesop[0] ?? '');
+
+                if ($all_ids == '') {
+
+                    fclose($handle);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please do not delete the contents of cell 0.'
+                    ], 400);
+                }
+
+                $all_ids_array = explode('/', $all_ids);
+
+                $event_name = trim($all_ids_array[0] ?? '');
+                $event_date = trim($all_ids_array[1] ?? '');
+                $class_section = trim($all_ids_array[2] ?? '');
+
+                if (
+                    $event_name == '' ||
+                    $event_date == '' ||
+                    $class_section == ''
+                ) {
+
+                    fclose($handle);
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please do not change the contents of cell 0.'
+                    ], 400);
+                }
+
+                $c++;
+                continue;
+            }
+
+            // ================= SKIP HEADER ROW =================
+
+            if (
+                isset($filesop[0]) &&
+                str_contains(
+                    trim($filesop[0]),
+                    'Student Name'
+                )
+            ) {
+
+                $c++;
+                continue;
+            }
+
+            // ================= STUDENT DATA =================
+
+            $student_name = trim($filesop[0] ?? '');
+            $position = trim($filesop[1] ?? '');
+
+            // Skip blank student rows
+            if ($student_name == '' && $position == '') {
+                $c++;
+                continue;
+            }
+
+            $rowErrors = [];
+
+            // ================= STUDENT VALIDATION =================
+
+            if ($student_name == '') {
+
+                $rowErrors[] = "Student Name";
+            } else {
+
+                $first_last_name_array = preg_split('/\s+/', $student_name);
+
+                $first_name = $first_last_name_array[0] ?? '';
+                $last_name = $first_last_name_array[1] ?? '';
+
+                $student = DB::table('student')
+                    ->select('student_id')
+                    ->where('first_name', 'LIKE', '%' . $first_name . '%')
+                    ->where('last_name', 'LIKE', '%' . $last_name . '%')
+                    ->first();
+
+                if (!$student) {
+
+                    $rowErrors[] = "Invalid Student Name. First Name and Last Name Enter";
+                }
+            }
+
+            // ================= POSITION VALIDATION =================
+
+            if (
+                $position == '' ||
+                !in_array($position, ['First', 'Second', 'Third', 'Consolation Prize', 'Paricipation'])
+            ) {
+
+                $rowErrors[] = "Invalid Position";
+            }
+
+            // ================= STORE ERRORS =================
+
+            if (!empty($rowErrors)) {
+
+                $flag = true;
+
+                $errorMessages[] =
+                    implode(", ", $rowErrors) . " at row no. " . $c;
+            }
+
+            $c++;
+        }
+
+        fclose($handle);
+
+        // ================= RETURN VALIDATION ERRORS =================
+
+        if ($flag == true) {
+
+            return response()->json([
+                'status' => false,
+                'message' => implode(" | ", $errorMessages)
+            ], 400);
+        }
+
+        // ================= INSERT LOOP =================
+
+        $handle = fopen($file->getRealPath(), "r");
+
+        $d = 1;
+
+        $insertCount = 0;
+
+        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
+
+            // Skip fully empty rows
+            if (empty(array_filter($filesop))) {
+                $d++;
+                continue;
+            }
+
+            // Skip first row
+            if ($d == 1) {
+                $d++;
+                continue;
+            }
+
+            // Skip heading row
+            if (
+                isset($filesop[0]) &&
+                str_contains(
+                    trim($filesop[0]),
+                    'Student Name'
+                )
+            ) {
+
+                $d++;
+                continue;
+            }
+
+            // ================= STUDENT DATA =================
+
+            $student_name = trim($filesop[0] ?? '');
+            $position_name = trim($filesop[1] ?? '');
+
+            // Skip blank student rows
+            if ($student_name == '' && $position_name == '') {
+                $d++;
+                continue;
+            }
+
+            // ================= CLASS & SECTION =================
+
+            $class_section_array = explode(" ", trim($class_section));
+
+            $section_name = array_pop($class_section_array);
+
+            $class_name = implode(" ", $class_section_array);
+
+            // ================= GET CLASS =================
+
+            $class = DB::table('class')
+                ->select('class_id')
+                ->where('name', $class_name)
+                ->where('academic_yr', $academic_yr)
+                ->first();
+
+            $class_id = $class->class_id ?? null;
+
+            // ================= GET SECTION =================
+
+            $section = DB::table('section')
+                ->select('section_id')
+                ->where('class_id', $class_id)
+                ->where('name', $section_name)
+                ->where('academic_yr', $academic_yr)
+                ->first();
+
+            $section_id = $section->section_id ?? null;
+
+            if (!$class_id || !$section_id) {
+                $d++;
+                continue;
+            }
+
+            $class_section_id = $class_id . "^" . $section_id;
+
+            // ================= GET STUDENT =================
+
+            $first_last_name_array = preg_split('/\s+/', $student_name);
+
+            $first_name = $first_last_name_array[0] ?? '';
+            $last_name = $first_last_name_array[1] ?? '';
+
+            $student = DB::table('student')
+                ->select('student_id')
+                ->where('first_name', 'LIKE', '%' . $first_name . '%')
+                ->where('last_name', 'LIKE', '%' . $last_name . '%')
+                ->first();
+
+            $student_id = $student->student_id ?? null;
+
+            if (!$student_id) {
+                $d++;
+                continue;
+            }
+
+            // ================= POSITION =================
+
+            $position = null;
+
+            if ($position_name == 'First') {
+                $position = 1;
+            } elseif ($position_name == 'Second') {
+                $position = 2;
+            } elseif ($position_name == 'Third') {
+                $position = 3;
+            } elseif ($position_name == 'Consolation Prize') {
+                $position = 4;
+            } elseif ($position_name == 'Paricipation') {
+                $position = 5;
+            }
+
+
+            // ================= OTHER DATA =================
+
+            $achievement = trim($filesop[2] ?? '');
+            $description = trim($filesop[3] ?? '');
+
+
+            // ================= INSERT =================
+
+            $inserted = DB::table('achievements')->insert([
+
+                'event' => $event_name,
+                'date' => $event_date,
+                'class_id' => $class_id,
+                'section_id' => $section_id,
+                'student_id' => $student_id,
+                'position' => $position,
+                'achievement' => $achievement,
+                'description' => $description,
+                'publish' => 'N',
+                'academic_yr' => $academic_yr,
+            ]);
+
+            if ($inserted) {
+                $insertCount++;
+            }
+
+            $d++;
+        }
+
+        fclose($handle);
+
+        // ================= FINAL RESPONSE =================
+
+        if ($insertCount == 0) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'No certificate data was inserted.'
+            ], 400);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $insertCount . ' certificate(s) uploaded successfully.'
+        ]);
+    }
+
+    public function downloadCertificatePdf(Request $request)
+    {
+        try {
+
+            $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+            $shortname = JWTAuth::getPayload()->get('short_name');
+
+            // ================= VALIDATION =================
+
+            $request->validate([
+                'achievement_id' => 'required|integer'
+            ]);
+
+            // ================= GET CERTIFICATE DATA =================
+
+            $data = DB::table('achievements')
+                ->join('student', 'student.student_id', '=', 'achievements.student_id')
+                ->join('class', 'class.class_id', '=', 'achievements.class_id')
+                ->join('section', 'section.section_id', '=', 'achievements.section_id')
+                ->select(
+
+                    // Achievement Data
+                    'achievements.*',
+
+                    // Student Data
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.reg_no',
+
+                    // Class Data
+                    'class.name as class_name',
+
+                    // Section Data
+                    'section.name as section_name',
+                )
+                ->where('achievements.achievement_id', $request->achievement_id)
+                ->where('achievements.academic_yr', $academic_yr)
+                ->first();
+
+            // ================= CHECK DATA =================
+
+            if (!$data) {
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Certificate data not found'
+                ], 404);
+            }
+
+            // ================= FULL STUDENT NAME =================
+
+            $student_name = trim(
+                $data->first_name . ' ' .
+                    $data->mid_name . ' ' .
+                    $data->last_name
+            );
+
+            // ================= CLASS SECTION =================
+
+            $class_section = $data->class_name . ' ' . $data->section_name;
+
+            // ================= POSITION NAME =================
+
+            $position_name = '';
+
+            if ($data->position == 1) {
+                $position_name = 'First';
+            } elseif ($data->position == 2) {
+                $position_name = 'Second';
+            } elseif ($data->position == 3) {
+                $position_name = 'Third';
+            } elseif ($data->position == 4) {
+                $position_name = "Consolation Prize";
+            } elseif ($data->position == 5) {
+                $position_name = "Paricipation";
+            }
+
+            // ================= DYNAMIC FILE NAME =================
+
+            $dynamicFilename =
+                'Certificate_' .
+                str_replace(' ', '_', $student_name) .
+                '.pdf';
+
+            // ================= PDF DATA =================
+
+            $pdfData = [
+
+                'student_name' => $student_name,
+
+                'reg_no' => $data->reg_no,
+
+                'event' => $data->event,
+
+                'event_date' => $data->date,
+
+                'class_section' => $class_section,
+
+                'position' => $position_name,
+
+                'achievement' => $data->achievement,
+
+                'description' => $data->description,
+
+                'publish' => $data->publish,
+            ];
+
+            // ================= COMMON PDF VIEW FOR ALL SCHOOLS =================
+
+            $pdf = PDF::loadView(
+                'pdf.participationcertificate',
+                compact('pdfData')
+            )->setPaper('A4', 'landscape');
+
+            // ================= RETURN PDF =================
+
+            return response()->stream(
+
+                function () use ($pdf) {
+
+                    echo $pdf->output();
+                },
+
+                200,
+
+                [
+                    'Content-Type' => 'application/pdf',
+
+                    'Content-Disposition' =>
+                    'inline; filename="' . $dynamicFilename . '"',
+                ]
+            );
+        } catch (Exception $e) {
+
+            \Log::error($e);
+
+            return response()->json([
+
+                'status' => false,
+
+                'message' => 'An error occurred',
+
+                'error' => $e->getMessage()
+
+            ], 500);
         }
     }
 }

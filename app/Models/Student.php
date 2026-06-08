@@ -49,6 +49,7 @@ class Student extends Model
         'has_specs',
         'allergies',
         'nationality',
+        'current_address',
         'permant_add',
         'city',
         'state',

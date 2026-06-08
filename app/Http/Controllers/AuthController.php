@@ -15,6 +15,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use DB;
 use Http;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class AuthController extends Controller
 {
@@ -403,5 +404,442 @@ class AuthController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+    public function getParentProfile(Request $request)
+    {
+        try {
+
+            $parent_id = auth()->user()->reg_id;
+
+            $parentProfile = DB::table('parent as p')
+                ->leftJoin('contact_details as cd', 'cd.id', '=', 'p.parent_id')
+                ->select(
+                    'p.*',
+                    'cd.phone_no',
+                    'cd.email_id',
+                    'cd.m_emailid'
+                )
+                ->where('p.parent_id', $parent_id)
+                ->first();
+
+            if (!$parentProfile) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parent profile not found.'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $parentProfile
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function updateParentProfile(Request $request)
+    {
+        try {
+
+            $validatedData = $request->validate([
+                'father_name'        => 'required|string|max:255',
+                'foccupation'        => 'nullable|string|max:255',
+                'f_office_add'       => 'nullable|string|max:255',
+                'f_office_tel'       => 'nullable|string|max:20',
+                'f_mobile'           => 'nullable|string|max:15',
+                'f_email'            => 'nullable|email|max:255',
+                'adharcard_no'       => 'nullable|string|max:20',
+
+                'mother_name'        => 'required|string|max:255',
+                'mother_occupation'  => 'nullable|string|max:255',
+                'm_office_add'       => 'nullable|string|max:255',
+                'm_office_tel'       => 'nullable|string|max:20',
+                'm_mobile'           => 'nullable|string|max:15',
+                'm_emailid'          => 'nullable|email|max:255',
+                'm_adharcard_no'     => 'nullable|string|max:20',
+
+                'f_dob'              => 'nullable|date',
+                'm_dob'              => 'nullable|date',
+
+                'f_blood_group'      => 'nullable|string|max:10',
+                'm_blood_group'      => 'nullable|string|max:10',
+
+                'parent_mobile'      => 'nullable|in:f_mobile,m_mobile',
+            ]);
+
+            $parent_id = auth()->user()->reg_id;
+
+            $parent = DB::table('parent')
+                ->where('parent_id', $parent_id)
+                ->first();
+
+            if (!$parent) {
+                return response()->json([
+                    'message' => 'Parent profile not found.'
+                ], 404);
+            }
+
+            $parentData = [
+                'father_name'        => strtoupper($validatedData['father_name']),
+                'father_occupation'  => strtoupper($validatedData['foccupation'] ?? ''),
+                'f_office_add'       => strtoupper($validatedData['f_office_add'] ?? ''),
+                'f_office_tel'       => $validatedData['f_office_tel'] ?? null,
+                'f_mobile'           => $validatedData['f_mobile'] ?? null,
+                'f_email'            => $validatedData['f_email'] ?? null,
+                'parent_adhar_no'    => $validatedData['adharcard_no'] ?? null,
+
+                'mother_name'        => strtoupper($validatedData['mother_name']),
+                'mother_occupation'  => strtoupper($validatedData['mother_occupation'] ?? ''),
+                'm_office_add'       => strtoupper($validatedData['m_office_add'] ?? ''),
+                'm_office_tel'       => $validatedData['m_office_tel'] ?? null,
+                'm_mobile'           => $validatedData['m_mobile'] ?? null,
+                'm_emailid'          => $validatedData['m_emailid'] ?? null,
+                'm_adhar_no'         => $validatedData['m_adharcard_no'] ?? null,
+
+                'f_dob'              => $validatedData['f_dob'] ?? null,
+                'm_dob'              => $validatedData['m_dob'] ?? null,
+
+                'f_blood_group'      => $validatedData['f_blood_group'] ?? null,
+                'm_blood_group'      => $validatedData['m_blood_group'] ?? null,
+
+                'IsDelete'           => 'N',
+            ];
+
+            DB::table('parent')
+                ->where('parent_id', $parent_id)
+                ->update($parentData);
+
+            // Communication Mobile
+            $phone_no = '';
+
+            if (($validatedData['parent_mobile'] ?? '') === 'm_mobile') {
+                $phone_no = $validatedData['m_mobile'] ?? '';
+            } elseif (($validatedData['parent_mobile'] ?? '') === 'f_mobile') {
+                $phone_no = $validatedData['f_mobile'] ?? '';
+            }
+
+            $contactData = [
+                'phone_no'  => $phone_no,
+                'email_id'  => $validatedData['f_email'] ?? null,
+                'm_emailid' => $validatedData['m_emailid'] ?? null,
+            ];
+
+            $contactExists = DB::table('contact_details')
+                ->where('id', $parent_id)
+                ->exists();
+
+            if ($contactExists) {
+
+                DB::table('contact_details')
+                    ->where('id', $parent_id)
+                    ->update($contactData);
+            } else {
+
+                $contactData['id'] = $parent_id;
+
+                DB::table('contact_details')
+                    ->insert($contactData);
+            }
+
+            return response()->json([
+                'message' => 'Parent profile updated successfully.',
+                'parent_id' => $parent_id
+            ], 200);
+        } catch (\Exception $e) {
+
+            Log::error('Error updating parent profile', [
+                'parent_id' => auth()->user()->reg_id ?? null,
+                'request_data' => $request->all(),
+                'exception' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating parent profile.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function getParentDetailsForIdCard()
+    {
+        $payload = JWTAuth::getPayload();
+        $academicYear = $payload->get('academic_year');
+        $parent_id = auth()->user()->reg_id;
+
+        // Parent info
+        $parent = DB::table('parent')
+            ->where('parent_id', $parent_id)
+            ->first();
+
+        if (!$parent) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parent not found',
+                'data' => (object)[]
+            ]);
+        }
+
+        // Students
+        $students = DB::table('student')
+            ->where([
+                'parent_id'   => $parent_id,
+                'IsDelete'    => 'N',
+                'academic_yr' => $academicYear
+            ])
+            ->get();
+
+        // Take guardian info from FIRST student (since it's same for all)
+        $firstStudent = $students->first();
+
+        $guardianFields = [];
+
+        if ($firstStudent) {
+            $guardianFields = [
+                'guardian_name'   => $firstStudent->guardian_name ?? null,
+                'guardian_mobile' => $firstStudent->guardian_mobile ?? null,
+                'guardian_add'    => $firstStudent->guardian_add ?? null,
+                'relation'        => $firstStudent->relation ?? null,
+            ];
+        }
+
+        // Attach class + section + keep guardian in each student
+        $students = $students->map(function ($student) use ($guardianFields) {
+
+            $student->class_name = DB::table('class')
+                ->where('class_id', $student->class_id)
+                ->value('name');
+
+            $student->section_name = DB::table('section')
+                ->where('section_id', $student->section_id)
+                ->value('name');
+
+            // attach SAME guardian fields from student table
+            foreach ($guardianFields as $key => $value) {
+                $student->$key = $value;
+            }
+
+            return $student;
+        });
+
+        // Add SAME guardian fields into parent_info
+        foreach ($guardianFields as $key => $value) {
+            $parent->$key = $value;
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data fetched successfully',
+            'data' => [
+                'parent_info' => $parent,
+                'students'    => $students
+            ]
+        ]);
+    }
+
+
+    public function saveParentStudentIdCardDetails(Request $request)
+    {
+        $parent_id = $request->parent_id;
+        $student_count = $request->students;
+
+        // 1. STUDENT LOOP UPDATE
+        for ($j = 1; $j <= $student_count; $j++) {
+
+            $student_id = $request->input("student_id$j");
+
+            $data = [];
+
+            $data['blood_group']  = $request->input("blood_group$j");
+            $data['house']        = $request->input("house$j");
+            $data['permant_add']  = $request->input("permant_add$j");
+
+            //  Student Image Upload (CI)
+            $s_image = $request->input("s_cropped_image$j");
+
+            if (!empty($s_image)) {
+
+                $ext = 'png';
+
+                $decoded = base64_decode(str_replace('[removed]', '', $s_image));
+
+                $fileName = $student_id . '.' . $ext;
+
+                $uploadResponse = upload_student_profile_image_into_folder(
+                    $student_id,
+                    $fileName,
+                    'student_image',
+                    $decoded
+                );
+
+                if (isset($uploadResponse['error'])) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Student image upload failed',
+                        'error' => $uploadResponse
+                    ]);
+                }
+
+                $data['image_name'] = $fileName;
+            }
+
+            // Guardian Info
+            $data['guardian_name']   = $request->guardian_name;
+            $data['guardian_mobile'] = $request->guardian_mobile;
+            $data['relation']        = $request->relation;
+
+            DB::table('student')
+                ->where('student_id', $student_id)
+                ->update($data);
+        }
+
+        // 2. PARENT UPDATE
+        $parentData = [];
+
+        $parentData['f_mobile'] = $request->f_mobile;
+        $parentData['m_mobile'] = $request->m_mobile;
+
+        $doc_type_folder = 'parent_image';
+
+        // Father Image
+        if ($request->f_cropped_image) {
+
+            $decoded = base64_decode(str_replace('[removed]', '', $request->f_cropped_image));
+
+            $fileName = "f_" . $parent_id . ".png";
+
+            $uploadResponse = upload_father_profile_image_into_folder(
+                $parent_id,
+                $fileName,
+                $doc_type_folder,
+                $decoded
+            );
+
+            if (isset($uploadResponse['error'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Father image upload failed',
+                    'error' => $uploadResponse
+                ]);
+            }
+
+            $parentData['father_image_name'] = $fileName;
+        }
+
+        //  Mother Image
+        if ($request->m_cropped_image) {
+
+            $decoded = base64_decode(str_replace('[removed]', '', $request->m_cropped_image));
+
+            $fileName = "m_" . $parent_id . ".png";
+
+            $uploadResponse = upload_mother_profile_image_into_folder(
+                $parent_id,
+                $fileName,
+                $doc_type_folder,
+                $decoded
+            );
+
+            if (isset($uploadResponse['error'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mother image upload failed',
+                    'error' => $uploadResponse
+                ]);
+            }
+
+            $parentData['mother_image_name'] = $fileName;
+        }
+
+        // Guardian Image
+        if ($request->g_cropped_image) {
+
+            $decoded = base64_decode(str_replace('[removed]', '', $request->g_cropped_image));
+
+            $fileName = "g_" . $parent_id . ".png";
+
+            $uploadResponse = upload_guardian_profile_image_into_folder(
+                $parent_id,
+                $fileName,
+                $doc_type_folder,
+                $decoded
+            );
+
+            if (isset($uploadResponse['error'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Guardian image upload failed',
+                    'error' => $uploadResponse
+                ]);
+            }
+
+            $parentData['guardian_image_name'] = $fileName;
+        }
+
+        DB::table('parent')
+            ->where('parent_id', $parent_id)
+            ->update($parentData);
+
+        //  3. CONFIRMATION TABLE
+        $confirmData = [
+            'parent_id'   => $parent_id,
+            'academic_yr' => $request->academic_yr,
+            'confirm'     => $request->has('confirm') ? 'Y' : 'N'
+        ];
+
+        $exists = DB::table('confirmation_idcard')
+            ->where('parent_id', $parent_id)
+            ->first();
+
+        if ($exists) {
+            DB::table('confirmation_idcard')
+                ->where('parent_id', $parent_id)
+                ->update($confirmData);
+        } else {
+            DB::table('confirmation_idcard')->insert($confirmData);
+        }
+
+        //  QR CODE GENERATION
+        $fileName = $parent_id . ".svg";
+
+
+        $folderPath = storage_path('app/public/qrcode');
+
+        if (!file_exists($folderPath)) {
+            mkdir($folderPath, 0777, true);
+        }
+
+
+        $svgData = \QrCode::format('svg')
+            ->size(200)
+            ->generate($parent_id);
+
+
+        $filelocation = $folderPath . '/' . $fileName;
+        file_put_contents($filelocation, $svgData);
+
+
+        $base64File = base64_encode($svgData);
+
+
+        upload_qrcode_into_folder(
+            $fileName,
+            'qrcode',
+            $base64File
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'ID Card details saved successfully',
+            'qr_code' => asset("uploads/qrcode/" . $fileName)
+        ]);
     }
 }

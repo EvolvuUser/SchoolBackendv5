@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{{-- <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -152,6 +152,200 @@
 
     <div class="signature">
         Clerk <span>Principal</span>
+    </div>
+
+</div>
+
+</body>
+</html> --}}
+
+
+@php
+    $bgImage = getCharacterBgImage();
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+@endphp
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bonafide Certificate</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        font-size: 15px;
+
+        background-image: url('{{ asset($bgImage['file_path']) }}');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .certificate-container {
+        width: 95%;
+        margin: auto;
+        border: 3px groove grey;
+        padding: 20px;
+        background: rgba(255,255,255,0.92);
+    }
+
+    .header-table {
+        width: 100%;
+        border: none;
+    }
+
+    .header-table td {
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .header-left img {
+        max-width: 150px;
+        max-height: 130px;
+    }
+
+    .school-name {
+        font-size: 30px;
+        color: red;
+        font-weight: bold;
+    }
+
+    .school-details {
+        font-size: 14px;
+    }
+
+    .info-table {
+        width: 100%;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    .info-table td {
+        padding: 4px;
+    }
+
+    .title {
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        margin: 15px 0;
+        text-decoration: underline;
+        margin-top: 40px;
+    }
+
+    .details-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .details-table td {
+        padding: 8px;
+        font-size: 15px;
+        border: 1px solid #000;
+    }
+
+    .signature {
+        margin-top: 40px;
+        font-size: 15px;
+    }
+
+    .signature span {
+        float: right;
+        margin-right: 15%;
+    }
+
+    hr.dotted {
+        border: 1px dotted black;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="certificate-container">
+
+   
+   
+    <!-- Title -->
+    <div class="title">
+        BONAFIDE AND CHARACTER CERTIFICATE
+    </div>
+
+    <p>
+        Date:
+        <b>{{$data->issue_date_bonafide}}</b>
+    </p>
+
+    <?php
+        $academic_yr_to = $data->academic_yr;
+        $acd_yr = explode('-', $academic_yr_to);
+        $to_year = date('Y', strtotime($acd_yr[1]));
+    ?>
+
+    <p style="line-height: 30px; text-align: justify;">
+        This is to certify that Master / Miss
+        {{$data->stud_name}}
+        was a bonafide student of our school studying in
+        Std {{$data->class_division}}
+        in the year {{$data->academic_yr}}.
+
+        Her / His date of birth as per the General Register
+        of the school is
+        {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') . ' [ ' . $data->dob_words . ' ]' }}.
+
+        She / He holds a good moral character.
+
+        She / He has passed her /his CBSE Std.
+        {{$data->class_division}}
+        Examination of Feb / March
+        <?php echo $to_year; ?>
+        in the <?php echo $data->attempt; ?>.
+    </p>
+
+    <p><b>Details:</b></p>
+
+    <!-- Details Table -->
+    <table class="details-table">
+        <tr>
+            <td width="30%">Student's Name</td>
+            <td>{{$data->stud_name}}</td>
+        </tr>
+
+        <tr>
+            <td>Class</td>
+            <td>{{$data->class_division}}</td>
+        </tr>
+
+        <tr>
+            <td>Date of Birth (Figures)</td>
+            <td>{{$data->dob}}</td>
+        </tr>
+
+        <tr>
+            <td>Date of Birth (Words)</td>
+            <td>{{$data->dob_words}}</td>
+        </tr>
+
+        <tr>
+            <td>Attempt</td>
+            <td>{{$data->attempt}}</td>
+        </tr>
+    </table>
+
+    <!-- Footer -->
+    <p>Place: Pune</p>
+
+    <div class="signature">
+        Clerk
+        <span>Principal</span>
     </div>
 
 </div>
