@@ -6742,6 +6742,8 @@ class LibraryController extends Controller
     //     }
     // }
 
+
+
     public function uploadOrUpdateBackground(Request $request)
     {
         // Step 1: Check required fields manually
@@ -6755,25 +6757,26 @@ class LibraryController extends Controller
             $missing[] = 'module';
         }
 
-        if (!empty($missing)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'These fields are required: ' . implode(', ', $missing)
-            ], 422);
-        }
+        // if (!empty($missing)) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'These fields are required: ' . implode(', ', $missing)
+        //     ], 422);
+        // }
 
         // Step 2: Validate
         $validator = Validator::make($request->all(), [
-            'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+            // 'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'image|max:2048',
             'module' => 'string'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'message' => $validator->errors()->first()
-            ], 422);
-        }
+        // if ($validator->fails()) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => $validator->errors()->first()
+        //     ], 422);
+        // }
 
         try {
             $module = trim($request->module);
@@ -6867,41 +6870,6 @@ class LibraryController extends Controller
         }
     }
 
-
-    // public function getBackgroundImages(Request $request)
-    // {
-    //     try {
-    //         $user = $this->authenticateUser();
-    //         $shortName = JWTAuth::getPayload()->get('short_name');
-
-    //         // No filtering needed now
-    //         $images = DB::table('background_images')->get();
-
-    //         $data = $images->map(function ($img) use ($shortName) {
-    //             return [
-    //                 'module' => $img->module,
-    //                 'file_name' => $img->file_name,
-    //                 'file_url' => asset(
-    //                     "BackgroundImages/{$shortName}/{$img->module}/{$img->file_name}"
-    //                 ),
-    //                 'uploaded_at' => $img->created_at,
-    //             ];
-    //         });
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'message' => 'Images fetched successfully',
-    //             'school' => $shortName,
-    //             'data' => $data
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Failed to fetch images',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     public function getBackgroundImages(Request $request)
     {
