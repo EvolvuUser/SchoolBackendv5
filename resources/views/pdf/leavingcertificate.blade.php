@@ -17,7 +17,7 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
     padding: 0;
   }
     body{
-    /* background-image: url('https://sms.evolvu.in/public/lc_bg.jpg'); */
+     /* background-image: url('https://sms.evolvu.in/public/lc_bg.jpg');  */
 	background-image: url('{{ asset($bgImage['file_path']) }}');
     -webkit-background-size: cover;
     -moz-background-size: cover;
@@ -77,21 +77,21 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 		    <td width="5%"></td>
 			<td align="left" width="40%">Name of Pupil in full</td>
 			<td align="center" width="8%">:</td>
-			<td align="left" align="left"><?php echo $data->stud_name . ' ' . $data->mid_name . ' ' . $data->last_name; ?></td>
+			<td align="left" align="left"><?php echo strtoupper($data->stud_name . ' ' . $data->mid_name . ' ' . $data->last_name); ?></td>
         </tr>
 
 	    <tr>
 		    <td></td>
 			<td align="left">Father’s Name</td>
 			<td align="center" >: </td>
-			<td align="left"><?php echo $data->father_name; ?></td>
+			<td align="left"><?php echo strtoupper($data->father_name); ?></td>
 		</tr>
 
 		<tr>
 			<td></td>	
 			<td align="left">Mother’s Name</td>
 			<td align="center" >:</td>
-			<td align="left"><?php echo $data->mother_name; ?></td>
+			<td align="left"><?php echo strtoupper($data->mother_name); ?></td>
 		</tr>		
 		<tr>
 			<td></td>
@@ -156,6 +156,7 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 			$relcast = $data->religion;
 		}
 	}
+	$relcast = strtoupper($relcast);
 
 	?>
 		<tr>
