@@ -5287,6 +5287,142 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function updateHealthActivityRecord(Request $request, $student_id)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $jsonValue = $request->input('value');
+
+    //     if (!$jsonValue) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Value JSON is required',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     $inputData = json_decode($jsonValue, true);
+
+    //     if (!is_array($inputData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Invalid JSON format',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= PARAMETERS MASTER =================
+    //     $parameterRows = DB::table('health_activity_parameter')
+    //         ->where('is_active', 'Y')
+    //         ->select('id', 'test_parameter', 'group_id', 'param_data', 'description')
+    //         ->get();
+
+    //     // Normalize parameter keys
+    //     $parameterMap = [];
+    //     foreach ($parameterRows as $p) {
+    //         $normalized = strtolower(trim($p->test_parameter));
+    //         $parameterMap[$normalized] = $p;
+    //     }
+
+    //     // ================= GROUP MASTER =================
+    //     $groups = DB::table('health_activity_group')
+    //         ->select('id', 'group_name')
+    //         ->get()
+    //         ->keyBy('id');
+
+    //     // ================= BUILD DATA =================
+    //     $filteredData    = [];
+    //     $groupData       = [];
+    //     $paramMetaData   = [];
+    //     $descriptionData = [];
+
+    //     foreach ($inputData as $key => $value) {
+
+    //         $normalizedKey = strtolower(trim($key));
+
+    //         if (!isset($parameterMap[$normalizedKey])) {
+    //             continue;
+    //         }
+
+    //         $param = $parameterMap[$normalizedKey];
+    //         $paramName = $param->test_parameter;
+
+    //         // VALUE
+    //         $filteredData[$paramName] = $value;
+
+    //         // GROUP DATA
+    //         if (isset($groups[$param->group_id])) {
+    //             $groupData[$paramName] = [
+    //                 'group_id'   => $param->group_id,
+    //                 'group_name' => $groups[$param->group_id]->group_name
+    //             ];
+    //         }
+
+    //         // PARAM META DATA
+    //         $paramMetaData[$paramName] = $param->param_data
+    //             ? json_decode($param->param_data, true)
+    //             : null;
+
+    //         // DESCRIPTION FIX (IMPORTANT)
+    //         $descriptionData[$paramName] = $param->description;
+    //     }
+
+    //     if (empty($filteredData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'No valid parameters provided',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= EXISTING RECORD =================
+    //     $record = DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->first();
+
+    //     if (!$record) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'message' => 'Health record not found for this student',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= SAFE JSON DECODE =================
+    //     $existingValue = json_decode($record->value, true) ?? [];
+    //     $existingGroup = json_decode($record->group_data, true) ?? [];
+    //     $existingParam = json_decode($record->param_data, true) ?? [];
+    //     $existingDesc  = json_decode($record->description, true) ?? [];
+
+    //     // ================= MERGE =================
+    //     $updatedValue = array_merge($existingValue, $filteredData);
+    //     $updatedGroup = array_merge($existingGroup, $groupData);
+    //     $updatedParam = array_merge($existingParam, $paramMetaData);
+    //     $updatedDesc  = array_merge($existingDesc, $descriptionData);
+
+    //     // ================= UPDATE =================
+    //     DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->update([
+    //             'value'        => json_encode($updatedValue),
+    //             'group_data'   => json_encode($updatedGroup),
+    //             'param_data'   => json_encode($updatedParam),
+    //             'description'  => json_encode($updatedDesc),
+    //             'created_by'   => $user->reg_id,
+
+    //         ]);
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health record updated successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
+    // 15-06-2026
     public function updateHealthActivityRecord(Request $request, $student_id)
     {
         $user = $this->authenticateUser();
@@ -5318,11 +5454,22 @@ class LibraryController extends Controller
             ->select('id', 'test_parameter', 'group_id', 'param_data', 'description')
             ->get();
 
+        if ($parameterRows->isEmpty()) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'No active parameters found',
+                'success' => false
+            ]);
+        }
+
         // Normalize parameter keys
         $parameterMap = [];
+        $activeParamNames = [];
+
         foreach ($parameterRows as $p) {
             $normalized = strtolower(trim($p->test_parameter));
             $parameterMap[$normalized] = $p;
+            $activeParamNames[] = $p->test_parameter;
         }
 
         // ================= GROUP MASTER =================
@@ -5331,10 +5478,10 @@ class LibraryController extends Controller
             ->get()
             ->keyBy('id');
 
-        // ================= BUILD DATA =================
-        $filteredData    = [];
-        $groupData       = [];
-        $paramMetaData   = [];
+        // ================= BUILD CURRENT DATA =================
+        $filteredData = [];
+        $groupData = [];
+        $paramMetaData = [];
         $descriptionData = [];
 
         foreach ($inputData as $key => $value) {
@@ -5354,7 +5501,7 @@ class LibraryController extends Controller
             // GROUP DATA
             if (isset($groups[$param->group_id])) {
                 $groupData[$paramName] = [
-                    'group_id'   => $param->group_id,
+                    'group_id' => $param->group_id,
                     'group_name' => $groups[$param->group_id]->group_name
                 ];
             }
@@ -5364,7 +5511,7 @@ class LibraryController extends Controller
                 ? json_decode($param->param_data, true)
                 : null;
 
-            // DESCRIPTION FIX (IMPORTANT)
+            // DESCRIPTION
             $descriptionData[$paramName] = $param->description;
         }
 
@@ -5394,25 +5541,32 @@ class LibraryController extends Controller
         $existingValue = json_decode($record->value, true) ?? [];
         $existingGroup = json_decode($record->group_data, true) ?? [];
         $existingParam = json_decode($record->param_data, true) ?? [];
-        $existingDesc  = json_decode($record->description, true) ?? [];
+        $existingDesc = json_decode($record->description, true) ?? [];
 
-        // ================= MERGE =================
+        // ================= REMOVE INACTIVE PARAMETERS =================
+        $activeKeys = array_flip($activeParamNames);
+
+        $existingValue = array_intersect_key($existingValue, $activeKeys);
+        $existingGroup = array_intersect_key($existingGroup, $activeKeys);
+        $existingParam = array_intersect_key($existingParam, $activeKeys);
+        $existingDesc = array_intersect_key($existingDesc, $activeKeys);
+
+        // ================= MERGE UPDATED DATA =================
         $updatedValue = array_merge($existingValue, $filteredData);
         $updatedGroup = array_merge($existingGroup, $groupData);
         $updatedParam = array_merge($existingParam, $paramMetaData);
-        $updatedDesc  = array_merge($existingDesc, $descriptionData);
+        $updatedDesc = array_merge($existingDesc, $descriptionData);
 
-        // ================= UPDATE =================
+        // ================= UPDATE RECORD =================
         DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
             ->update([
-                'value'        => json_encode($updatedValue),
-                'group_data'   => json_encode($updatedGroup),
-                'param_data'   => json_encode($updatedParam),
-                'description'  => json_encode($updatedDesc),
-                'created_by'   => $user->reg_id,
-
+                'value' => json_encode($updatedValue),
+                'group_data' => json_encode($updatedGroup),
+                'param_data' => json_encode($updatedParam),
+                'description' => json_encode($updatedDesc),
+                'created_by' => $user->reg_id,
             ]);
 
         return response()->json([
