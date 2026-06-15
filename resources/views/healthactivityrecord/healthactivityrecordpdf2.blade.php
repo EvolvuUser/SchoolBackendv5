@@ -153,7 +153,7 @@ foreach ($grouped as $groupName => $subGroups) {
 // 20-05-2026
 
 /* ── STEP 3: Smart page splitting ── */
-$pageUsableHeight = 670;
+$pageUsableHeight = 650;
 $headerHeight     = 90;
 
 $pages = [];
@@ -192,35 +192,27 @@ foreach ($flatRows as $row) {
         ? mb_substr($cleanTest, 0, 32) . '…'
         : $cleanTest;
 
-    /* ── Fixed height buckets based on desc length ── */
-    // $descLen = mb_strlen($row['desc_display']);
-    // if ($descLen <= 40) {
-    //     $rowHeight = 30;
-    // } elseif ($descLen <= 80) {
-    //     $rowHeight = 44;
-    // } else {
-    //     $rowHeight = 58;
-    // }
-
     $descLen = mb_strlen(trim($row['desc_display'] ?? ''));
 
-/* ── Row height based on description ── */
-
-if ($descLen == 0) {
-    $rowHeight = 22;
-
-} elseif ($descLen <= 40) {
-
-    $rowHeight = 30;
-
-} elseif ($descLen <= 80) {
-
-    $rowHeight = 44;
-
-} else {
-
-    $rowHeight = 58;
-}
+    /* ── Exact dompdf row height calculation ──
+     * font-size: 7pt = 9.33px, line-height: 1.3, padding top+bottom: 6px
+     * desc column width: ~150px at 7pt ≈ 22 chars per line
+     * single line = (9.33 × 1.3) + 6 = ~18px
+     * each extra line adds (9.33 × 1.3) = ~12px
+     */
+    if ($descLen == 0) {
+        $rowHeight = 18;  // single line, no desc
+    } elseif ($descLen <= 22) {
+        $rowHeight = 18;  // 1 line
+    } elseif ($descLen <= 44) {
+        $rowHeight = 30;  // 2 lines
+    } elseif ($descLen <= 66) {
+        $rowHeight = 42;  // 3 lines
+    } elseif ($descLen <= 88) {
+        $rowHeight = 54;  // 4 lines
+    } else {
+        $rowHeight = 66;  // 5+ lines (desc is truncated at 100 chars so max ~5 lines)
+    }
 
     /* ── Extra height for new group/subgroup ── */
     $extraHeight = 0;
@@ -286,7 +278,6 @@ foreach ($pages as $pageRows) {
 
     $finalPages[] = $processed;
 }
-
 /* ── STEP 4: All class health data ── */
 $allClassHealth = [];
 foreach ($student_id_array_new as $cls => $id) {
@@ -462,12 +453,14 @@ html, body {
     border-spacing: 0;
     font-size: 10px;
     table-layout: fixed;
-    border: 1px solid #cfe3f5;
+    /* border: 1px solid #cfe3f5; */
+    border: 2px solid #93c5fd;
     background: #f0f7ff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     page-break-inside: auto;
     break-inside: auto;
+    padding: 1px 1px 1px 1px;
 }
 
 .wrap-header {
@@ -518,8 +511,8 @@ html, body {
 
 /* Description column */
 .record-table td.desc-cell {
-    max-width: 160px;
-    min-width: 80px;
+    max-width: 170px;
+    min-width: 90px;
     word-break: break-word;
     white-space: normal;
     line-height: 1.3;
@@ -602,7 +595,7 @@ html, body {
     background-color: #ffffff;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    text-align: left;
+    text-align: center;
     color: #000000;
 }
 
