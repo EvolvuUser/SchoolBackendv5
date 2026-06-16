@@ -441,7 +441,7 @@ html, body {
 .page-content {
     position: relative;
     z-index: 2;
-    width: 92%;
+    width: 91%;
     margin: auto;
     padding-top: 30px;
 }
