@@ -31,9 +31,9 @@ class StudentAchievementController extends Controller
         $students = DB::table('student as s')
             ->leftJoin('class as c', 's.class_id', '=', 'c.class_id')
             ->leftJoin('section as sec', 's.section_id', '=', 'sec.section_id')
-            ->where('s.student_id', $student_id)
             ->where('s.parent_id', $parent_id)
             ->where('s.academic_yr', $academic_year)
+            ->orderByRaw('CASE WHEN s.student_id = ? THEN 0 ELSE 1 END', [$student_id])
             ->select(
                 's.*',
                 'c.name as class_name',
