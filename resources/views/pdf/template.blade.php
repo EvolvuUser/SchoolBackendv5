@@ -86,7 +86,8 @@
         padding: 0;
         font-family: Arial, sans-serif;
 
-        background-image: url('{{ asset($bgImage['file_path']) }}');
+        /* background-image: url('{{ asset($bgImage['file_path']) }}'); */
+        background-image: url('{{ $bgImage['file_path'] }}');
         -webkit-background-size: cover;
         -moz-background-size: cover;
         -o-background-size: cover;
@@ -236,7 +237,7 @@
 
                     </div>
 
-                    <hr class="dotted">
+                    {{-- <hr class="dotted"> --}}
 
                 </td>
 

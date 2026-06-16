@@ -1611,9 +1611,12 @@ Route::middleware(['school.db'])->group(function () {
             [CertificateController::class, 'downloadCertificatePdf']
         );
 
-        // Parent Dev Name : Mahima Chaudhari 03-06-2026
-        Route::get('/get_parent_student_details_idcard', [AuthController::class, 'getParentDetailsForIdCard']);
-        Route::post('/save_parent_student_details_idcard', [AuthController::class, 'saveParentStudentIdCardDetails']);
+        // Parent Login Dev Name : Mahima Chaudhari 03-06-2026
+        // Route::get('/get_parent_student_details_idcard', [AuthController::class, 'getParentDetailsForIdCard']);
+        // Route::post('/save_parent_student_details_idcard', [AuthController::class, 'saveParentStudentIdCardDetails']);
+
+        Route::get('/get_parent_student_details_idcard', [ParentController::class, 'getParentDetailsForIdCard']);
+        Route::post('/save_parent_student_details_idcard', [ParentController::class, 'saveParentStudentIdCardDetails']);
 
         // Testing
         Route::get('/testPayload', function (Request $request) {
