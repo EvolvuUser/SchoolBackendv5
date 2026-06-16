@@ -1,16 +1,15 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\Storage;
 
 class StudentAchievementController extends Controller
 {
-
     private function authenticateUser()
     {
         try {
@@ -21,16 +20,30 @@ class StudentAchievementController extends Controller
     }
 
     // DONE
-    public function childrens(Request $req) {
+    public function childrens(Request $req)
+    {
         $user = $this->authenticateUser();
         $payload = JWTAuth::getPayload();
-        $parent_id = $payload->get("reg_id");
+        $parent_id = $payload->get('reg_id');
         $academic_year = $payload->get('academic_year');
-        $students = DB::table("student")->where('parent_id' , $parent_id)->where('academic_yr' , $academic_year)->get();
+        // dd($parent_id,$academic_year);
+        $student_id = $req->query('student_id');
+        $students = DB::table('student as s')
+            ->leftJoin('class as c', 's.class_id', '=', 'c.class_id')
+            ->leftJoin('section as sec', 's.section_id', '=', 'sec.section_id')
+            ->where('s.student_id', $student_id)
+            ->where('s.parent_id', $parent_id)
+            ->where('s.academic_yr', $academic_year)
+            ->select(
+                's.*',
+                'c.name as class_name',
+                'sec.name as section_name'
+            )
+            ->get();
 
         return response()->json([
             'data' => $students,
-        ],200);
+        ], 200);
     }
 
     // DONE
@@ -42,7 +55,7 @@ class StudentAchievementController extends Controller
         $payload = JWTAuth::getPayload();
         $academic_year = $payload->get('academic_year');
         $role_id = $payload->get('role_id');
-        $parent_id = $payload->get("reg_id");
+        $parent_id = $payload->get('reg_id');
 
         // currently data is filtered to student_id
 
@@ -60,8 +73,8 @@ class StudentAchievementController extends Controller
 
         return response()->json([
             'data' => $query->orderBy('achievement_date', 'desc')->get(),
-        ]
-        ,200);
+        ],
+            200);
     }
 
     // DONE
@@ -84,7 +97,7 @@ class StudentAchievementController extends Controller
             'event_name' => $req->event_name,
             'score' => $req->score,
             'position' => $req->position,
-            'is_external' => $role_id == "P" ? 1 : 0,
+            'is_external' => $role_id == 'P' ? 1 : 0,
             'created_at' => now(),
         ]);
         return response()->json(['id' => $id], 201);
@@ -95,7 +108,7 @@ class StudentAchievementController extends Controller
     {
         $user = $this->authenticateUser();
         $payload = JWTAuth::getPayload();
-        $short_name = $payload->get("short_name");
+        $short_name = $payload->get('short_name');
         if (!$req->hasFile('file')) {
             return response()->json(['message' => 'No file'], 400);
         }
