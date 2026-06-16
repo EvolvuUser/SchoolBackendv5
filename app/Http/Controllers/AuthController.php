@@ -579,6 +579,7 @@ class AuthController extends Controller
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
+        // Parent details
         $parent = DB::table('parent')
             ->where('parent_id', $parent_id)
             ->first();
@@ -591,7 +592,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // Parent image URLs from CodeIgniter
+        // Parent image URLs
         $parent->father_image_url = !empty($parent->father_image_name)
             ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->father_image_name
             : '';
@@ -600,6 +601,15 @@ class AuthController extends Controller
             ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->mother_image_name
             : '';
 
+        // Confirmation status
+        $confirmation = DB::table('confirmation_idcard')
+            ->where('parent_id', $parent_id)
+            ->where('academic_yr', $academicYear)
+            ->first();
+
+        $parent->confirm = $confirmation ? $confirmation->confirm : 'N';
+
+        // Students
         $students = DB::table('student')
             ->where([
                 'parent_id'   => $parent_id,
@@ -621,10 +631,12 @@ class AuthController extends Controller
                 'relation'        => $firstStudent->relation,
             ];
 
-            // Guardian image from student table
+            // Guardian image URL
             $parent->guardian_image_url = !empty($firstStudent->guardian_image_name)
                 ? $codeigniter_app_url . 'uploads/parent_image/' . $firstStudent->guardian_image_name
                 : '';
+        } else {
+            $parent->guardian_image_url = '';
         }
 
         $students = $students->map(function ($student) use ($guardianFields, $codeigniter_app_url) {
@@ -637,7 +649,7 @@ class AuthController extends Controller
                 ->where('section_id', $student->section_id)
                 ->value('name');
 
-            // Student image URL from CodeIgniter
+            // Student image URL
             $student->image_url = !empty($student->image_name)
                 ? $codeigniter_app_url . 'uploads/student_image/' . $student->image_name
                 : '';
@@ -649,6 +661,7 @@ class AuthController extends Controller
             return $student;
         });
 
+        // Add guardian fields to parent object
         foreach ($guardianFields as $key => $value) {
             $parent->$key = $value;
         }
@@ -658,7 +671,7 @@ class AuthController extends Controller
             'message' => 'Data fetched successfully',
             'data' => [
                 'parent_info' => $parent,
-                'students'    => $students
+                'students' => $students
             ]
         ]);
     }

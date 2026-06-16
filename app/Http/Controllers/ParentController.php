@@ -99,82 +99,6 @@ class ParentController extends Controller
         }
     }
 
-    // public function getParentDetailsForIdCard()
-    // {
-    //     $payload = JWTAuth::getPayload();
-    //     $academicYear = $payload->get('academic_year');
-    //     $parent_id = auth()->user()->reg_id;
-
-    //     // Parent info
-    //     $parent = DB::table('parent')
-    //         ->where('parent_id', $parent_id)
-    //         ->first();
-
-    //     if (!$parent) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Parent not found',
-    //             'data' => (object)[]
-    //         ]);
-    //     }
-
-    //     // Students
-    //     $students = DB::table('student')
-    //         ->where([
-    //             'parent_id'   => $parent_id,
-    //             'IsDelete'    => 'N',
-    //             'academic_yr' => $academicYear
-    //         ])
-    //         ->get();
-
-    //     // Take guardian info from FIRST student (since it's same for all)
-    //     $firstStudent = $students->first();
-
-    //     $guardianFields = [];
-
-    //     if ($firstStudent) {
-    //         $guardianFields = [
-    //             'guardian_name'   => $firstStudent->guardian_name ?? null,
-    //             'guardian_mobile' => $firstStudent->guardian_mobile ?? null,
-    //             'guardian_add'    => $firstStudent->guardian_add ?? null,
-    //             'relation'        => $firstStudent->relation ?? null,
-    //         ];
-    //     }
-
-    //     // Attach class + section + keep guardian in each student
-    //     $students = $students->map(function ($student) use ($guardianFields) {
-
-    //         $student->class_name = DB::table('class')
-    //             ->where('class_id', $student->class_id)
-    //             ->value('name');
-
-    //         $student->section_name = DB::table('section')
-    //             ->where('section_id', $student->section_id)
-    //             ->value('name');
-
-    //         // attach SAME guardian fields from student table
-    //         foreach ($guardianFields as $key => $value) {
-    //             $student->$key = $value;
-    //         }
-
-    //         return $student;
-    //     });
-
-    //     // Add SAME guardian fields into parent_info
-    //     foreach ($guardianFields as $key => $value) {
-    //         $parent->$key = $value;
-    //     }
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'message' => 'Data fetched successfully',
-    //         'data' => [
-    //             'parent_info' => $parent,
-    //             'students'    => $students
-    //         ]
-    //     ]);
-    // }
-
     public function getParentDetailsForIdCard()
     {
         $payload = JWTAuth::getPayload();
@@ -185,6 +109,7 @@ class ParentController extends Controller
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
+        // Parent details
         $parent = DB::table('parent')
             ->where('parent_id', $parent_id)
             ->first();
@@ -197,7 +122,7 @@ class ParentController extends Controller
             ]);
         }
 
-        // Parent image URLs from CodeIgniter
+        // Parent image URLs
         $parent->father_image_url = !empty($parent->father_image_name)
             ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->father_image_name
             : '';
@@ -206,6 +131,15 @@ class ParentController extends Controller
             ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->mother_image_name
             : '';
 
+        // Confirmation status
+        $confirmation = DB::table('confirmation_idcard')
+            ->where('parent_id', $parent_id)
+            ->where('academic_yr', $academicYear)
+            ->first();
+
+        $parent->confirm = $confirmation ? $confirmation->confirm : 'N';
+
+        // Students
         $students = DB::table('student')
             ->where([
                 'parent_id'   => $parent_id,
@@ -227,10 +161,12 @@ class ParentController extends Controller
                 'relation'        => $firstStudent->relation,
             ];
 
-            // Guardian image from student table
+            // Guardian image URL
             $parent->guardian_image_url = !empty($firstStudent->guardian_image_name)
                 ? $codeigniter_app_url . 'uploads/parent_image/' . $firstStudent->guardian_image_name
                 : '';
+        } else {
+            $parent->guardian_image_url = '';
         }
 
         $students = $students->map(function ($student) use ($guardianFields, $codeigniter_app_url) {
@@ -243,7 +179,7 @@ class ParentController extends Controller
                 ->where('section_id', $student->section_id)
                 ->value('name');
 
-            // Student image URL from CodeIgniter
+            // Student image URL
             $student->image_url = !empty($student->image_name)
                 ? $codeigniter_app_url . 'uploads/student_image/' . $student->image_name
                 : '';
@@ -255,6 +191,7 @@ class ParentController extends Controller
             return $student;
         });
 
+        // Add guardian fields to parent object
         foreach ($guardianFields as $key => $value) {
             $parent->$key = $value;
         }
@@ -264,7 +201,7 @@ class ParentController extends Controller
             'message' => 'Data fetched successfully',
             'data' => [
                 'parent_info' => $parent,
-                'students'    => $students
+                'students' => $students
             ]
         ]);
     }
