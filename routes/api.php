@@ -1618,6 +1618,9 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_parent_student_details_idcard', [ParentController::class, 'getParentDetailsForIdCard']);
         Route::post('/save_parent_student_details_idcard', [ParentController::class, 'saveParentStudentIdCardDetails']);
 
+        // 17-06-2026 
+        Route::get('/get_raise_ticket_list', [ParentController::class, 'getRaiseTicketList']);
+
         // Testing
         Route::get('/testPayload', function (Request $request) {
             $payload = JWTAuth::getPayload();

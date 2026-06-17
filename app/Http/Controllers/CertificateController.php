@@ -732,7 +732,8 @@ class CertificateController extends Controller
             $data = SimpleBonafide::find($sr_no);
             $dynamicFilename = "Simple_Bonafide_Certificate_$data->stud_name.pdf";
             if ($shortname == 'SACS') {
-                $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+                // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
+                $pdf = PDF::loadView('pdf.simplebonafide', compact('data'));
             } elseif ($shortname == 'HSCS') {
                 $pdf = PDF::loadView('pdf.hscssimplebonafide', compact('data'));
             } elseif ($shortname == 'DEMONEW') {

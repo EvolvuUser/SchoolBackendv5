@@ -206,7 +206,6 @@ class ParentController extends Controller
         ]);
     }
 
-
     public function saveParentStudentIdCardDetails(Request $request)
     {
         $parent_id = $request->parent_id;
@@ -433,5 +432,64 @@ class ParentController extends Controller
             'message' => 'ID Card details saved successfully',
             'qr_code' => asset("uploads/qrcode/" . $fileName)
         ]);
+    }
+
+
+    public function getRaiseTicketList()
+    {
+        try {
+            // Authenticate User
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized user'
+                ], 401);
+            }
+
+            $tickets = DB::table('ticket')
+                ->select(
+                    'ticket.*',
+                    'service_type.service_name',
+                    's.first_name',
+                    's.mid_name',
+                    's.last_name'
+                )
+                ->join('service_type', 'service_type.service_id', '=', 'ticket.service_id')
+                ->join('student as s', 's.student_id', '=', 'ticket.student_id')
+                ->where('ticket.created_by', $user->reg_id)
+                ->orderBy('ticket.ticket_id', 'DESC')
+                ->get()
+                ->map(function ($item) {
+                    return array_map(function ($value) {
+                        return is_string($value)
+                            ? preg_replace("/<.+>/sU", "", $value)
+                            : $value;
+                    }, (array) $item);
+                });
+
+            if ($tickets->isNotEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'Ticket_list' => $tickets
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => false,
+                'Ticket_list' => 'No Records Found'
+            ], 200);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'status' => false,
+                'Ticket_list' => 'No Records Found'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'Ticket_list' => 'No Records Found'
+            ], 200);
+        }
     }
 }

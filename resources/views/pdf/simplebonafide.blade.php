@@ -184,12 +184,11 @@ $student_image = '';
 </html>
  --}}
 
+{{-- @php
+    $school = getSchoolDetails();
+    $bgImage = getSimpleBonafideBgImage();
 
- @php
-$school = getSchoolDetails();
-$bgImage = getSimpleBonafideBgImage();
-
-$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
     ? asset($bgImage['file_path'])
     : asset('health3_bg.jpg');
 @endphp
@@ -203,7 +202,6 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 }
 
 body{
-    /* BACKGROUND IMAGE */
     background-image: url('{{ asset($bgImage['file_path']) }}');
     -webkit-background-size: cover;
     -moz-background-size: cover;
@@ -453,4 +451,308 @@ cellspacing="0">
 
 </div>
 
+</html> --}}
+
+
+@php
+    $bgImage = getSimpleBonafideBgImage();
+
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+        ? asset($bgImage['file_path'])
+        : asset('character_certificate.jpg');
+
+    $pageType = $bgImage['page_type'] ?? 'A5 landscape';
+@endphp
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Simple Bonafide Certificate</title>
+
+<style>
+
+    @page {
+
+        @switch($pageType)
+
+            @case('A4 portrait')
+                size: A4 portrait;
+                @break
+
+            @case('A4 landscape')
+                size: A4 landscape;
+                @break
+
+            @case('A5 portrait')
+                size: A5 portrait;
+                @break
+
+            @case('A5 landscape')
+                size: A5 landscape;
+                @break
+
+            @case('Letter portrait')
+                size: letter portrait;
+                @break
+
+            @case('Letter landscape')
+                size: letter landscape;
+                @break
+
+            @default
+                size: A5 landscape;
+
+        @endswitch
+
+        margin:0;
+    }
+
+    *{
+        box-sizing:border-box;
+    }
+
+    html,
+    body{
+        margin:0;
+        padding:0;
+        width:100%;
+        height:100%;
+        font-family:Arial, sans-serif;
+
+        background-image:url('{{ $bgPath }}');
+        background-repeat:no-repeat;
+        background-position:center center;
+        background-size:100% 100%;
+    }
+
+    .pdfdiv{
+        width:100%;
+        height:100%;
+    }
+
+    .main-container{
+        width:90%;
+        margin:auto;
+        padding-top:140px; /* Adjust according to background header */
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+    }
+
+    td{
+        padding:4px;
+        font-size:15px;
+        font-style:italic;
+        vertical-align:middle;
+    }
+
+    .title{
+        text-align:center;
+        font-size:20px;
+        font-weight:bold;
+        font-style:italic;
+        padding-bottom:10px;
+    }
+
+    .statistics_line{
+        border-bottom:1px solid #000;
+        text-align:center;
+        font-weight:bold;
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="pdfdiv">
+
+    <div class="main-container">
+
+        <table>
+
+            <!-- TITLE -->
+            <tr>
+                <td>
+                    <div class="title">
+                        BONAFIDE CERTIFICATE
+                    </div>
+                </td>
+            </tr>
+
+            <!-- REF NO -->
+            <tr>
+                <td align="right">
+                    Ref. No :
+                    {{ $data->academic_yr }}/B.C/{{ $data->sr_no }}
+                </td>
+            </tr>
+
+            <!-- HEADING -->
+            <tr>
+                <td align="center" style="padding-top:20px;">
+                    <b>This is to certify that</b>
+                </td>
+            </tr>
+
+            <!-- STUDENT NAME -->
+            <tr>
+                <td>
+
+                    <table>
+
+                        <tr>
+
+                            <td width="18%">
+                                Master / Miss
+                            </td>
+
+                            <td>
+                                <div class="statistics_line">
+                                    {{ $data->stud_name }}
+                                </div>
+                            </td>
+
+                            <td width="2%">
+                                ,
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </td>
+            </tr>
+
+            <!-- FATHER NAME -->
+            <tr>
+                <td>
+
+                    <table>
+
+                        <tr>
+
+                            <td width="22%">
+                                son / daughter of Mr.
+                            </td>
+
+                            <td width="28%">
+                                <div class="statistics_line">
+                                    {{ $data->father_name }}
+                                </div>
+                            </td>
+
+                            <td>
+                                is a bonafide student of
+                                St. Arnolds Central School
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </td>
+            </tr>
+
+            <!-- CLASS -->
+            <tr>
+                <td>
+
+                    <table>
+
+                        <tr>
+
+                            <td width="35%">
+                                studying in our school in class
+                            </td>
+
+                            <td width="15%">
+                                <div class="statistics_line">
+                                    {{ $data->class_division }}
+                                </div>
+                            </td>
+
+                            <td>
+                                for the academic year {{ $data->academic_yr }}.
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </td>
+            </tr>
+
+            <!-- DOB TEXT -->
+            <tr>
+                <td align="center" style="padding-top:25px;">
+                    According to our record his / her date of birth is
+                </td>
+            </tr>
+
+            <!-- DOB -->
+            <tr>
+                <td align="center">
+
+                    <div class="statistics_line">
+
+                        {{ \Carbon\Carbon::parse($data->dob)->format('d-m-Y') }}
+
+                        ({{ $data->dob_words }})
+
+                    </div>
+
+                </td>
+            </tr>
+
+            <!-- PURPOSE -->
+            @if(!empty($data->purpose))
+            <tr>
+                <td style="padding-top:25px;">
+                    {{ $data->purpose }}
+                </td>
+            </tr>
+            @endif
+
+            <!-- FOOTER -->
+            <tr>
+
+                <td style="padding-top:20px;">
+
+                    <table>
+
+                        <tr>
+
+                            <td align="left">
+
+                                Date :
+                                {{ \Carbon\Carbon::parse($data->issue_date_bonafide)->format('M j, Y') }}
+
+                            </td>
+
+                            <td align="right">
+
+                                Principal
+
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
 </html>
