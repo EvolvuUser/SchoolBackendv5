@@ -4,6 +4,14 @@ $bgImage = getHealthBgImage();
 
 // dd($bgImage);
 
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+
+$pageType = $bgImage['page_type'] ?? 'A4 landscape';
+
+// dd($pageType);
+
 $class = get_class_section_of_student($student_id);
 $class_array = !empty($class) ? explode(' ', $class) : [];
 $class_name = (!empty($class_array) && isset($class_array[0])) ? (int)$class_array[0] : 0;
@@ -289,15 +297,49 @@ foreach ($student_id_array_new as $cls => $id) {
 <html>
 <head>
 <style>
+
 /* ================= PAGE SETUP ================= */
 @page {
-    size: A4 landscape;
+
+    @switch($pageType)
+
+        @case('A4 portrait')
+            size: A4 portrait;
+            @break
+
+        @case('A4 landscape')
+            size: A4 landscape;
+            @break
+
+        @case('A5 portrait')
+            size: A5 portrait;
+            @break
+
+        @case('A5 landscape')
+            size: A5 landscape;
+            @break
+
+        @case('Letter portrait')
+            size: letter portrait;
+            @break
+
+        @case('Letter landscape')
+            size: letter landscape;
+            @break
+
+        @default
+            size: A4 landscape;
+
+    @endswitch
+
     margin: 0;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
+    width: 100%;
     font-family: Arial, sans-serif;
     overflow: visible;
     -webkit-print-color-adjust: exact;
@@ -308,36 +350,63 @@ html, body {
     box-sizing: border-box;
 }
 
-/* ================= BACKGROUND IMAGE ================= */
+
+/* ================= BACKGROUND ================= */
+
 .bg-img {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
-    height: 210mm;
-    z-index: 1;
+    height: 100%;
+    z-index: -1;
 }
 
+
 /* ================= FIRST PAGE ================= */
+
 .first {
     position: relative;
-    width: 297mm;
-    height: 210mm;
-    overflow: hidden;
+    width: 100%;
+    overflow: visible;
     page-break-after: always;
     break-after: page;
 }
 
-.page-inner {
+
+/* ================= OTHER PAGES ================= */
+
+.health-page {
     position: relative;
-    z-index: 2;
-    padding: 30px 40px;
+    width: 100%;
+    overflow: visible;
+    page-break-after: always;
+    break-after: page;
 }
 
+.health-page:last-child {
+    page-break-after: auto;
+}
+
+
+/* ================= CONTENT ================= */
+
+.page-inner,
+.page-content {
+    position: relative;
+    z-index: 2;
+    width: 91%;
+    margin: auto;
+    padding-top: 30px;
+}
+
+
+/* ================= HEADER ================= */
 .school-header {
     position: relative;
     width: 100%;
-    height: 80px;
+    height: 85px;
+    margin-bottom: 10px;
 }
 
 .school-header table {
@@ -348,57 +417,64 @@ html, body {
     position: absolute;
     left: 0;
     top: 0;
+    width: 80px;
 }
 
 .school-logo {
-    height: 70px;
-    margin-left: 15px;
+    width: 65px;
+    height: auto;
 }
 
 .school-text {
     position: absolute;
-    width: 100%;
-    text-align: center;
+    left: 90px;
     top: 0;
+    right: 0;
+    text-align: center;
 }
 
 .school-name {
     font-size: 26px;
     font-weight: bold;
     color: #0b5fa5;
+    line-height: 1.1;
 }
 
 .school-address {
     font-size: 14px;
     margin-top: 3px;
+    line-height: 1.2;
 }
 
 .school-phone {
     font-size: 13px;
+    margin-top: 2px;
+    line-height: 1.2;
 }
 
-/* ===== TITLE ===== */
+
+/* ================= TITLES ================= */
+
 .certificate-title {
     text-align: center;
-    margin-top: 10px;
-    margin-bottom: 20px;
+    margin: 10px 0 20px;
 }
 
 .main-title {
     font-size: 20px;
     font-weight: bold;
-    letter-spacing: 1px;
     color: #1f2c7c;
 }
 
 .sub-title {
     font-size: 16px;
     font-weight: bold;
-    margin-top: 5px;
     color: #1f2c7c;
 }
 
-/* ===== FIRST PAGE CONTENT ===== */
+
+/* ================= GENERAL INFORMATION ================= */
+
 .first-content table {
     width: 85%;
     margin: auto;
@@ -411,213 +487,143 @@ html, body {
 }
 
 .first-content td:first-child {
-    white-space: nowrap;
     width: 18%;
+    white-space: nowrap;
 }
 
 .statistics_line {
     display: block;
     width: 100%;
     border-bottom: 1px solid #000;
-    padding: 2px 4px;
     min-height: 18px;
+    padding: 2px 4px;
 }
 
-/* ================= HEALTH TABLE PAGES ================= */
-.health-page {
-    position: relative;
-    width: 297mm;
-    min-height: 210mm;
-    page-break-after: always;
-    break-after: page;
-    overflow: visible;
-}
-
-.health-page:last-child {
-    page-break-after: auto;
-    break-after: auto;
-}
-
-.page-content {
-    position: relative;
-    z-index: 2;
-    width: 91%;
-    margin: auto;
-    padding-top: 30px;
-}
 
 /* ================= TABLE ================= */
+
 .record-table {
     width: 100%;
     border-collapse: collapse;
-    border-spacing: 0;
-    font-size: 10px;
     table-layout: fixed;
-    /* border: 1px solid #cfe3f5; */
     border: 2px solid #93c5fd;
     background: #f0f7ff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    page-break-inside: auto;
-    break-inside: auto;
-    padding: 1px 1px 1px 1px;
+    font-size: 10px;
 }
+
+.record-table thead {
+    display: table-header-group;
+}
+
+.record-table tbody tr {
+    page-break-inside: avoid;
+}
+
+.record-table th {
+    background: #dbeafe;
+    border: 1px solid #cfe3f5;
+    border-bottom: 2px solid #93c5fd;
+    padding: 10px;
+    text-align: center;
+    font-size: 13px;
+    color: #000;
+}
+
+.record-table td {
+    border: 1px solid #d6e6f5;
+    padding: 6px;
+    background: #fff;
+    text-align: center;
+    vertical-align: middle;
+    word-wrap: break-word;
+}
+
+
+/* ================= COLUMN WIDTHS ================= */
+
+.record-table th:nth-child(1) {
+    width: 60px;
+}
+
+.record-table th:nth-child(2) {
+    width: 70px;
+}
+
+.record-table th:nth-child(3) {
+    width: 70px;
+}
+
+.record-table th:nth-child(4) {
+    width: 70px;
+}
+
+.record-table th:nth-child(5) {
+    width: 160px;
+}
+
+
+/* ================= GROUP COLUMN ================= */
+
+.group-cell {
+    background: #f0f9ff;
+    font-weight: bold;
+    text-align: left;
+    padding-left: 8px;
+}
+
+
+/* ================= SUB GROUP ================= */
+
+.subgroup-cell {
+    background: #fff;
+    text-align: left;
+    font-size: 7pt;
+    padding: 3px 4px;
+}
+
+
+/* ================= DESCRIPTION ================= */
+
+.record-table td.desc-cell {
+    font-size: 7pt;
+    line-height: 1.3;
+    white-space: normal;
+    word-break: break-word;
+    vertical-align: top;
+    padding: 3px 4px;
+}
+
+
+/* ================= WRAPPED HEADER ================= */
 
 .wrap-header {
     white-space: normal !important;
     word-break: break-word;
     overflow-wrap: break-word;
     line-height: 1.2;
-    text-align: center;
-    vertical-align: middle;
 }
 
-.record-table td.desc-cell {
-    max-width: 160px;
-    min-width: 80px;
-    word-break: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
-/* Sub column */
-.record-table td.subgroup-cell {
-    max-width: 80px;
-    min-width: 50px;
-    word-break: break-word;
-    white-space: normal;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-    background-color: #ffffff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    text-align: left;
-    color: #000000;
-}
 
-/* Sub Sub column */
-.record-table td:nth-child(3),
-.record-table td:nth-child(4) {
-    max-width: 80px;
-    word-break: break-word;
-    white-space: normal;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
+/* ================= ALTERNATE COLOR ================= */
 
-/* Description column */
-.record-table td.desc-cell {
-    max-width: 170px;
-    min-width: 90px;
-    word-break: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    font-size: 7pt;
-    vertical-align: top;
-    padding: 3px 4px;
-}
-
-/* Force fixed column widths so browser respects them */
-.record-table {
-    table-layout: fixed;
-}
-
-.record-table th:nth-child(1) { width: 60px; }   /* Fitness */
-.record-table th:nth-child(2) { width: 70px; }   /* Sub */
-.record-table th:nth-child(3) { width: 70px; }   /* Sub Sub */
-.record-table th:nth-child(4) { width: 70px; }   /* Test */
-.record-table th:nth-child(5) { width: 150px; }  /* Description */
-
-
-/* Repeat thead on every new page */
-.record-table thead {
-    display: table-header-group;
-}
-
-/* Avoid cutting a single row in half */
-.record-table tbody tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
-/* HEADER CELLS */
-.record-table th {
-    padding: 10px 14px;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color: #000000;
-    background: #dbeafe;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    border: 1px solid #cfe3f5;
-    border-bottom: 2px solid #93c5fd;
-    text-align: center;
-    white-space: nowrap;
-}
-
-.record-table th.class-col {
-    white-space: normal;
-    line-height: 1.2;
-}
-
-/* DATA CELLS */
-.record-table td {
-    border: 1px solid #d6e6f5;
-    padding: 6px;
-    text-align: center;
-    vertical-align: middle;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    background: #ffffff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-}
-
-/* GROUP CELL */
-.group-cell {
-    font-weight: bold;
-    /* background: #e0f2fe; */
-    background-color: #f0f9ff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    text-align: left;
-    padding-left: 8px;
-    color: #080808;
-}
-
-/* SUB GROUP */
-.subgroup-cell {
-    background-color: #ffffff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    text-align: center;
-    color: #000000;
-}
-
-/* ALT ROW BG */
 .bgcolor {
-    background-color: #f8fbff;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background: #f8fbff;
 }
 
-/* ================= PRINT MEDIA ================= */
+
+/* ================= PRINT ================= */
+
 @media print {
-    html, body {
+
+    html,
+    body {
         overflow: visible;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .record-table {
-        font-size: 9px;
         page-break-inside: auto;
-        break-inside: auto;
     }
 
     .record-table thead {
@@ -626,9 +632,13 @@ html, body {
 
     .record-table tbody tr {
         page-break-inside: avoid;
-        break-inside: avoid;
+    }
+
+    .health-page:last-child {
+        page-break-after: auto;
     }
 }
+
 </style>
 </head>
 

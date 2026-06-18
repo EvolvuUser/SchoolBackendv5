@@ -5,36 +5,109 @@ $bgImage = getLeavingBgImage();
 $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
     ? asset($bgImage['file_path'])
     : asset('health3_bg.jpg');
+
+$pageType = $bgImage['page_type'] ?? 'A4 portrait';
 @endphp
 
 <style>
-@page {
-    size: A4;
-    margin-top:0;
-    margin-bottom:0;
-    margin-left:0;
-    margin-right:0;
-    padding: 0;
-  }
-    body{
-     /* background-image: url('https://sms.evolvu.in/public/lc_bg.jpg');  */
-	background-image: url('{{ asset($bgImage['file_path']) }}');
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;
-    object-fit: cover;
-    background-repeat:no-repeat;
 
+@page {
+
+    @switch($pageType)
+
+        @case('A4 portrait')
+            size: A4 portrait;
+            @break
+
+        @case('A4 landscape')
+            size: A4 landscape;
+            @break
+
+        @case('A5 portrait')
+            size: A5 portrait;
+            @break
+
+        @case('A5 landscape')
+            size: A5 landscape;
+            @break
+
+        @case('Letter portrait')
+            size: letter portrait;
+            @break
+
+        @case('Letter landscape')
+            size: letter landscape;
+            @break
+
+        @default
+            size: A4 portrait;
+
+    @endswitch
+
+    margin: 0;
 }
- tr td{
-	padding-top: 3px; 
-	padding-bottom:3px;
-	word-wrap:break-word;
-	font-size:14px;
- }
+
+html,
+body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+}
+
+body{
+    background-image: url('{{ $bgPath }}');
+    background-repeat:no-repeat;
+    background-position:center center;
+    background-size:100% 100%;
+    font-family:Arial, sans-serif;
+}
+
+tr td{
+    padding-top:3px;
+    padding-bottom:3px;
+    word-wrap:break-word;
+    font-size:14px;
+}
+
+.pdfdiv{
+    width:100%;
+
+    @switch($pageType)
+
+        @case('A4 portrait')
+            margin-top:15%;
+            @break
+
+        @case('A4 landscape')
+            margin-top:10%;
+            @break
+
+        @case('A5 portrait')
+            margin-top:18%;
+            @break
+
+        @case('A5 landscape')
+            margin-top:12%;
+            @break
+
+        @case('Letter portrait')
+            margin-top:20%;
+            @break
+
+        @case('Letter landscape')
+            margin-top:10%;
+            @break
+
+        @default
+            margin-top:22%;
+
+    @endswitch
+}
 
 </style>
+
+
 <html>
 <body>
 <div class="pdfdiv"> <!--Ends Here -->
@@ -42,7 +115,7 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 <!--	<div style="width:100%;height:95%;margin: auto;text-align:center;border-style:groove;border:4px groove grey;">-->
 	<br/><center>
 	<br><br><br>
-    <div style="width:95%;margin-top:22%;;text-align:center;display: inline-block">
+    <div style="width:95%;text-align:center;display:inline-block">
         <table width="100%" border="0">
     <tr>
         <td width="5%"></td>
@@ -77,21 +150,21 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 		    <td width="5%"></td>
 			<td align="left" width="40%">Name of Pupil in full</td>
 			<td align="center" width="8%">:</td>
-			<td align="left" align="left"><?php echo strtoupper($data->stud_name . ' ' . $data->mid_name . ' ' . $data->last_name); ?></td>
+			<td align="left" align="left"><?php echo $data->stud_name . ' ' . $data->mid_name . ' ' . $data->last_name; ?></td>
         </tr>
 
 	    <tr>
 		    <td></td>
 			<td align="left">Father’s Name</td>
 			<td align="center" >: </td>
-			<td align="left"><?php echo strtoupper($data->father_name); ?></td>
+			<td align="left"><?php echo $data->father_name; ?></td>
 		</tr>
 
 		<tr>
 			<td></td>	
 			<td align="left">Mother’s Name</td>
 			<td align="center" >:</td>
-			<td align="left"><?php echo strtoupper($data->mother_name); ?></td>
+			<td align="left"><?php echo $data->mother_name; ?></td>
 		</tr>		
 		<tr>
 			<td></td>
@@ -156,7 +229,6 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 			$relcast = $data->religion;
 		}
 	}
-	$relcast = strtoupper($relcast);
 
 	?>
 		<tr>
