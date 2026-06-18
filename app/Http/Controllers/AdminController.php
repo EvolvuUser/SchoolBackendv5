@@ -5841,7 +5841,6 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
-                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
             $payload = getTokenPayload($request);
@@ -5952,7 +5951,7 @@ class AdminController extends Controller
                 // Check if the new image data is null
                 if ($newImageData === null || $newImageData === 'null' || $newImageData === 'default.png') {
                     // If the new image data is null, keep the existing filename
-                    $validatedData['image_name'] = 'default.png';
+                    $validatedData['image_name'] = '';
                 } elseif (!empty($newImageData)) {
                     // Check if the new image data matches the existing image URL
                     if ($newImageData) {
@@ -6256,24 +6255,7 @@ class AdminController extends Controller
             // Update student information
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $oldPermanentAddress = trim((string) $student->permant_add);
-            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
 
-            // Check if permanent address changed
-            if (
-                isset($validatedData['permant_add']) &&
-                $oldPermanentAddress != $newPermanentAddress
-            ) {
-                DB::table('permanent_address_change_log')->insert([
-                    'student_id' => $student->student_id,
-                    'old_address' => $oldPermanentAddress,
-                    'remark' => $request->address_remark,
-                    'changed_by' => $user->reg_id ?? null,
-                    'changed_at' => now(),
-                ]);
-
-                Log::info("Permanent address changed for student ID: {$student->student_id}");
-            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -13637,8 +13619,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -17069,19 +17051,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
