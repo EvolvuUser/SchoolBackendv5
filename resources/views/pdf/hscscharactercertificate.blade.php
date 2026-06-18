@@ -162,9 +162,22 @@
 
 @php
     $bgImage = getCharacterBgImage();
+
     $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
-    ? asset($bgImage['file_path'])
-    : asset('health3_bg.jpg');
+        ? asset($bgImage['file_path'])
+        : asset('health3_bg.jpg');
+
+    $pageType = $bgImage['page_type'] ?? 'A4 portrait';
+
+    $headerMarginTop = match ($pageType) {
+        'A4 portrait'      => '15%',
+        'A4 landscape'     => '15%',
+        'A5 portrait'      => '12%',
+        'A5 landscape'     => '8%',
+        'Letter portrait'  => '15%',
+        'Letter landscape' => '10%',
+        default            => '15%',
+    };
 @endphp
 
 <!DOCTYPE html>
@@ -174,97 +187,142 @@
 <title>Bonafide Certificate</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
-        font-size: 15px;
 
-        background-image: url('{{ asset($bgImage['file_path']) }}');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-position: center;
-    }
+@page {
 
-    .certificate-container {
-        width: 95%;
-        margin: auto;
-        border: 3px groove grey;
-        padding: 20px;
-        background: rgba(255,255,255,0.92);
-    }
+    @switch($pageType)
 
-    .header-table {
-        width: 100%;
-        border: none;
-    }
+        @case('A4 portrait')
+            size: A4 portrait;
+            @break
 
-    .header-table td {
-        vertical-align: middle;
-        text-align: center;
-    }
+        @case('A4 landscape')
+            size: A4 landscape;
+            @break
 
-    .header-left img {
-        max-width: 150px;
-        max-height: 130px;
-    }
+        @case('A5 portrait')
+            size: A5 portrait;
+            @break
 
-    .school-name {
-        font-size: 30px;
-        color: red;
-        font-weight: bold;
-    }
+        @case('A5 landscape')
+            size: A5 landscape;
+            @break
 
-    .school-details {
-        font-size: 14px;
-    }
+        @case('Letter portrait')
+            size: letter portrait;
+            @break
 
-    .info-table {
-        width: 100%;
-        margin-top: 10px;
-        font-size: 14px;
-    }
+        @case('Letter landscape')
+            size: letter landscape;
+            @break
 
-    .info-table td {
-        padding: 4px;
-    }
+        @default
+            size: A4 portrait;
 
-    .title {
-        text-align: center;
-        font-size: 18px;
-        font-weight: bold;
-        margin: 15px 0;
-        text-decoration: underline;
-        margin-top: 40px;
-    }
+    @endswitch
 
-    .details-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
+    margin: 0;
+}
 
-    .details-table td {
-        padding: 8px;
-        font-size: 15px;
-        border: 1px solid #000;
-    }
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    font-size: 15px;
 
-    .signature {
-        margin-top: 40px;
-        font-size: 15px;
-    }
+    /*background-image: url('{{ $bgPath }}');*/
+    /*background-size: cover;*/
+    /*background-repeat: no-repeat;*/
+    /*background-position: center center;*/
+    
+     background-image: url('{{ $bgPath }}');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
 
-    .signature span {
-        float: right;
-        margin-right: 15%;
-    }
 
-    hr.dotted {
-        border: 1px dotted black;
-        margin-top: 10px;
-        margin-bottom: 10px;
-    }
+.certificate-container {
+    width: 95%;
+    margin: auto;
+    margin-top: {{ $headerMarginTop }};
+    /* border: 3px groove grey; */
+    padding: 20px;
+    /* background: rgba(255,255,255,0.92); */
+}
+
+.header-table {
+    width: 100%;
+    border: none;
+}
+
+.header-table td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+.header-left img {
+    max-width: 150px;
+    max-height: 130px;
+}
+
+.school-name {
+    font-size: 30px;
+    color: red;
+    font-weight: bold;
+}
+
+.school-details {
+    font-size: 14px;
+}
+
+.info-table {
+    width: 100%;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.info-table td {
+    padding: 4px;
+}
+
+.title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    margin: 15px 0;
+    text-decoration: underline;
+    margin-top: 40px;
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.details-table td {
+    padding: 8px;
+    font-size: 15px;
+    border: 1px solid #000;
+}
+
+.signature {
+    margin-top: 40px;
+    font-size: 15px;
+}
+
+.signature span {
+    float: right;
+    margin-right: 15%;
+}
+
+hr.dotted {
+    border: 1px dotted black;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
 </style>
 </head>
 
