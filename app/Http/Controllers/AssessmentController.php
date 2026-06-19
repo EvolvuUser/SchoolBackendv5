@@ -9629,7 +9629,8 @@ class AssessmentController extends Controller
         $pageData['sm_id'] = $subjectId;
         $pageData['chapter_id'] = $chapterId;
 
-        $lessonPlanData = DB::select("select lesson_plan_template.*,lesson_plan_template_details.* from lesson_plan_template,lesson_plan_template_details where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.chapter_id='" . $chapterId . "' and subject_id='" . $subjectId . "' and class_id='" . $classId . "' and lesson_plan_template.publish='Y'");
+        $lessonPlanData = DB::select("select lesson_plan_template.*,lesson_plan_template_details.*,lesson_plan_heading.name AS heading_name from lesson_plan_template,lesson_plan_template_details LEFT JOIN lesson_plan_heading
+        ON lesson_plan_heading.lesson_plan_headings_id = lesson_plan_template_details.lesson_plan_headings_id where lesson_plan_template.les_pln_temp_id = lesson_plan_template_details.les_pln_temp_id and lesson_plan_template.chapter_id='" . $chapterId . "' and subject_id='" . $subjectId . "' and class_id='" . $classId . "' and lesson_plan_template.publish='Y'");
 
         if (count($lessonPlanData) > 0) {
             $pageData['lesson_plan_info1'] = $lessonPlanData;
