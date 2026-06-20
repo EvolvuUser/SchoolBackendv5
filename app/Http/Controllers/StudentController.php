@@ -836,8 +836,16 @@ class StudentController extends Controller
 
     public function getFieldsForUpdateStudent(Request $request)
     {
-        $fields = DB::table('update_studentdata_settings')
-            ->get();
+        $user = $this->authenticateUser();
+        $role_id = JWTAuth::getPayload()->get('role_id');
+        if ($role_id == 'T') {
+            $fields = DB::table('update_studentdata_settings')
+                ->whereIn('column_id', [36, 37, 27])
+                ->get();
+        } else {
+            $fields = DB::table('update_studentdata_settings')
+                ->get();
+        }
 
         return response()->json([
             'status' => 200,
