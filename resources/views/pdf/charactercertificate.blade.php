@@ -51,23 +51,18 @@ $pageType = $bgImage['page_type'] ?? 'A4 landscape';
         margin-right: 0;
     }
 
-    body{
-        /* background-image: url('https://sms.evolvu.in/public/character_certificate.jpg'); */
-        background-image: url('{{ $bgPath }}');
-
+  body{
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('{{ $bgImage['file_path'] }}');
+        /* background-image: url('{{ $bgPath }}'); */
         -webkit-background-size: cover;
         -moz-background-size: cover;
         -o-background-size: cover;
-        background-size: cover;
-
-        object-fit: cover;
+        background-size: 100% 100%;
         background-repeat: no-repeat;
-
-        font-family: Arial !important;
-        text-align: left;
-
-        /* width:300px; */
-        height:300px;
+        background-position: center;
     }
 
     tr td{
