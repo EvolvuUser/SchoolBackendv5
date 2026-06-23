@@ -1531,7 +1531,15 @@ class AdminController extends Controller
                 'special_sub' => 'nullable|string|max:255',
                 'trained' => 'nullable|string|max:255',
                 'experience' => 'nullable|string|max:255',
-                'aadhar_card_no' => 'nullable|string|max:20|unique:teacher,aadhar_card_no',
+                'aadhar_card_no' => [
+                    'nullable',
+                    'string',
+                    'max:20',
+                    Rule::unique('teacher', 'aadhar_card_no')
+                        ->where(function ($query) {
+                            return $query->where('IsDelete', '!=', 'Y');
+                        }),
+                ],
                 'teacher_image_name' => 'nullable|string',  // Base64 string or null
                 'role' => 'required|string|max:255',
                 'tc_id' => 'nullable|string|max:255',
