@@ -6511,7 +6511,7 @@ class AdminController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         try {
-            $staff = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
+            $staff = DB::table('teacher')->where('isDelete', '!=', 'Y')->orderBy('teacher_id', 'ASC')->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'All Staffs',
