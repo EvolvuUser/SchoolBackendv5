@@ -1163,7 +1163,8 @@ class TeacherDashboardController extends Controller
 
         if ($classMappings->isEmpty()) {
             return response()->json([
-                'status' => true,
+                'status' => 200,
+                'success' => true,
                 'message' => 'No classes assigned to this teacher',
                 'data' => []
             ]);
@@ -1655,7 +1656,8 @@ class TeacherDashboardController extends Controller
 
         if ($classMappings->isEmpty()) {
             return response()->json([
-                'status' => true,
+                'status' => 200,
+                'success' => true,
                 'message' => 'No classes assigned to this teacher',
                 'data' => []
             ]);
