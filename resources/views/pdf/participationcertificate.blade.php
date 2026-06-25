@@ -471,61 +471,89 @@ $academic_year = $pdfData['academic_yr'] ?? '';
 $school = getSchoolDetails();
 
 $bgAchievementImage = getAchievementBgImage();
-
 $bgParticipationImage = getParticipationBgImage();
 
 $student_name = $pdfData['student_name'] ?? '';
-
 $classname = $pdfData['class_section'] ?? '';
-
 $event = $pdfData['event'] ?? '';
-
 $event_date = $pdfData['event_date'] ?? '';
-
 $academic_year = $pdfData['academic_yr'] ?? '';
-
 $position = $pdfData['position'] ?? '';
 
 /*
 |--------------------------------------------------------------------------
 | Dynamic Background According To Position
 |--------------------------------------------------------------------------
-|
-| Achievement Certificate:
-| First / Second / Third / Consolation Prize
-|
-| Participation Certificate:
-| Other Positions
-|
 */
-
 $isAchievementCertificate =
     in_array($position, [1, 2, 3]) ||
     in_array(
         strtolower(trim($position)),
-        [
-            'first',
-            'second',
-            'third',
-            'consolation prize'
-        ]
+        ['first', 'second', 'third', 'consolation prize']
     );
 
 if ($isAchievementCertificate) {
 
-    $bgPath =
-        !empty($bgAchievementImage) &&
-        !empty($bgAchievementImage['file_path'])
-            ? asset($bgAchievementImage['file_path'])
-            : asset('health3_bg.jpg');
+    $bgImage = $bgAchievementImage;
 
 } else {
 
-    $bgPath =
-        !empty($bgParticipationImage) &&
-        !empty($bgParticipationImage['file_path'])
-            ? asset($bgParticipationImage['file_path'])
-            : asset('health3_bg.jpg');
+    $bgImage = $bgParticipationImage;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Background Path
+|--------------------------------------------------------------------------
+*/
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? asset($bgImage['file_path'])
+    : asset('health3_bg.jpg');
+
+/*
+|--------------------------------------------------------------------------
+| Page Type
+|--------------------------------------------------------------------------
+*/
+$pageType = $bgImage['page_type'] ?? 'A4 landscape';
+
+/*
+|--------------------------------------------------------------------------
+| Page Size and Top Margin
+|--------------------------------------------------------------------------
+*/
+switch ($pageType) {
+
+    case 'A4 landscape':
+        $pageSize = 'A4 landscape';
+        $contentMarginTop = '20%';
+        break;
+
+    case 'A5 portrait':
+        $pageSize = 'A5 portrait';
+        $contentMarginTop = '45%';
+        break;
+
+    case 'A5 landscape':
+        $pageSize = 'A5 landscape';
+        $contentMarginTop = '45%';
+        break;
+
+    case 'Letter portrait':
+        $pageSize = 'letter portrait';
+        $contentMarginTop = '15%';
+        break;
+
+    case 'Letter landscape':
+        $pageSize = 'letter landscape';
+        $contentMarginTop = '20%';
+        break;
+
+    case 'A4 portrait':
+    default:
+        $pageSize = 'A4 portrait';
+        $contentMarginTop = '45%';
+        break;
 }
 
 @endphp
@@ -567,26 +595,23 @@ $position = $pdfData['position'] ?? '';
 
 <head>
 
-    <style>
+   <style>
 
     @page {
+        size: {{ $pageSize }};
         margin: 0;
         padding: 0;
     }
 
     html,
     body {
-
         width: 100%;
         height: 100%;
 
         margin: 0;
         padding: 0;
 
-        overflow: hidden;
-
         font-family: Arial, sans-serif;
-
         text-align: left;
     }
 
@@ -596,9 +621,10 @@ $position = $pdfData['position'] ?? '';
 
         background-repeat: no-repeat;
 
-        background-size: 100% 100%;
-
         background-position: center center;
+
+        /* Prevent background cropping */
+        background-size: 100% 100%;
     }
 
     .pdfdiv {
@@ -610,14 +636,12 @@ $position = $pdfData['position'] ?? '';
     }
 
     table {
-
         border-collapse: collapse;
     }
 
     tr td {
 
         padding-top: 3px;
-
         padding-bottom: 3px;
 
         word-wrap: break-word;
@@ -642,11 +666,12 @@ $position = $pdfData['position'] ?? '';
         min-height: 20px;
     }
 
+    /* Main content wrapper */
     .certificate-wrapper {
 
         width: 90%;
 
-        margin-top: 20%;
+        margin-top: {{ $contentMarginTop }};
 
         margin-left: 5%;
 
@@ -677,67 +702,66 @@ $position = $pdfData['position'] ?? '';
         white-space: nowrap;
     }
 
+    .signature-section {
 
-   .signature-section {
+        width: 100%;
 
-    width: 100%;
+        margin-top: 6%;
 
-    margin-top: 6%;
+        position: relative;
+    }
 
-    position: relative;
-}
+    .signature-table {
 
-.signature-table {
+        width: 100%;
 
-    width: 100%;
+        border-collapse: collapse;
+    }
 
-    border-collapse: collapse;
-}
+    .signature-table td {
 
-.signature-table td {
+        vertical-align: top;
 
-    vertical-align: top;
+        padding-right: 35%;
+    }
 
-    padding-right: 35%;
-}
+    .date-td {
 
-.date-td {
+        width: 40%;
 
-    width: 40%;
+        text-align: left;
 
-    text-align: left;
+        padding-left: 30%;
 
-    padding-left: 30%;
+        padding-top: 20px;
+    }
 
-    padding-top: 35px;
-}
+    .signature-td {
 
-.signature-td {
+        width: 60%;
 
-    width: 60%;
+        text-align: right;
 
-    text-align: right;
+        padding-right: 12%;
 
-    padding-right: 12%;
+        padding-top: 0;
+    }
 
-    padding-top: 0;
-}
+    .date-value {
 
-.date-value {
+        font-size: 16px;
 
-    font-size: 16px;
+        font-family: Arial, sans-serif;
 
-    font-family: Arial, sans-serif;
+        white-space: nowrap;
+    }
 
-    white-space: nowrap;
-}
+    .signature-img {
 
-.signature-img {
+        width: 70px;
 
-    width: 70px;
-
-    height: 50px;
-}
+        height: 50px;
+    }
 
 </style>
 

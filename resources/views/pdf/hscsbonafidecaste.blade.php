@@ -1,10 +1,20 @@
 @php
-$school = getSchoolDetails();
-$bgImage = getCasteBgImage();
+    $school = getSchoolDetails();
+    $bgImage = getCasteBgImage();
 
-$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
-    ? asset($bgImage['file_path'])
-    : asset('health3_bg.jpg');
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+        ? asset($bgImage['file_path'])
+        : asset('health3_bg.jpg');
+
+    $pageType = $bgImage['page_type'] ?? 'A4 portrait';
+
+    $headerMarginTop = match ($pageType) {
+        'A4 portrait'   => '200px',
+        'A4 landscape'  => '150px',
+        'A5 portrait'   => '170px',
+        'A5 landscape'  => '130px',
+        default         => '200px'
+    };
 @endphp
 
 <!DOCTYPE html>
@@ -12,236 +22,267 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 <head>
 <meta charset="UTF-8">
 <title>Bonafide Caste Certificate</title>
-{{-- <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        font-size: 15px;
-    }
-
-    .certificate-container {
-        width: 95%;
-        margin: auto;
-        border: 3px groove grey;
-        padding: 20px;
-    }
-
-    .header-table {
-        width: 100%;
-        border: none;
-    }
-
-    .header-table td {
-        vertical-align: middle;
-        text-align: center;
-    }
-
-    .header-left img {
-        max-width: 150px;
-        max-height: 130px;
-    }
-
-    .school-name {
-        font-size: 30px;
-        color: red;
-        font-weight: bold;
-    }
-
-    .school-details {
-        font-size: 14px;
-    }
-
-    .info-table {
-        width: 100%;
-        margin-top: 10px;
-        font-size: 14px;
-    }
-
-    .info-table td {
-        padding: 4px;
-    }
-
-    .title {
-        text-align: center;
-        font-size: 18px;
-        font-weight: bold;
-        margin: 15px 0;
-        text-decoration: underline;
-    }
-
-    .details-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-
-    .details-table td {
-        padding: 6px 8px;
-        font-size: 15px;
-    }
-
-    .signature {
-        margin-top: 40px;
-        font-size: 15px;
-    }
-
-    .signature span {
-        float: right;
-        margin-right: 15%;
-    }
-
-    hr.dotted {
-        border: 1px dotted black;
-        margin-top: 10px;
-        margin-bottom: 10px;
-    }
-</style> --}}
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        font-size: 15px;
 
-        background-image: url('{{ asset($bgImage['file_path']) }}');
-        background-size: 100% 100%;
-        background-repeat: no-repeat;
-        background-position: center;
+    /* ================= PAGE ================= */
+
+    @page {
+
+        @switch($pageType)
+
+            @case('A4 portrait')
+                size: A4 portrait;
+                @break
+
+            @case('A4 landscape')
+                size: A4 landscape;
+                @break
+
+            @case('A5 portrait')
+                size: A5 portrait;
+                @break
+
+            @case('A5 landscape')
+                size: A5 landscape;
+                @break
+
+            @case('Letter portrait')
+                size: letter portrait;
+                @break
+
+            @case('Letter landscape')
+                size: letter landscape;
+                @break
+
+            @default
+                size: A4 portrait;
+
+        @endswitch
+
+        margin: 0;
     }
 
-    .certificate-container {
-        width: 95%;
-        margin: auto;
-        border: 3px groove grey;
-        padding: 20px;
-        background: rgba(255,255,255,0.85);
+    * {
         box-sizing: border-box;
     }
 
-    .header-table {
+    html, body {
+        margin: 0;
+        padding: 0;
         width: 100%;
-        border: none;
+        height: 100%;
+        font-family: Arial, sans-serif;
+        font-size: 13px;
     }
 
-    .header-table td {
-        vertical-align: middle;
-        text-align: center;
-    }
+    /* ================= FULL PAGE WRAPPER WITH BG ================= */
 
-    .header-left img {
-        max-width: 150px;
-        max-height: 130px;
-    }
+    /*
+     * Key fix: the wrapper takes exactly one page height.
+     * background-size: 100% 100% stretches the BG image to fill
+     * this wrapper perfectly — header, footer border and all.
+     * Content is positioned inside so nothing overflows the BG frame.
+     */
 
-    .school-name {
-        font-size: 30px;
-        color: red;
-        font-weight: bold;
-    }
-
-    .school-details {
-        font-size: 14px;
-    }
-
-    .info-table {
+    .page-wrapper {
         width: 100%;
-        margin-top: 10px;
-        font-size: 14px;
+        height: 297mm;           /* A4 portrait — change per page type if needed */
+        background-image: url('{{ $bgPath }}');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        display: flex;
+        flex-direction: column;
     }
 
-    .info-table td {
-        padding: 4px;
+    /* ================= SPACER — height equals the BG image header area ================= */
+
+    .header-spacer {
+        flex-shrink: 0;
+        height: {{ $headerMarginTop }};
     }
+
+    /* ================= CONTENT AREA ================= */
+
+    /*
+     * flex: 1 makes this fill the remaining space between the header
+     * and the BG image footer border — content never overflows.
+     */
+
+    .certificate-content {
+        flex: 1;
+        width: 88%;
+        margin: 0 auto;
+        padding: 10px 25px 10px 30px;
+        overflow: hidden;        /* safety: never bleed past BG border */
+    }
+
+    /* ================= TITLE ================= */
 
     .title {
         text-align: center;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: bold;
-        margin: 15px 0;
         text-decoration: underline;
-        margin-top: 40px;
+        margin-top: 4px;
+        margin-bottom: 10px;
     }
+
+    /* ================= INTRO PARAGRAPH ================= */
+
+    .intro-para {
+        font-size: 13px;
+        margin: 0 0 6px 0;
+        line-height: 1.5;
+    }
+
+    .details-label {
+        font-size: 13px;
+        font-weight: bold;
+        margin: 6px 0 4px 0;
+    }
+
+    /* ================= DETAILS TABLE ================= */
 
     .details-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 10px;
+        margin-top: 4px;
     }
 
     .details-table td {
-        padding: 6px 8px;
-        font-size: 15px;
         border: 1px solid #000;
+        padding: 4px 8px;
+        font-size: 12.5px;
+        line-height: 1.3;
     }
 
-    .signature {
-        margin-top: 40px;
-        font-size: 15px;
+    .details-table td:first-child {
+        width: 38%;
     }
 
-    .signature span {
-        float: right;
-        margin-right: 15%;
+    /* ================= PLACE ================= */
+
+    .place {
+        margin: 10px 0 0 0;
+        font-size: 13px;
     }
 
-    hr.dotted {
-        border: 1px dotted black;
-        margin-top: 10px;
-        margin-bottom: 10px;
-    }
+    /* ================= SIGNATURE ================= */
+
+    /*
+     * margin-top: auto pushes signature to the bottom of the flex content
+     * area, keeping it inside the BG image border at all times.
+     */
+
+ .signature {
+    margin-top: auto;
+    padding-top: 20px;
+    padding-bottom: 18px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 2%;   /* ← add left padding for Clerk */
+    padding-right: 8%;  /* ← right padding for Principal */
+}
 </style>
+
 </head>
 <body>
 
-<div class="certificate-container">
+{{--
+    .page-wrapper is exactly one page tall with the BG image stretched to fill it.
+    .header-spacer pushes content below the BG image's built-in header.
+    .certificate-content fills the remaining space with flex:1 so the
+    signature stays inside the BG image's bottom border.
+--}}
 
-    
+<div class="page-wrapper">
 
-    <!-- Title -->
-    <div class="title">BONAFIDE CASTE CERTIFICATE</div>
+    <div class="header-spacer"></div>
 
-    <p>
-        This is to certify {{$data->stud_name}} was a student of Holy Spirit Convent School in class {{$data->class_division}} for the academic session {{$data->academic_yr}} as per the school record her details are as follows
-    </p>
+    <div class="certificate-content">
 
-    <p><b>Details:</b></p>
+        <div class="title">BONAFIDE CASTE CERTIFICATE</div>
 
-    <!-- Details Table -->
-    <table class="details-table">
-        <tr>
-            <td>Student Name</td>
-            <td>
-                <?php echo $data->stud_name; ?><br>
-            </td>
-        </tr>
-        <tr><td>Nationality</td><td><?php echo $data->nationality; ?></td></tr>
-        <tr><td>Religion</td><td><?php echo $data->religion; ?></td></tr>
-        <tr><td>Caste</td><td><?php echo $data->caste; ?></td></tr>
-        <tr><td>Sub Caste</td><td><?php echo $data->subcaste; ?></td></tr>
-        <tr>
-            <td>Date of Birth</td>
-            <td><?php echo date_format(date_create($data->dob), 'd-m-Y') . ' ( ' . $data->dob_words . ')'; ?></td>
-        </tr>
-        <tr><td>Previous School and Class</td><td><?php echo $data->prev_school_class; ?></td></tr>
-        <tr><td>Date of Admission</td><td><?php echo date_format(date_create($data->admission_date), 'd-m-Y'); ?></td></tr>
-        <tr><td>In Which Class and When</td><td><?php echo $data->class_when_learning; ?></td></tr>
-        <tr><td>Progress Report</td><td><?php echo $data->progress; ?></td></tr>
-        <tr><td>Behaviour</td><td><?php echo $data->behaviour; ?></td></tr>
-        <tr><td>Reason for Leaving</td><td><?php echo $data->leaving_reason; ?></td></tr>
-        <tr>
-            <td>Date of Leaving Certificate</td>
-            <td>{{ \Carbon\Carbon::parse($data->lc_date_n_no)->format('d-m-Y') }}</td>
-        </tr>
-    </table>
+        <p class="intro-para">
+            This is to certify <strong>{{ $data->stud_name }}</strong> was a student of
+            Holy Spirit Convent School in class <strong>{{ $data->class_division }}</strong>
+            for the academic session <strong>{{ $data->academic_yr }}</strong>
+            as per the school record her details are as follows.
+        </p>
 
-    <!-- Footer -->
-    <p>Place: Pune</p>
+        <p class="details-label">Details:</p>
 
-    <div class="signature">
-        Clerk <span>Principal</span>
+        <table class="details-table">
+            <tr>
+                <td>Student Name</td>
+                <td>{{ $data->stud_name }}</td>
+            </tr>
+            <tr>
+                <td>Nationality</td>
+                <td>{{ $data->nationality }}</td>
+            </tr>
+            <tr>
+                <td>Religion</td>
+                <td>{{ $data->religion }}</td>
+            </tr>
+            <tr>
+                <td>Caste</td>
+                <td>{{ $data->caste }}</td>
+            </tr>
+            <tr>
+                <td>Sub Caste</td>
+                <td>{{ $data->subcaste }}</td>
+            </tr>
+            <tr>
+                <td>Date of Birth</td>
+                <td>
+                    {{ date_format(date_create($data->dob), 'd-m-Y') }}
+                    ({{ $data->dob_words }})
+                </td>
+            </tr>
+            <tr>
+                <td>Previous School and Class</td>
+                <td>{{ $data->prev_school_class }}</td>
+            </tr>
+            <tr>
+                <td>Date of Admission</td>
+                <td>{{ date_format(date_create($data->admission_date), 'd-m-Y') }}</td>
+            </tr>
+            <tr>
+                <td>In Which Class and When</td>
+                <td>{{ $data->class_when_learning }}</td>
+            </tr>
+            <tr>
+                <td>Progress Report</td>
+                <td>{{ $data->progress }}</td>
+            </tr>
+            <tr>
+                <td>Behaviour</td>
+                <td>{{ $data->behaviour }}</td>
+            </tr>
+            <tr>
+                <td>Reason for Leaving</td>
+                <td>{{ $data->leaving_reason }}</td>
+            </tr>
+            <tr>
+                <td>Date of Leaving Certificate</td>
+                <td>{{ \Carbon\Carbon::parse($data->lc_date_n_no)->format('d-m-Y') }}</td>
+            </tr>
+        </table>
+
+        <p class="place">Place: Pune</p>
+
+            <div class="signature">
+        <span style="float: left; margin-left: 2%;">Clerk</span>
+        <span style="float: right; margin-right: 8%;">Principal</span>
     </div>
 
-</div>
+    </div>{{-- end .certificate-content --}}
+
+</div>{{-- end .page-wrapper --}}
 
 </body>
 </html>

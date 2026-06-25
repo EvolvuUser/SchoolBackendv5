@@ -4,123 +4,54 @@ namespace App\Http\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use DB;
 
 class WhatsAppService
 {
-    protected $apiUrl = 'https://backend.whatsapp.redingtongroup.com/direct-apis/t1/messages';
-    protected $apiKey;
+    protected $userId;
+    protected $password;
+    protected $apiUrl;
 
     public function __construct()
     {
-        $this->apiKey = $this->getApiKey();
+        $this->apiUrl = 'https://mediaapi.smsgupshup.com/GatewayAPI/rest';
+        $this->userId = '2000266228';
+        $this->password = 'PzMg*u$Y';
     }
 
-    public function sendTextMessage($phoneNumber, $templateName, $parameters = [])
+    public function sendTextMessage($phoneNumber, $templateName = null, $parameters = [])
     {
-        $languages = ['en', 'en_GB'];
+        try {
+            $message = implode("\n", $parameters);
 
-        foreach ($languages as $lang) {
-            $payload = [
-                'to' => $phoneNumber,
-                'type' => 'template',
-                'template' => [
-                    'name' => $templateName,
-                    'language' => [
-                        'code' => $lang
-                    ],
-                    'components' => [
-                        [
-                            'type' => 'body',
-                            'parameters' => array_map(function ($param) {
-                                return [
-                                    'type' => 'text',
-                                    'text' => $this->sanitizeSingleLine((string) $param)
-                                ];
-                            }, $parameters),
-                        ]
-                    ]
-                ]
-            ];
+            $response = Http::get($this->apiUrl, [
+                'userid' => $this->userId,
+                'password' => $this->password,
+                'send_to' => $phoneNumber,
+                'v' => '1.1',
+                'format' => 'json',
+                'msg_type' => 'TEXT',
+                'method' => 'SENDMESSAGE',
+                'msg' => $message,
+            ]);
 
-            Log::channel('whatsapp')->info('WhatsApp Attempt', [
+            Log::channel('whatsapp')->info('Gupshup Response', [
                 'phone' => $phoneNumber,
-                'language' => $lang,
-                'template' => $templateName
-            ]);
-
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-            ])->post($this->apiUrl, $payload);
-
-            $body = $response->json();
-
-            Log::channel('whatsapp')->info('WhatsApp Response', [
-                'language' => $lang,
+                'message' => $message,
                 'status' => $response->status(),
-                'body' => $body
+                'response' => $response->body()
             ]);
 
-            if ($response->successful()) {
-                return $body;
-            }
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->error('WhatsApp Error', [
+                'phone' => $phoneNumber,
+                'error' => $e->getMessage()
+            ]);
 
-            $errorCode = $response->status();
-
-            if ($errorCode == 400) {
-                continue;
-            }
-
-            return $body;
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
         }
-
-        return [
-            'status' => 'failed',
-            'message' => 'All language attempts failed'
-        ];
-    }
-
-    protected function sanitizeSingleLine(string $text): string
-    {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-
-        $text = str_replace(['/n', '\n'], "\n", $text);
-
-        $text = preg_replace('/[\t\x{00A0}]/u', ' ', $text);
-
-        $lines = explode("\n", $text);
-
-        $cleanWords = [];
-
-        foreach ($lines as $line) {
-            $line = preg_replace('/\s+/', ' ', $line);
-            $line = trim($line);
-
-            if ($line !== '') {
-                $words = explode(' ', $line);
-                foreach ($words as $w) {
-                    if ($w !== '') {
-                        $cleanWords[] = $w;
-                    }
-                }
-            }
-        }
-
-        return implode(' ', $cleanWords);
-    }
-
-    protected function getApiKey()
-    {
-        $key = DB::table('school_settings')
-            ->where('is_active', 'Y')
-            ->value('redington_api_key');
-
-        Log::channel('whatsapp')->info('Fetched API Key', [
-            'key_preview' => substr($key, 0, 10) . '...'
-        ]);
-
-        return $key;
     }
 }

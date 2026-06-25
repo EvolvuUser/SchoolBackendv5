@@ -1531,7 +1531,15 @@ class AdminController extends Controller
                 'special_sub' => 'nullable|string|max:255',
                 'trained' => 'nullable|string|max:255',
                 'experience' => 'nullable|string|max:255',
-                'aadhar_card_no' => 'nullable|string|max:20|unique:teacher,aadhar_card_no',
+                'aadhar_card_no' => [
+                    'nullable',
+                    'string',
+                    'max:20',
+                    Rule::unique('teacher', 'aadhar_card_no')
+                        ->where(function ($query) {
+                            return $query->where('IsDelete', '!=', 'Y');
+                        }),
+                ],
                 'teacher_image_name' => 'nullable|string',  // Base64 string or null
                 'role' => 'required|string|max:255',
                 'tc_id' => 'nullable|string|max:255',
@@ -3194,7 +3202,6 @@ class AdminController extends Controller
                 'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
                 'stu_aadhaar_no' => 'nullable|string|max:255|unique:student,stu_aadhaar_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
                 'udise_pen_no' => 'nullable|string|max:255|unique:student,udise_pen_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
-                'reg_no' => 'nullable|string|max:255|unique:student,reg_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -5842,7 +5849,6 @@ class AdminController extends Controller
                 // Preferences for SMS and email as username
                 'SetToReceiveSMS' => 'nullable|string',
                 'SetEmailIDAsUsername' => 'nullable|string',
-                'address_remark' => 'nullable|string'
                 // 'SetEmailIDAsUsername' => 'nullable|string|in:Father,Mother,FatherMob,MotherMob',
             ]);
             $payload = getTokenPayload($request);
@@ -5858,7 +5864,6 @@ class AdminController extends Controller
                 'stud_id_no' => 'nullable|string|max:255|unique:student,stud_id_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
                 'stu_aadhaar_no' => 'nullable|string|max:255|unique:student,stu_aadhaar_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
                 'udise_pen_no' => 'nullable|string|max:255|unique:student,udise_pen_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
-                'reg_no' => 'nullable|string|max:255|unique:student,reg_no,' . $studentId . ',student_id,academic_yr,' . $academicYr,
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -5954,7 +5959,7 @@ class AdminController extends Controller
                 // Check if the new image data is null
                 if ($newImageData === null || $newImageData === 'null' || $newImageData === 'default.png') {
                     // If the new image data is null, keep the existing filename
-                    $validatedData['image_name'] = 'default.png';
+                    $validatedData['image_name'] = '';
                 } elseif (!empty($newImageData)) {
                     // Check if the new image data matches the existing image URL
                     if ($newImageData) {
@@ -6258,24 +6263,7 @@ class AdminController extends Controller
             // Update student information
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
-            $oldPermanentAddress = trim((string) $student->permant_add);
-            $newPermanentAddress = trim((string) ($validatedData['permant_add'] ?? ''));
 
-            // Check if permanent address changed
-            if (
-                isset($validatedData['permant_add']) &&
-                $oldPermanentAddress != $newPermanentAddress
-            ) {
-                DB::table('permanent_address_change_log')->insert([
-                    'student_id' => $student->student_id,
-                    'old_address' => $oldPermanentAddress,
-                    'remark' => $request->address_remark,
-                    'changed_by' => $user->reg_id ?? null,
-                    'changed_at' => now(),
-                ]);
-
-                Log::info("Permanent address changed for student ID: {$student->student_id}");
-            }
             $student->update($validatedData);
             $student->updated_by = $user->reg_id;
             $student->save();
@@ -6531,7 +6519,7 @@ class AdminController extends Controller
         $user = $this->authenticateUser();
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         try {
-            $staff = DB::table('teacher')->where('isDelete', 'N')->orderBy('teacher_id', 'ASC')->get();
+            $staff = DB::table('teacher')->where('isDelete', '!=', 'Y')->orderBy('teacher_id', 'ASC')->get();
             return response()->json([
                 'status' => 200,
                 'message' => 'All Staffs',
@@ -12601,34 +12589,64 @@ class AdminController extends Controller
 
     public function webhookredington(Request $request)
     {
-        Log::info('Redington Webhook Received:', $request->all());
-        $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+        Log::info('Gupshup Webhook Received:', $request->all());
 
-        foreach ($statuses as $status) {
-            $wamid = $status['id'];  // The WhatsApp message ID
-            $deliveryStatus = $status['status'];  // e.g., 'sent', 'delivered', 'failed'
-            Log::info($wamid);
-            Log::info($deliveryStatus);
-            // Update the database table where wa_id = wamid
-            $updateData = [
-                'status' => $deliveryStatus,
-                'updated_at' => now(),
-            ];
+        try {
+            $responseData = $request->input('response');
 
-            // If status is one of the success types, add sms_sent = 'Y'
-            if (in_array($deliveryStatus, ['sent', 'delivered', 'read'])) {
-                $updateData['sms_sent'] = 'Y';
+            if (!$responseData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Response key missing'
+                ], 400);
             }
 
-            // Update DB record where wa_id matches
-            DB::table('redington_webhook_details')
-                ->where('wa_id', $wamid)
-                ->update($updateData);
+            $events = json_decode($responseData, true);
 
-            Log::info("Updated status for WAMID: $wamid to $deliveryStatus");
+            if (!is_array($events)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid JSON'
+                ], 400);
+            }
+
+            foreach ($events as $event) {
+                $waId = $event['externalId'] ?? null;
+                $status = strtolower($event['eventType'] ?? '');
+
+                if (!$waId) {
+                    continue;
+                }
+
+                $updateData = [
+                    'status' => $status,
+                    'updated_at' => now(),
+                ];
+
+                if (in_array($status, ['sent', 'delivered', 'read'])) {
+                    $updateData['sms_sent'] = 'Y';
+                }
+
+                DB::table('redington_webhook_details')
+                    ->where('wa_id', $waId)
+                    ->update($updateData);
+
+                Log::info("Updated WA ID {$waId} with status {$status}");
+            }
+
+            return response()->json([
+                'status' => 'success'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Error', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['status' => 'success'], 200);
     }
 
     public function webhookredingtonhscs(Request $request)

@@ -1,4 +1,4 @@
-@php
+{{-- @php
 $school = getSchoolDetails();
 
 $bgImageGold = getProficiencyGoldBgImage();
@@ -16,90 +16,202 @@ $silverBgPath = (!empty($bgImageSilver) && !empty($bgImageSilver['file_path']))
 $bronzeBgPath = (!empty($bgImageBronze) && !empty($bgImageBronze['file_path']))
     ? asset($bgImageBronze['file_path'])
     : asset('health3_bg.jpg');
+@endphp --}}
+
+
+@php
+$school = getSchoolDetails();
+
+$bgImageGold = getProficiencyGoldBgImage();
+$bgImageSilver = getProficiencySilverBgImage();
+$bgImageBronze = getProficiencyBronzeBgImage();
+
+/*
+|--------------------------------------------------------------------------
+| Determine Certificate Type
+|--------------------------------------------------------------------------
+| You must already be passing $type = Gold/Silver/Bronze
+*/
+$type = $type ?? 'Gold';
+
+/*
+|--------------------------------------------------------------------------
+| SWITCH LOGIC FOR BACKGROUND + PAGE TYPE
+|--------------------------------------------------------------------------
+*/
+switch ($type) {
+
+    case 'Gold':
+        $bgImage = $bgImageGold;
+        $classType = 'Gold';
+        break;
+
+    case 'Silver':
+        $bgImage = $bgImageSilver;
+        $classType = 'Silver';
+        break;
+
+    case 'Bronze':
+        $bgImage = $bgImageBronze;
+        $classType = 'Bronze';
+        break;
+
+    default:
+        $bgImage = $bgImageGold;
+        $classType = 'Gold';
+        break;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Background Path
+|--------------------------------------------------------------------------
+*/
+$bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+    ? $bgImage['file_path']
+    : 'health3_bg.jpg';
+
+/*
+|--------------------------------------------------------------------------
+| Page Type (FROM DB)
+|--------------------------------------------------------------------------
+*/
+$pageType = $bgImage['page_type'] ?? 'A4 landscape';
+
+/*
+|--------------------------------------------------------------------------
+| Page Size and Top Margin
+|--------------------------------------------------------------------------
+*/
+switch ($pageType) {
+
+    case 'A4 landscape':
+        $pageSize = 'A4 landscape';
+        $contentMarginTop = '35%';
+        break;
+
+    case 'A5 portrait':
+        $pageSize = 'A5 portrait';
+        $contentMarginTop = '45%';
+        break;
+
+    case 'A5 landscape':
+        $pageSize = 'A5 landscape';
+        $contentMarginTop = '45%';
+        break;
+
+    case 'Letter portrait':
+        $pageSize = 'letter portrait';
+        $contentMarginTop = '15%';
+        break;
+
+    case 'Letter landscape':
+        $pageSize = 'letter landscape';
+        $contentMarginTop = '20%';
+        break;
+
+    case 'A4 portrait':
+    default:
+        $pageSize = 'A4 portrait';
+        $contentMarginTop = '45%';
+        break;
+}
 @endphp
 
 <!DOCTYPE html>
 <html>
 <head>
-<style>
+    
+    <style>
 @page {
-  margin: 0;
-  padding: 0;
-  size: A4 landscape;
+    margin: 0;
+    padding: 0;
+    size: {{ $pageSize }};
 }
 
-/* Prevents automatic page breaks */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Prevent automatic page breaks */
 body {
-  margin: 0;
-  padding: 0;
-  width: 297mm;
-  height: 210mm;
-  position: relative;
-  overflow: hidden;
+    position: relative;
+    overflow: hidden;
 }
 
 /* Background images for each certificate type */
 .Gold {
-  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificategold.jpg"); */
-  background-image: url('{{ asset($bgImageGold['file_path']) }}');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
+    background-image: url('{{ asset($bgImageGold['file_path']) }}');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
 }
+
 .Silver {
-  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificatesilver.jpg"); */
-  background-image: url('{{ asset($bgImageSilver['file_path']) }}');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
+    background-image: url('{{ asset($bgImageSilver['file_path']) }}');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
 }
+
 .Bronze {
-  /* background-image: url("https://sms.evolvu.in/public/proficiencycertificatebronze.jpg"); */
-  background-image: url('{{ asset($bgImageBronze['file_path']) }}');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
+    background-image: url('{{ asset($bgImageBronze['file_path']) }}');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 
 /* Text and table styling */
 tr td {
-  padding-top: 3px;
-  padding-bottom: 3px;
-  font-size: 20px;
-  text-align: left;
-  font-family: DejaVu Sans, sans-serif;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-size: 20px;
+    text-align: left;
+    font-family: DejaVu Sans, sans-serif;
 }
 
 .statistics_line {
-  width: 100%;
-  border-bottom: 1px solid #000;
-  padding: 3px;
-  display: inline-block;
-  text-align: center;
+    width: 100%;
+    border-bottom: 1px solid #000;
+    padding: 3px;
+    display: inline-block;
+    text-align: center;
 }
 
-/* Container positioning */
+/* Main container */
 .pdfdiv {
-  width: 100%;
-  height: 100%;
-  position: relative;
+    width: 100%;
+    height: 100%;
+    position: relative;
 }
 
+/* Content positioning */
 .content {
-  position: absolute;
-  top: 35%;
-  left: 10%;
-  right: 10%;
-  text-align: center;
+    position: absolute;
+    top: {{ $contentMarginTop }};
+    left: 10%;
+    right: 10%;
+    text-align: center;
 }
 
+/* Signature positioning */
 .signature {
-  position: absolute;
-  bottom: 8%;
-  left: 45%;
+    position: absolute;
+    bottom: 8%;
+    left: 45%;
 }
 
+/* Optional image quality improvements */
+img {
+    max-width: 100%;
+    height: auto;
+}
 </style>
+
+
 </head>
 <body class="{{ $type }}">
 <div class="pdfdiv">

@@ -3,11 +3,10 @@
 use App\Http\Services\SmartMailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-
 
 if (!function_exists('getTokenPayload')) {
     function getTokenPayload(Request $request)
@@ -568,8 +567,8 @@ function check_health_activity_data_exist_for_studentid($student_id)
     $values = json_decode($record->value, true);
 
     // Fetch structure from another table/API
-    $groupData = json_decode($record->group_data, true);     // you must create this
-    $paramData = json_decode($record->param_data, true);     // you must create this
+    $groupData = json_decode($record->group_data, true);  // you must create this
+    $paramData = json_decode($record->param_data, true);  // you must create this
     $description = json_decode($record->description, true);
 
     return [
@@ -968,8 +967,6 @@ function getTokenDataParentId($student_id)
         ->toArray();
 }
 
-
-
 function getFeesCategoryStudentAllotment($class_id, $section_id, $acd_yr)
 {
     $directAllotment = DB::table('fees_student_category as a')
@@ -1292,7 +1289,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'datafile' => $datafile
     ];
 
-    Log::channel('upload_logs')->info("Data in upload_files", [
+    Log::channel('upload_logs')->info('Data in upload_files', [
         'url' => $url,
         // 'data' => $data,
     ]);
@@ -1300,7 +1297,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
     // Send the data to the external API
     try {
         $response = Http::post($url, $data);  // Send the data to the external API
-        Log::channel('upload_logs')->info("Response: ", [
+        Log::channel('upload_logs')->info('Response: ', [
             'response' => $response->json(),
         ]);
         // Check if the response is successful
@@ -1395,8 +1392,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
-
-
 // if (!function_exists('getSchoolDetails')) {
 //     function getSchoolDetails($shortName = null)
 //     {
@@ -1414,13 +1409,10 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
 //                     ?? '';
 //             }
 
-
-
 //             // 🔹 STEP 2: Get academic year
 //             $academicYear = $payload->get('academic_year')
 //                 ?? $payload->get('academic_yr')
 //                 ?? '';
-
 
 //             if (empty($shortName)) {
 //                 \Log::info('Short name missing');
@@ -1437,8 +1429,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
 //                 return $cache = [];
 //             }
 
-
-
 //             // 🔹 STEP 4: Fetch correct settings row
 //             $settings = DB::table('settings')
 //                 ->where('short_name', $shortName)
@@ -1447,8 +1437,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
 //                 })
 //                 ->orderByDesc('setting_id')
 //                 ->first();
-
-
 
 //             if (!$settings) {
 //                 \Log::info('Settings not found');
@@ -1490,7 +1478,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
 // }
 
 if (!function_exists('getSchoolDetails')) {
-
     function getSchoolDetails($shortName = null)
     {
         try {
@@ -1499,7 +1486,7 @@ if (!function_exists('getSchoolDetails')) {
             //  Get JWT payload
             $payload = JWTAuth::getPayload();
 
-            //Get short_name
+            // Get short_name
             $shortName = $shortName
                 ?? auth()->user()->short_name
                 ?? $payload->get('short_name')
@@ -1547,7 +1534,7 @@ if (!function_exists('getSchoolDetails')) {
             }
             $settingsData = getSchoolSettingsData();
 
-            $logo  = $settingsData->school_logo ?? '';
+            $logo = $settingsData->school_logo ?? '';
             $image = $settingsData->school_image ?? '';
             $projectUrl = '';
 
@@ -1570,14 +1557,12 @@ if (!function_exists('getSchoolDetails')) {
             // FINAL RETURN (COMBINED DATA)
             return $cache[$shortName] = [
                 'institute_name' => $settings->institute_name ?? '',
-                'school_name'    => $settings->page_title ?? $settings->institute_name ?? '',
-                'address'        => $settings->address ?? '',
-                'phone'          => $settings->phone_number ?? '',
-
+                'school_name' => $settings->page_title ?? $settings->institute_name ?? '',
+                'address' => $settings->address ?? '',
+                'phone' => $settings->phone_number ?? '',
                 'logo' => ($projectUrl && $logo)
                     ? $projectUrl . 'uploads/' . $logo
                     : '',
-
                 'school_img' => ($projectUrl && $image)
                     ? $projectUrl . 'uploads/' . $image
                     : '',
@@ -1598,11 +1583,11 @@ if (!function_exists('defaultSchool')) {
     {
         return [
             'institute_name' => '',
-            'school_name'    => '',
-            'address'        => '',
-            'phone'          => '',
-            'logo'           => '',
-            'school_img'     => '',
+            'school_name' => '',
+            'address' => '',
+            'phone' => '',
+            'logo' => '',
+            'school_img' => '',
         ];
     }
 }
@@ -1623,28 +1608,6 @@ if (!function_exists('defaultSchool')) {
 //     ];
 // }
 
-
-
-// function getHealthBgImage()
-// {
-//     $bgImage = DB::table('background_images')
-//         ->where('module', 'Health & Activity')
-//         ->first();
-
-//     // Default image
-//     $defaultPath = 'health3_bg.jpg';
-//     dd($bgImage);
-//     return [
-//         'file_name' => $bgImage && $bgImage->file_name
-//             ? $bgImage->file_name
-//             : 'default',
-
-//         'file_path' => $bgImage && $bgImage->file_path
-//             ? $bgImage->file_path
-//             : $defaultPath,
-//     ];
-// }
-
 function getHealthBgImage()
 {
     $shortName = JWTAuth::getPayload()->get('short_name');
@@ -1653,29 +1616,30 @@ function getHealthBgImage()
         ->where('module', 'Health & Activity')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
-
 
 function getCasteBgImage()
 {
@@ -1685,25 +1649,28 @@ function getCasteBgImage()
         ->where('module', 'Caste Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
+
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1715,26 +1682,28 @@ function getCharacterBgImage()
         ->where('module', 'Character Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1746,26 +1715,28 @@ function getLeavingBgImage()
         ->where('module', 'Leaving Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 portrait';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1777,26 +1748,28 @@ function getSimpleBonafideBgImage()
         ->where('module', 'Simple Bonafide Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1808,26 +1781,28 @@ function getBonafideBgImage()
         ->where('module', 'Bonafide Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1839,26 +1814,28 @@ function getPercentageBgImage()
         ->where('module', 'Percentage Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1870,26 +1847,28 @@ function getProficiencyGoldBgImage()
         ->where('module', 'Proficiency Certificate(Gold)')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1901,26 +1880,28 @@ function getProficiencySilverBgImage()
         ->where('module', 'Proficiency Certificate(Silver)')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1932,26 +1913,28 @@ function getProficiencyBronzeBgImage()
         ->where('module', 'Proficiency Certificate(Bronze)')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1963,26 +1946,28 @@ function getAchievementBgImage()
         ->where('module', 'Achievement Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
 }
 
@@ -1994,25 +1979,48 @@ function getParticipationBgImage()
         ->where('module', 'Participation Certificate')
         ->first();
 
-    // Default image
+    // Default values
     $defaultImage = 'health3_bg.jpg';
+    $defaultPageType = 'A4 landscape';
 
-    if ($bgImage && $bgImage->file_name) {
-
+    if ($bgImage && !empty($bgImage->file_name)) {
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
+            'page_type' => !empty($bgImage->page_type)
+                ? $bgImage->page_type
+                : $defaultPageType,
         ];
     }
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
+        'page_type' => $defaultPageType,
     ];
+}
+
+if (!function_exists('cleanMessageText')) {
+    function cleanMessageText(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // Remove HTML tags
+        $text = strip_tags($text);
+
+        // Decode HTML entities
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Remove extra spaces/tabs/newlines
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        // Trim leading/trailing spaces
+        return trim($text);
+    }
 }

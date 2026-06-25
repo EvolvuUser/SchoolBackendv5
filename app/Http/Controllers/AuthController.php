@@ -575,7 +575,11 @@ class AuthController extends Controller
         $academicYear = $payload->get('academic_year');
         $parent_id = auth()->user()->reg_id;
 
-        // Parent info
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+        // Parent details
         $parent = DB::table('parent')
             ->where('parent_id', $parent_id)
             ->first();
@@ -588,6 +592,23 @@ class AuthController extends Controller
             ]);
         }
 
+        // Parent image URLs
+        $parent->father_image_url = !empty($parent->father_image_name)
+            ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->father_image_name
+            : '';
+
+        $parent->mother_image_url = !empty($parent->mother_image_name)
+            ? $codeigniter_app_url . 'uploads/parent_image/' . $parent->mother_image_name
+            : '';
+
+        // Confirmation status
+        $confirmation = DB::table('confirmation_idcard')
+            ->where('parent_id', $parent_id)
+            ->where('academic_yr', $academicYear)
+            ->first();
+
+        $parent->confirm = $confirmation ? $confirmation->confirm : 'N';
+
         // Students
         $students = DB::table('student')
             ->where([
@@ -597,22 +618,28 @@ class AuthController extends Controller
             ])
             ->get();
 
-        // Take guardian info from FIRST student (since it's same for all)
         $firstStudent = $students->first();
 
         $guardianFields = [];
 
         if ($firstStudent) {
+
             $guardianFields = [
-                'guardian_name'   => $firstStudent->guardian_name ?? null,
-                'guardian_mobile' => $firstStudent->guardian_mobile ?? null,
-                'guardian_add'    => $firstStudent->guardian_add ?? null,
-                'relation'        => $firstStudent->relation ?? null,
+                'guardian_name'   => $firstStudent->guardian_name,
+                'guardian_mobile' => $firstStudent->guardian_mobile,
+                'guardian_add'    => $firstStudent->guardian_add,
+                'relation'        => $firstStudent->relation,
             ];
+
+            // Guardian image URL
+            $parent->guardian_image_url = !empty($firstStudent->guardian_image_name)
+                ? $codeigniter_app_url . 'uploads/parent_image/' . $firstStudent->guardian_image_name
+                : '';
+        } else {
+            $parent->guardian_image_url = '';
         }
 
-        // Attach class + section + keep guardian in each student
-        $students = $students->map(function ($student) use ($guardianFields) {
+        $students = $students->map(function ($student) use ($guardianFields, $codeigniter_app_url) {
 
             $student->class_name = DB::table('class')
                 ->where('class_id', $student->class_id)
@@ -622,7 +649,11 @@ class AuthController extends Controller
                 ->where('section_id', $student->section_id)
                 ->value('name');
 
-            // attach SAME guardian fields from student table
+            // Student image URL
+            $student->image_url = !empty($student->image_name)
+                ? $codeigniter_app_url . 'uploads/student_image/' . $student->image_name
+                : '';
+
             foreach ($guardianFields as $key => $value) {
                 $student->$key = $value;
             }
@@ -630,7 +661,7 @@ class AuthController extends Controller
             return $student;
         });
 
-        // Add SAME guardian fields into parent_info
+        // Add guardian fields to parent object
         foreach ($guardianFields as $key => $value) {
             $parent->$key = $value;
         }
@@ -640,7 +671,7 @@ class AuthController extends Controller
             'message' => 'Data fetched successfully',
             'data' => [
                 'parent_info' => $parent,
-                'students'    => $students
+                'students' => $students
             ]
         ]);
     }
@@ -669,7 +700,8 @@ class AuthController extends Controller
 
                 $ext = 'png';
 
-                $decoded = base64_decode(str_replace('[removed]', '', $s_image));
+                // $decoded = base64_decode(str_replace('[removed]', '', $s_image));
+                $decoded = preg_replace('/^data:image\/\w+;base64,/', '', $s_image);
 
                 $fileName = $student_id . '.' . $ext;
 
@@ -712,9 +744,11 @@ class AuthController extends Controller
         // Father Image
         if ($request->f_cropped_image) {
 
-            $decoded = base64_decode(str_replace('[removed]', '', $request->f_cropped_image));
+            // $decoded = base64_decode(str_replace('[removed]', '', $request->f_cropped_image));
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->f_cropped_image);
 
             $fileName = "f_" . $parent_id . ".png";
+            $doc_type_folder = 'parent_image';
 
             $uploadResponse = upload_father_profile_image_into_folder(
                 $parent_id,
@@ -737,10 +771,12 @@ class AuthController extends Controller
         //  Mother Image
         if ($request->m_cropped_image) {
 
-            $decoded = base64_decode(str_replace('[removed]', '', $request->m_cropped_image));
+            // $decoded = base64_decode(str_replace('[removed]', '', $request->m_cropped_image));
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->m_cropped_image);
 
             $fileName = "m_" . $parent_id . ".png";
 
+            $doc_type_folder = 'parent_image';
             $uploadResponse = upload_mother_profile_image_into_folder(
                 $parent_id,
                 $fileName,
@@ -760,12 +796,38 @@ class AuthController extends Controller
         }
 
         // Guardian Image
+        // if ($request->g_cropped_image) {
+
+        //     $decoded = base64_decode(str_replace('[removed]', '', $request->g_cropped_image));
+
+        //     $fileName = "g_" . $parent_id . ".png";
+
+        //     $uploadResponse = upload_guardian_profile_image_into_folder(
+        //         $parent_id,
+        //         $fileName,
+        //         $doc_type_folder,
+        //         $decoded
+        //     );
+
+        //     if (isset($uploadResponse['error'])) {
+        //         return response()->json([
+        //             'status' => false,
+        //             'message' => 'Guardian image upload failed',
+        //             'error' => $uploadResponse
+        //         ]);
+        //     }
+
+        //     $parentData['guardian_image_name'] = $fileName;
+        // }
+        // Guardian Image
         if ($request->g_cropped_image) {
 
-            $decoded = base64_decode(str_replace('[removed]', '', $request->g_cropped_image));
+            // $decoded = base64_decode(str_replace('[removed]', '', $request->g_cropped_image));
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->g_cropped_image);
 
             $fileName = "g_" . $parent_id . ".png";
 
+            $doc_type_folder = 'parent_image';
             $uploadResponse = upload_guardian_profile_image_into_folder(
                 $parent_id,
                 $fileName,
@@ -781,7 +843,7 @@ class AuthController extends Controller
                 ]);
             }
 
-            $parentData['guardian_image_name'] = $fileName;
+            // Don't update parent table with guardian_image_name
         }
 
         DB::table('parent')

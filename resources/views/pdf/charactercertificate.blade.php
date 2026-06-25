@@ -5,47 +5,83 @@ $bgImage = getCharacterBgImage();
 $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
     ? asset($bgImage['file_path'])
     : asset('health3_bg.jpg');
+
+$pageType = $bgImage['page_type'] ?? 'A4 landscape';
 @endphp
 
 
 <style>
-@page {
-    margin-top:0;
-    margin-bottom:0;
-    margin-left:0;
-    margin-right:0;
-    /*padding: 0;*/
-  }
-    body{
-    /* background-image: url('https://sms.evolvu.in/public/character_certificate.jpg'); */
-    background-image: url('{{ asset($bgImage['file_path']) }}');
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;
-    object-fit: cover;
-    background-repeat:no-repeat;
-    font-family:Arial !important; 
-    text-align:left;
-    /*width: 300px;*/
-    height: 300px;
 
-}
- tr td{
-	padding-top: 3px; 
-	padding-bottom:3px;
-	word-wrap:break-word;
-	font-size:20px;
-	font-family:Arial !important; 
-    text-align:left;
- }
-.statistics_line {
+    @page {
+
+        @switch($pageType)
+
+            @case('A4 portrait')
+                size: A4 portrait;
+                @break
+
+            @case('A4 landscape')
+                size: A4 landscape;
+                @break
+
+            @case('A5 portrait')
+                size: A5 portrait;
+                @break
+
+            @case('A5 landscape')
+                size: A5 landscape;
+                @break
+
+            @case('Letter portrait')
+                size: letter portrait;
+                @break
+
+            @case('Letter landscape')
+                size: letter landscape;
+                @break
+
+            @default
+                size: A4 portrait;
+
+        @endswitch
+
+        margin-top: 0;
+        margin-bottom: 0;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+  body{
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('{{ $bgImage['file_path'] }}');
+        /* background-image: url('{{ $bgPath }}'); */
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        -o-background-size: cover;
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    tr td{
+        padding-top:3px;
+        padding-bottom:3px;
+        word-wrap:break-word;
+        font-size:20px;
+        font-family:Arial !important;
+        text-align:left;
+    }
+
+    .statistics_line{
         width:100%;
         border-bottom:1px solid #000;
-        /*padding:3px;*/
     }
 
 </style>
+
+
 <html>
 
 <div class="pdfdiv"> <!--Ends Here -->
@@ -64,13 +100,9 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
 <?php } else { ?>
 <td style="font-size:15px;text-align:center;">BONAFIDE AND CHARACTER CERTIFICATE  
 <?php } ?><br></td>
-                <!--<td rowspan=2>-->
-                   
-                <!--</td>-->
+               
             </tr>
-            <!--<tr>-->
-            <!--    <td style="font-size:14px;text-align:center;"><br></td>-->
-            <!--</tr>-->
+          
             <tr>
                 <td style="font-size:15px;text-align:center;">This is to certify that</td>
             </tr>
@@ -91,7 +123,7 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
                         <td style="font-size:15px;width: 5%;text-align:center;"><div class="statistics_line"><?php echo $data->class_division; ?></div></td>
                         <td style="font-size:15px;width: 5%;padding-left:2%;white-space: nowrap;"> in the year </td>
 						<td style="font-size:15px;width: 15%;text-align:center;"><div class="statistics_line"><?php echo $data->academic_yr; ?></div></td>
-						<!--<td style="font-size:15px;width:7%;padding-top: 15px;padding-left:3%;">  place</td>-->
+						
                     </table>
                 </td>
                 
@@ -138,12 +170,11 @@ $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
                         <td style="font-size:15px;width: 10%;word-wrap:break-word;text-align: center;"></td>
                         <td style="font-size:15px;width: 8%;word-wrap:break-word;text-align: center;"> Feb / March</td>
                         <?php
-                        // $academic_yr_to = $this->crud_model->get_academic_yr_to();
-                        // $to_year = date('Y', strtotime($academic_yr_to) );
+                       
                         $academic_yr_to = $data->academic_yr;
                         $acd_yr = explode('-', $academic_yr_to);
                         $to_year = date('Y', strtotime($acd_yr[1]));
-                        // $to_year = '2024';
+                        
                         ?>
                         <td style=" width:5%;text-align:center;font-size:15px;"><div class="statistics_line"><?php echo $to_year; ?></div></td>
                         <td style=" width:9%;text-align:center;font-size:15px;">in the <?php echo $data->attempt; ?></td>

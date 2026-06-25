@@ -60,9 +60,20 @@
     $bgImage = getBonafideBgImage();
 
     $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
+        ? asset($bgImage['file_path'])
+        : asset('health3_bg.jpg');
+
+    $pageType = $bgImage['page_type'] ?? 'A4 landscape';
+@endphp
+
+{{-- @php
+    $school = getSchoolDetails();
+    $bgImage = getBonafideBgImage();
+
+    $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
     ? asset($bgImage['file_path'])
     : asset('health3_bg.jpg');
-@endphp
+@endphp --}}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -72,7 +83,7 @@
 
 <style>
 
-    @page {
+    /* @page {
         size: A4;
         margin-top: 0;
         margin-bottom: 0;
@@ -86,7 +97,62 @@
         padding: 0;
         font-family: Arial, sans-serif;
 
-        background-image: url('{{ asset($bgImage['file_path']) }}');
+         background-image: url('{{ asset($bgImage['file_path']) }}'); 
+        background-image: url('{{ $bgImage['file_path'] }}');
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        -o-background-size: cover;
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+    } */
+
+    @page {
+
+        @switch($pageType)
+
+            @case('A4 portrait')
+                size: A4 portrait;
+                @break
+
+            @case('A4 landscape')
+                size: A4 landscape;
+                @break
+
+            @case('A5 portrait')
+                size: A5 portrait;
+                @break
+
+            @case('A5 landscape')
+                size: A5 landscape;
+                @break
+            
+            @case('Letter portrait')
+                size: letter portrait;
+                @break
+
+            @case('Letter landscape')
+                size: letter landscape;
+                @break
+
+            @default
+                size: A4 portrait;
+
+        @endswitch
+
+        margin-top: 0;
+        margin-bottom: 0;
+        margin-left: 1;
+        margin-right: 1;
+        padding: 0;
+    }
+
+    body{
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('{{ $bgImage['file_path'] }}');
+        /* background-image: url('{{ $bgPath }}'); */
         -webkit-background-size: cover;
         -moz-background-size: cover;
         -o-background-size: cover;
@@ -95,9 +161,14 @@
         background-position: center;
     }
 
-    .pdfdiv{
+    /* .pdfdiv{
         width: 100%;
         min-height: 1000px;
+    } */
+
+    .pdfdiv{
+        width: 100%;
+        height: auto;
     }
 
     tr td{
@@ -236,7 +307,6 @@
 
                     </div>
 
-                    <hr class="dotted">
 
                 </td>
 

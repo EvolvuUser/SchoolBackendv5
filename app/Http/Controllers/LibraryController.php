@@ -5287,6 +5287,142 @@ class LibraryController extends Controller
         ]);
     }
 
+    // public function updateHealthActivityRecord(Request $request, $student_id)
+    // {
+    //     $user = $this->authenticateUser();
+    //     $academic_yr = JWTAuth::getPayload()->get('academic_year');
+
+    //     $jsonValue = $request->input('value');
+
+    //     if (!$jsonValue) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Value JSON is required',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     $inputData = json_decode($jsonValue, true);
+
+    //     if (!is_array($inputData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'Invalid JSON format',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= PARAMETERS MASTER =================
+    //     $parameterRows = DB::table('health_activity_parameter')
+    //         ->where('is_active', 'Y')
+    //         ->select('id', 'test_parameter', 'group_id', 'param_data', 'description')
+    //         ->get();
+
+    //     // Normalize parameter keys
+    //     $parameterMap = [];
+    //     foreach ($parameterRows as $p) {
+    //         $normalized = strtolower(trim($p->test_parameter));
+    //         $parameterMap[$normalized] = $p;
+    //     }
+
+    //     // ================= GROUP MASTER =================
+    //     $groups = DB::table('health_activity_group')
+    //         ->select('id', 'group_name')
+    //         ->get()
+    //         ->keyBy('id');
+
+    //     // ================= BUILD DATA =================
+    //     $filteredData    = [];
+    //     $groupData       = [];
+    //     $paramMetaData   = [];
+    //     $descriptionData = [];
+
+    //     foreach ($inputData as $key => $value) {
+
+    //         $normalizedKey = strtolower(trim($key));
+
+    //         if (!isset($parameterMap[$normalizedKey])) {
+    //             continue;
+    //         }
+
+    //         $param = $parameterMap[$normalizedKey];
+    //         $paramName = $param->test_parameter;
+
+    //         // VALUE
+    //         $filteredData[$paramName] = $value;
+
+    //         // GROUP DATA
+    //         if (isset($groups[$param->group_id])) {
+    //             $groupData[$paramName] = [
+    //                 'group_id'   => $param->group_id,
+    //                 'group_name' => $groups[$param->group_id]->group_name
+    //             ];
+    //         }
+
+    //         // PARAM META DATA
+    //         $paramMetaData[$paramName] = $param->param_data
+    //             ? json_decode($param->param_data, true)
+    //             : null;
+
+    //         // DESCRIPTION FIX (IMPORTANT)
+    //         $descriptionData[$paramName] = $param->description;
+    //     }
+
+    //     if (empty($filteredData)) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'message' => 'No valid parameters provided',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= EXISTING RECORD =================
+    //     $record = DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->first();
+
+    //     if (!$record) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'message' => 'Health record not found for this student',
+    //             'success' => false
+    //         ]);
+    //     }
+
+    //     // ================= SAFE JSON DECODE =================
+    //     $existingValue = json_decode($record->value, true) ?? [];
+    //     $existingGroup = json_decode($record->group_data, true) ?? [];
+    //     $existingParam = json_decode($record->param_data, true) ?? [];
+    //     $existingDesc  = json_decode($record->description, true) ?? [];
+
+    //     // ================= MERGE =================
+    //     $updatedValue = array_merge($existingValue, $filteredData);
+    //     $updatedGroup = array_merge($existingGroup, $groupData);
+    //     $updatedParam = array_merge($existingParam, $paramMetaData);
+    //     $updatedDesc  = array_merge($existingDesc, $descriptionData);
+
+    //     // ================= UPDATE =================
+    //     DB::table('health_activity_record')
+    //         ->where('student_id', $student_id)
+    //         ->where('academic_yr', $academic_yr)
+    //         ->update([
+    //             'value'        => json_encode($updatedValue),
+    //             'group_data'   => json_encode($updatedGroup),
+    //             'param_data'   => json_encode($updatedParam),
+    //             'description'  => json_encode($updatedDesc),
+    //             'created_by'   => $user->reg_id,
+
+    //         ]);
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'message' => 'Health record updated successfully',
+    //         'success' => true
+    //     ]);
+    // }
+
+    // 15-06-2026
     public function updateHealthActivityRecord(Request $request, $student_id)
     {
         $user = $this->authenticateUser();
@@ -5318,11 +5454,22 @@ class LibraryController extends Controller
             ->select('id', 'test_parameter', 'group_id', 'param_data', 'description')
             ->get();
 
+        if ($parameterRows->isEmpty()) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'No active parameters found',
+                'success' => false
+            ]);
+        }
+
         // Normalize parameter keys
         $parameterMap = [];
+        $activeParamNames = [];
+
         foreach ($parameterRows as $p) {
             $normalized = strtolower(trim($p->test_parameter));
             $parameterMap[$normalized] = $p;
+            $activeParamNames[] = $p->test_parameter;
         }
 
         // ================= GROUP MASTER =================
@@ -5331,10 +5478,10 @@ class LibraryController extends Controller
             ->get()
             ->keyBy('id');
 
-        // ================= BUILD DATA =================
-        $filteredData    = [];
-        $groupData       = [];
-        $paramMetaData   = [];
+        // ================= BUILD CURRENT DATA =================
+        $filteredData = [];
+        $groupData = [];
+        $paramMetaData = [];
         $descriptionData = [];
 
         foreach ($inputData as $key => $value) {
@@ -5354,7 +5501,7 @@ class LibraryController extends Controller
             // GROUP DATA
             if (isset($groups[$param->group_id])) {
                 $groupData[$paramName] = [
-                    'group_id'   => $param->group_id,
+                    'group_id' => $param->group_id,
                     'group_name' => $groups[$param->group_id]->group_name
                 ];
             }
@@ -5364,7 +5511,7 @@ class LibraryController extends Controller
                 ? json_decode($param->param_data, true)
                 : null;
 
-            // DESCRIPTION FIX (IMPORTANT)
+            // DESCRIPTION
             $descriptionData[$paramName] = $param->description;
         }
 
@@ -5394,25 +5541,32 @@ class LibraryController extends Controller
         $existingValue = json_decode($record->value, true) ?? [];
         $existingGroup = json_decode($record->group_data, true) ?? [];
         $existingParam = json_decode($record->param_data, true) ?? [];
-        $existingDesc  = json_decode($record->description, true) ?? [];
+        $existingDesc = json_decode($record->description, true) ?? [];
 
-        // ================= MERGE =================
+        // ================= REMOVE INACTIVE PARAMETERS =================
+        $activeKeys = array_flip($activeParamNames);
+
+        $existingValue = array_intersect_key($existingValue, $activeKeys);
+        $existingGroup = array_intersect_key($existingGroup, $activeKeys);
+        $existingParam = array_intersect_key($existingParam, $activeKeys);
+        $existingDesc = array_intersect_key($existingDesc, $activeKeys);
+
+        // ================= MERGE UPDATED DATA =================
         $updatedValue = array_merge($existingValue, $filteredData);
         $updatedGroup = array_merge($existingGroup, $groupData);
         $updatedParam = array_merge($existingParam, $paramMetaData);
-        $updatedDesc  = array_merge($existingDesc, $descriptionData);
+        $updatedDesc = array_merge($existingDesc, $descriptionData);
 
-        // ================= UPDATE =================
+        // ================= UPDATE RECORD =================
         DB::table('health_activity_record')
             ->where('student_id', $student_id)
             ->where('academic_yr', $academic_yr)
             ->update([
-                'value'        => json_encode($updatedValue),
-                'group_data'   => json_encode($updatedGroup),
-                'param_data'   => json_encode($updatedParam),
-                'description'  => json_encode($updatedDesc),
-                'created_by'   => $user->reg_id,
-
+                'value' => json_encode($updatedValue),
+                'group_data' => json_encode($updatedGroup),
+                'param_data' => json_encode($updatedParam),
+                'description' => json_encode($updatedDesc),
+                'created_by' => $user->reg_id,
             ]);
 
         return response()->json([
@@ -6742,30 +6896,13 @@ class LibraryController extends Controller
     //     }
     // }
 
+
     public function uploadOrUpdateBackground(Request $request)
     {
-        // Step 1: Check required fields manually
-        $missing = [];
-
-        if (!$request->hasFile('image')) {
-            $missing[] = 'image';
-        }
-
-        if (!$request->input('module')) {
-            $missing[] = 'module';
-        }
-
-        if (!empty($missing)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'These fields are required: ' . implode(', ', $missing)
-            ], 422);
-        }
-
-        // Step 2: Validate
         $validator = Validator::make($request->all(), [
-            'image' => 'image|mimes:jpg,jpeg,png|max:2048',
-            'module' => 'string'
+            'image' => 'nullable|image|max:2048',
+            'module' => 'nullable|string',
+            'page_type' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -6776,9 +6913,8 @@ class LibraryController extends Controller
         }
 
         try {
-            $module = trim($request->module);
 
-            // Step 3: Authenticate user
+            // Authenticate user
             $user = $this->authenticateUser();
 
             if (!$user) {
@@ -6797,111 +6933,233 @@ class LibraryController extends Controller
                 ], 400);
             }
 
-            // Step 4: Check existing image (module-wise)
+            $module = trim($request->module);
+
+            // Module is needed for updateOrInsert
+            if (empty($module)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Module is required for save/update'
+                ], 422);
+            }
+
+            // Existing record
             $existing = DB::table('background_images')
                 ->where('module', $module)
                 ->first();
 
-            // Step 5: Delete old file if exists
-            if ($existing && !empty($existing->file_name)) {
-                $oldPath = public_path(
-                    "BackgroundImages/{$shortName}/{$existing->module}/{$existing->file_name}"
+            $updateData = [
+                'updated_at' => now()
+            ];
+
+            // Preserve created_at
+            if (!$existing) {
+                $updateData['created_at'] = now();
+            }
+
+            // Save page_type only if passed
+            if ($request->filled('page_type')) {
+                $updateData['page_type'] = $request->page_type;
+            }
+
+            // Handle image upload only if image exists
+            if ($request->hasFile('image')) {
+
+                // Delete old file
+                if ($existing && !empty($existing->file_name)) {
+
+                    $oldPath = public_path(
+                        "BackgroundImages/{$shortName}/{$existing->module}/{$existing->file_name}"
+                    );
+
+                    if (file_exists($oldPath)) {
+                        unlink($oldPath);
+                    }
+                }
+
+                $file = $request->file('image');
+
+                $originalName = pathinfo(
+                    $file->getClientOriginalName(),
+                    PATHINFO_FILENAME
                 );
 
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
+                $extension = $file->getClientOriginalExtension();
+
+                $filename = $originalName . '_' . time() . '.' . $extension;
+
+                $destinationPath = public_path(
+                    "BackgroundImages/{$shortName}/{$module}"
+                );
+
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
                 }
+
+                $file->move($destinationPath, $filename);
+
+                $updateData['file_name'] = $filename;
             }
-
-            // Step 6: Upload new file
-            $file = $request->file('image');
-
-            // // Safe filename
-            // $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
-
-            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $extension = $file->getClientOriginalExtension();
-
-            $filename = $originalName . '_' . time() . '.' . $extension;
-
-            //  Create folder: shortName/module
-            $destinationPath = public_path("BackgroundImages/{$shortName}/{$module}");
-
-            if (!file_exists($destinationPath)) {
-                mkdir($destinationPath, 0777, true);
-            }
-
-            // Move file
-            $file->move($destinationPath, $filename);
-
-            // Step 7: Save path (optional)
-            // $path = "BackgroundImages/{$shortName}/{$module}/{$filename}";
 
             DB::table('background_images')->updateOrInsert(
                 ['module' => $module],
-                [
-                    'file_name' => $filename,
-                    // 'file_path' => $path,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
+                $updateData
             );
 
-            // Step 8: Response
+            $record = DB::table('background_images')
+                ->where('module', $module)
+                ->first();
+
             return response()->json([
                 'status' => true,
-                'message' => 'Background image saved successfully',
+                'message' => 'Background details saved successfully',
                 'data' => [
-                    'module' => $module,
+                    'module' => $record->module,
+                    'page_type' => $record->page_type,
                     'school' => $shortName,
-                    'file_name' => $filename,
-                    'file_url' => asset("BackgroundImages/{$shortName}/{$module}/{$filename}")
+                    'file_name' => $record->file_name,
+                    'file_url' => !empty($record->file_name)
+                        ? asset("BackgroundImages/{$shortName}/{$record->module}/{$record->file_name}")
+                        : null
                 ]
             ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Upload failed',
+                'message' => 'Operation failed',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-
-    // public function getBackgroundImages(Request $request)
+    // working for background images
+    // public function uploadOrUpdateBackground(Request $request)
     // {
+    //     // Step 1: Check required fields manually
+    //     $missing = [];
+
+    //     if (!$request->hasFile('image')) {
+    //         $missing[] = 'image';
+    //     }
+
+    //     if (!$request->input('module')) {
+    //         $missing[] = 'module';
+    //     }
+
+    //     // if (!empty($missing)) {
+    //     //     return response()->json([
+    //     //         'status' => false,
+    //     //         'message' => 'These fields are required: ' . implode(', ', $missing)
+    //     //     ], 422);
+    //     // }
+
+    //     // Step 2: Validate
+    //     $validator = Validator::make($request->all(), [
+    //         // 'image' => 'image|mimes:jpg,jpeg,png|max:2048',
+    //         'image' => 'image|max:2048',
+    //         'module' => 'string'
+    //     ]);
+
+    //     // if ($validator->fails()) {
+    //     //     return response()->json([
+    //     //         'status' => false,
+    //     //         'message' => $validator->errors()->first()
+    //     //     ], 422);
+    //     // }
+
     //     try {
+    //         $module = trim($request->module);
+
+    //         // Step 3: Authenticate user
     //         $user = $this->authenticateUser();
+
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Unauthorized'
+    //             ], 401);
+    //         }
+
     //         $shortName = JWTAuth::getPayload()->get('short_name');
 
-    //         // No filtering needed now
-    //         $images = DB::table('background_images')->get();
+    //         if (!$shortName) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'School short_name missing in token'
+    //             ], 400);
+    //         }
 
-    //         $data = $images->map(function ($img) use ($shortName) {
-    //             return [
-    //                 'module' => $img->module,
-    //                 'file_name' => $img->file_name,
-    //                 'file_url' => asset(
-    //                     "BackgroundImages/{$shortName}/{$img->module}/{$img->file_name}"
-    //                 ),
-    //                 'uploaded_at' => $img->created_at,
-    //             ];
-    //         });
+    //         // Step 4: Check existing image (module-wise)
+    //         $existing = DB::table('background_images')
+    //             ->where('module', $module)
+    //             ->first();
 
+    //         // Step 5: Delete old file if exists
+    //         if ($existing && !empty($existing->file_name)) {
+    //             $oldPath = public_path(
+    //                 "BackgroundImages/{$shortName}/{$existing->module}/{$existing->file_name}"
+    //             );
+
+    //             if (file_exists($oldPath)) {
+    //                 unlink($oldPath);
+    //             }
+    //         }
+
+    //         // Step 6: Upload new file
+    //         $file = $request->file('image');
+
+    //         // // Safe filename
+    //         // $filename = $module . '_' . time() . '.' . $file->getClientOriginalExtension();
+
+    //         $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+    //         $extension = $file->getClientOriginalExtension();
+
+    //         $filename = $originalName . '_' . time() . '.' . $extension;
+
+    //         //  Create folder: shortName/module
+    //         $destinationPath = public_path("BackgroundImages/{$shortName}/{$module}");
+
+    //         if (!file_exists($destinationPath)) {
+    //             mkdir($destinationPath, 0777, true);
+    //         }
+
+    //         // Move file
+    //         $file->move($destinationPath, $filename);
+
+    //         // Step 7: Save path (optional)
+    //         // $path = "BackgroundImages/{$shortName}/{$module}/{$filename}";
+
+    //         DB::table('background_images')->updateOrInsert(
+    //             ['module' => $module],
+    //             [
+    //                 'file_name' => $filename,
+    //                 // 'file_path' => $path,
+    //                 'updated_at' => now(),
+    //                 'created_at' => now(),
+    //             ]
+    //         );
+
+    //         // Step 8: Response
     //         return response()->json([
     //             'status' => true,
-    //             'message' => 'Images fetched successfully',
-    //             'school' => $shortName,
-    //             'data' => $data
+    //             'message' => 'Background image saved successfully',
+    //             'data' => [
+    //                 'module' => $module,
+    //                 'school' => $shortName,
+    //                 'file_name' => $filename,
+    //                 'file_url' => asset("BackgroundImages/{$shortName}/{$module}/{$filename}")
+    //             ]
     //         ]);
     //     } catch (\Exception $e) {
     //         return response()->json([
     //             'status' => false,
-    //             'message' => 'Failed to fetch images',
+    //             'message' => 'Upload failed',
     //             'error' => $e->getMessage()
     //         ], 500);
     //     }
     // }
+
 
     public function getBackgroundImages(Request $request)
     {
@@ -6909,7 +7167,11 @@ class LibraryController extends Controller
             $user = $this->authenticateUser();
             $shortName = JWTAuth::getPayload()->get('short_name');
 
-            $images = DB::table('background_images')->get();
+            // $images = DB::table('background_images')->get();
+            $images = DB::table('background_images')
+                ->whereNotNull('file_name')
+                ->where('file_name', '!=', '')
+                ->get();
 
             $data = $images->map(function ($img) use ($shortName) {
 
@@ -6922,6 +7184,7 @@ class LibraryController extends Controller
                     'file_url' => asset(
                         "BackgroundImages/{$shortName}/{$encodedModule}/{$img->file_name}"
                     ),
+                    'page_type' => $img->page_type,
                     'uploaded_at' => $img->created_at,
                 ];
             });
@@ -7122,6 +7385,203 @@ class LibraryController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // Super Admin for Background Image Page Type
+
+    public function getBackgroundImagesPageType()
+    {
+        try {
+
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $shortName = JWTAuth::getPayload()->get('short_name');
+
+            $backgrounds = DB::table('background_images')
+                ->select(
+                    'id',
+                    'module',
+                    'file_name',
+                    'page_type',
+                    'created_at',
+                    'updated_at'
+                )
+                ->whereNotNull('page_type')
+                ->where('page_type', '!=', '')
+                ->get();
+
+            $data = $backgrounds->map(function ($item) use ($shortName) {
+
+                return [
+                    'id' => $item->id,
+                    'module' => $item->module,
+                    'file_name' => $item->file_name,
+                    'file_url' => !empty($item->file_name)
+                        ? asset("BackgroundImages/{$shortName}/{$item->module}/{$item->file_name}")
+                        : null,
+                    'page_type' => $item->page_type,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Background images page type fetched successfully',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch background images page type',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deletePageType($id)
+    {
+        try {
+
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            // Check if record exists
+            $background = DB::table('background_images')
+                ->where('id', $id)
+                ->first();
+
+            if (!$background) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Background image record not found'
+                ], 404);
+            }
+
+            // Make page_type empty (NULL)
+            DB::table('background_images')
+                ->where('id', $id)
+                ->update([
+                    'page_type' => null,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Page type removed successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updatePageTypeById(Request $request)
+    {
+        // Required fields check
+        $missing = [];
+
+        if (!$request->input('id')) {
+            $missing[] = 'id';
+        }
+
+        if (!$request->input('page_type')) {
+            $missing[] = 'page_type';
+        }
+
+        if (!empty($missing)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'These fields are required: ' . implode(', ', $missing)
+            ], 422);
+        }
+
+        // Validate
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|integer',
+            'page_type' => 'required|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        try {
+
+            // Auth
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $id = $request->id;
+            $pageType = trim($request->page_type);
+
+            // Find record
+            $existing = DB::table('background_images')
+                ->where('id', $id)
+                ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Background image record not found'
+                ], 404);
+            }
+
+            // Update page_type
+            DB::table('background_images')
+                ->where('id', $id)
+                ->update([
+                    'page_type' => $pageType,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Page type updated successfully',
+                'data' => [
+                    'id' => $id,
+                    'module' => $existing->module,
+                    'page_type' => $pageType
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
                 'error' => $e->getMessage()
             ], 500);
         }
