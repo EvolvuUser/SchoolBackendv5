@@ -46,22 +46,25 @@ class SendOutstandingFeeSmsJob implements ShouldQueue
                     $smsintegration = $schoolsettings->sms_integration;
                     $schoolemailid = $schoolsettings->school_email_id;
                     if ($whatsappintegration == 'Y') {
-                        $templateName = 'emergency_message';
-                        $parameters = ['Parent, ' . $this->message];
-                        Log::info('SendOutstandingFeeSmsJob started', $parameters);
+                        $message = "Dear Parent,\n";
+                        $message .= cleanMessageText($this->message) . ".\n";
+                        $message .= "Please check the school application for more details.\n";
+                        $message .= '– Evolvu';
+
+                        Log::info('WhatsApp Message', [
+                            'message' => $message
+                        ]);
+
                         $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
                             $contactno->phone_no,
-                            $templateName,
-                            $parameters
+                            null,
+                            [$message]
                         );
                         if (isset($result['code']) && isset($result['message'])) {
                             Log::warning('Rate limit hit', []);
                         } else {
-                            $wamid = $result['messages'][0]['id'];
-                            $phone_no = $result['contacts'][0]['input'];
-
                             DB::table('redington_webhook_details')->insert([
-                                'wa_id' => $wamid,
+                                'wa_id' => $result['response']['id'] ?? null,
                                 'phone_no' => $contactno->phone_no,
                                 'stu_teacher_id' => $studentId,
                                 'notice_id' => $studentInstallment,

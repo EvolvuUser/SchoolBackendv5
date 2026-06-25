@@ -12589,34 +12589,64 @@ class AdminController extends Controller
 
     public function webhookredington(Request $request)
     {
-        Log::info('Redington Webhook Received:', $request->all());
-        $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+        Log::info('Gupshup Webhook Received:', $request->all());
 
-        foreach ($statuses as $status) {
-            $wamid = $status['id'];  // The WhatsApp message ID
-            $deliveryStatus = $status['status'];  // e.g., 'sent', 'delivered', 'failed'
-            Log::info($wamid);
-            Log::info($deliveryStatus);
-            // Update the database table where wa_id = wamid
-            $updateData = [
-                'status' => $deliveryStatus,
-                'updated_at' => now(),
-            ];
+        try {
+            $responseData = $request->input('response');
 
-            // If status is one of the success types, add sms_sent = 'Y'
-            if (in_array($deliveryStatus, ['sent', 'delivered', 'read'])) {
-                $updateData['sms_sent'] = 'Y';
+            if (!$responseData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Response key missing'
+                ], 400);
             }
 
-            // Update DB record where wa_id matches
-            DB::table('redington_webhook_details')
-                ->where('wa_id', $wamid)
-                ->update($updateData);
+            $events = json_decode($responseData, true);
 
-            Log::info("Updated status for WAMID: $wamid to $deliveryStatus");
+            if (!is_array($events)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid JSON'
+                ], 400);
+            }
+
+            foreach ($events as $event) {
+                $waId = $event['externalId'] ?? null;
+                $status = strtolower($event['eventType'] ?? '');
+
+                if (!$waId) {
+                    continue;
+                }
+
+                $updateData = [
+                    'status' => $status,
+                    'updated_at' => now(),
+                ];
+
+                if (in_array($status, ['sent', 'delivered', 'read'])) {
+                    $updateData['sms_sent'] = 'Y';
+                }
+
+                DB::table('redington_webhook_details')
+                    ->where('wa_id', $waId)
+                    ->update($updateData);
+
+                Log::info("Updated WA ID {$waId} with status {$status}");
+            }
+
+            return response()->json([
+                'status' => 'success'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Error', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['status' => 'success'], 200);
     }
 
     public function webhookredingtonhscs(Request $request)
