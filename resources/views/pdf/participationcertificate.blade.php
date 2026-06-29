@@ -1,470 +1,3 @@
-{{-- @php
-
-$school = getSchoolDetails();
-
-$bgPath = public_path('participationcertificatepdf.png');
-
-$student_name = $pdfData['student_name'] ?? '';
-
-$classname = $pdfData['class_section'] ?? '';
-
-$event = $pdfData['event'] ?? '';
-// dd($event);
-
-$event_date = $pdfData['event_date'] ?? '';
-
-$academic_year = $pdfData['academic_yr'] ?? '';
-
-@endphp
-
-<!DOCTYPE html>
-<html>
-
-<head>
-
-    <style>
-
-    @page {
-        margin: 0;
-        padding: 0;
-    }
-
-    html,
-    body {
-
-        width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        overflow: hidden;
-
-        font-family: Arial, sans-serif;
-
-        text-align: left;
-    }
-
-    body {
-
-        background-image: url('{{ $bgPath }}');
-
-        background-repeat: no-repeat;
-
-        background-size: 100% 100%;
-
-        background-position: center center;
-    }
-
-    .pdfdiv {
-
-        width: 100%;
-        height: 100%;
-
-        position: relative;
-    }
-
-    table {
-
-        border-collapse: collapse;
-    }
-
-    tr td {
-
-        padding-top: 3px;
-
-        padding-bottom: 3px;
-
-        word-wrap: break-word;
-
-        font-size: 20px;
-
-        font-family: Arial, sans-serif;
-
-        text-align: left;
-
-        vertical-align: middle;
-    }
-
-    .statistics_line {
-
-        width: 100%;
-
-        border-bottom: 1px solid #000;
-
-        padding: 3px;
-
-        min-height: 20px;
-    }
-
-    .certificate-wrapper {
-
-        width: 90%;
-
-        margin-top: 20%;
-
-        margin-left: 5%;
-
-        text-align: center;
-    }
-
-    .main-table {
-
-        width: 90%;
-
-        margin-left: 5%;
-
-        margin-right: auto;
-
-        border-spacing: 0;
-
-        background-color: transparent;
-
-        margin-top: 8%;
-    }
-
-    .italic-text {
-
-        font-style: italic;
-
-        font-size: 22px;
-
-        white-space: nowrap;
-    }
-
-
-   .signature-section {
-
-    width: 100%;
-
-    margin-top: 6%;
-
-    position: relative;
-}
-
-.signature-table {
-
-    width: 100%;
-
-    border-collapse: collapse;
-}
-
-.signature-table td {
-
-    vertical-align: top;
-
-    padding-right: 35%;
-}
-
-.date-td {
-
-    width: 40%;
-
-    text-align: left;
-
-    padding-left: 30%;
-
-    padding-top: 35px;
-}
-
-.signature-td {
-
-    width: 60%;
-
-    text-align: right;
-
-    padding-right: 12%;
-
-    padding-top: 0;
-}
-
-.date-value {
-
-    font-size: 16px;
-
-    font-family: Arial, sans-serif;
-}
-
-.signature-img {
-
-    width: 70px;
-
-    height: 50px;
-}
-
-
-</style>
-
-</head>
-
-<body>
-
-    <div class="certificate-wrapper">
-
-        <table
-            border="0"
-            class="main-table"
-            cellpadding="1"
-            cellspacing="10"
-        >
-
-
-            <tr>
-
-                <td
-                    style="
-                        font-style: italic;
-                        font-size: 22px;
-                        text-align: center;
-                        width: 90%;
-                        padding-top: 8px;
-                        padding-bottom: 8px;
-                    "
-                >
-
-                    This certificate recognises that
-
-                </td>
-
-            </tr>
-
-            <tr>
-
-                <td>
-
-                    <br>
-
-                    <table
-                        style="
-                            width:100%;
-                            border-spacing:0px;
-                            background-color:transparent;
-                        "
-                        cellpadding="0"
-                        cellspacing="0"
-                    >
-
-                        <tr>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    width:18%;
-                                    padding-top:8px;
-                                    padding-bottom:8px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                Master / Miss
-
-                            </td>
-
-                            <td
-                                style="
-                                    font-size:20px;
-                                    width:auto;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    {{ $student_name }}
-
-                                </div>
-
-                            </td>
-
-                        </tr>
-
-                    </table>
-
-                    <br>
-
-                </td>
-
-            </tr>
-
-            <tr>
-
-                <td>
-
-                    <table
-                        style="
-                            width:100%;
-                            border-spacing:0px;
-                            background-color:transparent;
-                            border-collapse: collapse;
-                        "
-                        cellpadding="0"
-                        cellspacing="0"
-                    >
-
-                        <tr>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    padding:5px;
-                                    width:7%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                of std
-
-                            </td>
-
-                            <td
-                                style="
-                                    font-size:20px;
-                                    padding:5px;
-                                    width:25%;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    {{ $classname }}
-
-                                </div>
-
-                            </td>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    padding:5px;
-                                    width:10%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                took part in
-
-                            </td>
-
-                            <td
-                                style="
-                                    width:auto;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    {{ $event }}
-
-                                </div>
-
-                            </td>
-
-                        </tr>
-
-                    </table>
-
-                    <br>
-
-                </td>
-
-            </tr>
-
-
-            <tr>
-                <td>
-                    <table
-                        style="
-                            width:100%;
-                            border-spacing:0px;
-                            background-color:transparent;
-                        "
-                        cellpadding="0"
-                        cellspacing="0"
-                    >
-
-                        <tr>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    padding:5px;
-                                    width:1%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                on
-
-                            </td>
-
-                            <td
-                                style="
-                                    width:25%;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    {{ date('d-m-Y', strtotime($event_date)) }}
-
-                                </div>
-
-                            </td>
-
-                        </tr>
-
-                    </table>
-
-                </td>
-
-            </tr>
-
-        </table>
-
-        
-         <div class="signature-section">
-
-    <table class="signature-table">
-
-        <tr>
-
-            <td class="date-td">
-
-                <div class="date-value">
-
-                    {{ date('d-m-Y', strtotime($event_date)) }}
-
-                </div>
-
-            </td>
-
-            <td class="signature-td">
-
-                <img
-                    src="{{ public_path('Principal_Cert_Signature.png') }}"
-                    class="signature-img"
-                >
-
-            </td>
-
-        </tr>
-
-    </table>
-
-</div>
-
-    </div>
-
-</body>
-
-</html> --}}
-
 
 @php
 
@@ -522,71 +55,54 @@ $pageType = $bgImage['page_type'] ?? 'A4 landscape';
 | Page Size and Top Margin
 |--------------------------------------------------------------------------
 */
+
 switch ($pageType) {
 
     case 'A4 landscape':
         $pageSize = 'A4 landscape';
-        $contentMarginTop = '20%';
+        $contentTop = '200px';
+        $fontSize = '14px';
+        $italicFontSize = '22px';
         break;
 
     case 'A5 portrait':
         $pageSize = 'A5 portrait';
-        $contentMarginTop = '45%';
+        $contentTop = '250px';
+        $fontSize = '14px';
+        $italicFontSize = '16px';
         break;
 
     case 'A5 landscape':
         $pageSize = 'A5 landscape';
-        $contentMarginTop = '45%';
+        $contentTop = '120px';
+        $fontSize = '14px';
+        $italicFontSize = '16px';
         break;
 
     case 'Letter portrait':
         $pageSize = 'letter portrait';
-        $contentMarginTop = '15%';
+        $contentTop = '150px';
+        $fontSize = '18px';
+        $italicFontSize = '20px';
         break;
 
     case 'Letter landscape':
         $pageSize = 'letter landscape';
-        $contentMarginTop = '20%';
+        $contentTop = '120px';
+        $fontSize = '18px';
+        $italicFontSize = '20px';
         break;
 
     case 'A4 portrait':
     default:
         $pageSize = 'A4 portrait';
-        $contentMarginTop = '45%';
+        $contentTop = '300px';
+        $fontSize = '20px';
+        $italicFontSize = '22px';
         break;
 }
 
 @endphp
-
-
-{{-- @php
-
-$school = getSchoolDetails();
-
-$bgAchievementImage = getAchievementBgImage();
-
-$bgAchievementImage = getParticipationBgImage();
-// $bgPath = (!empty($bgImage) && !empty($bgImage['file_path']))
-//     ? asset($bgImage['file_path'])
-//     : asset('health3_bg.jpg');
-$bgPath = public_path('participationcertificatepdf.png');
-
-$student_name = $pdfData['student_name'] ?? '';
-
-$classname = $pdfData['class_section'] ?? '';
-
-$event = $pdfData['event'] ?? '';
-
-$event_date = $pdfData['event_date'] ?? '';
-
-$academic_year = $pdfData['academic_yr'] ?? '';
-
-$position = $pdfData['position'] ?? '';
-
-
-// dd($position);
-
-@endphp --}}
 
 
 
@@ -595,36 +111,26 @@ $position = $pdfData['position'] ?? '';
 
 <head>
 
-   <style>
+<style>
 
     @page {
         size: {{ $pageSize }};
         margin: 0;
         padding: 0;
     }
-
-    html,
-    body {
-        width: 100%;
-        height: 100%;
-
-        margin: 0;
-        padding: 0;
-
-        font-family: Arial, sans-serif;
-        text-align: left;
+    
+    html,body{
+    margin:0;
+    padding:0;
+    font-family:Arial,sans-serif;
     }
 
-    body {
-
-        background-image: url('{{ $bgPath }}');
-
-        background-repeat: no-repeat;
-
-        background-position: center center;
-
-        /* Prevent background cropping */
-        background-size: 100% 100%;
+   body{
+    background-image:url('{{ $bgPath }}');
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    background-position:center;
+    overflow:hidden;
     }
 
     .pdfdiv {
@@ -639,20 +145,14 @@ $position = $pdfData['position'] ?? '';
         border-collapse: collapse;
     }
 
-    tr td {
-
-        padding-top: 3px;
-        padding-bottom: 3px;
-
-        word-wrap: break-word;
-
-        font-size: 20px;
-
-        font-family: Arial, sans-serif;
-
-        text-align: left;
-
-        vertical-align: middle;
+    tr td{
+    padding-top:3px;
+    padding-bottom:3px;
+    word-wrap:break-word;
+    font-size:{{ $fontSize }};
+    font-family:Arial,sans-serif;
+    text-align:left;
+    vertical-align:middle;
     }
 
     .statistics_line {
@@ -667,48 +167,29 @@ $position = $pdfData['position'] ?? '';
     }
 
     /* Main content wrapper */
-    .certificate-wrapper {
-
-        width: 90%;
-
-        margin-top: {{ $contentMarginTop }};
-
-        margin-left: 5%;
-
-        text-align: center;
+    .certificate-wrapper{
+    width:90%;
+    margin-left:5%;
+    margin-right:5%;
+    margin-top:{{$contentTop}};
     }
 
-    .main-table {
+  .main-table{
+    width:90%;
+    margin:auto;
+    border-spacing:0;
+    background:transparent;
+   }
 
-        width: 90%;
-
-        margin-left: 5%;
-
-        margin-right: auto;
-
-        border-spacing: 0;
-
-        background-color: transparent;
-
-        margin-top: 8%;
+   .italic-text{
+    font-style:italic;
+    font-size:{{ $italicFontSize }};
+    white-space:nowrap;
     }
 
-    .italic-text {
-
-        font-style: italic;
-
-        font-size: 22px;
-
-        white-space: nowrap;
-    }
-
-    .signature-section {
-
-        width: 100%;
-
-        margin-top: 6%;
-
-        position: relative;
+    .signature-section{
+    margin-top:100px;
+    /*margin-bottom: 30px;*/
     }
 
     .signature-table {
@@ -718,38 +199,26 @@ $position = $pdfData['position'] ?? '';
         border-collapse: collapse;
     }
 
-    .signature-table td {
-
-        vertical-align: top;
-
-        padding-right: 35%;
+   .signature-table{
+     width:100%;
     }
 
-    .date-td {
 
-        width: 40%;
-
-        text-align: left;
-
-        padding-left: 30%;
-
-        padding-top: 20px;
+   .date-td{
+    width:50%;
+    text-align:left;
+    padding-left:160px;
     }
 
-    .signature-td {
-
-        width: 60%;
-
-        text-align: right;
-
-        padding-right: 12%;
-
-        padding-top: 0;
+   .signature-td{
+    width:50%;
+    text-align:right;
+    padding-right:70px;
     }
 
     .date-value {
 
-        font-size: 16px;
+        font-size: 14px;
 
         font-family: Arial, sans-serif;
 
@@ -774,8 +243,8 @@ $position = $pdfData['position'] ?? '';
         <table
             border="0"
             class="main-table"
-            cellpadding="1"
-            cellspacing="10"
+            cellpadding="0"
+            cellspacing="0"
         >
 
             {{-- Heading --}}
@@ -784,11 +253,11 @@ $position = $pdfData['position'] ?? '';
                 <td
                     style="
                         font-style: italic;
-                        font-size: 22px;
+                        font-size: 14px;
                         text-align: center;
                         width: 90%;
-                        padding-top: 8px;
-                        padding-bottom: 8px;
+                        padding-top: 25px;
+                        padding-bottom: 2px;
                     "
                 >
 
@@ -829,7 +298,6 @@ $position = $pdfData['position'] ?? '';
                                 style="
                                     width:18%;
                                     padding-top:8px;
-                                    padding-bottom:8px;
                                     white-space: nowrap;
                                 "
                             >
@@ -840,7 +308,7 @@ $position = $pdfData['position'] ?? '';
 
                             <td
                                 style="
-                                    font-size:20px;
+                                    font-size:14px;
                                     width:auto;
                                     text-align:center;
                                 "
@@ -885,107 +353,48 @@ $position = $pdfData['position'] ?? '';
                         cellspacing="0"
                     >
 
-                        <tr>
+                <tr>
+                    <td style="text-align:center;">
 
-                            <td
-                                class="italic-text"
+                        <div style="font-size:14px; font-style:italic; margin-top:10px;">
+
+                            of std
+
+                            <span class="statistics_line"
+                                style="display:inline-block;width:120px;text-align:center;">
+                                {{ $classname }}
+                            </span>
+
+                            has secured
+
+                            <span class="statistics_line"
+                                style="display:inline-block;width:120px;text-align:center;">
+                                {{ ucfirst($position) }}
+                            </span>
+
+                            place in
+
+                        </div>
+
+                        <div style="
+                            margin-top:10px;
+                            text-align:center;
+                            font-size:14px;
+                        ">
+
+                            <span class="statistics_line"
                                 style="
-                                    padding:5px;
-                                    width:7%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                of std
-
-                            </td>
-
-                            <td
-                                style="
-                                    font-size:20px;
-                                    padding:5px;
-                                    width:18%;
+                                    display:inline-block;
+                                    width:500px;
                                     text-align:center;
-                                "
-                            >
+                                ">
+                                {{ $event }}
+                            </span>
 
-                                <div class="statistics_line">
+                        </div>
 
-                                    {{ $classname }}
-
-                                </div>
-
-                            </td>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    padding:5px;
-                                    width:15%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                    text-align:center;
-                                "
-                            >
-
-                                has secured
-
-                            </td>
-
-                            <td
-                                style="
-                                    width:15%;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    @if($position == 'First')
-                                        First
-                                    @elseif($position == 'Second')
-                                        Second
-                                    @elseif($position == 'Third')
-                                        Third
-                                    @elseif($position == 'Consolation Prize')
-                                        Consolation Prize
-                                    @endif
-
-                                </div>
-
-                            </td>
-
-                            <td
-                                class="italic-text"
-                                style="
-                                    padding:5px;
-                                    width:10%;
-                                    padding-top:15px;
-                                    white-space: nowrap;
-                                "
-                            >
-
-                                place in
-
-                            </td>
-
-                            <td
-                                style="
-                                    width:auto;
-                                    text-align:center;
-                                "
-                            >
-
-                                <div class="statistics_line">
-
-                                    {{ $event }}
-
-                                </div>
-
-                            </td>
-
-                        </tr>
+                    </td>
+                </tr>
 
                     </table>
 
@@ -1031,7 +440,7 @@ $position = $pdfData['position'] ?? '';
 
                             <td
                                 style="
-                                    font-size:20px;
+                                    font-size:14px;
                                     padding:5px;
                                     width:25%;
                                     text-align:center;
@@ -1051,7 +460,7 @@ $position = $pdfData['position'] ?? '';
                                 style="
                                     padding:5px;
                                     width:10%;
-                                    padding-top:15px;
+                                    padding-top:7px;
                                     white-space: nowrap;
                                 "
                             >
@@ -1141,8 +550,10 @@ $position = $pdfData['position'] ?? '';
 
         </table>
 
+
+    </div>
         
-         <div class="signature-section">
+    <div class="signature-section">
 
             <table class="signature-table">
 
@@ -1172,8 +583,6 @@ $position = $pdfData['position'] ?? '';
                 </tr>
 
             </table>
-
-        </div>
 
     </div>
 

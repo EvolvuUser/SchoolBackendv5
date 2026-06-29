@@ -2129,6 +2129,51 @@ class AssessmentController extends Controller
         }
     }
 
+    // mahima
+
+    public function getBookTitles(Request $request)
+    {
+        try {
+            $this->authenticateUser();
+
+            $categoryId = $request->input('category_id');
+            $title = $request->input('title');
+
+            $query = DB::table('book')
+                ->select(
+                    'book.book_id',
+                    'book.book_title',
+                    'book.category_id'
+                );
+
+            if (!empty($categoryId)) {
+                $query->where('book.category_id', $categoryId);
+            }
+
+            if (!empty($title)) {
+                $query->where('book.book_title', 'LIKE', '%' . $title . '%');
+            }
+
+            $books = $query
+                ->orderBy('book.book_title', 'asc')
+                ->limit(10)
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'data' => $books
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
     public function searchBooks(Request $request)
     {
         try {

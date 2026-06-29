@@ -5457,30 +5457,82 @@ class CertificateController extends Controller
 
             // ================= STUDENT VALIDATION =================
 
-            if ($student_name == '') {
+            // if ($student_name == '') {
 
-                $rowErrors[] = "Student Name";
+            //     $rowErrors[] = "Student Name";
+            // } else {
+
+            //     $first_last_name_array = preg_split('/\s+/', $student_name);
+
+            //     $first_name = $first_last_name_array[0] ?? '';
+            //     $last_name = $first_last_name_array[1] ?? '';
+
+            //     $student = DB::table('student')
+            //         ->select('student_id')
+            //         ->where('academic_yr', $academic_yr)
+            //         ->where('class_id', $class_id)
+            //         ->where('section_id', $section_id)
+            //         ->whereRaw('LOWER(first_name)=?', [strtolower($first_name)])
+            //         ->whereRaw('LOWER(last_name)=?', [strtolower($last_name)])
+            //         ->first();
+
+            //     // dd($student);
+
+            //     if (!$student) {
+
+            //         $rowErrors[] = "Invalid Student Name. First Name and Last Name Enter";
+            //     }
+            // }
+
+
+            // Check whether student exists anywhere
+            $nameParts = preg_split('/\s+/', trim($student_name));
+
+            $first_name = $nameParts[0] ?? '';
+            $last_name  = $nameParts[1] ?? '';
+
+            $studentExists = DB::table('student')
+                ->select('student_id')
+                ->where('academic_yr', $academic_yr)
+                ->whereRaw(
+                    "LOWER(CONCAT(first_name,' ',last_name)) = ?",
+                    [strtolower(trim($student_name))]
+                )
+                ->first();
+
+            if (!$studentExists) {
+
+                $studentSameClass = DB::table('student')
+                    ->select('student_id')
+                    ->where('academic_yr', $academic_yr)
+                    ->where('class_id', $class_id)
+                    ->where('section_id', $section_id)
+                    ->whereRaw('LOWER(first_name)=?', [strtolower($first_name)])
+                    ->first();
+
+                if ($studentSameClass) {
+
+                    $rowErrors[] = "Invalid student name format. Please enter First Name and Last Name.";
+                } else {
+
+                    $rowErrors[] = "Invalid Student Name.";
+                }
             } else {
-
-                $first_last_name_array = preg_split('/\s+/', $student_name);
-
-                $first_name = $first_last_name_array[0] ?? '';
-                $last_name = $first_last_name_array[1] ?? '';
 
                 $student = DB::table('student')
                     ->select('student_id')
                     ->where('academic_yr', $academic_yr)
                     ->where('class_id', $class_id)
                     ->where('section_id', $section_id)
-                    ->whereRaw('LOWER(first_name)=?', [strtolower($first_name)])
-                    ->whereRaw('LOWER(last_name)=?', [strtolower($last_name)])
+                    ->whereRaw(
+                        "LOWER(CONCAT(first_name,' ',last_name)) = ?",
+                        [strtolower(trim($student_name))]
+                    )
                     ->first();
-
-                // dd($student);
 
                 if (!$student) {
 
-                    $rowErrors[] = "Invalid Student Name. First Name and Last Name Enter";
+                    $rowErrors[] = "This sheet is for class {$class_section}. Please upload details only for students of this class.";
                 }
             }
 
@@ -5650,6 +5702,7 @@ class CertificateController extends Controller
             'message' => $insertCount . ' certificate(s) uploaded successfully.'
         ]);
     }
+
 
     public function downloadCertificatePdf(Request $request)
     {
