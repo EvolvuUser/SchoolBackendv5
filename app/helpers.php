@@ -1392,6 +1392,9 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
+<<<<<<< HEAD
+
+=======
 // if (!function_exists('getSchoolDetails')) {
 //     function getSchoolDetails($shortName = null)
 //     {
@@ -1476,10 +1479,12 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
 //         }
 //     }
 // }
+>>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
 
 if (!function_exists('getSchoolDetails')) {
     function getSchoolDetails($shortName = null)
     {
+
         try {
             static $cache = [];
 
@@ -1492,6 +1497,8 @@ if (!function_exists('getSchoolDetails')) {
                 ?? $payload->get('short_name')
                 ?? '';
 
+
+
             // 🔹 Get academic year
             $academicYear = $payload->get('academic_year')
                 ?? $payload->get('academic_yr')
@@ -1501,10 +1508,14 @@ if (!function_exists('getSchoolDetails')) {
                 return defaultSchool();
             }
 
-            // Cache per school
-            if (isset($cache[$shortName])) {
-                return $cache[$shortName];
-            }
+
+
+            // // Cache per school
+            // if (isset($cache[$shortName])) {
+            //     return $cache[$shortName];
+            // }
+
+
 
             // Switch DB
             if (array_key_exists($shortName, config('database.connections'))) {
@@ -1515,10 +1526,14 @@ if (!function_exists('getSchoolDetails')) {
                 return $cache[$shortName] = defaultSchool();
             }
 
+
+
             $settings = DB::table('settings')
                 ->where('academic_yr', $academicYear)
                 ->where('active', 'Y')
                 ->first();
+
+
 
             if (!$settings) {
                 $settings = DB::table('settings')
@@ -1527,16 +1542,28 @@ if (!function_exists('getSchoolDetails')) {
                     ->first();
             }
 
+
+
             if (!$settings) {
                 $settings = DB::table('settings')
                     ->orderByDesc('setting_id')
                     ->first();
             }
+
+
             $settingsData = getSchoolSettingsData();
 
+<<<<<<< HEAD
+
+
+            $logo  = $settingsData->school_logo ?? '';
+=======
             $logo = $settingsData->school_logo ?? '';
+>>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
             $image = $settingsData->school_image ?? '';
             $projectUrl = '';
+
+
 
             try {
                 $url = config('externalapis.EVOLVU_URL') . '/get_school_details';
@@ -1548,14 +1575,17 @@ if (!function_exists('getSchoolDetails')) {
                     ],
                 ]);
 
+
+
                 $responseData = $response->json();
+
                 $projectUrl = $responseData[0]['project_url'] ?? '';
             } catch (\Exception $e) {
                 \Log::warning('Project URL fetch failed: ' . $e->getMessage());
             }
 
-            // FINAL RETURN (COMBINED DATA)
-            return $cache[$shortName] = [
+
+            $data = [
                 'institute_name' => $settings->institute_name ?? '',
                 'school_name' => $settings->page_title ?? $settings->institute_name ?? '',
                 'address' => $settings->address ?? '',
@@ -1566,16 +1596,23 @@ if (!function_exists('getSchoolDetails')) {
                 'school_img' => ($projectUrl && $image)
                     ? $projectUrl . 'uploads/' . $image
                     : '',
+
                 'affilication_no' => $settings->affilication_no ?? '',
-                'school_code' => $settings->school_code ?? '',
-                'udise_no' => $settings->udise_no,
+                'school_code'     => $settings->school_code ?? '',
+                'udise_no'        => $settings->udise_no ?? '',
             ];
+
+
+            //   dd($data);
+
+            return $data;
         } catch (\Exception $e) {
             \Log::error('getSchoolDetails Error: ' . $e->getMessage());
             return defaultSchool();
         }
     }
 }
+
 
 // Default fallback
 if (!function_exists('defaultSchool')) {
