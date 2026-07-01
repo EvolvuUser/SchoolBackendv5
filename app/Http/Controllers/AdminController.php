@@ -4204,9 +4204,7 @@ class AdminController extends Controller
 
                 if ($detail['teacher_id'] === null) {
                     if ($subjectAllotment) {
-                        $subjectAllotment->update([
-                            'teacher_id' => $detail['teacher_id'],
-                        ]);
+                        $subjectAllotment->delete();
                     }
                 } else {
                     if ($subjectAllotment) {
@@ -4215,18 +4213,15 @@ class AdminController extends Controller
                             'teacher_id' => $detail['teacher_id'],
                         ]);
                     } else {
-                        SubjectAllotment::updateOrCreate(
-                            [
-                                'subject_id' => $detail['subject_id'],
-                                'class_id' => $classId,
-                                'section_id' => $sectionId,
-                                'academic_yr' => $academicYr,
-                                'sm_id' => $sm_id,
-                            ],
-                            [
-                                'teacher_id' => $detail['teacher_id'],
-                            ]
-                        );
+                        // Create a new record if it doesn't exist
+                        SubjectAllotment::create([
+                            'subject_id' => $detail['subject_id'],
+                            'class_id' => $classId,
+                            'section_id' => $sectionId,
+                            'teacher_id' => $detail['teacher_id'],
+                            'academic_yr' => $academicYr,
+                            'sm_id' => $sm_id
+                        ]);
                     }
                 }
             }
@@ -4251,13 +4246,13 @@ class AdminController extends Controller
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    // $record->teacher_id,
+                    $record->teacher_id,
                     $record->sm_id,
                 ]);
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            //  $recordsToDelete->each->delete();
+            $recordsToDelete->each->delete();
         }
 
         return response()->json([
