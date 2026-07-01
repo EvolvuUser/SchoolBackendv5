@@ -3,11 +3,10 @@
 use App\Http\Services\SmartMailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-
 
 if (!function_exists('getTokenPayload')) {
     function getTokenPayload(Request $request)
@@ -568,8 +567,8 @@ function check_health_activity_data_exist_for_studentid($student_id)
     $values = json_decode($record->value, true);
 
     // Fetch structure from another table/API
-    $groupData = json_decode($record->group_data, true);     // you must create this
-    $paramData = json_decode($record->param_data, true);     // you must create this
+    $groupData = json_decode($record->group_data, true);  // you must create this
+    $paramData = json_decode($record->param_data, true);  // you must create this
     $description = json_decode($record->description, true);
 
     return [
@@ -968,8 +967,6 @@ function getTokenDataParentId($student_id)
         ->toArray();
 }
 
-
-
 function getFeesCategoryStudentAllotment($class_id, $section_id, $acd_yr)
 {
     $directAllotment = DB::table('fees_student_category as a')
@@ -1292,7 +1289,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
         'datafile' => $datafile
     ];
 
-    Log::channel('upload_logs')->info("Data in upload_files", [
+    Log::channel('upload_logs')->info('Data in upload_files', [
         'url' => $url,
         // 'data' => $data,
     ]);
@@ -1300,7 +1297,7 @@ function upload_files($filename, $datafile, $upload_date, $doc_type_folder, $ran
     // Send the data to the external API
     try {
         $response = Http::post($url, $data);  // Send the data to the external API
-        Log::channel('upload_logs')->info("Response: ", [
+        Log::channel('upload_logs')->info('Response: ', [
             'response' => $response->json(),
         ]);
         // Check if the response is successful
@@ -1395,10 +1392,96 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
+<<<<<<< HEAD
 
+=======
+// if (!function_exists('getSchoolDetails')) {
+//     function getSchoolDetails($shortName = null)
+//     {
+//         try {
+//             static $cache = null;
+//             if ($cache !== null) return $cache;
+
+//             // 🔹 Get JWT payload
+//             $payload = JWTAuth::getPayload();
+
+//             // 🔹 STEP 1: Get short_name
+//             if (!$shortName) {
+//                 $shortName = auth()->user()->short_name
+//                     ?? $payload->get('short_name')
+//                     ?? '';
+//             }
+
+//             // 🔹 STEP 2: Get academic year
+//             $academicYear = $payload->get('academic_year')
+//                 ?? $payload->get('academic_yr')
+//                 ?? '';
+
+//             if (empty($shortName)) {
+//                 \Log::info('Short name missing');
+//                 return $cache = [];
+//             }
+
+//             // 🔹 STEP 3: Switch DB
+//             if (array_key_exists($shortName, config('database.connections'))) {
+//                 config(['database.default' => $shortName]);
+//                 DB::purge($shortName);
+//                 DB::reconnect($shortName);
+//             } else {
+//                 \Log::info('DB not found for short_name: ' . $shortName);
+//                 return $cache = [];
+//             }
+
+//             // 🔹 STEP 4: Fetch correct settings row
+//             $settings = DB::table('settings')
+//                 ->where('short_name', $shortName)
+//                 ->when($academicYear, function ($q) use ($academicYear) {
+//                     $q->where('academic_yr', $academicYear);
+//                 })
+//                 ->orderByDesc('setting_id')
+//                 ->first();
+
+//             if (!$settings) {
+//                 \Log::info('Settings not found');
+//                 return $cache = [];
+//             }
+
+//             // 🔹 STEP 5: Get project URL (for images)
+//             $projectUrl = '';
+
+//             try {
+//                 $url = config('externalapis.EVOLVU_URL') . '/get_school_details';
+
+//                 $response = Http::asMultipart()->post($url, [
+//                     [
+//                         'name' => 'short_name',
+//                         'contents' => $shortName,
+//                     ],
+//                 ]);
+
+//                 $projectUrl = $response->json()[0]['project_url'] ?? '';
+//             } catch (\Exception $e) {
+//                 \Log::warning('Project URL fetch failed');
+//             }
+
+//             // 🔹 FINAL RETURN
+//             return $cache = [
+//                 'institute_name' => $settings->institute_name ?? '',
+//                 'school_name' => $settings->page_title ?? '',
+//                 'address'     => $settings->address ?? '',
+//                 'phone'       => $settings->phone_number ?? '',
+//                 'logo'        => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_logo ?? '') : '',
+//                 'school_img'  => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_image ?? '') : '',
+//             ];
+//         } catch (\Exception $e) {
+//             \Log::error('Helper Error: ' . $e->getMessage());
+//             return [];
+//         }
+//     }
+// }
+>>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
 
 if (!function_exists('getSchoolDetails')) {
-
     function getSchoolDetails($shortName = null)
     {
 
@@ -1408,7 +1491,7 @@ if (!function_exists('getSchoolDetails')) {
             //  Get JWT payload
             $payload = JWTAuth::getPayload();
 
-            //Get short_name
+            // Get short_name
             $shortName = $shortName
                 ?? auth()->user()->short_name
                 ?? $payload->get('short_name')
@@ -1470,9 +1553,13 @@ if (!function_exists('getSchoolDetails')) {
 
             $settingsData = getSchoolSettingsData();
 
+<<<<<<< HEAD
 
 
             $logo  = $settingsData->school_logo ?? '';
+=======
+            $logo = $settingsData->school_logo ?? '';
+>>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
             $image = $settingsData->school_image ?? '';
             $projectUrl = '';
 
@@ -1500,14 +1587,12 @@ if (!function_exists('getSchoolDetails')) {
 
             $data = [
                 'institute_name' => $settings->institute_name ?? '',
-                'school_name'    => $settings->page_title ?? $settings->institute_name ?? '',
-                'address'        => $settings->address ?? '',
-                'phone'          => $settings->phone_number ?? '',
-
+                'school_name' => $settings->page_title ?? $settings->institute_name ?? '',
+                'address' => $settings->address ?? '',
+                'phone' => $settings->phone_number ?? '',
                 'logo' => ($projectUrl && $logo)
                     ? $projectUrl . 'uploads/' . $logo
                     : '',
-
                 'school_img' => ($projectUrl && $image)
                     ? $projectUrl . 'uploads/' . $image
                     : '',
@@ -1535,11 +1620,11 @@ if (!function_exists('defaultSchool')) {
     {
         return [
             'institute_name' => '',
-            'school_name'    => '',
-            'address'        => '',
-            'phone'          => '',
-            'logo'           => '',
-            'school_img'     => '',
+            'school_name' => '',
+            'address' => '',
+            'phone' => '',
+            'logo' => '',
+            'school_img' => '',
         ];
     }
 }
@@ -1560,9 +1645,6 @@ if (!function_exists('defaultSchool')) {
 //     ];
 // }
 
-
-
-
 function getHealthBgImage()
 {
     $shortName = JWTAuth::getPayload()->get('short_name');
@@ -1576,16 +1658,13 @@ function getHealthBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1594,13 +1673,10 @@ function getHealthBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
-
 
 function getCasteBgImage()
 {
@@ -1615,16 +1691,13 @@ function getCasteBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1633,9 +1706,7 @@ function getCasteBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1653,16 +1724,13 @@ function getCharacterBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1671,9 +1739,7 @@ function getCharacterBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1691,16 +1757,13 @@ function getLeavingBgImage()
     $defaultPageType = 'A4 portrait';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1709,9 +1772,7 @@ function getLeavingBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1729,16 +1790,13 @@ function getSimpleBonafideBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1747,9 +1805,7 @@ function getSimpleBonafideBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1767,16 +1823,13 @@ function getBonafideBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1785,9 +1838,7 @@ function getBonafideBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1805,16 +1856,13 @@ function getPercentageBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1823,9 +1871,7 @@ function getPercentageBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1843,16 +1889,13 @@ function getProficiencyGoldBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1861,9 +1904,7 @@ function getProficiencyGoldBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1881,16 +1922,13 @@ function getProficiencySilverBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1899,9 +1937,7 @@ function getProficiencySilverBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1919,16 +1955,13 @@ function getProficiencyBronzeBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1937,9 +1970,7 @@ function getProficiencyBronzeBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1957,16 +1988,13 @@ function getAchievementBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -1975,9 +2003,7 @@ function getAchievementBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
 }
@@ -1995,16 +2021,13 @@ function getParticipationBgImage()
     $defaultPageType = 'A4 landscape';
 
     if ($bgImage && !empty($bgImage->file_name)) {
-
         $encodedModule = rawurlencode($bgImage->module);
 
         return [
             'file_name' => $bgImage->file_name,
-
             'file_path' => asset(
                 "BackgroundImages/{$shortName}/{$encodedModule}/{$bgImage->file_name}"
             ),
-
             'page_type' => !empty($bgImage->page_type)
                 ? $bgImage->page_type
                 : $defaultPageType,
@@ -2013,9 +2036,28 @@ function getParticipationBgImage()
 
     return [
         'file_name' => 'default',
-
         'file_path' => asset($defaultImage),
-
         'page_type' => $defaultPageType,
     ];
+}
+
+if (!function_exists('cleanMessageText')) {
+    function cleanMessageText(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // Remove HTML tags
+        $text = strip_tags($text);
+
+        // Decode HTML entities
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Remove extra spaces/tabs/newlines
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        // Trim leading/trailing spaces
+        return trim($text);
+    }
 }

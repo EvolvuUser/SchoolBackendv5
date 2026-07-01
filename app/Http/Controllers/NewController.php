@@ -2889,13 +2889,18 @@ ORDER BY Z.t_remark_id DESC;");
                     $phone = $studentcontactdata->phone_no ?? null;
                     if ($phone) {
                         if ($whatsappIntegration == 'Y') {
-                            $templateName = 'emergency_message';
-                            $parameters = ['Parent,' . $request->input('remark_desc')];
+                            $message = "Dear Parent,\n";
+                            $message .= cleanMessageText($request->remark_desc) . ".\n";
+                            $message .= "Please check the school application for more details.\n";
+                            $message .= '– Evolvu';
+                            Log::info('WhatsApp Message', [
+                                'message' => $message
+                            ]);
 
                             $result = $this->whatsAppService->sendTextMessage(
                                 $phone,
-                                $templateName,
-                                $parameters
+                                null,
+                                [$message]
                             );
                             if (isset($result['code']) && isset($result['message'])) {
                                 DB::table('redington_webhook_details')->insert([
@@ -2910,8 +2915,8 @@ ORDER BY Z.t_remark_id DESC;");
                                 ]);
                             } else {
                                 DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => $result['messages'][0]['id'] ?? null,
-                                    'phone_no' => $result['contacts'][0]['input'] ?? $phone,
+                                    'wa_id' => $result['response']['id'] ?? null,
+                                    'phone_no' => $phone,
                                     'stu_teacher_id' => $studentId,
                                     'notice_id' => $remarkId,
                                     'message_type' => 'remarkforstudent',
@@ -4438,11 +4443,11 @@ ORDER BY Z.t_remark_id DESC;");
                 $result->smslogid = $smssent->sms_log_id ?? null;
                 $result->smssentdates = isset($result->smslogid)
                     ? DB::table('sms_log_for_outstanding_fees_details')
-                    ->select('date_sms_sent')
-                    ->where('sms_log_id', $result->smslogid)
-                    ->orderBy('date_sms_sent', 'asc')
-                    ->get()
-                    ->toArray()
+                        ->select('date_sms_sent')
+                        ->where('sms_log_id', $result->smslogid)
+                        ->orderBy('date_sms_sent', 'asc')
+                        ->get()
+                        ->toArray()
                     : null;
                 $classname = DB::table('section')
                     ->join('class', 'class.class_id', '=', 'section.class_id')
