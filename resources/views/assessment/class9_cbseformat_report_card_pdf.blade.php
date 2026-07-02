@@ -106,32 +106,10 @@
 		margin-bottom: 0px;
 	}
 </style> 
-<br>
 <?php
 $student_info1 = array();
-if (isset($class_id) && isset($section_id)) {
-    $student_info1 = get_students($class_id, $section_id, $acd_yr);
-} else {
-    $student_info = get_student_info($student_id, $acd_yr);
-}
+$student_info = get_student_info($student_id, $acd_yr);
 
-$slot = count($student_info1) / 10;
-$slot_no = intval($slot);  // 12
-$last_slot = explode('.', number_format($slot, 1))[1];
-$c = count($student_info1) - $last_slot;
-
-// print_r($student_info1[0]);
-if (isset($stud_count)) {
-    if ($last_slot != $stud_count) {
-        for ($i = $stud_count - 10; $i < $stud_count; $i++) {
-            $student_info[$i] = $student_info1[$i];
-        }
-    } else {
-        for ($i = $c; $i < count($student_info1); $i++) {
-            $student_info[$i] = $student_info1[$i];
-        }
-    }
-}
 foreach ($student_info as $row1):
     ?>
 <html>
@@ -143,7 +121,7 @@ foreach ($student_info as $row1):
     <div class="col-md-12 pdfdiv">
 	<div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
- 		<div style="margin-left:7%;margin-top: 10%;">
+ 		<div style="margin-left:7%;margin-top: 18%;">
 				<h4 >ACADEMIC SESSION (<?php echo $row1['academic_yr']; ?>)</h4>
 				<h3><font color="#000000">REPORT CARD</font></h3>
 			</div>
@@ -188,8 +166,7 @@ foreach ($student_info as $row1):
                 
             </tr>
 		</table>
-     <br>
-		<table style="width:82%;margin-left: 7%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 10%;" cellpadding="0" cellspacing="0">
+		<table style="width:82%;margin-left: 7%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 			 <tr>
 				 <td style="text-align:center;" cellpadding="0" cellspacing="0">
 					<?php
@@ -504,8 +481,7 @@ foreach ($student_info as $row1):
 				</td>
 			</tr>
 		</table>
-		<br/>
-        <table class="table-responsive" style="width:84%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top:47%;">
+        <table class="table-responsive" style="width:84%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;">
 			 <tr>
 				 <td style="" cellpadding="0" cellspacing="0">
 			<table class="table-responsive" style="width:90%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;border-size:0" cellpadding="0" cellspacing="0">
@@ -644,7 +620,6 @@ foreach ($student_info as $row1):
 					</td>
 				</tr>
 			</table>
-			<br>
 			<table class="table-responsive" style="width:82%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top:65%;" cellpadding="10" cellspacing="10" border="0">
 			<tr> 
 				<td >
@@ -711,7 +686,6 @@ foreach ($student_info as $row1):
              
         </tr>
 		</table>
-		<br>
 		<table border="0" class="table-responsive" style="width:92%;margin-top:73%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
 			<tr>
 				<td style="width:35%;" >
