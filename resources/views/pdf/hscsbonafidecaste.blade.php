@@ -25,168 +25,148 @@
 
 <style>
 
-    /* ================= PAGE ================= */
+@page {
+    @switch($pageType)
 
-    @page {
+        @case('A4 portrait')
+            size: A4 portrait;
+            @break
 
-        @switch($pageType)
+        @case('A4 landscape')
+            size: A4 landscape;
+            @break
 
-            @case('A4 portrait')
-                size: A4 portrait;
-                @break
+        @case('A5 portrait')
+            size: A5 portrait;
+            @break
 
-            @case('A4 landscape')
-                size: A4 landscape;
-                @break
+        @case('A5 landscape')
+            size: A5 landscape;
+            @break
 
-            @case('A5 portrait')
-                size: A5 portrait;
-                @break
+        @case('Letter portrait')
+            size: letter portrait;
+            @break
 
-            @case('A5 landscape')
-                size: A5 landscape;
-                @break
+        @case('Letter landscape')
+            size: letter landscape;
+            @break
 
-            @case('Letter portrait')
-                size: letter portrait;
-                @break
+        @default
+            size: A4 portrait;
 
-            @case('Letter landscape')
-                size: letter landscape;
-                @break
+    @endswitch
 
-            @default
-                size: A4 portrait;
-
-        @endswitch
-
-        margin: 0;
-    }
-
-    * {
-        box-sizing: border-box;
-    }
-
-    html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        font-family: Arial, sans-serif;
-        font-size: 13px;
-    }
-
-    /* ================= FULL PAGE WRAPPER WITH BG ================= */
-
-    /*
-     * Key fix: the wrapper takes exactly one page height.
-     * background-size: 100% 100% stretches the BG image to fill
-     * this wrapper perfectly — header, footer border and all.
-     * Content is positioned inside so nothing overflows the BG frame.
-     */
-
-    .page-wrapper {
-        width: 100%;
-        height: 297mm;           /* A4 portrait — change per page type if needed */
-        background-image: url('{{ $bgPath }}');
-        background-size: 100% 100%;
-        background-repeat: no-repeat;
-        background-position: center;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* ================= SPACER — height equals the BG image header area ================= */
-
-    .header-spacer {
-        flex-shrink: 0;
-        height: {{ $headerMarginTop }};
-    }
-
-    /* ================= CONTENT AREA ================= */
-
-    /*
-     * flex: 1 makes this fill the remaining space between the header
-     * and the BG image footer border — content never overflows.
-     */
-
-    .certificate-content {
-        flex: 1;
-        width: 88%;
-        margin: 0 auto;
-        padding: 10px 25px 10px 30px;
-        overflow: hidden;        /* safety: never bleed past BG border */
-    }
-
-    /* ================= TITLE ================= */
-
-    .title {
-        text-align: center;
-        font-size: 16px;
-        font-weight: bold;
-        text-decoration: underline;
-        margin-top: 4px;
-        margin-bottom: 10px;
-    }
-
-    /* ================= INTRO PARAGRAPH ================= */
-
-    .intro-para {
-        font-size: 13px;
-        margin: 0 0 6px 0;
-        line-height: 1.5;
-    }
-
-    .details-label {
-        font-size: 13px;
-        font-weight: bold;
-        margin: 6px 0 4px 0;
-    }
-
-    /* ================= DETAILS TABLE ================= */
-
-    .details-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 4px;
-    }
-
-    .details-table td {
-        border: 1px solid #000;
-        padding: 4px 8px;
-        font-size: 12.5px;
-        line-height: 1.3;
-    }
-
-    .details-table td:first-child {
-        width: 38%;
-    }
-
-    /* ================= PLACE ================= */
-
-    .place {
-        margin: 10px 0 0 0;
-        font-size: 13px;
-    }
-
-    /* ================= SIGNATURE ================= */
-
-    /*
-     * margin-top: auto pushes signature to the bottom of the flex content
-     * area, keeping it inside the BG image border at all times.
-     */
-
- .signature {
-    margin-top: auto;
-    padding-top: 20px;
-    padding-bottom: 18px;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-    padding-left: 2%;   /* ← add left padding for Clerk */
-    padding-right: 8%;  /* ← right padding for Principal */
+    margin: 0;
 }
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html,
+body{
+    font-family:Arial, sans-serif;
+    font-size:13px;
+}
+
+body{
+    background-image:url('{{ $bgPath }}');
+    background-repeat:no-repeat;
+    background-position:center top;
+    background-size:100% 100%;
+}
+
+/* Wrapper */
+.page-wrapper{
+    width:100%;
+}
+
+/* Header space according to template */
+.header-spacer{
+    height:{{$headerMarginTop}};
+}
+
+/* Content */
+.certificate-content{
+    width:88%;
+    margin:0 auto;
+    padding-left:25px;
+    padding-right:25px;
+}
+
+/* Title */
+.title{
+    text-align:center;
+    font-size:16px;
+    font-weight:bold;
+    text-decoration:underline;
+    margin-bottom:15px;
+}
+
+/* Intro paragraph */
+.intro-para{
+    font-size:13px;
+    line-height:1.6;
+    margin-bottom:10px;
+    text-align:justify;
+}
+
+.details-label{
+    font-size:13px;
+    font-weight:bold;
+    margin-bottom:5px;
+}
+
+/* Table */
+.details-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:5px;
+}
+
+.details-table td{
+    border:1px solid #000;
+    padding:5px 8px;
+    font-size:12px;
+    vertical-align:top;
+}
+
+.details-table td:first-child{
+    width:38%;
+}
+
+/* Place */
+.place{
+    margin-top:15px;
+    font-size:13px;
+}
+
+/* Signature */
+.signature{
+    width:100%;
+    margin-top:30px;
+}
+
+.signature-left{
+    float:left;
+    margin-left:2%;
+}
+
+.signature-right{
+    float:right;
+    margin-right:8%;
+}
+
+.clearfix{
+    clear:both;
+}
+
 </style>
+
+
 
 </head>
 <body>

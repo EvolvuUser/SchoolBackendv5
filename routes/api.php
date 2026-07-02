@@ -948,6 +948,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_category', [AssessmentController::class, 'getCategory']);
         Route::get('/get_allcategoryname', [AssessmentController::class, 'getAllCategoryName']);
         Route::get('/get_all_books', [AssessmentController::class, 'searchBooks']);
+        Route::get('/get_book_titles', [AssessmentController::class, 'getBookTitles']);
 
         // Dynamic field Updation of Student table Dev Name - Manish Kumar Sharma 19-08-2025
         Route::get('/get_studenttablefieldsforUpdate', [StudentController::class, 'getFieldsForUpdateStudent']);

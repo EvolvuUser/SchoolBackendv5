@@ -2521,7 +2521,6 @@ class AdminController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
             $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
             // ============================================
@@ -2529,13 +2528,14 @@ class AdminController extends Controller
             // ============================================
             $role_id = $user->role_id ?? null;
 
+            // Initialize student variable
+            $student = null;
+
             // ============================================
-            // ADMIN / MANAGEMENT USERS
-            // A = Admin
-            // M = Management
-            // U = User
+            // ADMIN / MANAGEMENT / USER
             // ============================================
             if (in_array($role_id, ['A', 'M', 'U'])) {
+
                 $student = Student::with([
                     'parents.user',
                     'getClass',
@@ -2544,25 +2544,29 @@ class AdminController extends Controller
                     ->where('reg_no', $reg_no)
                     ->where('academic_yr', $customClaims)
                     ->first();
+
+                if (!$student) {
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => 'Invalid GR No',
+                        'data' => null
+                    ], 422);
+                }
             }
+
             // ============================================
-            // TEACHER LOGIN
-            // T = Teacher
-            // Teacher can only search students
-            // from classes/sections they teach
+            // TEACHER
             // ============================================
             else if ($role_id == 'T') {
-                // Teacher ID from logged-in user
+
                 $teacher_id = $user->reg_id;
 
-                // ============================================
-                // CHECK STUDENT EXISTS OR NOT
-                // ============================================
+                // Check if student exists
                 $studentExists = Student::where('reg_no', $reg_no)
                     ->where('academic_yr', $customClaims)
                     ->first();
 
-                // Invalid GR No
                 if (!$studentExists) {
                     return response()->json([
                         'status' => 422,
@@ -2572,20 +2576,16 @@ class AdminController extends Controller
                     ], 422);
                 }
 
-                // ============================================
-                // GET TEACHER ASSIGNED CLASSES
-                // ============================================
+                // Get teacher assigned classes
                 $teacherClasses = DB::table('subject')
                     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-                        $join
-                            ->on('class_teachers.class_id', '=', 'subject.class_id')
+                        $join->on('class_teachers.class_id', '=', 'subject.class_id')
                             ->on('class_teachers.section_id', '=', 'subject.section_id')
                             ->where('class_teachers.teacher_id', '=', $teacher_id);
                     })
                     ->where('subject.academic_yr', $customClaims)
                     ->where(function ($query) use ($teacher_id) {
-                        $query
-                            ->where('subject.teacher_id', $teacher_id)
+                        $query->where('subject.teacher_id', $teacher_id)
                             ->orWhere('class_teachers.teacher_id', $teacher_id);
                     })
                     ->select(
@@ -2595,9 +2595,17 @@ class AdminController extends Controller
                     ->distinct()
                     ->get();
 
-                // ============================================
-                // FETCH STUDENT ONLY FROM ASSIGNED CLASS
-                // ============================================
+                // If teacher has no assigned classes
+                if ($teacherClasses->isEmpty()) {
+                    return response()->json([
+                        'status' => 403,
+                        'success' => false,
+                        'message' => 'No class or section assigned to this teacher.',
+                        'data' => null
+                    ], 403);
+                }
+
+                // Fetch student only from assigned classes
                 $studentQuery = Student::with([
                     'parents.user',
                     'getClass',
@@ -2609,8 +2617,7 @@ class AdminController extends Controller
                 $studentQuery->where(function ($query) use ($teacherClasses) {
                     foreach ($teacherClasses as $class) {
                         $query->orWhere(function ($subQuery) use ($class) {
-                            $subQuery
-                                ->where('class_id', $class->class_id)
+                            $subQuery->where('class_id', $class->class_id)
                                 ->where('section_id', $class->section_id);
                         });
                     }
@@ -2618,46 +2625,206 @@ class AdminController extends Controller
 
                 $student = $studentQuery->first();
 
-                // ============================================
-                // STUDENT EXISTS BUT NOT ACCESSIBLE
-                // ============================================
                 if (!$student) {
                     return response()->json([
                         'status' => 403,
                         'success' => false,
-                        'message' => 'Student not found in your assigned class or section',
+                        'message' => 'Student not found in your assigned class or section.',
                         'data' => null
                     ], 403);
                 }
-            } else {
+            }
+
+            // ============================================
+            // UNAUTHORIZED ROLE
+            // ============================================
+            else {
                 return response()->json([
                     'status' => 403,
                     'success' => false,
-                    'message' => 'Unauthorized access',
+                    'message' => 'Unauthorized access.',
                     'data' => null
                 ], 403);
             }
 
             // ============================================
-            // IMAGE URL
+            // STUDENT IMAGE URL
             // ============================================
-            $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
-
-            $student->student_image_url = $student->image_name
-                ? $concatprojecturl . $student->image_name
+            $student->student_image_url = !empty($student->image_name)
+                ? $codeigniter_app_url . 'uploads/student_image/' . $student->image_name
                 : null;
 
+            // ============================================
+            // SUCCESS RESPONSE
+            // ============================================
             return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Student fetched successfully.',
                 'student' => [$student]
-            ]);
+            ], 200);
         } catch (Exception $e) {
-            \Log::error($e);
+
+            \Log::error('getStudentByGRN Error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
-                'error' => 'An error occurred: ' . $e->getMessage()
+                'status' => 500,
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
+
+    // public function getStudentByGRN($reg_no)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+    //         // ============================================
+    //         // GET USER ROLE
+    //         // ============================================
+    //         $role_id = $user->role_id ?? null;
+
+    //         // ============================================
+    //         // ADMIN / MANAGEMENT USERS
+    //         // A = Admin
+    //         // M = Management
+    //         // U = User
+    //         // ============================================
+    //         if (in_array($role_id, ['A', 'M', 'U'])) {
+    //             $student = Student::with([
+    //                 'parents.user',
+    //                 'getClass',
+    //                 'getDivision'
+    //             ])
+    //                 ->where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims)
+    //                 ->first();
+    //         }
+    //         // ============================================
+    //         // TEACHER LOGIN
+    //         // T = Teacher
+    //         // Teacher can only search students
+    //         // from classes/sections they teach
+    //         // ============================================
+    //         else if ($role_id == 'T') {
+    //             // Teacher ID from logged-in user
+    //             $teacher_id = $user->reg_id;
+
+    //             // ============================================
+    //             // CHECK STUDENT EXISTS OR NOT
+    //             // ============================================
+    //             $studentExists = Student::where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims)
+    //                 ->first();
+
+    //             // Invalid GR No
+    //             if (!$studentExists) {
+    //                 return response()->json([
+    //                     'status' => 422,
+    //                     'success' => false,
+    //                     'message' => 'Invalid GR No',
+    //                     'data' => null
+    //                 ], 422);
+    //             }
+
+    //             // ============================================
+    //             // GET TEACHER ASSIGNED CLASSES
+    //             // ============================================
+    //             $teacherClasses = DB::table('subject')
+    //                 ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+    //                     $join
+    //                         ->on('class_teachers.class_id', '=', 'subject.class_id')
+    //                         ->on('class_teachers.section_id', '=', 'subject.section_id')
+    //                         ->where('class_teachers.teacher_id', '=', $teacher_id);
+    //                 })
+    //                 ->where('subject.academic_yr', $customClaims)
+    //                 ->where(function ($query) use ($teacher_id) {
+    //                     $query
+    //                         ->where('subject.teacher_id', $teacher_id)
+    //                         ->orWhere('class_teachers.teacher_id', $teacher_id);
+    //                 })
+    //                 ->select(
+    //                     'subject.class_id',
+    //                     'subject.section_id'
+    //                 )
+    //                 ->distinct()
+    //                 ->get();
+
+    //             // ============================================
+    //             // FETCH STUDENT ONLY FROM ASSIGNED CLASS
+    //             // ============================================
+    //             $studentQuery = Student::with([
+    //                 'parents.user',
+    //                 'getClass',
+    //                 'getDivision'
+    //             ])
+    //                 ->where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims);
+
+    //             $studentQuery->where(function ($query) use ($teacherClasses) {
+    //                 foreach ($teacherClasses as $class) {
+    //                     $query->orWhere(function ($subQuery) use ($class) {
+    //                         $subQuery
+    //                             ->where('class_id', $class->class_id)
+    //                             ->where('section_id', $class->section_id);
+    //                     });
+    //                 }
+    //             });
+
+    //             $student = $studentQuery->first();
+
+    //             // ============================================
+    //             // STUDENT EXISTS BUT NOT ACCESSIBLE
+    //             // ============================================
+    //             if (!$student) {
+    //                 return response()->json([
+    //                     'status' => 403,
+    //                     'success' => false,
+    //                     'message' => 'Student not found in your assigned class or section',
+    //                     'data' => null
+    //                 ], 403);
+    //             }
+    //         } else {
+    //             return response()->json([
+    //                 'status' => 403,
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized access',
+    //                 'data' => null
+    //             ], 403);
+    //         }
+
+    //         // ============================================
+    //         // IMAGE URL
+    //         // ============================================
+    //         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+    //         $student->student_image_url = $student->image_name
+    //             ? $concatprojecturl . $student->image_name
+    //             : null;
+
+    //         return response()->json([
+    //             'student' => [$student]
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+
+    //         return response()->json([
+    //             'error' => 'An error occurred: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     public function deleteStudent(Request $request, $studentId)
     {
@@ -4037,9 +4204,7 @@ class AdminController extends Controller
 
                 if ($detail['teacher_id'] === null) {
                     if ($subjectAllotment) {
-                        $subjectAllotment->update([
-                            'teacher_id' => $detail['teacher_id'],
-                        ]);
+                        $subjectAllotment->delete();
                     }
                 } else {
                     if ($subjectAllotment) {
@@ -4048,18 +4213,15 @@ class AdminController extends Controller
                             'teacher_id' => $detail['teacher_id'],
                         ]);
                     } else {
-                        SubjectAllotment::updateOrCreate(
-                            [
-                                'subject_id' => $detail['subject_id'],
-                                'class_id' => $classId,
-                                'section_id' => $sectionId,
-                                'academic_yr' => $academicYr,
-                                'sm_id' => $sm_id,
-                            ],
-                            [
-                                'teacher_id' => $detail['teacher_id'],
-                            ]
-                        );
+                        // Create a new record if it doesn't exist
+                        SubjectAllotment::create([
+                            'subject_id' => $detail['subject_id'],
+                            'class_id' => $classId,
+                            'section_id' => $sectionId,
+                            'teacher_id' => $detail['teacher_id'],
+                            'academic_yr' => $academicYr,
+                            'sm_id' => $sm_id
+                        ]);
                     }
                 }
             }
@@ -4084,13 +4246,13 @@ class AdminController extends Controller
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    // $record->teacher_id,
+                    $record->teacher_id,
                     $record->sm_id,
                 ]);
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            //  $recordsToDelete->each->delete();
+            $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -13657,8 +13819,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                . $sibling_student->mid_name . ' '
-                                . $sibling_student->last_name
+                                    . $sibling_student->mid_name . ' '
+                                    . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -17089,19 +17251,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-                'Dear Candidate,<br><br>
+            'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
