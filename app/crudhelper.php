@@ -1299,3 +1299,12 @@ function get_total_workingdays_from_dailyattendance_classwise($class_id, $sectio
 
     return $workingdays_count;
 }
+
+if (!function_exists('get_exam_name')) {
+    function get_exam_name($examId)
+    {
+        return DB::table('exam')
+            ->where('exam_id', $examId)
+            ->value('name');
+    }
+}
