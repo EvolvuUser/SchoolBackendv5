@@ -11769,4 +11769,48 @@ class AssessmentController extends Controller
             'success' => true
         ]);
     }
+
+    public function getCbse9thReportCard($studentId)
+    {
+        // try {
+        $academicYear = '2024-2025';  // You can modify this to get the current academic year dynamically if needed
+        // Student Details
+        $student = DB::table('student')
+            ->where('student_id', $studentId)
+            ->select('student_id', 'student_name')
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Student not found.'
+            ], 404);
+        }
+
+        $studentName = get_student_name($studentId);
+
+        $data = [
+            'student_id' => $studentId,
+            'acd_yr' => $academicYear,
+        ];
+
+        // Load Blade View
+        $pdf = Pdf::loadView(
+            'assessment.class9_cbseformat_report_card_pdf',
+            $data
+        );
+
+        $pdf->setPaper('A4', 'landscape');
+
+        $fileName = "CBSE_RC_{$studentName}.pdf";
+
+        return $pdf->download($fileName);
+        // } catch (\Exception $e) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Failed to generate report card.',
+        //         'error' => $e->getMessage()
+        //     ], 500);
+        // }
+    }
 }
