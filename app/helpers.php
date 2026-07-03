@@ -1392,94 +1392,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
-<<<<<<< HEAD
-
-=======
-// if (!function_exists('getSchoolDetails')) {
-//     function getSchoolDetails($shortName = null)
-//     {
-//         try {
-//             static $cache = null;
-//             if ($cache !== null) return $cache;
-
-//             // 🔹 Get JWT payload
-//             $payload = JWTAuth::getPayload();
-
-//             // 🔹 STEP 1: Get short_name
-//             if (!$shortName) {
-//                 $shortName = auth()->user()->short_name
-//                     ?? $payload->get('short_name')
-//                     ?? '';
-//             }
-
-//             // 🔹 STEP 2: Get academic year
-//             $academicYear = $payload->get('academic_year')
-//                 ?? $payload->get('academic_yr')
-//                 ?? '';
-
-//             if (empty($shortName)) {
-//                 \Log::info('Short name missing');
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 3: Switch DB
-//             if (array_key_exists($shortName, config('database.connections'))) {
-//                 config(['database.default' => $shortName]);
-//                 DB::purge($shortName);
-//                 DB::reconnect($shortName);
-//             } else {
-//                 \Log::info('DB not found for short_name: ' . $shortName);
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 4: Fetch correct settings row
-//             $settings = DB::table('settings')
-//                 ->where('short_name', $shortName)
-//                 ->when($academicYear, function ($q) use ($academicYear) {
-//                     $q->where('academic_yr', $academicYear);
-//                 })
-//                 ->orderByDesc('setting_id')
-//                 ->first();
-
-//             if (!$settings) {
-//                 \Log::info('Settings not found');
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 5: Get project URL (for images)
-//             $projectUrl = '';
-
-//             try {
-//                 $url = config('externalapis.EVOLVU_URL') . '/get_school_details';
-
-//                 $response = Http::asMultipart()->post($url, [
-//                     [
-//                         'name' => 'short_name',
-//                         'contents' => $shortName,
-//                     ],
-//                 ]);
-
-//                 $projectUrl = $response->json()[0]['project_url'] ?? '';
-//             } catch (\Exception $e) {
-//                 \Log::warning('Project URL fetch failed');
-//             }
-
-//             // 🔹 FINAL RETURN
-//             return $cache = [
-//                 'institute_name' => $settings->institute_name ?? '',
-//                 'school_name' => $settings->page_title ?? '',
-//                 'address'     => $settings->address ?? '',
-//                 'phone'       => $settings->phone_number ?? '',
-//                 'logo'        => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_logo ?? '') : '',
-//                 'school_img'  => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_image ?? '') : '',
-//             ];
-//         } catch (\Exception $e) {
-//             \Log::error('Helper Error: ' . $e->getMessage());
-//             return [];
-//         }
-//     }
-// }
->>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
 
 if (!function_exists('getSchoolDetails')) {
     function getSchoolDetails($shortName = null)
@@ -1553,13 +1465,9 @@ if (!function_exists('getSchoolDetails')) {
 
             $settingsData = getSchoolSettingsData();
 
-<<<<<<< HEAD
 
 
             $logo  = $settingsData->school_logo ?? '';
-=======
-            $logo = $settingsData->school_logo ?? '';
->>>>>>> 527cb5ec47fb0c5cf29afe425c10875236c923a6
             $image = $settingsData->school_image ?? '';
             $projectUrl = '';
 
