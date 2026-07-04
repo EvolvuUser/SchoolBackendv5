@@ -1392,11 +1392,9 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
-
 if (!function_exists('getSchoolDetails')) {
     function getSchoolDetails($shortName = null)
     {
-
         try {
             static $cache = [];
 
@@ -1409,8 +1407,6 @@ if (!function_exists('getSchoolDetails')) {
                 ?? $payload->get('short_name')
                 ?? '';
 
-
-
             // 🔹 Get academic year
             $academicYear = $payload->get('academic_year')
                 ?? $payload->get('academic_yr')
@@ -1420,14 +1416,10 @@ if (!function_exists('getSchoolDetails')) {
                 return defaultSchool();
             }
 
-
-
             // // Cache per school
             // if (isset($cache[$shortName])) {
             //     return $cache[$shortName];
             // }
-
-
 
             // Switch DB
             if (array_key_exists($shortName, config('database.connections'))) {
@@ -1438,14 +1430,10 @@ if (!function_exists('getSchoolDetails')) {
                 return $cache[$shortName] = defaultSchool();
             }
 
-
-
             $settings = DB::table('settings')
                 ->where('academic_yr', $academicYear)
                 ->where('active', 'Y')
                 ->first();
-
-
 
             if (!$settings) {
                 $settings = DB::table('settings')
@@ -1454,24 +1442,17 @@ if (!function_exists('getSchoolDetails')) {
                     ->first();
             }
 
-
-
             if (!$settings) {
                 $settings = DB::table('settings')
                     ->orderByDesc('setting_id')
                     ->first();
             }
 
-
             $settingsData = getSchoolSettingsData();
 
-
-
-            $logo  = $settingsData->school_logo ?? '';
+            $logo = $settingsData->school_logo ?? '';
             $image = $settingsData->school_image ?? '';
             $projectUrl = '';
-
-
 
             try {
                 $url = config('externalapis.EVOLVU_URL') . '/get_school_details';
@@ -1483,15 +1464,12 @@ if (!function_exists('getSchoolDetails')) {
                     ],
                 ]);
 
-
-
                 $responseData = $response->json();
 
                 $projectUrl = $responseData[0]['project_url'] ?? '';
             } catch (\Exception $e) {
                 \Log::warning('Project URL fetch failed: ' . $e->getMessage());
             }
-
 
             $data = [
                 'institute_name' => $settings->institute_name ?? '',
@@ -1504,12 +1482,10 @@ if (!function_exists('getSchoolDetails')) {
                 'school_img' => ($projectUrl && $image)
                     ? $projectUrl . 'uploads/' . $image
                     : '',
-
                 'affilication_no' => $settings->affilication_no ?? '',
-                'school_code'     => $settings->school_code ?? '',
-                'udise_no'        => $settings->udise_no ?? '',
+                'school_code' => $settings->school_code ?? '',
+                'udise_no' => $settings->udise_no ?? '',
             ];
-
 
             //   dd($data);
 
@@ -1520,7 +1496,6 @@ if (!function_exists('getSchoolDetails')) {
         }
     }
 }
-
 
 // Default fallback
 if (!function_exists('defaultSchool')) {

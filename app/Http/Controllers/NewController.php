@@ -6040,6 +6040,7 @@ ORDER BY Z.t_remark_id DESC;");
                 ->where('class_id', $class_id)
                 ->where('section_id', $section_id)
                 ->where('academic_yr', $customClaims)
+                ->where('IsDelete', '!=', 'Y')
                 ->select('student_id', 'first_name', 'mid_name', 'last_name', 'roll_no', 'reg_no', 'admission_date', 'stu_aadhaar_no', 'house')
                 ->orderBy('first_name', 'ASC')
                 ->orderBy('mid_name', 'ASC')

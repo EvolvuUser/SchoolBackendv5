@@ -492,4 +492,67 @@ class ParentController extends Controller
             ], 200);
         }
     }
+
+    public function studentParentVisitReport(Request $request)
+    {
+        try {
+
+            $query = DB::table('student as s')
+                ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+                ->join('visitors as v', 'p.parent_id', '=', 'v.parent_id')
+                ->select(
+                    's.student_id',
+                    's.student_name',
+                    's.academic_yr',
+
+                    'p.parent_id',
+                    'p.father_name',
+                    'p.mother_name',
+                    'p.f_mobile',
+                    'p.m_mobile',
+
+                    'v.visitor_id',
+                    'v.visit_by',
+                    'v.visit_date',
+                    'v.visit_in_time',
+                    'v.visit_out_time'
+                );
+
+            // Student Filter
+            if ($request->filled('student_id')) {
+                $query->where('s.student_id', $request->student_id);
+            }
+
+            // Academic Year
+            if ($request->filled('academic_yr')) {
+                $query->where('s.academic_yr', $request->academic_yr);
+            }
+
+            // From Date
+            if ($request->filled('from_date')) {
+                $query->whereDate('v.visit_date', '>=', $request->from_date);
+            }
+
+            // To Date
+            if ($request->filled('to_date')) {
+                $query->whereDate('v.visit_date', '<=', $request->to_date);
+            }
+
+            $data = $query
+                ->orderByDesc('v.visit_date')
+                ->orderByDesc('v.visit_in_time')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
