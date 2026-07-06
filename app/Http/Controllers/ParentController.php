@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\DailyTodo;
 use App\Models\Event;
 use App\Models\StaffNotice;
 use App\Models\Teacher;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -23,6 +23,7 @@ class ParentController extends Controller
             return null;
         }
     }
+
     public function getParentDetails(Request $request)
     {
         try {
@@ -32,7 +33,7 @@ class ParentController extends Controller
 
             if (!$user) {
                 return response()->json([
-                    'status'  => false,
+                    'status' => false,
                     'message' => 'Unauthorized user'
                 ], 401);
             }
@@ -44,7 +45,7 @@ class ParentController extends Controller
 
             if (!$parent) {
                 return response()->json([
-                    'status'  => false,
+                    'status' => false,
                     'message' => 'Parent record not found'
                 ], 404);
             }
@@ -74,26 +75,24 @@ class ParentController extends Controller
                 ]
             ], 200);
         } catch (\Illuminate\Database\QueryException $e) {
-
             // Log::error('Database error in getParentDetails', [
             //     'error' => $e->getMessage(),
             //     'user_id' => $user->reg_id ?? null
             // ]);
 
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Database error occurred',
                 'error' => $e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
-
             Log::error('Unexpected error in getParentDetails', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->reg_id ?? null
             ]);
 
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Something went wrong'
             ], 500);
         }
@@ -118,7 +117,7 @@ class ParentController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Parent not found',
-                'data' => (object)[]
+                'data' => (object) []
             ]);
         }
 
@@ -142,8 +141,8 @@ class ParentController extends Controller
         // Students
         $students = DB::table('student')
             ->where([
-                'parent_id'   => $parent_id,
-                'IsDelete'    => 'N',
+                'parent_id' => $parent_id,
+                'IsDelete' => 'N',
                 'academic_yr' => $academicYear
             ])
             ->get();
@@ -153,12 +152,11 @@ class ParentController extends Controller
         $guardianFields = [];
 
         if ($firstStudent) {
-
             $guardianFields = [
-                'guardian_name'   => $firstStudent->guardian_name,
+                'guardian_name' => $firstStudent->guardian_name,
                 'guardian_mobile' => $firstStudent->guardian_mobile,
-                'guardian_add'    => $firstStudent->guardian_add,
-                'relation'        => $firstStudent->relation,
+                'guardian_add' => $firstStudent->guardian_add,
+                'relation' => $firstStudent->relation,
             ];
 
             // Guardian image URL
@@ -170,7 +168,6 @@ class ParentController extends Controller
         }
 
         $students = $students->map(function ($student) use ($guardianFields, $codeigniter_app_url) {
-
             $student->class_name = DB::table('class')
                 ->where('class_id', $student->class_id)
                 ->value('name');
@@ -213,20 +210,18 @@ class ParentController extends Controller
 
         // 1. STUDENT LOOP UPDATE
         for ($j = 1; $j <= $student_count; $j++) {
-
             $student_id = $request->input("student_id$j");
 
             $data = [];
 
-            $data['blood_group']  = $request->input("blood_group$j");
-            $data['house']        = $request->input("house$j");
-            $data['permant_add']  = $request->input("permant_add$j");
+            $data['blood_group'] = $request->input("blood_group$j");
+            $data['house'] = $request->input("house$j");
+            $data['permant_add'] = $request->input("permant_add$j");
 
             //  Student Image Upload (CI)
             $s_image = $request->input("s_cropped_image$j");
 
             if (!empty($s_image)) {
-
                 $ext = 'png';
 
                 // $decoded = base64_decode(str_replace('[removed]', '', $s_image));
@@ -253,9 +248,9 @@ class ParentController extends Controller
             }
 
             // Guardian Info
-            $data['guardian_name']   = $request->guardian_name;
+            $data['guardian_name'] = $request->guardian_name;
             $data['guardian_mobile'] = $request->guardian_mobile;
-            $data['relation']        = $request->relation;
+            $data['relation'] = $request->relation;
 
             DB::table('student')
                 ->where('student_id', $student_id)
@@ -272,11 +267,10 @@ class ParentController extends Controller
 
         // Father Image
         if ($request->f_cropped_image) {
-
             // $decoded = base64_decode(str_replace('[removed]', '', $request->f_cropped_image));
-            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->f_cropped_image);
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '', $request->f_cropped_image);
 
-            $fileName = "f_" . $parent_id . ".png";
+            $fileName = 'f_' . $parent_id . '.png';
             $doc_type_folder = 'parent_image';
 
             $uploadResponse = upload_father_profile_image_into_folder(
@@ -299,11 +293,10 @@ class ParentController extends Controller
 
         //  Mother Image
         if ($request->m_cropped_image) {
-
             // $decoded = base64_decode(str_replace('[removed]', '', $request->m_cropped_image));
-            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->m_cropped_image);
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '', $request->m_cropped_image);
 
-            $fileName = "m_" . $parent_id . ".png";
+            $fileName = 'm_' . $parent_id . '.png';
 
             $doc_type_folder = 'parent_image';
             $uploadResponse = upload_mother_profile_image_into_folder(
@@ -350,11 +343,10 @@ class ParentController extends Controller
         // }
         // Guardian Image
         if ($request->g_cropped_image) {
-
             // $decoded = base64_decode(str_replace('[removed]', '', $request->g_cropped_image));
-            $decoded = preg_replace('/^data:image\/\w+;base64,/', '',  $request->g_cropped_image);
+            $decoded = preg_replace('/^data:image\/\w+;base64,/', '', $request->g_cropped_image);
 
-            $fileName = "g_" . $parent_id . ".png";
+            $fileName = 'g_' . $parent_id . '.png';
 
             $doc_type_folder = 'parent_image';
             $uploadResponse = upload_guardian_profile_image_into_folder(
@@ -381,9 +373,9 @@ class ParentController extends Controller
 
         //  3. CONFIRMATION TABLE
         $confirmData = [
-            'parent_id'   => $parent_id,
+            'parent_id' => $parent_id,
             'academic_yr' => $request->academic_yr,
-            'confirm'     => $request->has('confirm') ? 'Y' : 'N'
+            'confirm' => $request->has('confirm') ? 'Y' : 'N'
         ];
 
         $exists = DB::table('confirmation_idcard')
@@ -399,8 +391,7 @@ class ParentController extends Controller
         }
 
         //  QR CODE GENERATION
-        $fileName = $parent_id . ".svg";
-
+        $fileName = $parent_id . '.svg';
 
         $folderPath = storage_path('app/public/qrcode');
 
@@ -408,18 +399,14 @@ class ParentController extends Controller
             mkdir($folderPath, 0777, true);
         }
 
-
         $svgData = \QrCode::format('svg')
             ->size(200)
             ->generate($parent_id);
 
-
         $filelocation = $folderPath . '/' . $fileName;
         file_put_contents($filelocation, $svgData);
 
-
         $base64File = base64_encode($svgData);
-
 
         upload_qrcode_into_folder(
             $fileName,
@@ -430,10 +417,9 @@ class ParentController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'ID Card details saved successfully',
-            'qr_code' => asset("uploads/qrcode/" . $fileName)
+            'qr_code' => asset('uploads/qrcode/' . $fileName)
         ]);
     }
-
 
     public function getRaiseTicketList()
     {
@@ -464,7 +450,7 @@ class ParentController extends Controller
                 ->map(function ($item) {
                     return array_map(function ($value) {
                         return is_string($value)
-                            ? preg_replace("/<.+>/sU", "", $value)
+                            ? preg_replace('/<.+>/sU', '', $value)
                             : $value;
                     }, (array) $item);
                 });
@@ -490,6 +476,73 @@ class ParentController extends Controller
                 'status' => false,
                 'Ticket_list' => 'No Records Found'
             ], 200);
+        }
+    }
+
+    public function studentParentVisitReport(Request $request)
+    {
+        try {
+            $query = DB::table('student as s')
+                ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
+                ->join('visitors as v', 'p.parent_id', '=', 'v.parent_id')
+                ->select(
+                    's.student_id',
+                    's.student_name',
+                    's.academic_yr',
+                    'p.parent_id',
+                    'p.father_name',
+                    'p.mother_name',
+                    'p.f_mobile',
+                    'p.m_mobile',
+                    'v.visitor_id',
+                    'v.visit_by',
+                    'v.visit_date',
+                    'v.visit_in_time',
+                    'v.visit_out_time'
+                );
+
+            if ($request->filled('student_id')) {
+                $query->where('s.student_id', $request->student_id);
+            }
+
+            if ($request->filled('academic_yr')) {
+                $query->where('s.academic_yr', $request->academic_yr);
+
+                $years = explode('-', $request->academic_yr);
+
+                if (count($years) == 2) {
+                    $startDate = $years[0] . '-06-01';  // Change if your academic year starts differently
+                    $endDate = $years[1] . '-05-31';
+
+                    $query->whereBetween('v.visit_date', [
+                        $startDate,
+                        $endDate
+                    ]);
+                }
+            }
+
+            if ($request->filled('from_date')) {
+                $query->whereDate('v.visit_date', '>=', $request->from_date);
+            }
+
+            if ($request->filled('to_date')) {
+                $query->whereDate('v.visit_date', '<=', $request->to_date);
+            }
+
+            $data = $query
+                ->orderByDesc('v.visit_date')
+                ->orderByDesc('v.visit_in_time')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }
