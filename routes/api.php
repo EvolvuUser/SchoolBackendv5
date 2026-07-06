@@ -1633,6 +1633,8 @@ Route::middleware(['school.db'])->group(function () {
             [LibraryController::class, 'updatePageTypeById']
         );
 
+        Route::post('/student_parent_visit_report', [ParentController::class, 'studentParentVisitReport']);
+
         // Testing
         Route::get('/testPayload', function (Request $request) {
             $payload = JWTAuth::getPayload();
