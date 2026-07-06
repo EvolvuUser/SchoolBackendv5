@@ -1944,3 +1944,16 @@ if (!function_exists('cleanMessageText')) {
         return trim($text);
     }
 }
+
+function check_cbse_rc_publish_of_a_class($class_id, $section_id)
+{
+    $count = DB::table('report_card_publish as r')
+        ->join('exam as e', 'r.term_id', '=', 'e.exam_id')
+        ->where('r.class_id', $class_id)
+        ->where('r.section_id', $section_id)
+        ->where('r.publish', 'Y')
+        ->whereIn('e.name', ['Term 1', 'Term 2', 'Final Exam'])
+        ->count();
+
+    return $count > 0 ? 'Y' : 'N';
+}

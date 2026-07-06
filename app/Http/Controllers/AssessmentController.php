@@ -11596,7 +11596,7 @@ class AssessmentController extends Controller
        CBSE REPORT CARD
     ========================================= */
 
-        if ($class_name == '9' || $class_name == '11') {
+        if ($class_name == '9' || $class_name == '11' || $class_name == '11 - Science' || $class_name == '11 - Commerce' || $class_name == '11 - Arts') {
             $cbse_publish = check_cbse_rc_publish_of_a_class(
                 $class_id,
                 $section_id
