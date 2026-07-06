@@ -11857,4 +11857,17 @@ class AssessmentController extends Controller
         //     ], 500);
         // }
     }
+
+    public function getReportCards(Request $request, $class_id)
+    {
+        $reportCards = DB::table('report_cards')
+            ->where('class_id', $class_id)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Report cards fetched successfully',
+            'data' => $reportCards
+        ]);
+    }
 }
