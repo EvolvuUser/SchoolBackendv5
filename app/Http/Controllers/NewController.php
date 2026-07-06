@@ -6124,13 +6124,13 @@ ORDER BY Z.t_remark_id DESC;");
                     ->where('student_id', '!=', $studentId)
                     ->exists();
 
-                if ($exists) {
-                    return response()->json([
-                        'status' => 422,
-                        'success' => false,
-                        'message' => "Roll number {$rollNo} already exists in this class and section"
-                    ], 422);
-                }
+                // if ($exists) {
+                //     return response()->json([
+                //         'status' => 422,
+                //         'success' => false,
+                //         'message' => "Roll number {$rollNo} already exists in this class and section"
+                //     ], 422);
+                // }
             }
 
             /*
