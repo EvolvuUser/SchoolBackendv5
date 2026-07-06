@@ -2535,7 +2535,6 @@ class AdminController extends Controller
             // ADMIN / MANAGEMENT / USER
             // ============================================
             if (in_array($role_id, ['A', 'M', 'U'])) {
-
                 $student = Student::with([
                     'parents.user',
                     'getClass',
@@ -2554,12 +2553,10 @@ class AdminController extends Controller
                     ], 422);
                 }
             }
-
             // ============================================
             // TEACHER
             // ============================================
             else if ($role_id == 'T') {
-
                 $teacher_id = $user->reg_id;
 
                 // Check if student exists
@@ -2579,13 +2576,15 @@ class AdminController extends Controller
                 // Get teacher assigned classes
                 $teacherClasses = DB::table('subject')
                     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-                        $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                        $join
+                            ->on('class_teachers.class_id', '=', 'subject.class_id')
                             ->on('class_teachers.section_id', '=', 'subject.section_id')
                             ->where('class_teachers.teacher_id', '=', $teacher_id);
                     })
                     ->where('subject.academic_yr', $customClaims)
                     ->where(function ($query) use ($teacher_id) {
-                        $query->where('subject.teacher_id', $teacher_id)
+                        $query
+                            ->where('subject.teacher_id', $teacher_id)
                             ->orWhere('class_teachers.teacher_id', $teacher_id);
                     })
                     ->select(
@@ -2617,7 +2616,8 @@ class AdminController extends Controller
                 $studentQuery->where(function ($query) use ($teacherClasses) {
                     foreach ($teacherClasses as $class) {
                         $query->orWhere(function ($subQuery) use ($class) {
-                            $subQuery->where('class_id', $class->class_id)
+                            $subQuery
+                                ->where('class_id', $class->class_id)
                                 ->where('section_id', $class->section_id);
                         });
                     }
@@ -2634,7 +2634,6 @@ class AdminController extends Controller
                     ], 403);
                 }
             }
-
             // ============================================
             // UNAUTHORIZED ROLE
             // ============================================
@@ -2664,7 +2663,6 @@ class AdminController extends Controller
                 'student' => [$student]
             ], 200);
         } catch (Exception $e) {
-
             \Log::error('getStudentByGRN Error: ' . $e->getMessage(), [
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
@@ -4200,28 +4198,39 @@ class AdminController extends Controller
                     ->where('section_id', $sectionId)
                     ->where('academic_yr', $academicYr)
                     ->where('sm_id', $sm_id)
+                    ->where('teacher_id', $detail['teacher_id'])
                     ->first();
 
                 if ($detail['teacher_id'] === null) {
                     if ($subjectAllotment) {
-                        $subjectAllotment->delete();
+                        $subjectAllotment->update([
+                            'teacher_id' => $detail['teacher_id'],
+                        ]);
                     }
                 } else {
                     if ($subjectAllotment) {
                         // Update the existing record
-                        $subjectAllotment->update([
-                            'teacher_id' => $detail['teacher_id'],
-                        ]);
-                    } else {
-                        // Create a new record if it doesn't exist
                         SubjectAllotment::create([
                             'subject_id' => $detail['subject_id'],
                             'class_id' => $classId,
                             'section_id' => $sectionId,
-                            'teacher_id' => $detail['teacher_id'],
                             'academic_yr' => $academicYr,
-                            'sm_id' => $sm_id
+                            'sm_id' => $sm_id,
+                            'teacher_id' => $detail['teacher_id'],
                         ]);
+                    } else {
+                        SubjectAllotment::updateOrCreate(
+                            [
+                                'subject_id' => $detail['subject_id'],
+                                'class_id' => $classId,
+                                'section_id' => $sectionId,
+                                'academic_yr' => $academicYr,
+                                'sm_id' => $sm_id,
+                            ],
+                            [
+                                'teacher_id' => $detail['teacher_id'],
+                            ]
+                        );
                     }
                 }
             }
@@ -4246,13 +4255,13 @@ class AdminController extends Controller
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    $record->teacher_id,
+                    // $record->teacher_id,
                     $record->sm_id,
                 ]);
                 return !in_array($recordKey, $idsToKeepArray);
             });
 
-            $recordsToDelete->each->delete();
+            //  $recordsToDelete->each->delete();
         }
 
         return response()->json([
@@ -13819,8 +13828,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         $application->sibling_name =
                             trim(
                                 $sibling_student->first_name . ' '
-                                    . $sibling_student->mid_name . ' '
-                                    . $sibling_student->last_name
+                                . $sibling_student->mid_name . ' '
+                                . $sibling_student->last_name
                             );
                     }
                 } else {
@@ -17251,19 +17260,19 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         $defaultBodies = [
             'INTERVIEW_SCHEDULING' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your interview has been scheduled as per the details below:<br><br>
                 <strong>Date:</strong> INTERVIEW_DATE<br>
                 <strong>Time:</strong> TIME_FROM - TIME_TO<br><br>
                 Kindly ensure your availability at the scheduled time. If you have any questions or require further clarification, please contact us.<br><br>
                 Best regards.',
             'VERIFICATION_SUCCESSFULL' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 We are pleased to inform you that your verification process has been completed successfully.<br><br>
                 If you require any further assistance, please feel free to contact us.<br><br>
                 Best regards.',
             'ADDMISSION_APPROVED' =>
-            'Dear Candidate,<br><br>
+                'Dear Candidate,<br><br>
                 Congratulations! We are delighted to inform you that your admission has been approved.<br><br>
                 Further details regarding the next steps will be shared with you shortly. Please contact us if you need any additional information.<br><br>
                 Best regards.'
