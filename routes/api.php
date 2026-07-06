@@ -1726,6 +1726,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // Cbse 9th report card
         Route::get('/get_cbse9threportcard/{student_id}', [AssessmentController::class, 'getCbse9thReportCard']);
+        Route::get('get_report_cards/{class_id}', [AssessmentController::class, 'getReportCards']);
     });
 
     // Impersonate
