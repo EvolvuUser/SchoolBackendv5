@@ -128,6 +128,15 @@ return [
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
         ],
+        'school_database' => [
+            'driver' => 'mysql',
+            'host' => env('SCHOOL_DB_HOST'),
+            'database' => env('SCHOOL_DB_DATABASE'),
+            'username' => env('SCHOOL_DB_USERNAME'),
+            'password' => env('SCHOOL_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ],
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
