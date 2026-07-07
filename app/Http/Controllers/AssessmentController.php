@@ -11817,7 +11817,7 @@ class AssessmentController extends Controller
     public function getCbse9thReportCard($studentId)
     {
         // try {
-        $academicYear = '2024-2025';  // You can modify this to get the current academic year dynamically if needed
+        $academicYear = JWTAuth::getPayload()->get('academic_year');  // You can modify this to get the current academic year dynamically if needed
         // Student Details
         $student = DB::table('student')
             ->where('student_id', $studentId)
