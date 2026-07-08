@@ -11160,12 +11160,13 @@ class AssessmentController extends Controller
     {
         $short_name = JWTAuth::getPayload()->get('short_name');
         $class_id = $request->input('class_id');
-        $academic_yr = $request->input('academic_yr');
+        $academic_yr = $request->input('acd_yr');
         $student_id = $request->input('student_id');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+        // dd($class_name, $short_name, $student_id, $academic_yr, $class_id, $parent_app_url, $codeigniter_app_url, $request->all());
         if ($short_name == 'SACS') {
             switch ($class_name) {
                 case 'Nursery':
@@ -11264,8 +11265,6 @@ class AssessmentController extends Controller
             }
         } else {
         }
-
-        $pdf = PDF::loadView('pdf.template', compact('data'));
 
         // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
     }
