@@ -482,13 +482,28 @@ class ParentController extends Controller
     public function studentParentVisitReport(Request $request)
     {
         try {
-            $query = DB::table('student as s')
-                ->join('parent as p', 's.parent_id', '=', 'p.parent_id')
-                ->join('visitors as v', 'p.parent_id', '=', 'v.parent_id')
+            // Get parent_id if student_id is provided
+            $parentId = null;
+
+            if ($request->filled('student_id')) {
+                $student = DB::table('student')
+                    ->select('parent_id', 'academic_yr')
+                    ->where('student_id', $request->student_id)
+                    ->first();
+
+                if (!$student) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Student not found.'
+                    ], 404);
+                }
+
+                $parentId = $student->parent_id;
+            }
+
+            $query = DB::table('visitors as v')
+                ->join('parent as p', 'v.parent_id', '=', 'p.parent_id')
                 ->select(
-                    's.student_id',
-                    's.student_name',
-                    's.academic_yr',
                     'p.parent_id',
                     'p.father_name',
                     'p.mother_name',
@@ -501,18 +516,19 @@ class ParentController extends Controller
                     'v.visit_out_time'
                 );
 
-            if ($request->filled('student_id')) {
-                $query->where('s.student_id', $request->student_id);
+            // Filter by parent (derived from student)
+            if ($parentId) {
+                $query->where('v.parent_id', $parentId);
             }
 
+            // Academic Year Filter
             if ($request->filled('academic_yr')) {
-                $query->where('s.academic_yr', $request->academic_yr);
-
                 $years = explode('-', $request->academic_yr);
 
                 if (count($years) == 2) {
-                    $startDate = $years[0] . '-06-01';  // Change if your academic year starts differently
-                    $endDate = $years[1] . '-05-31';
+                    // Modify these dates according to your school's academic calendar
+                    $startDate = $years[0] . '-04-01';
+                    $endDate = $years[1] . '-03-31';
 
                     $query->whereBetween('v.visit_date', [
                         $startDate,
@@ -521,10 +537,12 @@ class ParentController extends Controller
                 }
             }
 
+            // From Date Filter
             if ($request->filled('from_date')) {
                 $query->whereDate('v.visit_date', '>=', $request->from_date);
             }
 
+            // To Date Filter
             if ($request->filled('to_date')) {
                 $query->whereDate('v.visit_date', '<=', $request->to_date);
             }
