@@ -109,4 +109,69 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    public function syncParentUsersSchoolwise(Request $request)
+    {
+        try {
+            // 1. Get active school
+            $schoolId = DB::table('school_settings')
+                ->where('is_active', 'Y')
+                ->value('school_id');
+
+            if (!$schoolId) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Active school not found.',
+                    'success' => false
+                ]);
+            }
+
+            // 2. Get parent users
+            $parents = DB::table('user_master')
+                ->where('role_id', 'P')
+                ->where(function ($q) {
+                    $q->where('isDelete', '!=', 'Y');
+                })
+                ->pluck('user_id');
+
+            if ($parents->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No parents found',
+                    'success' => true
+                ]);
+            }
+
+            // 3. Prepare bulk insert
+            $insertData = $parents->map(function ($userId) use ($schoolId) {
+                return [
+                    'user_id' => $userId,
+                    'school_id' => $schoolId
+                ];
+            })->toArray();
+
+            $parentInserted = 0;
+
+            DB::connection('school_database')
+                ->transaction(function () use ($insertData, &$parentInserted) {
+                    $parentInserted = DB::connection('school_database')
+                        ->table('user_schoolwise')
+                        ->insertOrIgnore($insertData);
+                });
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Parent users synced successfully',
+                'total_parents_checked' => $parents->count(),
+                'parent_synced' => $parentInserted,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => $e->getMessage(),
+                'success' => false
+            ], 500);
+        }
+    }
 }
