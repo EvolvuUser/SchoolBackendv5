@@ -1732,6 +1732,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // Sync Teachers in Evolvu DB
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
+        Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
     });
 
     // Impersonate
