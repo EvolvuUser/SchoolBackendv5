@@ -2,17 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Http\Services\SmsService;
+use App\Http\Services\WhatsAppService;
+use App\Models\NoticeSmsLog;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use App\Http\Services\WhatsAppService;
-use Carbon\Carbon;
-use App\Models\NoticeSmsLog;
-use App\Http\Services\SmsService;
-
 
 class SendReminderRemarkJob implements ShouldQueue
 {
@@ -22,6 +21,7 @@ class SendReminderRemarkJob implements ShouldQueue
      * Create a new job instance.
      */
     public $tries = 3;
+
     public $timeout = 120;
 
     public function __construct(
@@ -38,7 +38,7 @@ class SendReminderRemarkJob implements ShouldQueue
         $student = DB::table('student as a')
             ->join('contact_details as b', 'a.parent_id', '=', 'b.id')
             ->where('a.student_id', $this->studentId)
-            ->select('b.phone_no', 'b.email_id' , 'a.student_id')
+            ->select('b.phone_no', 'b.email_id', 'a.student_id')
             ->first();
 
         if (!$student || !$student->phone_no) {
@@ -50,16 +50,21 @@ class SendReminderRemarkJob implements ShouldQueue
         $whatsappFailed = false;
 
         // WhatsApp
-        if ($schoolSettings->whatsapp_integration === 'Y') {
-            $result = app(WhatsAppService::class)->sendTextMessage(
-                $student->phone_no,
-                'emergency_message',
-                ['Parent,' . $this->remarkData['remark_desc']]
-            );
+        if ($schoolSettings->whatsapp_integration === 'Y' && isWhatsappMessageEnabled('reminder_remark')) {
+            $message = "Dear Parent,\n";
+            $message .= cleanMessageText($this->remarkData['remark_desc']) . ".\n";
+            $message .= "Please check the school application for more details.\n";
+            $message .= '– Evolvu';
+
+            $result = app(WhatsAppService::class)
+                ->sendTextMessage(
+                    $student->phone_no,
+                    null,
+                    [$message]
+                );
 
             // Insert webhook log
             if (isset($result['code']) && isset($result['message'])) {
-
                 // WhatsApp failed
                 $whatsappFailed = true;
 
@@ -75,8 +80,8 @@ class SendReminderRemarkJob implements ShouldQueue
                 ]);
             } else {
                 DB::table('redington_webhook_details')->insert([
-                    'wa_id' => $result['messages'][0]['id'] ?? null,
-                    'phone_no' => $result['contacts'][0]['input'] ?? $student->phone_no,
+                    'wa_id' => $result['response']['id'] ?? null,
+                    'phone_no' => $student->phone_no ?? null,
                     'stu_teacher_id' => $student->student_id,
                     'notice_id' => $this->remarkId,
                     'message_type' => 'remarkforstudent',
@@ -86,10 +91,9 @@ class SendReminderRemarkJob implements ShouldQueue
 
             sleep(20);
             if (
-                $schoolSettings->sms_integration === 'Y'
-                && $whatsappFailed === true
+                $schoolSettings->sms_integration === 'Y' &&
+                $whatsappFailed === true
             ) {
-
                 $failed = DB::table('redington_webhook_details')
                     ->where('message_type', 'remarkforstudent')
                     ->where('status', 'failed')
@@ -120,7 +124,6 @@ class SendReminderRemarkJob implements ShouldQueue
                     'sms_date' => Carbon::now()->format('Y/m/d')
                 ]);
             }
-
         }
 
         // // SMS

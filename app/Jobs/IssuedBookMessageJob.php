@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Http\Services\SmsService;
+use App\Http\Services\WhatsAppService;
+use App\Models\NoticeSmsLog;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use App\Http\Services\WhatsAppService;
-use Carbon\Carbon;
-use App\Models\NoticeSmsLog;
-use App\Http\Services\SmsService;
 
 class IssuedBookMessageJob implements ShouldQueue
 {
@@ -20,8 +20,8 @@ class IssuedBookMessageJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-
     public $tries = 3;
+
     public $timeout = 120;
 
     public array $data;
@@ -33,16 +33,13 @@ class IssuedBookMessageJob implements ShouldQueue
 
     public function handle()
     {
-
-        $memberId     = $this->data['member_id'];
-        $bookId       = $this->data['book_id'];
-        $copyId       = $this->data['copy_id'];
+        $memberId = $this->data['member_id'];
+        $bookId = $this->data['book_id'];
+        $copyId = $this->data['copy_id'];
         $academicYear = $this->data['academic_year'];
-        $memberType   = $this->data['member_type'];
-        $issueDate    = $this->data['issue_date'];
-        $dueDate      = $this->data['due_date'];
-
-
+        $memberType = $this->data['member_type'];
+        $issueDate = $this->data['issue_date'];
+        $dueDate = $this->data['due_date'];
 
         // $member = DB::table('issue_return as a')
         //     ->join('contact_details as b', 'a.member_id', '=', 'b.id')
@@ -59,26 +56,23 @@ class IssuedBookMessageJob implements ShouldQueue
 
         $member = DB::table('issue_return as a')
             ->join('book as c', 'a.book_id', '=', 'c.book_id')
-
             // Student
             ->leftJoin('student as s', function ($join) {
-                $join->on('a.member_id', '=', 's.student_id')
+                $join
+                    ->on('a.member_id', '=', 's.student_id')
                     ->where('a.member_type', '=', 'S');
             })
-
             ->leftJoin('contact_details as cd', function ($join) {
                 $join->on('s.parent_id', '=', 'cd.id');
             })
-
             // Teacher
             ->leftJoin('teacher as t', function ($join) {
-                $join->on('a.member_id', '=', 't.teacher_id')
+                $join
+                    ->on('a.member_id', '=', 't.teacher_id')
                     ->where('a.member_type', '=', 'T');
             })
-
             ->where('a.member_id', $memberId)
             ->where('a.copy_id', $copyId)
-
             ->select(
                 // Phone
                 DB::raw("
@@ -87,30 +81,24 @@ class IssuedBookMessageJob implements ShouldQueue
                 WHEN a.member_type = 'T' THEN t.phone
             END as phone_no
         "),
-
                 // Email
                 DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN cd.email_id
-                WHEN a.member_type = 'T' THEN t.email_id
+                WHEN a.member_type = 'T' THEN t.email
             END as email_id
         "),
-
                 //  Full Name
                 DB::raw("
             CASE 
                 WHEN a.member_type = 'S' THEN CONCAT(s.first_name, ' ', s.mid_name, ' ', s.last_name)
-                WHEN a.member_type = 'T' THEN CONCAT(t.first_name, ' ', t.mid_name, ' ', t.last_name)
+                WHEN a.member_type = 'T' THEN CONCAT(t.name)
             END as member_name
         "),
-
                 'a.member_id',
                 'c.book_title'
             )
             ->first();
-
-
-
 
         if (!$member || !$member->phone_no) {
             return;
@@ -121,21 +109,23 @@ class IssuedBookMessageJob implements ShouldQueue
         $whatsappFailed = false;
 
         // WhatsApp
-        if ($schoolSettings->whatsapp_integration === 'Y') {
-            $result = app(WhatsAppService::class)->sendTextMessage(
-                $member->phone_no,
-                'emergency_message',
-                // ['Member, ' . $member->book_title . ' book has been issued']
-                [
-                    $member->member_name . ', ' .
-                        $member->book_title . ' book has been issued'
-                ]
+        if ($schoolSettings->whatsapp_integration === 'Y' && isWhatsappMessageEnabled('bookissued')) {
+            $message = 'Dear ' . ucwords(strtolower($member->member_name)) . ",\n";
+            $message .= cleanMessageText(
+                $member->book_title . ' book has been issued'
+            ) . ".\n";
+            $message .= "Please check the school application for more details.\n";
+            $message .= '– Evolvu';
 
-            );
+            $result = app(WhatsAppService::class)
+                ->sendTextMessage(
+                    $member->phone_no,
+                    null,
+                    [$message]
+                );
 
             // Insert webhook log
             if (isset($result['code']) && isset($result['message'])) {
-
                 // WhatsApp failed
                 $whatsappFailed = true;
 
@@ -148,12 +138,11 @@ class IssuedBookMessageJob implements ShouldQueue
                     'status' => 'failed',
                     'sms_sent' => 'N',
                     'created_at' => now()
-
                 ]);
             } else {
                 DB::table('redington_webhook_details')->insert([
-                    'wa_id' => $result['messages'][0]['id'] ?? null,
-                    'phone_no' => $result['contacts'][0]['input'] ?? $member->phone_no,
+                    'wa_id' => $result['response']['id'] ?? null,
+                    'phone_no' => $member->phone_no ?? null,
                     'stu_teacher_id' => $memberId,
                     'notice_id' => $copyId,
                     'message_type' => 'bookissued',
@@ -163,10 +152,9 @@ class IssuedBookMessageJob implements ShouldQueue
 
             sleep(20);
             if (
-                $schoolSettings->sms_integration === 'Y'
-                && $whatsappFailed === true
+                $schoolSettings->sms_integration === 'Y' &&
+                $whatsappFailed === true
             ) {
-
                 $failed = DB::table('redington_webhook_details')
                     ->where('message_type', 'bookissued')
                     ->where('status', 'failed')
@@ -180,11 +168,10 @@ class IssuedBookMessageJob implements ShouldQueue
                 //     '1107161354408119887'
                 // );
 
-
                 $sms_status = app(SmsService::class)->sendSms(
                     $member->phone_no,
-                    'Dear ' . $member->member_name . ', ' .
-                        $member->book_title . ' has been issued. Login to school application for details - AceVentura',
+                    'Dear ' . $member->member_name . ', '
+                        . $member->book_title . ' has been issued. Login to school application for details - AceVentura',
                     '1107161354408119887'
                 );
                 $messagestatus = $sms_status['data']['status'] ?? null;

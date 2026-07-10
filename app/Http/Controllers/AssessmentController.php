@@ -2129,6 +2129,50 @@ class AssessmentController extends Controller
         }
     }
 
+    // mahima
+
+    public function getBookTitles(Request $request)
+    {
+        try {
+            $this->authenticateUser();
+
+            $categoryId = $request->input('category_id');
+            $title = $request->input('title');
+
+            $query = DB::table('book')
+                ->select(
+                    'book.book_id',
+                    'book.book_title',
+                    'book.category_id'
+                );
+
+            if (!empty($categoryId)) {
+                $query->where('book.category_id', $categoryId);
+            }
+
+            if (!empty($title)) {
+                $query->where('book.book_title', 'LIKE', '%' . $title . '%');
+            }
+
+            $books = $query
+                ->orderBy('book.book_title', 'asc')
+                ->limit(10)
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'data' => $books
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
     public function searchBooks(Request $request)
     {
         try {
@@ -11116,12 +11160,13 @@ class AssessmentController extends Controller
     {
         $short_name = JWTAuth::getPayload()->get('short_name');
         $class_id = $request->input('class_id');
-        $academic_yr = $request->input('academic_yr');
+        $academic_yr = $request->input('acd_yr');
         $student_id = $request->input('student_id');
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+        // dd($class_name, $short_name, $student_id, $academic_yr, $class_id, $parent_app_url, $codeigniter_app_url, $request->all());
         if ($short_name == 'SACS') {
             switch ($class_name) {
                 case 'Nursery':
@@ -11220,8 +11265,6 @@ class AssessmentController extends Controller
             }
         } else {
         }
-
-        $pdf = PDF::loadView('pdf.template', compact('data'));
 
         // $pdf = PDF::loadView('pdf.simplebonafide', compact('data'))->setPaper('A5', 'landscape');
     }
@@ -11552,7 +11595,7 @@ class AssessmentController extends Controller
        CBSE REPORT CARD
     ========================================= */
 
-        if ($class_name == '9' || $class_name == '11') {
+        if ($class_name == '9' || $class_name == '11' || $class_name == '11 - Science' || $class_name == '11 - Commerce' || $class_name == '11 - Arts') {
             $cbse_publish = check_cbse_rc_publish_of_a_class(
                 $class_id,
                 $section_id
@@ -11767,6 +11810,63 @@ class AssessmentController extends Controller
             'data' => $classes,
             'message' => 'Classes by class teacher.',
             'success' => true
+        ]);
+    }
+
+    public function getCbse9thReportCard($studentId)
+    {
+        // try {
+        $academicYear = JWTAuth::getPayload()->get('academic_year');  // You can modify this to get the current academic year dynamically if needed
+        // Student Details
+        $student = DB::table('student')
+            ->where('student_id', $studentId)
+            ->select('student_id', 'student_name')
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Student not found.'
+            ], 404);
+        }
+
+        $studentName = get_student_name($studentId);
+
+        $data = [
+            'student_id' => $studentId,
+            'acd_yr' => $academicYear,
+        ];
+
+        // Load Blade View
+        $pdf = Pdf::loadView(
+            'assessment.class9_cbseformat_report_card_pdf',
+            $data
+        );
+
+        $pdf->setPaper('A4', 'landscape');
+
+        $fileName = "CBSE_RC_{$studentName}.pdf";
+
+        return $pdf->download($fileName);
+        // } catch (\Exception $e) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Failed to generate report card.',
+        //         'error' => $e->getMessage()
+        //     ], 500);
+        // }
+    }
+
+    public function getReportCards(Request $request, $class_id)
+    {
+        $reportCards = DB::table('report_cards')
+            ->where('class_id', $class_id)
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Report cards fetched successfully',
+            'data' => $reportCards
         ]);
     }
 }

@@ -2521,7 +2521,6 @@ class AdminController extends Controller
             $customClaims = JWTAuth::getPayload()->get('academic_year');
 
             $globalVariables = App::make('global_variables');
-            $parent_app_url = $globalVariables['parent_app_url'];
             $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
             // ============================================
@@ -2529,11 +2528,11 @@ class AdminController extends Controller
             // ============================================
             $role_id = $user->role_id ?? null;
 
+            // Initialize student variable
+            $student = null;
+
             // ============================================
-            // ADMIN / MANAGEMENT USERS
-            // A = Admin
-            // M = Management
-            // U = User
+            // ADMIN / MANAGEMENT / USER
             // ============================================
             if (in_array($role_id, ['A', 'M', 'U'])) {
                 $student = Student::with([
@@ -2544,25 +2543,27 @@ class AdminController extends Controller
                     ->where('reg_no', $reg_no)
                     ->where('academic_yr', $customClaims)
                     ->first();
+
+                if (!$student) {
+                    return response()->json([
+                        'status' => 422,
+                        'success' => false,
+                        'message' => 'Invalid GR No',
+                        'data' => null
+                    ], 422);
+                }
             }
             // ============================================
-            // TEACHER LOGIN
-            // T = Teacher
-            // Teacher can only search students
-            // from classes/sections they teach
+            // TEACHER
             // ============================================
             else if ($role_id == 'T') {
-                // Teacher ID from logged-in user
                 $teacher_id = $user->reg_id;
 
-                // ============================================
-                // CHECK STUDENT EXISTS OR NOT
-                // ============================================
+                // Check if student exists
                 $studentExists = Student::where('reg_no', $reg_no)
                     ->where('academic_yr', $customClaims)
                     ->first();
 
-                // Invalid GR No
                 if (!$studentExists) {
                     return response()->json([
                         'status' => 422,
@@ -2572,9 +2573,7 @@ class AdminController extends Controller
                     ], 422);
                 }
 
-                // ============================================
-                // GET TEACHER ASSIGNED CLASSES
-                // ============================================
+                // Get teacher assigned classes
                 $teacherClasses = DB::table('subject')
                     ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
                         $join
@@ -2595,9 +2594,17 @@ class AdminController extends Controller
                     ->distinct()
                     ->get();
 
-                // ============================================
-                // FETCH STUDENT ONLY FROM ASSIGNED CLASS
-                // ============================================
+                // If teacher has no assigned classes
+                if ($teacherClasses->isEmpty()) {
+                    return response()->json([
+                        'status' => 403,
+                        'success' => false,
+                        'message' => 'No class or section assigned to this teacher.',
+                        'data' => null
+                    ], 403);
+                }
+
+                // Fetch student only from assigned classes
                 $studentQuery = Student::with([
                     'parents.user',
                     'getClass',
@@ -2618,46 +2625,204 @@ class AdminController extends Controller
 
                 $student = $studentQuery->first();
 
-                // ============================================
-                // STUDENT EXISTS BUT NOT ACCESSIBLE
-                // ============================================
                 if (!$student) {
                     return response()->json([
                         'status' => 403,
                         'success' => false,
-                        'message' => 'Student not found in your assigned class or section',
+                        'message' => 'Student not found in your assigned class or section.',
                         'data' => null
                     ], 403);
                 }
-            } else {
+            }
+            // ============================================
+            // UNAUTHORIZED ROLE
+            // ============================================
+            else {
                 return response()->json([
                     'status' => 403,
                     'success' => false,
-                    'message' => 'Unauthorized access',
+                    'message' => 'Unauthorized access.',
                     'data' => null
                 ], 403);
             }
 
             // ============================================
-            // IMAGE URL
+            // STUDENT IMAGE URL
             // ============================================
-            $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
-
-            $student->student_image_url = $student->image_name
-                ? $concatprojecturl . $student->image_name
+            $student->student_image_url = !empty($student->image_name)
+                ? $codeigniter_app_url . 'uploads/student_image/' . $student->image_name
                 : null;
 
+            // ============================================
+            // SUCCESS RESPONSE
+            // ============================================
             return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Student fetched successfully.',
                 'student' => [$student]
-            ]);
+            ], 200);
         } catch (Exception $e) {
-            \Log::error($e);
+            \Log::error('getStudentByGRN Error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
-                'error' => 'An error occurred: ' . $e->getMessage()
+                'status' => 500,
+                'success' => false,
+                'message' => 'An error occurred.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
+
+    // public function getStudentByGRN($reg_no)
+    // {
+    //     try {
+    //         $user = $this->authenticateUser();
+
+    //         $customClaims = JWTAuth::getPayload()->get('academic_year');
+
+    //         $globalVariables = App::make('global_variables');
+    //         $parent_app_url = $globalVariables['parent_app_url'];
+    //         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+    //         // ============================================
+    //         // GET USER ROLE
+    //         // ============================================
+    //         $role_id = $user->role_id ?? null;
+
+    //         // ============================================
+    //         // ADMIN / MANAGEMENT USERS
+    //         // A = Admin
+    //         // M = Management
+    //         // U = User
+    //         // ============================================
+    //         if (in_array($role_id, ['A', 'M', 'U'])) {
+    //             $student = Student::with([
+    //                 'parents.user',
+    //                 'getClass',
+    //                 'getDivision'
+    //             ])
+    //                 ->where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims)
+    //                 ->first();
+    //         }
+    //         // ============================================
+    //         // TEACHER LOGIN
+    //         // T = Teacher
+    //         // Teacher can only search students
+    //         // from classes/sections they teach
+    //         // ============================================
+    //         else if ($role_id == 'T') {
+    //             // Teacher ID from logged-in user
+    //             $teacher_id = $user->reg_id;
+
+    //             // ============================================
+    //             // CHECK STUDENT EXISTS OR NOT
+    //             // ============================================
+    //             $studentExists = Student::where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims)
+    //                 ->first();
+
+    //             // Invalid GR No
+    //             if (!$studentExists) {
+    //                 return response()->json([
+    //                     'status' => 422,
+    //                     'success' => false,
+    //                     'message' => 'Invalid GR No',
+    //                     'data' => null
+    //                 ], 422);
+    //             }
+
+    //             // ============================================
+    //             // GET TEACHER ASSIGNED CLASSES
+    //             // ============================================
+    //             $teacherClasses = DB::table('subject')
+    //                 ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
+    //                     $join
+    //                         ->on('class_teachers.class_id', '=', 'subject.class_id')
+    //                         ->on('class_teachers.section_id', '=', 'subject.section_id')
+    //                         ->where('class_teachers.teacher_id', '=', $teacher_id);
+    //                 })
+    //                 ->where('subject.academic_yr', $customClaims)
+    //                 ->where(function ($query) use ($teacher_id) {
+    //                     $query
+    //                         ->where('subject.teacher_id', $teacher_id)
+    //                         ->orWhere('class_teachers.teacher_id', $teacher_id);
+    //                 })
+    //                 ->select(
+    //                     'subject.class_id',
+    //                     'subject.section_id'
+    //                 )
+    //                 ->distinct()
+    //                 ->get();
+
+    //             // ============================================
+    //             // FETCH STUDENT ONLY FROM ASSIGNED CLASS
+    //             // ============================================
+    //             $studentQuery = Student::with([
+    //                 'parents.user',
+    //                 'getClass',
+    //                 'getDivision'
+    //             ])
+    //                 ->where('reg_no', $reg_no)
+    //                 ->where('academic_yr', $customClaims);
+
+    //             $studentQuery->where(function ($query) use ($teacherClasses) {
+    //                 foreach ($teacherClasses as $class) {
+    //                     $query->orWhere(function ($subQuery) use ($class) {
+    //                         $subQuery
+    //                             ->where('class_id', $class->class_id)
+    //                             ->where('section_id', $class->section_id);
+    //                     });
+    //                 }
+    //             });
+
+    //             $student = $studentQuery->first();
+
+    //             // ============================================
+    //             // STUDENT EXISTS BUT NOT ACCESSIBLE
+    //             // ============================================
+    //             if (!$student) {
+    //                 return response()->json([
+    //                     'status' => 403,
+    //                     'success' => false,
+    //                     'message' => 'Student not found in your assigned class or section',
+    //                     'data' => null
+    //                 ], 403);
+    //             }
+    //         } else {
+    //             return response()->json([
+    //                 'status' => 403,
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized access',
+    //                 'data' => null
+    //             ], 403);
+    //         }
+
+    //         // ============================================
+    //         // IMAGE URL
+    //         // ============================================
+    //         $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+    //         $student->student_image_url = $student->image_name
+    //             ? $concatprojecturl . $student->image_name
+    //             : null;
+
+    //         return response()->json([
+    //             'student' => [$student]
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error($e);
+
+    //         return response()->json([
+    //             'error' => 'An error occurred: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     public function deleteStudent(Request $request, $studentId)
     {
@@ -3983,120 +4148,123 @@ class AdminController extends Controller
         ]);
     }
 
-    // first code  working code
     public function updateTeacherAllotment(Request $request, $classId, $sectionId)
     {
-        // Retrieve the incoming data
         $subjects = $request->input('subjects');  // Expecting an array of subjects with details
         $payload = getTokenPayload($request);
 
         if (!$payload) {
             return response()->json(['error' => 'Invalid or missing token'], 401);
         }
+
         $academicYr = $payload->get('academic_year');
 
-        // Step 1: Fetch existing records
-        $existingRecords = SubjectAllotment::where('class_id', $classId)
-            ->where('section_id', $sectionId)
-            ->where('academic_yr', $academicYr)
-            ->get();
-
-        // Collect IDs to keep
-        $idsToKeep = [];
-
-        // Step 2: Iterate through the subjects from the input and process updates
-        foreach ($subjects as $sm_id => $subjectData) {
-            // Ensure sm_id is not null or empty before proceeding
-            if (empty($sm_id)) {
-                return response()->json(['error' => 'Invalid subject module ID (sm_id) provided.'], 400);
-            }
-
-            foreach ($subjectData['details'] as $detail) {
-                // Ensure subject_id is not null or empty, otherwise generate a new subject_id
-                if ($detail['subject_id'] === null) {
-                    $maxSubjectId = SubjectAllotment::max('subject_id');
-                    $detail['subject_id'] = $maxSubjectId ? $maxSubjectId + 1 : 1;
-                }
-
-                // Store the identifier in the list of IDs to keep
-                $idsToKeep[] = [
-                    'subject_id' => $detail['subject_id'],
-                    'class_id' => $classId,
-                    'section_id' => $sectionId,
-                    'teacher_id' => $detail['teacher_id'],
-                    'sm_id' => $sm_id
-                ];
-
-                // Check if the subject allotment exists based on subject_id, class_id, section_id, and academic_yr
-                $subjectAllotment = SubjectAllotment::where('subject_id', $detail['subject_id'])
-                    ->where('class_id', $classId)
-                    ->where('section_id', $sectionId)
-                    ->where('academic_yr', $academicYr)
-                    ->where('sm_id', $sm_id)
-                    ->first();
-
-                if ($detail['teacher_id'] === null) {
-                    if ($subjectAllotment) {
-                        $subjectAllotment->update([
-                            'teacher_id' => $detail['teacher_id'],
-                        ]);
-                    }
-                } else {
-                    if ($subjectAllotment) {
-                        // Update the existing record
-                        $subjectAllotment->update([
-                            'teacher_id' => $detail['teacher_id'],
-                        ]);
-                    } else {
-                        SubjectAllotment::updateOrCreate(
-                            [
-                                'subject_id' => $detail['subject_id'],
-                                'class_id' => $classId,
-                                'section_id' => $sectionId,
-                                'academic_yr' => $academicYr,
-                                'sm_id' => $sm_id,
-                            ],
-                            [
-                                'teacher_id' => $detail['teacher_id'],
-                            ]
-                        );
-                    }
-                }
-            }
+        if (!is_array($subjects)) {
+            return response()->json(['error' => 'Invalid subjects payload.'], 400);
         }
 
-        // Step 3: Delete records not present in the input data, but retain one record with null teacher_id if needed
-        $idsToKeepArray = array_map(function ($item) {
-            return implode(',', [
-                $item['subject_id'],
-                $item['class_id'],
-                $item['section_id'],
-                $item['teacher_id'],
-                $item['sm_id'],
-            ]);
-        }, $idsToKeep);
+        try {
+            DB::beginTransaction();
 
-        $groupedExistingRecords = $existingRecords->groupBy('sm_id');
+            // Step 1: Fetch existing records for this class/section/year
+            $existingRecords = SubjectAllotment::where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('academic_yr', $academicYr)
+                ->get();
 
-        foreach ($groupedExistingRecords as $sm_id => $records) {
-            $recordsToDelete = $records->filter(function ($record) use ($idsToKeepArray) {
-                $recordKey = implode(',', [
+            // Running max subject_id so multiple new subjects in one request don't collide.
+            $runningMaxSubjectId = SubjectAllotment::max('subject_id') ?? 0;
+
+            // Desired set of rows, keyed by subject_id|class_id|section_id|sm_id|teacher_id.
+            // teacher_id IS part of identity: the same subject/sm_id can have multiple
+            // teacher rows (co-teaching), so each (subject, teacher) pair is its own row.
+            $desiredKeys = [];
+
+            foreach ($subjects as $sm_id => $subjectData) {
+                if (empty($sm_id)) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Invalid subject module ID (sm_id) provided.'], 400);
+                }
+
+                if (empty($subjectData['details']) || !is_array($subjectData['details'])) {
+                    DB::rollBack();
+                    return response()->json(['error' => "Missing details for sm_id {$sm_id}."], 400);
+                }
+
+                foreach ($subjectData['details'] as $detail) {
+                    if (!array_key_exists('subject_id', $detail)) {
+                        DB::rollBack();
+                        return response()->json(['error' => 'Missing subject_id in detail.'], 400);
+                    }
+
+                    $subjectId = $detail['subject_id'];
+                    $teacherId = $detail['teacher_id'] ?? null;  // null = subject placeholder, no teacher yet
+
+                    // Generate a new subject_id if one wasn't provided, without colliding
+                    // with other new subjects created earlier in this same request.
+                    if ($subjectId === null) {
+                        $runningMaxSubjectId++;
+                        $subjectId = $runningMaxSubjectId;
+                    }
+
+                    // Build the identity key for this row, including teacher_id
+                    // (use a sentinel for null so array key comparisons stay consistent)
+                    $teacherKeyPart = $teacherId === null ? 'NULL' : $teacherId;
+                    $key = implode('|', [$subjectId, $classId, $sectionId, $sm_id, $teacherKeyPart]);
+                    $desiredKeys[$key] = [
+                        'subject_id' => $subjectId,
+                        'class_id' => $classId,
+                        'section_id' => $sectionId,
+                        'academic_yr' => $academicYr,
+                        'sm_id' => $sm_id,
+                        'teacher_id' => $teacherId,
+                    ];
+                }
+            }
+
+            // Build a lookup of existing rows keyed the same way
+            $existingByKey = [];
+            foreach ($existingRecords as $record) {
+                $teacherKeyPart = $record->teacher_id === null ? 'NULL' : $record->teacher_id;
+                $key = implode('|', [
                     $record->subject_id,
                     $record->class_id,
                     $record->section_id,
-                    // $record->teacher_id,
                     $record->sm_id,
+                    $teacherKeyPart,
                 ]);
-                return !in_array($recordKey, $idsToKeepArray);
-            });
+                $existingByKey[$key] = $record;
+            }
 
-            //  $recordsToDelete->each->delete();
+            // Step 2: Create any desired rows that don't already exist
+            foreach ($desiredKeys as $key => $attrs) {
+                if (!isset($existingByKey[$key])) {
+                    SubjectAllotment::create($attrs);
+                }
+            }
+
+            // Step 3: Delete any existing rows that are no longer desired
+            foreach ($existingByKey as $key => $record) {
+                if (!isset($desiredKeys[$key])) {
+                    $record->delete();
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Subject allotments updated successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('updateTeacherAllotment failed: ' . $e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update subject allotments.',
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Subject allotments updated successfully.',
-        ]);
     }
 
     public function allotSubjects(Request $request)
@@ -13127,34 +13295,29 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $parameters = [ucwords(strtolower($staffdetails->name)) . ',' . $message];
                 Log::info($staffphone);
                 if ($staffphone) {
-                    if ($whatsappIntegration == 'Y') {
-                        $result = $this->whatsAppService->sendTextMessage(
-                            $staffphone,
-                            $templateName,
-                            $parameters
-                        );
-                        if (isset($result['code']) && isset($result['message'])) {
-                            $message_type = 'late_message_for_teacher';
+                    if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('late_message_for_teacher')) {
+                        $message1 = 'Dear ' . ucwords(strtolower($staffdetails->name)) . ",\n";
+                        $message1 .= cleanMessageText(
+                            $message
+                        ) . ".\n";
+                        $message1 .= "Please check the school application for more details.\n";
+                        $message1 .= '– Evolvu';
 
-                            DB::table('redington_webhook_details')->insert([
-                                'wa_id' => null,
-                                'phone_no' => $staffphone,
-                                'message' => $message,
-                                'status' => 'failed',
-                                'sms_sent' => 'N',
-                                'stu_teacher_id' => $teacherid,
-                                'message_type' => $message_type,
-                                'created_at' => now()
-                            ]);
+                        $result = app('App\Http\Services\WhatsAppService')
+                            ->sendTextMessage(
+                                $staffphone,
+                                null,
+                                [$message1]
+                            );
+                        if (isset($result['code']) && isset($result['message'])) {
                         } else {
                             // Proceed if no error
-                            $wamid = $result['messages'][0]['id'];
-                            $phone_no = $result['contacts'][0]['input'];
+                            $wamid = $result['response']['id'] ?? null;
                             $message_type = 'late_message_for_teacher';
 
                             DB::table('redington_webhook_details')->insert([
                                 'wa_id' => $wamid,
-                                'phone_no' => $phone_no,
+                                'phone_no' => $staffphone,
                                 'stu_teacher_id' => $teacherid,
                                 'message' => $message,
                                 'message_type' => $message_type,

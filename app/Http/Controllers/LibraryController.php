@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\HTTP\Services\SmartMailer;
 use App\Http\Services\WhatsAppService;
-use App\Jobs\SendReminderRemarkJob;
 use App\Jobs\IssuedBookMessageJob;
 use App\Jobs\ReturnPendingBookJob;
+use App\Jobs\SendReminderRemarkJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use PDF;
-
 
 class LibraryController extends Controller
 {
@@ -532,6 +531,7 @@ class LibraryController extends Controller
                     'category_id' => $request->input('category_id'),
                     'publisher' => $request->input('publisher'),
                     'days_borrow' => $request->input('days_borrow'),
+                    'days_borrow_staff' => $request->input('days_borrow_staff'),
                     'location_of_book' => $request->input('location_of_book'),
                     'issue_type' => $request->input('issue_type'),
                 ];
@@ -654,6 +654,7 @@ class LibraryController extends Controller
                     'author' => $request->input('author'),
                     'publisher' => $request->input('publisher'),
                     'days_borrow' => $request->input('days_borrow'),
+                    'days_borrow_staff' => $request->input('days_borrow_staff'),
                     'location_of_book' => $request->input('location_of_book'),
                     'issue_type' => $request->input('issue_type'),
                 ];
@@ -948,7 +949,6 @@ class LibraryController extends Controller
         $member = null;
 
         if ($memberId) {
-
             $memberExists = DB::table('library_member')
                 ->where('member_id', $memberId)
                 ->where('member_type', $mtype)
@@ -960,17 +960,17 @@ class LibraryController extends Controller
 
             if (!$memberExists) {
                 return response()->json([
-                    'status'  => false,
+                    'status' => false,
                     'message' => 'This is not a library member',
-                    // 'query' => $query->toSql(), 
+                    // 'query' => $query->toSql(),
                     // 'queryBinding' => $query->getBindings()
                 ], 404);
             }
 
             if ($mtype == 'S') {
-                $member = DB::table("student")->where('student_id', $memberId)->first();
+                $member = DB::table('student')->where('student_id', $memberId)->first();
             } else {
-                $member = DB::table("teacher")->where('teacher_id', $memberId)->first();
+                $member = DB::table('teacher')->where('teacher_id', $memberId)->first();
             }
 
             $issuedBooks = DB::table('book_copies as d')
@@ -992,7 +992,6 @@ class LibraryController extends Controller
                 ->where('a.return_date', '0000-00-00')
                 ->get();
         } else if ($grn_no) {
-
             $student = DB::table('student')
                 ->where('reg_no', $grn_no)
                 ->where('isDelete', 'N')
@@ -1012,11 +1011,12 @@ class LibraryController extends Controller
                 ->where('library_member.member_type', 'S')
                 ->where('library_member.status', 'A')
                 ->where('student.student_id', $student->student_id)
-                ->where('student.academic_yr', $academicYr)->exists();
+                ->where('student.academic_yr', $academicYr)
+                ->exists();
 
             if (!$memberExists) {
                 return response()->json([
-                    'status'  => false,
+                    'status' => false,
                     'message' => 'This is not a library member'
                 ], 404);
             }
@@ -1059,7 +1059,6 @@ class LibraryController extends Controller
             'member' => $member,
         ], 200);
     }
-
 
     public function getBookByAccession(Request $request)
     {
@@ -1293,11 +1292,31 @@ class LibraryController extends Controller
                 $bookId = $request->book_id[$i];
 
                 // calculate due date
-                if ($memberType == 'S') {
-                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+7 days'));
-                } else {
-                    $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+30 days'));
+                // if ($memberType == 'S') {
+                //     $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+7 days'));
+                // } else {
+                //     $dueDate = date('Y-m-d H:i:s', strtotime($issueDate . '+30 days'));
+                // }
+
+                // Get borrowing days from book table
+                $book = DB::table('book')
+                    ->where('book_id', $bookId)
+                    ->select('days_borrow', 'days_borrow_staff')
+                    ->first();
+
+                if (!$book) {
+                    throw new \Exception('Book not found.');
                 }
+
+                // Calculate due date
+                $borrowDays = ($memberType == 'S')
+                    ? $book->days_borrow
+                    : $book->days_borrow_staff;
+
+                $dueDate = date(
+                    'Y-m-d H:i:s',
+                    strtotime($issueDate . " +{$borrowDays} days")
+                );
 
                 // new entry of issue book
                 DB::table('issue_return')->insert([
@@ -1318,13 +1337,13 @@ class LibraryController extends Controller
                     ]);
 
                 IssuedBookMessageJob::dispatch([
-                    'member_id'     => $memberId,
-                    'member_type'   => $memberType,
-                    'book_id'       => $bookId,
-                    'copy_id'       => $copyId,
+                    'member_id' => $memberId,
+                    'member_type' => $memberType,
+                    'book_id' => $bookId,
+                    'copy_id' => $copyId,
                     'academic_year' => $academic_yr,
-                    'issue_date'    => $issueDate,
-                    'due_date'      => $dueDate,
+                    'issue_date' => $issueDate,
+                    'due_date' => $dueDate,
                 ])->afterCommit();
             }
 
@@ -1879,7 +1898,8 @@ class LibraryController extends Controller
             if ($memberDetails['member'] == null) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'The book is not issued!!!',
+                    // 'message' => 'The book is not issued!!!',
+                    'message' => 'GRN No. not valid',
                 ], 404);
             }
         }
@@ -3068,7 +3088,8 @@ class LibraryController extends Controller
             //     ], 400);
             // }
 
-            $subscription = DB::table('subscription')->where('subscription_id', $subscription_id)
+            $subscription = DB::table('subscription')
+                ->where('subscription_id', $subscription_id)
                 ->first();
 
             $bimonthly_second_date = $subscription->bimonthly_second_date;
@@ -3138,9 +3159,8 @@ class LibraryController extends Controller
                         //     }
                         // }
                         if ($frequency === 'Bimonthly') {
-
                             $month = date('m', strtotime($received_by_date));
-                            $year  = date('Y', strtotime($received_by_date));
+                            $year = date('Y', strtotime($received_by_date));
 
                             if ($j % 2 == 0) {
                                 $received_by_date = date(
@@ -4103,7 +4123,7 @@ class LibraryController extends Controller
     public function getIssuedBooksMonthly(Request $request)
     {
         try {
-            $monthYear = $request->input('month_year'); // format: YYYY-MM
+            $monthYear = $request->input('month_year');  // format: YYYY-MM
 
             // Student issued books
             $studentQuery = DB::table('issue_return as a')
@@ -4147,16 +4167,15 @@ class LibraryController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data'   => $data
+                'data' => $data
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => $e->getMessage()
             ], 500);
         }
     }
-
 
     public function subscriptionReminderReport()
     {
@@ -4170,7 +4189,7 @@ class LibraryController extends Controller
 
         return response()->json([
             'status' => true,
-            'data'   => $data
+            'data' => $data
         ]);
     }
 
@@ -4183,7 +4202,6 @@ class LibraryController extends Controller
         $message = $request->input('message');
 
         foreach ($subscriptionIds as $subId) {
-
             $subscription = DB::table('subscription as s')
                 ->join('periodicals as p', 'p.periodical_id', '=', 's.periodical_id')
                 ->where('s.subscription_id', $subId)
@@ -4199,8 +4217,7 @@ class LibraryController extends Controller
             $subscriptionNo = $subscription->subscription_no ?? null;
 
             if ($email && $title && $subscriptionNo) {
-
-                $subject = "Subscription Reminder ";
+                $subject = 'Subscription Reminder ';
                 // :- {$title} - {$subscriptionNo}";
 
                 $mailData = [
@@ -4241,21 +4258,21 @@ class LibraryController extends Controller
             $query->where('a.periodical_id', $periodicalId);
         }
 
-        $data = $query->select(
-            'a.*',
-            'b.*',
-            'c.*',
-            'd.*'
-        )
+        $data = $query
+            ->select(
+                'a.*',
+                'b.*',
+                'c.*',
+                'd.*'
+            )
             ->orderBy('d.receive_by_date', 'desc')
             ->get();
 
         return response()->json([
             'status' => true,
-            'data'   => $data
+            'data' => $data
         ]);
     }
-
 
     public function periodicalReminderMail(Request $request)
     {
@@ -4266,7 +4283,6 @@ class LibraryController extends Controller
         $message = $request->input('message');
 
         foreach ($periodicalsIds as $subId) {
-
             $periodicals = DB::table('periodicals as a')
                 ->join('subscription as b', 'a.periodical_id', '=', 'b.periodical_id')
                 ->join('subscription_volume as c', 'b.subscription_id', '=', 'c.subscription_id')
@@ -4284,8 +4300,7 @@ class LibraryController extends Controller
             $subscriptionNo = $periodicals->subscription_issue_id ?? null;
 
             if ($email && $title && $subscriptionNo) {
-
-                $subject = "Periodicals Reminder ";
+                $subject = 'Periodicals Reminder ';
                 // :- {$title} - {$subscriptionNo}";
 
                 $mailData = [
@@ -4320,10 +4335,9 @@ class LibraryController extends Controller
 
         return response()->json([
             'status' => true,
-            'data'   => $data
+            'data' => $data
         ]);
     }
-
 
     public function pendingOverdueBooks()
     {
@@ -4335,38 +4349,35 @@ class LibraryController extends Controller
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.book_id')
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
-                    $query->whereNull('a.return_date')
+                    $query
+                        ->whereNull('a.return_date')
                         ->orWhere('a.return_date', '0000-00-00');
                 })
-
                 ->leftJoin('student', function ($join) {
-                    $join->on('a.member_id', '=', 'student.student_id')
+                    $join
+                        ->on('a.member_id', '=', 'student.student_id')
                         ->where('a.member_type', '=', 'S');
                 })
-
                 ->leftJoin('teacher', function ($join) {
-                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                    $join
+                        ->on('a.member_id', '=', 'teacher.teacher_id')
                         ->where('a.member_type', '=', 'T');
                 })
-
                 ->select(
                     'a.*',
                     'book.book_title',
-
                     DB::raw("
                     CASE 
                         WHEN a.member_type = 'S' THEN student.first_name
                         WHEN a.member_type = 'T' THEN teacher.name
                     END as first_name
                 "),
-
                     DB::raw("
                     CASE 
                         WHEN a.member_type = 'S' THEN student.mid_name
                         ELSE NULL
                     END as mid_name
                 "),
-
                     DB::raw("
                     CASE 
                         WHEN a.member_type = 'S' THEN student.last_name
@@ -4400,7 +4411,6 @@ class LibraryController extends Controller
         }
     }
 
-
     public function returnBooksPendingSeperate()
     {
         try {
@@ -4428,28 +4438,28 @@ class LibraryController extends Controller
             //                 'book.book_title',
 
             //                 DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.first_name
             //         WHEN a.member_type = 'T' THEN teacher.name
             //     END as first_name
             // "),
 
             //                 DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.mid_name
             //         ELSE NULL
             //     END as mid_name
             // "),
 
             //                 DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.last_name
             //         ELSE NULL
             //     END as last_name
             // "),
 
             //                 DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.emergency_contact
             //         WHEN a.member_type = 'T' THEN teacher.phone
             //     END as phone_no
@@ -4485,21 +4495,21 @@ class LibraryController extends Controller
             //             'book.book_title',
 
             //             DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.first_name
             //         WHEN a.member_type = 'T' THEN teacher.name
             //     END as first_name
             // "),
 
             //             DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.mid_name
             //         ELSE NULL
             //     END as mid_name
             // "),
 
             //             DB::raw("
-            //     CASE 
+            //     CASE
             //         WHEN a.member_type = 'S' THEN student.last_name
             //         ELSE NULL
             //     END as last_name
@@ -4510,41 +4520,37 @@ class LibraryController extends Controller
             //         )
             //         ->get();
 
-
-
             $result = DB::table('issue_return as a')
                 ->join('book', 'a.book_id', '=', 'book.book_id')
                 ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
-
                 // Student Join
                 ->leftJoin('student', function ($join) {
-                    $join->on('a.member_id', '=', 'student.student_id')
+                    $join
+                        ->on('a.member_id', '=', 'student.student_id')
                         ->where('a.member_type', '=', 'S');
                 })
-
                 // Teacher Join
                 ->leftJoin('teacher', function ($join) {
-                    $join->on('a.member_id', '=', 'teacher.teacher_id')
+                    $join
+                        ->on('a.member_id', '=', 'teacher.teacher_id')
                         ->where('a.member_type', '=', 'T');
                 })
-
                 // ONLY Student → contact_details
                 ->leftJoin('contact_details as b', function ($join) {
-                    $join->on('student.parent_id', '=', 'b.id')
+                    $join
+                        ->on('student.parent_id', '=', 'b.id')
                         ->where('a.member_type', '=', 'S');
                 })
-
                 // Overdue condition
                 ->whereDate('a.due_date', '<', Carbon::today())
                 ->where(function ($query) {
-                    $query->whereNull('a.return_date')
+                    $query
+                        ->whereNull('a.return_date')
                         ->orWhere('a.return_date', '0000-00-00');
                 })
-
                 ->select(
                     'a.*',
                     'book.book_title',
-
                     // First Name
                     DB::raw("
             CASE 
@@ -4552,7 +4558,6 @@ class LibraryController extends Controller
                 WHEN a.member_type = 'T' THEN teacher.name
             END as first_name
         "),
-
                     // Middle Name
                     DB::raw("
             CASE 
@@ -4560,7 +4565,6 @@ class LibraryController extends Controller
                 ELSE NULL
             END as mid_name
         "),
-
                     // Last Name
                     DB::raw("
             CASE 
@@ -4568,7 +4572,6 @@ class LibraryController extends Controller
                 ELSE NULL
             END as last_name
         "),
-
                     //  Correct Phone Mapping
                     DB::raw("
             CASE 
@@ -4577,7 +4580,6 @@ class LibraryController extends Controller
             END as phone_no
         ")
                 )
-
                 ->orderBy('a.due_date', 'asc')
                 ->get();
 
@@ -4591,7 +4593,7 @@ class LibraryController extends Controller
 
             // Separate Students and Staff
             $students = $result->where('member_type', 'S')->values();
-            $staff    = $result->where('member_type', 'T')->values();
+            $staff = $result->where('member_type', 'T')->values();
 
             return response()->json([
                 'status' => 200,
@@ -4599,7 +4601,7 @@ class LibraryController extends Controller
                 'message' => 'Pending / overdue book report fetched successfully',
                 'data' => [
                     'students' => $students,
-                    'staff'    => $staff
+                    'staff' => $staff
                 ]
             ]);
         } catch (\Exception $e) {
@@ -4634,7 +4636,6 @@ class LibraryController extends Controller
         ]);
     }
 
-
     public function libraryDashboard(Request $request)
     {
         $academicYear = JWTAuth::getPayload()->get('academic_year');
@@ -4665,7 +4666,8 @@ class LibraryController extends Controller
         $pendingBookReturnCount = DB::table('issue_return as ir')
             ->whereDate('ir.due_date', '<', Carbon::today())
             ->where(function ($query) {
-                $query->whereNull('ir.return_date')
+                $query
+                    ->whereNull('ir.return_date')
                     ->orWhere('ir.return_date', '0000-00-00');
             })
             ->count();
@@ -4675,7 +4677,8 @@ class LibraryController extends Controller
             ->join('book_copies', 'a.copy_id', '=', 'book_copies.copy_id')
             ->whereDate('a.due_date', '<', Carbon::today())
             ->where(function ($query) {
-                $query->whereNull('a.return_date')
+                $query
+                    ->whereNull('a.return_date')
                     ->orWhere('a.return_date', '0000-00-00');
             });
 
@@ -4695,7 +4698,6 @@ class LibraryController extends Controller
             ->join('book_copies', 'book.book_id', '=', 'book_copies.book_id')
             ->join('category', 'category.category_id', '=', 'book.category_id')
             ->count();
-
 
         // $availableBooksCount = DB::table('book_copies')
         //     ->where('status', 'A')
@@ -4730,25 +4732,19 @@ class LibraryController extends Controller
             'counts' => [
                 // 'db_name' => DB::connection()->getDatabaseName(),
                 // 'host'    => DB::connection()->getConfig('host'),
-                'subscription_expiry'     => $subscriptionExpiryCount,
+                'subscription_expiry' => $subscriptionExpiryCount,
                 'periodical_not_received' => $periodicalNotReceivedCount,
-
-                'book_return_pending'     => $pendingBookReturnCount,
+                'book_return_pending' => $pendingBookReturnCount,
                 'student_book_return_pending' => $pendingStudentBookReturnCount,
                 'staff_book_return_pending' => $pendingStaffBookReturnCount,
-
-                'total_books'             => $totalBooksCount,
-                'available_books'         => $availableBooksCount,
-
-                'periodicals'             => $periodicalsCount,
-
-                'student_members'         => $studentCount,
-                'teacher_members'         => $teacherCount
-
+                'total_books' => $totalBooksCount,
+                'available_books' => $availableBooksCount,
+                'periodicals' => $periodicalsCount,
+                'student_members' => $studentCount,
+                'teacher_members' => $teacherCount
             ]
         ]);
     }
-
 
     // Health Acitivity Record Dev Name - Mahima Chaudhari  14-03-2026
 
@@ -4758,15 +4754,12 @@ class LibraryController extends Controller
         $user = $this->authenticateUser();
         $academic_year = JWTAuth::getPayload()->get('academic_year');
         $request->validate([
-
-
             'class_id' => 'required|integer',
             'section_id' => 'required|integer'
         ]);
 
         $class_id = $request->class_id;
         $section_id = $request->section_id;
-
 
         // ================= STUDENTS =================
         $students = DB::table('student')
@@ -4801,7 +4794,6 @@ class LibraryController extends Controller
             ->orderBy('sequence')
             ->get();
 
-
         // Check if no active parameter exists
         if ($parameters->isEmpty()) {
             return response()->json([
@@ -4833,7 +4825,6 @@ class LibraryController extends Controller
         $filename = "Health_Activity_{$academic_year}_Class_{$class_id}_Section_{$section_id}.csv";
 
         return response()->stream(function () use ($students, $groups, $groupedParams, $records) {
-
             $file = fopen('php://output', 'w');
 
             // ================= HEADER =================
@@ -4857,7 +4848,6 @@ class LibraryController extends Controller
 
             // ================= ROWS =================
             foreach ($students as $student) {
-
                 // Default empty values
                 $paramValues = [];
 
@@ -4869,7 +4859,6 @@ class LibraryController extends Controller
 
                 // Fill from JSON (latest record only)
                 if (isset($records[$student->student_id])) {
-
                     $jsonData = json_decode($records[$student->student_id]->value, true);
 
                     if (is_array($jsonData)) {
@@ -5139,10 +5128,8 @@ class LibraryController extends Controller
             ->keyBy('test_parameter');
 
         while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-
             // ================= HEADER =================
             if ($row == 1) {
-
                 if (trim($data[0]) != 'Code') {
                     return response()->json([
                         'status' => 422,
@@ -5170,25 +5157,19 @@ class LibraryController extends Controller
 
                 // ================= WARNING ONLY =================
                 if (!empty($missingParameters) && !$forceUpload) {
-
                     fclose($handle);
 
                     return response()->json([
-
                         'status' => 409,
                         'warning' => true,
-
                         'message' => 'Some parameter columns are missing in uploaded file. Do you want to continue upload?',
-
                         // COUNTS
                         'active_parameter_count' => $activeCount,
                         'uploaded_parameter_count' => $uploadedCount,
-
                         // PARAMETER NAMES
                         'active_parameters' => array_values($activeParameterNames),
                         'uploaded_parameters' => array_values($csvParameters),
                         'missing_parameters' => array_values($missingParameters)
-
                     ]);
                 }
 
@@ -5206,14 +5187,13 @@ class LibraryController extends Controller
             }
 
             // ================= INIT =================
-            $paramValues     = [];
-            $paramMeta       = [];
-            $groupData       = [];
+            $paramValues = [];
+            $paramMeta = [];
+            $groupData = [];
             $descriptionData = [];
 
             // ================= LOOP =================
             foreach ($headers as $index => $columnName) {
-
                 $columnName = trim($columnName);
 
                 if (in_array($columnName, [
@@ -5227,7 +5207,6 @@ class LibraryController extends Controller
                 }
 
                 if (isset($parameters[$columnName])) {
-
                     $param = $parameters[$columnName];
                     $value = $data[$index] ?? null;
 
@@ -5241,7 +5220,7 @@ class LibraryController extends Controller
 
                     // GROUP DATA
                     $groupData[$columnName] = [
-                        'group_id'   => $param->group_id,
+                        'group_id' => $param->group_id,
                         'group_name' => $param->group_name
                     ];
 
@@ -5255,13 +5234,13 @@ class LibraryController extends Controller
             // ================= SAVE =================
             DB::table('health_activity_record')->updateOrInsert(
                 [
-                    'student_id'  => $student_id,
+                    'student_id' => $student_id,
                     'academic_yr' => $academic_yr
                 ],
                 [
-                    'value'       => json_encode($paramValues),
-                    'group_data'  => json_encode($groupData),
-                    'param_data'  => json_encode($paramMeta),
+                    'value' => json_encode($paramValues),
+                    'group_data' => json_encode($groupData),
+                    'param_data' => json_encode($paramMeta),
                     'description' => json_encode($descriptionData)
                 ]
             );
@@ -5485,7 +5464,6 @@ class LibraryController extends Controller
         $descriptionData = [];
 
         foreach ($inputData as $key => $value) {
-
             $normalizedKey = strtolower(trim($key));
 
             if (!isset($parameterMap[$normalizedKey])) {
@@ -5576,7 +5554,6 @@ class LibraryController extends Controller
         ]);
     }
 
-
     public function deleteHealthActivityRecord($student_id)
     {
         $user = $this->authenticateUser();
@@ -5660,7 +5637,7 @@ class LibraryController extends Controller
                 'student.last_name',
                 'student.class_id',
                 'student.section_id',
-                // 
+                //
                 'student.roll_no',
                 'class.name as class_name',
                 'section.name as section_name'
@@ -5700,7 +5677,6 @@ class LibraryController extends Controller
 
     public function publishHealthActivityCard(Request $request)
     {
-
         try {
             $class_id = $request->class_id;
             $section_id = $request->section_id;
@@ -5721,7 +5697,6 @@ class LibraryController extends Controller
                 'class_id' => $class_id,
                 'section_id' => $section_id,
                 'publish' => $publish,
-
             ];
 
             // Check if record exists
@@ -5736,7 +5711,6 @@ class LibraryController extends Controller
                     ->where('section_id', $section_id)
                     ->update($data);
             } else {
-
                 DB::table('health_activity_record_publish')->insert($data);
             }
 
@@ -5823,16 +5797,16 @@ class LibraryController extends Controller
             if (!empty($fitnessParam)) {
                 $paramData = [
                     [
-                        "key" => strtolower(str_replace(' ', '_', $fitnessParam)),
-                        "label" => $fitnessParam,
-                        "children" => []
+                        'key' => strtolower(str_replace(' ', '_', $fitnessParam)),
+                        'label' => $fitnessParam,
+                        'children' => []
                     ]
                 ];
 
                 if (!empty($fitnessSubParam)) {
-                    $paramData[0]["children"][] = [
-                        "key" => strtolower(str_replace(' ', '_', $fitnessSubParam)),
-                        "label" => $fitnessSubParam
+                    $paramData[0]['children'][] = [
+                        'key' => strtolower(str_replace(' ', '_', $fitnessSubParam)),
+                        'label' => $fitnessSubParam
                     ];
                 }
             }
@@ -5855,14 +5829,13 @@ class LibraryController extends Controller
             //  FINAL INSERT
             $id = DB::table('health_activity_parameter')->insertGetId([
                 'test_parameter' => $test_parameter,
-                'description' => $description, //  NEW FIELD
+                'description' => $description,  //  NEW FIELD
                 'group_id' => $groupId,
                 'parent_id' => null,
                 'sequence' => $sequence,
                 'depth' => 1,
                 'is_leaf' => 1,
                 'is_active' => 'Y',
-
                 //  MAIN CHANGE
                 'param_data' => json_encode($paramData),
             ]);
@@ -5890,16 +5863,13 @@ class LibraryController extends Controller
         }
     }
 
-
     private function buildTree(array $elements, $parentId = null)
     {
         $branch = [];
 
         foreach ($elements as $element) {
-
             // FIX: strict comparison + handle null
-            if ((int)$element['parent_id'] === (int)$parentId) {
-
+            if ((int) $element['parent_id'] === (int) $parentId) {
                 $children = $this->buildTree($elements, $element['id']);
 
                 $element['children'] = $children ?: [];
@@ -5910,7 +5880,6 @@ class LibraryController extends Controller
 
         return $branch;
     }
-
 
     public function getHealthActivityParameterList()
     {
@@ -5952,7 +5921,6 @@ class LibraryController extends Controller
         }
     }
 
-
     public function updateHealthActivityParameter(Request $request, $id)
     {
         try {
@@ -5962,8 +5930,8 @@ class LibraryController extends Controller
             $description = $request->description ?? null;
 
             $groupId = ($request->group_id === null ||
-                $request->group_id === "" ||
-                $request->group_id === "null")
+                    $request->group_id === '' ||
+                    $request->group_id === 'null')
                 ? 1
                 : $request->group_id;
 
@@ -6017,7 +5985,7 @@ class LibraryController extends Controller
                         'test_parameter' => $test_parameter,
                         'description' => $description,
                         'group_id' => $groupId,
-                        'param_data' => json_encode($paramData), // FIX
+                        'param_data' => json_encode($paramData),  // FIX
                     ]);
 
                 DB::commit();
@@ -6045,7 +6013,7 @@ class LibraryController extends Controller
                         'description' => $description,
                         'group_id' => $groupId,
                         'sequence' => $newSequence,
-                        'param_data' => json_encode($paramData), //  FIX
+                        'param_data' => json_encode($paramData),  //  FIX
                     ]);
 
                 DB::commit();
@@ -6081,7 +6049,7 @@ class LibraryController extends Controller
                     'description' => $description,
                     'group_id' => $groupId,
                     'sequence' => $newSequence,
-                    'param_data' => json_encode($paramData), //  FIX
+                    'param_data' => json_encode($paramData),  //  FIX
                 ]);
 
             DB::commit();
@@ -6160,9 +6128,8 @@ class LibraryController extends Controller
     public function getHealthActivityParameterByGroup($group_id)
     {
         try {
-
             // FIX: treat null as Basic Information (id = 1)
-            if ($group_id === "null" || $group_id === null || $group_id === "") {
+            if ($group_id === 'null' || $group_id === null || $group_id === '') {
                 $group_id = 1;
             }
 
@@ -6211,15 +6178,15 @@ class LibraryController extends Controller
     {
         try {
             $groupId = ($request->group_id === null ||
-                $request->group_id === "" ||
-                $request->group_id === "null")
+                    $request->group_id === '' ||
+                    $request->group_id === 'null')
                 ? 1
                 : $request->group_id;
 
             // normalize
-            $sequence = number_format((float)$request->sequence, 2, '.', '');
+            $sequence = number_format((float) $request->sequence, 2, '.', '');
 
-            $base = (int)$sequence;
+            $base = (int) $sequence;
             $baseFormatted = number_format($base, 2, '.', '');
 
             // get all sequences
@@ -6227,13 +6194,13 @@ class LibraryController extends Controller
                 ->where('group_id', $groupId)
                 ->pluck('sequence')
                 ->map(function ($seq) {
-                    return number_format((float)$seq, 2, '.', '');
+                    return number_format((float) $seq, 2, '.', '');
                 })
                 ->toArray();
 
             // filter same base
             $related = array_filter($existingSequences, function ($seq) use ($base) {
-                return floor((float)$seq) == $base;
+                return floor((float) $seq) == $base;
             });
 
             sort($related);
@@ -6271,7 +6238,7 @@ class LibraryController extends Controller
                 ], 409);
             }
 
-            //suggest next
+            // suggest next
             return response()->json([
                 'status' => true,
                 'message' => "Sequence already exists. Next available is {$nextSequence}",
@@ -6291,8 +6258,8 @@ class LibraryController extends Controller
     {
         try {
             $groupId = ($request->group_id === null ||
-                $request->group_id === "" ||
-                $request->group_id === "null")
+                    $request->group_id === '' ||
+                    $request->group_id === 'null')
                 ? 1
                 : $request->group_id;
 
@@ -6304,7 +6271,7 @@ class LibraryController extends Controller
             return response()->json([
                 'status' => true,
                 'group_id' => $groupId,
-                'last_sequence' => $lastSequence ? (int)$lastSequence : 0
+                'last_sequence' => $lastSequence ? (int) $lastSequence : 0
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -6376,20 +6343,19 @@ class LibraryController extends Controller
         $result = [];
 
         foreach ($groups as $group) {
-
             //  Skip if no parameters exist for this group
             if (!isset($groupedParams[$group->id])) {
                 continue;
             }
 
             $result[] = [
-                'group_id'   => $group->id,
+                'group_id' => $group->id,
                 'group_name' => $group->group_name,
                 'parameters' => $groupedParams[$group->id]->map(function ($param) {
                     return [
-                        'parameter_id'   => $param->id,
+                        'parameter_id' => $param->id,
                         'parameter_name' => $param->test_parameter,
-                        'sequence'       => $param->sequence
+                        'sequence' => $param->sequence
                     ];
                 })->values()
             ];
@@ -6402,7 +6368,6 @@ class LibraryController extends Controller
         ]);
     }
 
-
     public function getTeacherClasseswithSportsTeacher(Request $request)
     {
         $user = $this->authenticateUser();
@@ -6413,34 +6378,32 @@ class LibraryController extends Controller
             ->join('class', 'class.class_id', '=', 'subject.class_id')
             ->join('section', 'section.section_id', '=', 'subject.section_id')
             ->join('teacher', 'teacher.teacher_id', '=', 'subject.teacher_id')
-
             // Class teacher join
             ->leftJoin('class_teachers', function ($join) use ($teacher_id) {
-                $join->on('class_teachers.class_id', '=', 'subject.class_id')
+                $join
+                    ->on('class_teachers.class_id', '=', 'subject.class_id')
                     ->on('class_teachers.section_id', '=', 'subject.section_id')
                     ->where('class_teachers.teacher_id', '=', $teacher_id);
             })
-
             // Join students
             ->leftJoin('student', function ($join) {
-                $join->on('student.class_id', '=', 'subject.class_id')
+                $join
+                    ->on('student.class_id', '=', 'subject.class_id')
                     ->on('student.section_id', '=', 'subject.section_id');
             })
-
             // Join health activity
             ->leftJoin('health_activity_record as har', function ($join) use ($customClaims) {
-                $join->on('har.student_id', '=', 'student.student_id')
+                $join
+                    ->on('har.student_id', '=', 'student.student_id')
                     ->where('har.academic_yr', '=', $customClaims);
             })
-
             ->where('subject.academic_yr', $customClaims)
             ->where('subject.teacher_id', $teacher_id)
-
             ->where(function ($query) use ($teacher_id) {
-                $query->where('subject.teacher_id', $teacher_id)
+                $query
+                    ->where('subject.teacher_id', $teacher_id)
                     ->orWhere('class_teachers.teacher_id', $teacher_id);
             })
-
             ->groupBy(
                 'subject.class_id',
                 'section.section_id',
@@ -6451,7 +6414,6 @@ class LibraryController extends Controller
                 'class.class_id',
                 'class_teachers.teacher_id'
             )
-
             ->select(
                 'subject.class_id',
                 'section.section_id',
@@ -6460,27 +6422,21 @@ class LibraryController extends Controller
                 'teacher.name as teachername',
                 'teacher.teacher_id',
                 'class.class_id',
-
                 DB::raw('CASE WHEN class_teachers.teacher_id IS NOT NULL THEN 1 ELSE 0 END as is_class_teacher'),
-
                 // Total students
                 DB::raw('COUNT(DISTINCT student.student_id) as total_students'),
-
-                //Students having health records
+                // Students having health records
                 DB::raw('COUNT(DISTINCT har.student_id) as health_record_count')
             )
-
             ->orderByRaw('CAST(class.name AS UNSIGNED) ASC')
             ->orderBy('section.name', 'ASC')
             ->get();
-
 
         return response()->json([
             'status' => 200,
             'data' => $classdata,
             'message' => 'Classes for teachers.',
             'success' => true
-
         ]);
     }
 
@@ -6578,7 +6534,6 @@ class LibraryController extends Controller
                 ->where('id', $group_id)
                 ->update([
                     'columns_config' => json_encode($request->columns_config),
-
                 ]);
 
             return response()->json([
@@ -6598,8 +6553,8 @@ class LibraryController extends Controller
         try {
             $groups = DB::table('health_activity_group')
                 ->select('id', 'group_name', 'columns_config')
-                ->whereNotNull('columns_config') // not NULL
-                ->where('columns_config', '!=', '[]') // not empty array
+                ->whereNotNull('columns_config')  // not NULL
+                ->where('columns_config', '!=', '[]')  // not empty array
                 ->orderBy('id', 'asc')
                 ->get();
 
@@ -6661,7 +6616,6 @@ class LibraryController extends Controller
         $result = [];
 
         foreach ($nodes as $node) {
-
             //  If node itself is selected → remove entire subtree
             if (in_array($node['key'], $keys)) {
                 continue;
@@ -6682,7 +6636,7 @@ class LibraryController extends Controller
     {
         try {
             $group_id = $request->group_id;
-            $keys = $request->keys; // ARRAY NOW
+            $keys = $request->keys;  // ARRAY NOW
 
             if (empty($keys) || !is_array($keys)) {
                 return response()->json([
@@ -6741,7 +6695,6 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-
 
     // public function uploadOrUpdateBackground(Request $request)
     // {
@@ -6896,7 +6849,6 @@ class LibraryController extends Controller
     //     }
     // }
 
-
     public function uploadOrUpdateBackground(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -6913,7 +6865,6 @@ class LibraryController extends Controller
         }
 
         try {
-
             // Authenticate user
             $user = $this->authenticateUser();
 
@@ -6964,10 +6915,8 @@ class LibraryController extends Controller
 
             // Handle image upload only if image exists
             if ($request->hasFile('image')) {
-
                 // Delete old file
                 if ($existing && !empty($existing->file_name)) {
-
                     $oldPath = public_path(
                         "BackgroundImages/{$shortName}/{$existing->module}/{$existing->file_name}"
                     );
@@ -7024,7 +6973,6 @@ class LibraryController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',
@@ -7160,7 +7108,6 @@ class LibraryController extends Controller
     //     }
     // }
 
-
     public function getBackgroundImages(Request $request)
     {
         try {
@@ -7174,7 +7121,6 @@ class LibraryController extends Controller
                 ->get();
 
             $data = $images->map(function ($img) use ($shortName) {
-
                 //  encode module for URL
                 $encodedModule = rawurlencode($img->module);
 
@@ -7203,7 +7149,6 @@ class LibraryController extends Controller
             ], 500);
         }
     }
-
 
     public function updateBackgroundImageById(Request $request)
     {
@@ -7317,7 +7262,6 @@ class LibraryController extends Controller
         }
     }
 
-
     public function deleteBackgroundImageById(Request $request)
     {
         // Required field
@@ -7390,13 +7334,11 @@ class LibraryController extends Controller
         }
     }
 
-
     // Super Admin for Background Image Page Type
 
     public function getBackgroundImagesPageType()
     {
         try {
-
             // Authenticate user
             $user = $this->authenticateUser();
 
@@ -7423,7 +7365,6 @@ class LibraryController extends Controller
                 ->get();
 
             $data = $backgrounds->map(function ($item) use ($shortName) {
-
                 return [
                     'id' => $item->id,
                     'module' => $item->module,
@@ -7443,7 +7384,6 @@ class LibraryController extends Controller
                 'data' => $data
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch background images page type',
@@ -7455,7 +7395,6 @@ class LibraryController extends Controller
     public function deletePageType($id)
     {
         try {
-
             // Authenticate user
             $user = $this->authenticateUser();
 
@@ -7491,7 +7430,6 @@ class LibraryController extends Controller
                 'message' => 'Page type removed successfully'
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',
@@ -7534,7 +7472,6 @@ class LibraryController extends Controller
         }
 
         try {
-
             // Auth
             $user = $this->authenticateUser();
 
@@ -7578,7 +7515,6 @@ class LibraryController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Update failed',

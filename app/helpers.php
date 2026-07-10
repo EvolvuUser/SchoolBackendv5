@@ -1392,91 +1392,6 @@ function getIssuedMembers($memberType, $classId = null, $sectionId = null)
     return [];
 }
 
-// if (!function_exists('getSchoolDetails')) {
-//     function getSchoolDetails($shortName = null)
-//     {
-//         try {
-//             static $cache = null;
-//             if ($cache !== null) return $cache;
-
-//             // 🔹 Get JWT payload
-//             $payload = JWTAuth::getPayload();
-
-//             // 🔹 STEP 1: Get short_name
-//             if (!$shortName) {
-//                 $shortName = auth()->user()->short_name
-//                     ?? $payload->get('short_name')
-//                     ?? '';
-//             }
-
-//             // 🔹 STEP 2: Get academic year
-//             $academicYear = $payload->get('academic_year')
-//                 ?? $payload->get('academic_yr')
-//                 ?? '';
-
-//             if (empty($shortName)) {
-//                 \Log::info('Short name missing');
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 3: Switch DB
-//             if (array_key_exists($shortName, config('database.connections'))) {
-//                 config(['database.default' => $shortName]);
-//                 DB::purge($shortName);
-//                 DB::reconnect($shortName);
-//             } else {
-//                 \Log::info('DB not found for short_name: ' . $shortName);
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 4: Fetch correct settings row
-//             $settings = DB::table('settings')
-//                 ->where('short_name', $shortName)
-//                 ->when($academicYear, function ($q) use ($academicYear) {
-//                     $q->where('academic_yr', $academicYear);
-//                 })
-//                 ->orderByDesc('setting_id')
-//                 ->first();
-
-//             if (!$settings) {
-//                 \Log::info('Settings not found');
-//                 return $cache = [];
-//             }
-
-//             // 🔹 STEP 5: Get project URL (for images)
-//             $projectUrl = '';
-
-//             try {
-//                 $url = config('externalapis.EVOLVU_URL') . '/get_school_details';
-
-//                 $response = Http::asMultipart()->post($url, [
-//                     [
-//                         'name' => 'short_name',
-//                         'contents' => $shortName,
-//                     ],
-//                 ]);
-
-//                 $projectUrl = $response->json()[0]['project_url'] ?? '';
-//             } catch (\Exception $e) {
-//                 \Log::warning('Project URL fetch failed');
-//             }
-
-//             // 🔹 FINAL RETURN
-//             return $cache = [
-//                 'institute_name' => $settings->institute_name ?? '',
-//                 'school_name' => $settings->page_title ?? '',
-//                 'address'     => $settings->address ?? '',
-//                 'phone'       => $settings->phone_number ?? '',
-//                 'logo'        => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_logo ?? '') : '',
-//                 'school_img'  => $projectUrl ? $projectUrl . 'uploads/' . ($settings->school_image ?? '') : '',
-//             ];
-//         } catch (\Exception $e) {
-//             \Log::error('Helper Error: ' . $e->getMessage());
-//             return [];
-//         }
-//     }
-// }
-
 if (!function_exists('getSchoolDetails')) {
     function getSchoolDetails($shortName = null)
     {
@@ -1501,10 +1416,10 @@ if (!function_exists('getSchoolDetails')) {
                 return defaultSchool();
             }
 
-            // Cache per school
-            if (isset($cache[$shortName])) {
-                return $cache[$shortName];
-            }
+            // // Cache per school
+            // if (isset($cache[$shortName])) {
+            //     return $cache[$shortName];
+            // }
 
             // Switch DB
             if (array_key_exists($shortName, config('database.connections'))) {
@@ -1532,6 +1447,7 @@ if (!function_exists('getSchoolDetails')) {
                     ->orderByDesc('setting_id')
                     ->first();
             }
+
             $settingsData = getSchoolSettingsData();
 
             $logo = $settingsData->school_logo ?? '';
@@ -1549,13 +1465,13 @@ if (!function_exists('getSchoolDetails')) {
                 ]);
 
                 $responseData = $response->json();
+
                 $projectUrl = $responseData[0]['project_url'] ?? '';
             } catch (\Exception $e) {
                 \Log::warning('Project URL fetch failed: ' . $e->getMessage());
             }
 
-            // FINAL RETURN (COMBINED DATA)
-            return $cache[$shortName] = [
+            $data = [
                 'institute_name' => $settings->institute_name ?? '',
                 'school_name' => $settings->page_title ?? $settings->institute_name ?? '',
                 'address' => $settings->address ?? '',
@@ -1568,8 +1484,12 @@ if (!function_exists('getSchoolDetails')) {
                     : '',
                 'affilication_no' => $settings->affilication_no ?? '',
                 'school_code' => $settings->school_code ?? '',
-                'udise_no' => $settings->udise_no,
+                'udise_no' => $settings->udise_no ?? '',
             ];
+
+            //   dd($data);
+
+            return $data;
         } catch (\Exception $e) {
             \Log::error('getSchoolDetails Error: ' . $e->getMessage());
             return defaultSchool();
@@ -2023,4 +1943,12 @@ if (!function_exists('cleanMessageText')) {
         // Trim leading/trailing spaces
         return trim($text);
     }
+}
+
+function isWhatsappMessageEnabled($slug)
+{
+    return DB::table('whatsapp_message_configuration')
+        ->where('slug', $slug)
+        ->where('is_enabled', 'Y')
+        ->exists();
 }

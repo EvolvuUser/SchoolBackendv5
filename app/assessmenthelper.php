@@ -330,7 +330,6 @@ function check_cbse_rc_publish_of_a_class($class_id, $section_id)
      AND LOWER(e.name) IN ('term 1','term 2','final exam')",
         [$class_id, $section_id]
     );
-    // dd($query);
     $res = $query;
     if (count($res) > 0) {
         return 'Y';
@@ -338,8 +337,6 @@ function check_cbse_rc_publish_of_a_class($class_id, $section_id)
         return 'N';
     }
 }
-
-
 
 function check_rc_publish_of_a_class($class_id, $section_id, $term_id = '')
 {

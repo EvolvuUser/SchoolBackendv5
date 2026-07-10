@@ -948,6 +948,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_category', [AssessmentController::class, 'getCategory']);
         Route::get('/get_allcategoryname', [AssessmentController::class, 'getAllCategoryName']);
         Route::get('/get_all_books', [AssessmentController::class, 'searchBooks']);
+        Route::get('/get_book_titles', [AssessmentController::class, 'getBookTitles']);
 
         // Dynamic field Updation of Student table Dev Name - Manish Kumar Sharma 19-08-2025
         Route::get('/get_studenttablefieldsforUpdate', [StudentController::class, 'getFieldsForUpdateStudent']);
@@ -1590,7 +1591,6 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/update_background_image_by_id', [LibraryController::class, 'updateBackgroundImageById']);
         Route::post('/delete_background_image_by_id', [LibraryController::class, 'deleteBackgroundImageById']);
 
-
         // Certificates Dev Name : Mahima Chaudhari 12-05-2026
         Route::get('/get_events_for_certificates', [CertificateController::class, 'getEventsForCertificate']);
         Route::post('/create_certificates', [CertificateController::class, 'createCertificates']);
@@ -1619,9 +1619,8 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_parent_student_details_idcard', [ParentController::class, 'getParentDetailsForIdCard']);
         Route::post('/save_parent_student_details_idcard', [ParentController::class, 'saveParentStudentIdCardDetails']);
 
-        // 17-06-2026 
+        // 17-06-2026
         Route::get('/get_raise_ticket_list', [ParentController::class, 'getRaiseTicketList']);
-
 
         // Super Admin background image page type Dev Name - Mahima Chaudhari 19-06-2026
         Route::delete('/delete_page_type/{id}', [LibraryController::class, 'deletePageType']);
@@ -1633,6 +1632,8 @@ Route::middleware(['school.db'])->group(function () {
             'update_page_type',
             [LibraryController::class, 'updatePageTypeById']
         );
+
+        Route::post('/student_parent_visit_report', [ParentController::class, 'studentParentVisitReport']);
 
         // Testing
         Route::get('/testPayload', function (Request $request) {
@@ -1724,6 +1725,14 @@ Route::middleware(['school.db'])->group(function () {
         Route::delete('/admin/readmission-management/{id}', [ReadmissionController::class, 'deletereAdmissionForm']);
         Route::patch('/admin/readmission-management/{id}', [ReadmissionController::class, 'updatereAdmissionForm']);
         Route::get('/next_classwithreadmission/{current_class_id}/{student_id}', [ReadmissionController::class, 'getNextClassWithReadmission']);
+
+        // Cbse 9th report card
+        Route::get('/get_cbse9threportcard/{student_id}', [AssessmentController::class, 'getCbse9thReportCard']);
+        Route::get('get_report_cards/{class_id}', [AssessmentController::class, 'getReportCards']);
+
+        // Sync Teachers in Evolvu DB
+        Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
+        Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
     });
 
     // Impersonate

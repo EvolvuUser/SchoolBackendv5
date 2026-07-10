@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Str;
 use DB;
+use Log;
 
 class SendEventNotificationJob implements ShouldQueue
 {
@@ -26,7 +27,7 @@ class SendEventNotificationJob implements ShouldQueue
         $whatsappintegration = $schoolsettings->whatsapp_integration;
         $smsintegration = $schoolsettings->sms_integration;
         $websiteurl = $schoolsettings->website_url;
-        if ($whatsappintegration == 'Y') {
+        if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('event')) {
             foreach ($this->data['login_type'] as $loginType) {
                 if (strtoupper($loginType) === 'P') {
                     foreach ($this->data['class_ids'] as $classId) {
@@ -37,40 +38,66 @@ class SendEventNotificationJob implements ShouldQueue
                             ->get();
 
                         foreach ($parents as $parent) {
-                            $templateName = 'emergency_message';
-                            $parameters = ['Parent,Your are invited for this event: ' . $this->data['title']];
+                            $message = "Dear Parent,\n";
+                            $message .= 'You are invited for this event: ' . cleanMessageText($this->data['title']) . ".\n";
+                            $message .= "Please check the school application for more details.\n";
+                            $message .= '– Evolvu';
 
-                            if ($parent->phone_no) {
-                                $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
+                            Log::info('Parent Event WhatsApp Message', [
+                                'student_id' => $parent->student_id,
+                                'message' => $message
+                            ]);
+
+                            $result = app('App\Http\Services\WhatsAppService')
+                                ->sendTextMessage(
                                     $parent->phone_no,
-                                    $templateName,
-                                    $parameters
+                                    null,
+                                    [$message]
                                 );
 
-                                if (isset($result['code']) && isset($result['message'])) {
-                                    DB::table('redington_webhook_details')->insert([
-                                        'wa_id' => null,
+                            // WhatsApp Failed
+                            if (isset($result['code']) && isset($result['message'])) {
+                                Log::warning('Parent Event WhatsApp Failed', [
+                                    'phone' => $parent->phone_no,
+                                    'response' => $result
+                                ]);
+
+                                DB::table('redington_webhook_details')->updateOrInsert(
+                                    [
                                         'phone_no' => $parent->phone_no,
-                                        'stu_teacher_id' => $parent->student_id,
                                         'notice_id' => $this->data['unq_id'],
-                                        'message_type' => 'event',
+                                        'message_type' => 'event'
+                                    ],
+                                    [
+                                        'wa_id' => null,
+                                        'stu_teacher_id' => $parent->student_id,
                                         'status' => 'failed',
                                         'sms_sent' => 'N',
+                                        'updated_at' => now(),
                                         'created_at' => now()
-                                    ]);
-                                } else {
-                                    $wamid = $result['messages'][0]['id'];
-                                    $phone_no = $result['contacts'][0]['input'];
+                                    ]
+                                );
+                            } else {
+                                $wamid = $result['messages'][0]['id']
+                                    ?? $result['response']['id']
+                                    ?? null;
 
-                                    DB::table('redington_webhook_details')->insert([
-                                        'wa_id' => $wamid,
+                                $phone_no = $result['contacts'][0]['input']
+                                    ?? $parent->phone_no;
+
+                                DB::table('redington_webhook_details')->updateOrInsert(
+                                    [
+                                        'wa_id' => $wamid
+                                    ],
+                                    [
                                         'phone_no' => $phone_no,
                                         'stu_teacher_id' => $parent->student_id,
                                         'notice_id' => $this->data['unq_id'],
                                         'message_type' => 'event',
+                                        'updated_at' => now(),
                                         'created_at' => now()
-                                    ]);
-                                }
+                                    ]
+                                );
                             }
                         }
                     }
@@ -83,39 +110,43 @@ class SendEventNotificationJob implements ShouldQueue
 
                     foreach ($users as $user) {
                         $teacherName = Str::title(strtolower($user->name));
-                        $templateName = 'emergency_message';
-                        $parameters = [$teacherName . ',You are invited for this event:' . $this->data['title']];
 
                         if ($user->phone) {
-                            $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                                $user->phone,
-                                $templateName,
-                                $parameters
-                            );
+                            $message = 'Dear ' . $teacherName . ",\n";
+                            $message .= 'You are invited for this event: ' . cleanMessageText($this->data['title']) . ".\n";
+                            $message .= "Please check the school application for more details.\n";
+                            $message .= '– Evolvu';
 
+                            Log::info('Teacher Event WhatsApp Message', [
+                                'teacher_id' => $user->teacher_id,
+                                'message' => $message
+                            ]);
+
+                            $result = app('App\Http\Services\WhatsAppService')
+                                ->sendTextMessage(
+                                    $user->phone,
+                                    null,
+                                    [$message]
+                                );
+
+                            // WhatsApp Failed
                             if (isset($result['code']) && isset($result['message'])) {
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => null,
-                                    'phone_no' => $user->phone,
-                                    'stu_teacher_id' => $user->teacher_id,
-                                    'notice_id' => $this->data['unq_id'],
-                                    'message_type' => 'event',
-                                    'status' => 'failed',
-                                    'sms_sent' => 'Y',
-                                    'created_at' => now()
-                                ]);
                             } else {
-                                $wamid = $result['messages'][0]['id'];
-                                $phone_no = $result['contacts'][0]['input'];
+                                $wamid = $result['response']['id'] ?? null;
 
-                                DB::table('redington_webhook_details')->insert([
-                                    'wa_id' => $wamid,
-                                    'phone_no' => $phone_no,
-                                    'stu_teacher_id' => $user->teacher_id,
-                                    'notice_id' => $this->data['unq_id'],
-                                    'message_type' => 'event',
-                                    'created_at' => now()
-                                ]);
+                                DB::table('redington_webhook_details')->updateOrInsert(
+                                    [
+                                        'wa_id' => $wamid
+                                    ],
+                                    [
+                                        'phone_no' => $user->phone,
+                                        'stu_teacher_id' => $user->teacher_id,
+                                        'notice_id' => $this->data['unq_id'],
+                                        'message_type' => 'event',
+                                        'updated_at' => now(),
+                                        'created_at' => now()
+                                    ]
+                                );
                             }
                         }
                     }
