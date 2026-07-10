@@ -38,20 +38,22 @@ class SendMessageStudentDailyAttendanceShortage implements ShouldQueue
         $whatsappintegration = $schoolsettings->whatsapp_integration;
         $smsintegration = $schoolsettings->sms_integration;
         Log::info('Hello', ['students' => $students]);
-        if ($whatsappintegration == 'Y') {
+        if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('student_daily_attendance')) {
             $wamids = [];
             $insertedIds = [];
             foreach ($students as $student) {
-                $templateName = 'emergency_message';
-                $parameters = ['Parent, ' . $this->message];
-                Log::info('TestCronJob JOB Failed AFter parameter Whatsapp Message', ['parameter' => $parameters]);
+                $message = "Dear Parent,\n";
+                $message .= cleanMessageText($this->message) . ".\n";
+                $message .= "Please check the school application for more details.\n";
+                $message .= '– Evolvu';
 
                 if ($student->phone_no) {
-                    $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                        $student->phone_no,
-                        $templateName,
-                        $parameters
-                    );
+                    $result = app('App\Http\Services\WhatsAppService')
+                        ->sendTextMessage(
+                            $student->phone_no,
+                            null,
+                            [$message]
+                        );
 
                     if (isset($result['code']) && isset($result['message'])) {
                         $insertedIds[] = DB::table('redington_webhook_details')->insert([
@@ -63,14 +65,13 @@ class SendMessageStudentDailyAttendanceShortage implements ShouldQueue
                             'created_at' => now()
                         ]);
                     } else {
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
+                        $wamid = $result['response']['id'] ?? null;
 
                         $wamids[] = $wamid;  // Store for later processing
 
                         $insertedIds[] = DB::table('redington_webhook_details')->insert([
                             'wa_id' => $wamid,
-                            'phone_no' => $phone_no,
+                            'phone_no' => $student->phone_no,
                             'stu_teacher_id' => $student->student_id,
                             'message' => $this->message,
                             'message_type' => 'student_daily_attendance_shortage',

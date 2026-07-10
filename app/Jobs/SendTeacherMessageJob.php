@@ -5,6 +5,7 @@ namespace App\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use DB;
+use Log;
 
 class SendTeacherMessageJob implements ShouldQueue
 {
@@ -33,19 +34,26 @@ class SendTeacherMessageJob implements ShouldQueue
         $teacherids = implode(',', array_map('intval', $this->teacherIds));
         $teacherphones = DB::select("select phone,teacher_id from teacher where teacher_id IN ($teacherids)");
         $webhookIds = [];
-        if ($whatsappintegration == 'Y') {
+        if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('attendance_not_marked')) {
             foreach ($teacherphones as $teacherphone) {
                 if ($teacherphone->phone) {
                     $phone_no = $teacherphone->phone;
+                    $message = "Dear Staff,\n";
+                    $message .= cleanMessageText($this->message) . ".\n";
+                    $message .= "Please check the school application for more details.\n";
+                    $message .= '– Evolvu';
 
-                    $templateName = 'staff_notice';
-                    $parameters = [$this->message];
+                    Log::info('Staff Notice WhatsApp Message', [
+                        'teacher_id' => $teacherphone->teacher_id ?? null,
+                        'message' => $message
+                    ]);
 
-                    $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                        $phone_no,
-                        $templateName,
-                        $parameters
-                    );
+                    $result = app('App\Http\Services\WhatsAppService')
+                        ->sendTextMessage(
+                            $phone_no,
+                            null,
+                            [$message]
+                        );
 
                     if (isset($result['code']) && isset($result['message'])) {
                         $message_type = $this->message_type;
@@ -60,8 +68,7 @@ class SendTeacherMessageJob implements ShouldQueue
                             'created_at' => now(),
                         ]);
                     } else {
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
+                        $wamid = $result['response']['id'] ?? null;
                         $message_type = $this->message_type;
 
                         $webhookIds[] = DB::table('redington_webhook_details')->insertGetId([

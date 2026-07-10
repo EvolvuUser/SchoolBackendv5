@@ -1944,3 +1944,11 @@ if (!function_exists('cleanMessageText')) {
         return trim($text);
     }
 }
+
+function isWhatsappMessageEnabled($slug)
+{
+    return DB::table('whatsapp_message_configuration')
+        ->where('slug', $slug)
+        ->where('is_enabled', 'Y')
+        ->exists();
+}

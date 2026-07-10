@@ -13295,34 +13295,29 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 $parameters = [ucwords(strtolower($staffdetails->name)) . ',' . $message];
                 Log::info($staffphone);
                 if ($staffphone) {
-                    if ($whatsappIntegration == 'Y') {
-                        $result = $this->whatsAppService->sendTextMessage(
-                            $staffphone,
-                            $templateName,
-                            $parameters
-                        );
-                        if (isset($result['code']) && isset($result['message'])) {
-                            $message_type = 'late_message_for_teacher';
+                    if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('late_message_for_teacher')) {
+                        $message1 = 'Dear ' . ucwords(strtolower($staffdetails->name)) . ",\n";
+                        $message1 .= cleanMessageText(
+                            $message
+                        ) . ".\n";
+                        $message1 .= "Please check the school application for more details.\n";
+                        $message1 .= '– Evolvu';
 
-                            DB::table('redington_webhook_details')->insert([
-                                'wa_id' => null,
-                                'phone_no' => $staffphone,
-                                'message' => $message,
-                                'status' => 'failed',
-                                'sms_sent' => 'N',
-                                'stu_teacher_id' => $teacherid,
-                                'message_type' => $message_type,
-                                'created_at' => now()
-                            ]);
+                        $result = app('App\Http\Services\WhatsAppService')
+                            ->sendTextMessage(
+                                $staffphone,
+                                null,
+                                [$message1]
+                            );
+                        if (isset($result['code']) && isset($result['message'])) {
                         } else {
                             // Proceed if no error
-                            $wamid = $result['messages'][0]['id'];
-                            $phone_no = $result['contacts'][0]['input'];
+                            $wamid = $result['response']['id'] ?? null;
                             $message_type = 'late_message_for_teacher';
 
                             DB::table('redington_webhook_details')->insert([
                                 'wa_id' => $wamid,
-                                'phone_no' => $phone_no,
+                                'phone_no' => $staffphone,
                                 'stu_teacher_id' => $teacherid,
                                 'message' => $message,
                                 'message_type' => $message_type,

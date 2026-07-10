@@ -45,7 +45,7 @@ class SendOutstandingFeeSmsJob implements ShouldQueue
                     $whatsappintegration = $schoolsettings->whatsapp_integration;
                     $smsintegration = $schoolsettings->sms_integration;
                     $schoolemailid = $schoolsettings->school_email_id;
-                    if ($whatsappintegration == 'Y') {
+                    if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('outstanding_fees')) {
                         $message = "Dear Parent,\n";
                         $message .= cleanMessageText($this->message) . ".\n";
                         $message .= "Please check the school application for more details.\n";
