@@ -36,7 +36,7 @@ class StaffShortSMSsavePublish implements ShouldQueue
         $smsintegration = $schoolsettings->sms_integration;
         $websiteurl = $schoolsettings->website_url;
         $staffnoticedata = DB::table('staff_notice')->where('unq_id', $this->unq)->get();
-        if ($whatsappintegration == 'Y') {
+        if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('short_sms_staff')) {
             foreach ($staffnoticedata as $staffnotice) {
                 $teacherphone = DB::table('teacher')
                     ->where('teacher_id', $staffnotice->teacher_id)
@@ -45,38 +45,46 @@ class StaffShortSMSsavePublish implements ShouldQueue
                 if ($teacherphone) {
                     $phone_no = $teacherphone->phone;
 
-                    $templateName = 'staff_notice';
-                    $parameters = [$this->nsmsdata['notice_desc']];
+                    $message = "Dear Staff,\n";
+                    $message .= cleanMessageText($this->nsmsdata['notice_desc']) . ".\n";
+                    $message .= "Please check the school application for more details.\n";
+                    $message .= '– Evolvu';
 
-                    $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                        $phone_no,
-                        $templateName,
-                        $parameters
-                    );
+                    Log::info('Staff WhatsApp Message', [
+                        'phone' => $phone_no,
+                        'message' => $message
+                    ]);
+
+                    $result = app('App\Http\Services\WhatsAppService')
+                        ->sendTextMessage(
+                            $phone_no,
+                            null,
+                            [$message]
+                        );
 
                     if (isset($result['code']) && isset($result['message'])) {
-                        $message_type = 'staff_sms_notice';
+                        Log::warning('Staff WhatsApp Failed', [
+                            'phone' => $phone_no,
+                            'response' => $result
+                        ]);
+
                         DB::table('redington_webhook_details')->insert([
                             'wa_id' => null,
                             'phone_no' => $phone_no,
                             'stu_teacher_id' => $staffnotice->teacher_id,
                             'notice_id' => $staffnotice->t_notice_id,
-                            'message_type' => $message_type,
+                            'message_type' => 'staff_sms_notice',
                             'sms_sent' => 'N',
                             'status' => 'failed',
                             'created_at' => now(),
                         ]);
                     } else {
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
-                        $message_type = 'staff_sms_notice';
-
                         DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $wamid,
+                            'wa_id' => $result['response']['id'] ?? null,
                             'phone_no' => $phone_no,
                             'stu_teacher_id' => $staffnotice->teacher_id,
                             'notice_id' => $staffnotice->t_notice_id,
-                            'message_type' => $message_type,
+                            'message_type' => 'staff_sms_notice',
                             'created_at' => now(),
                         ]);
                     }

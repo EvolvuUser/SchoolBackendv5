@@ -38,35 +38,41 @@ class SendMessageStudentAttendanceShortage implements ShouldQueue
         $whatsappintegration = $schoolsettings->whatsapp_integration;
         $smsintegration = $schoolsettings->sms_integration;
         Log::info('Hello', ['students' => $students]);
-        if ($whatsappintegration == 'Y') {
+        if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('student_attendance_shortage')) {
             $wamids = [];
             foreach ($students as $student) {
-                $templateName = 'emergency_message';
-                $parameters = ['Parent,' . $this->message];
-                Log::info('TestCronJob JOB Failed AFter parameter Whatsapp Message', ['parameter' => $parameters]);
+                $message = "Dear Parent,\n";
+                $message .= cleanMessageText($this->message) . ".\n";
+                $message .= "Please check the school application for more details.\n";
+                $message .= '– Evolvu';
 
-                if ($student->phone_no) {
-                    $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
+                Log::info('TestCronJob WhatsApp Message', [
+                    'student_id' => $student->student_id,
+                    'message' => $message
+                ]);
+
+                $result = app('App\Http\Services\WhatsAppService')
+                    ->sendTextMessage(
                         $student->phone_no,
-                        $templateName,
-                        $parameters
+                        null,
+                        [$message]
                     );
 
-                    if (isset($result['code']) && isset($result['message'])) {
-                    } else {
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
+                if (isset($result['code']) && isset($result['message'])) {
+                } else {
+                    $wamid = $result['response']['id']
+                        ?? null;
+                    $phone_no = $student->phone_no ?? null;
 
-                        $wamids[] = $wamid;  // Store for later processing
+                    $wamids[] = $wamid;  // Store for later processing
 
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $wamid,
-                            'phone_no' => $phone_no,
-                            'stu_teacher_id' => $student->student_id,
-                            'message_type' => 'student_attendance_shortage',
-                            'created_at' => now()
-                        ]);
-                    }
+                    DB::table('redington_webhook_details')->insert([
+                        'wa_id' => $wamid,
+                        'phone_no' => $phone_no,
+                        'stu_teacher_id' => $student->student_id,
+                        'message_type' => 'student_attendance_shortage',
+                        'created_at' => now()
+                    ]);
                 }
             }
             sleep(20);

@@ -43,26 +43,28 @@ class PublishNoticeJob implements ShouldQueue
             $schoolsettings = getSchoolSettingsData();
             $whatsappintegration = $schoolsettings->whatsapp_integration;
             $smsintegration = $schoolsettings->sms_integration;
-            if ($whatsappintegration == 'Y') {
+            if ($whatsappintegration == 'Y' && isWhatsappMessageEnabled('notice_parent')) {
                 foreach ($students as $student) {
-                    $templateName = 'emergency_message';
-                    $parameters = [$parentnotice->notice_desc];
+                    $message = "Dear Parent,\n";
+                    $message .= cleanMessageText(
+                        str_replace('Parent,', '', $parentnotice->notice_desc)
+                    ) . ".\n";
+                    $message .= "Please check the school application for more details.\n";
+                    $message .= '– Evolvu';
 
                     if ($student->phone_no) {
-                        $result = app('App\Http\Services\WhatsAppService')->sendTextMessage(
-                            $student->phone_no,
-                            $templateName,
-                            $parameters
-                        );
+                        $result = app('App\Http\Services\WhatsAppService')
+                            ->sendTextMessage(
+                                $student->phone_no,
+                                null,
+                                [$message]
+                            );
 
                         if (isset($result['code']) && isset($result['message'])) {
                         } else {
-                            $wamid = $result['messages'][0]['id'];
-                            $phone_no = $result['contacts'][0]['input'];
-
                             DB::table('redington_webhook_details')->insert([
-                                'wa_id' => $wamid,
-                                'phone_no' => $phone_no,
+                                'wa_id' => $result['response']['id'] ?? null,
+                                'phone_no' => $student->phone_no,
                                 'stu_teacher_id' => $student->student_id,
                                 'notice_id' => $parentnotice->notice_id,
                                 'message_type' => 'notice',

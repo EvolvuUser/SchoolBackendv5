@@ -520,37 +520,32 @@ class NewController extends Controller
                 //  dd($teacherNameCamel);
                 $teacherphoneno = $teacherdetails->phone;
                 if ($teacherphoneno) {
-                    if ($whatsappIntegration == 'Y') {
-                        $templateName = 'emergency_message';
-                        $parameters = [$teacherNameCamel . ', ' . $remark];
-                        // Log::info($teacherphoneno);
+                    if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('remark_teacher')) {
+                        $message = 'Dear ' . $teacherNameCamel . ",\n";
+                        $message .= cleanMessageText($remark) . ".\n";
+                        $message .= "Please check the school application for more details.\n";
+                        $message .= '– Evolvu';
+
+                        Log::info('Teacher Remark WhatsApp Message', [
+                            'teacher_name' => $teacherNameCamel,
+                            'message' => $message
+                        ]);
+
                         $result = $this->whatsAppService->sendTextMessage(
                             $teacherphoneno,
-                            $templateName,
-                            $parameters
+                            null,
+                            [$message]
                         );
                         // Log::info("Failed message",$result);
                         if (isset($result['code']) && isset($result['message'])) {
-                            $message_type = 'teacher_remark';
-                            DB::table('redington_webhook_details')->insert([
-                                'wa_id' => null,
-                                'phone_no' => $teacherphoneno,
-                                'stu_teacher_id' => $teacherid,
-                                'notice_id' => $id,
-                                'message_type' => $message_type,
-                                'sms_sent' => 'N',
-                                'status' => 'failed',
-                                'created_at' => now()
-                            ]);
                         } else {
                             // Proceed if no error
-                            $wamid = $result['messages'][0]['id'];
-                            $phone_no = $result['contacts'][0]['input'];
+                            $wamid = $result['response']['id'] ?? null;
                             $message_type = 'teacher_remark';
 
                             DB::table('redington_webhook_details')->insert([
                                 'wa_id' => $wamid,
-                                'phone_no' => $phone_no,
+                                'phone_no' => $teacherphoneno,
                                 'stu_teacher_id' => $teacherid,
                                 'notice_id' => $id,
                                 'message_type' => $message_type,
@@ -757,35 +752,30 @@ ORDER BY Z.t_remark_id DESC;");
             }
             $teacherphoneno = $teacherdetails->phone;
             if ($teacherphoneno) {
-                if ($whatsappIntegration == 'Y') {
-                    $templateName = 'emergency_message';
-                    $parameters = [$teacherNameCamel . ', ' . $remarkdetails->remark_desc];
+                if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('remark_teacher')) {
+                    $message = 'Dear ' . $teacherNameCamel . ",\n";
+                    $message .= cleanMessageText($remarkdetails->remark_desc) . ".\n";
+                    $message .= "Please check the school application for more details.\n";
+                    $message .= '– Evolvu';
+
+                    Log::info('Teacher Remark WhatsApp Message', [
+                        'teacher_name' => $teacherNameCamel,
+                        'message' => $message
+                    ]);
+
                     $result = $this->whatsAppService->sendTextMessage(
                         $teacherphoneno,
-                        $templateName,
-                        $parameters
+                        null,
+                        [$message]
                     );
                     if (isset($result['code']) && isset($result['message'])) {
-                        $message_type = 'teacher_remark';
-
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => null,
-                            'phone_no' => $phone_no,
-                            'stu_teacher_id' => $remarkdetails->teachers_id,
-                            'notice_id' => $id,
-                            'status' => 'failed',
-                            'sms_sent' => 'N',
-                            'message_type' => $message_type,
-                            'created_at' => now()
-                        ]);
                     } else {
-                        $wamid = $result['messages'][0]['id'];
-                        $phone_no = $result['contacts'][0]['input'];
+                        $wamid = $result['response']['id'] ?? null;
                         $message_type = 'teacher_remark';
 
                         DB::table('redington_webhook_details')->insert([
                             'wa_id' => $wamid,
-                            'phone_no' => $phone_no,
+                            'phone_no' => $teacherphoneno,
                             'stu_teacher_id' => $remarkdetails->teachers_id,
                             'notice_id' => $id,
                             'message_type' => $message_type,
@@ -2888,7 +2878,7 @@ ORDER BY Z.t_remark_id DESC;");
                         ->first();
                     $phone = $studentcontactdata->phone_no ?? null;
                     if ($phone) {
-                        if ($whatsappIntegration == 'Y') {
+                        if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('remark_student')) {
                             $message = "Dear Parent,\n";
                             $message .= cleanMessageText($request->remark_desc) . ".\n";
                             $message .= "Please check the school application for more details.\n";
@@ -2935,16 +2925,6 @@ ORDER BY Z.t_remark_id DESC;");
 
                     foreach ($tokenData as $item) {
                         if (!empty($item->token)) {
-                            // DB::table('daily_notifications')->insert([
-                            //     'student_id'        => $item->student_id,
-                            //     'parent_id'         => $item->parent_teacher_id,
-                            //     'homework_id'       => 0,
-                            //     'remark_id'         => $remark_id,
-                            //     'notice_id'         => 0,
-                            //     'notes_id'          => 0,
-                            //     'notification_date' => now()->toDateString(), // YYYY-MM-DD
-                            //     'token'             => $item->token,
-                            // ]);
                         }
                         $data = [
                             'token' => $item->token,  // FCM token of parent/student device
@@ -3217,35 +3197,41 @@ ORDER BY Z.t_remark_id DESC;");
             // dd($studentcontactdata);
             $phone = $studentcontactdata->phone_no ?? null;
             if ($phone) {
-                if ($whatsappIntegration == 'Y') {
-                    $templateName = 'emergency_message';
-                    $parameters = [$remarkdata->remark_desc];
+                if ($whatsappIntegration == 'Y' && isWhatsappMessageEnabled('remark_student')) {
+                    $message = "Dear Parent,\n";
+                    $message .= cleanMessageText($remarkdata->remark_desc) . ".\n";
+                    $message .= "Please check the school application for more details.\n";
+                    $message .= '– Evolvu';
+
+                    Log::info('Remark Student WhatsApp Message', [
+                        'student_id' => $remarkdata->student_id,
+                        'message' => $message
+                    ]);
 
                     $result = $this->whatsAppService->sendTextMessage(
                         $phone,
-                        $templateName,
-                        $parameters
+                        null,
+                        [$message]
                     );
+
+                    // WhatsApp Failed
                     if (isset($result['code']) && isset($result['message'])) {
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => null,
-                            'phone_no' => $phone,
-                            'stu_teacher_id' => $remarkdata->student_id,
-                            'notice_id' => $remarkdata->remark_id,
-                            'status' => 'failed',
-                            'sms_sent' => 'N',
-                            'message_type' => 'remarkforstudent',
-                            'created_at' => now()
-                        ]);
                     } else {
-                        DB::table('redington_webhook_details')->insert([
-                            'wa_id' => $result['messages'][0]['id'] ?? null,
-                            'phone_no' => $result['contacts'][0]['input'] ?? $phone,
-                            'stu_teacher_id' => $remarkdata->student_id,
-                            'notice_id' => $remarkdata->remark_id,
-                            'message_type' => 'remarkforstudent',
-                            'created_at' => now()
-                        ]);
+                        $wamid = $result['response']['id'] ?? null;
+
+                        DB::table('redington_webhook_details')->updateOrInsert(
+                            [
+                                'wa_id' => $wamid
+                            ],
+                            [
+                                'phone_no' => $phone,
+                                'stu_teacher_id' => $remarkdata->student_id,
+                                'notice_id' => $remarkdata->remark_id,
+                                'message_type' => 'remarkforstudent',
+                                'updated_at' => now(),
+                                'created_at' => now()
+                            ]
+                        );
                     }
                 }
                 if ($smsIntegration == 'Y') {
