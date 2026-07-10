@@ -109,16 +109,20 @@ class IssuedBookMessageJob implements ShouldQueue
         $whatsappFailed = false;
 
         // WhatsApp
-        if ($schoolSettings->whatsapp_integration === 'Y') {
-            $result = app(WhatsAppService::class)->sendTextMessage(
-                $member->phone_no,
-                'emergency_message',
-                // ['Member, ' . $member->book_title . ' book has been issued']
-                [
-                    $member->member_name . ', '
-                    . $member->book_title . ' book has been issued'
-                ]
-            );
+        if ($schoolSettings->whatsapp_integration === 'Y' && isWhatsappMessageEnabled('bookissued')) {
+            $message = 'Dear ' . ucwords(strtolower($member->member_name)) . ",\n";
+            $message .= cleanMessageText(
+                $member->book_title . ' book has been issued'
+            ) . ".\n";
+            $message .= "Please check the school application for more details.\n";
+            $message .= '– Evolvu';
+
+            $result = app(WhatsAppService::class)
+                ->sendTextMessage(
+                    $member->phone_no,
+                    null,
+                    [$message]
+                );
 
             // Insert webhook log
             if (isset($result['code']) && isset($result['message'])) {
@@ -137,8 +141,8 @@ class IssuedBookMessageJob implements ShouldQueue
                 ]);
             } else {
                 DB::table('redington_webhook_details')->insert([
-                    'wa_id' => $result['messages'][0]['id'] ?? null,
-                    'phone_no' => $result['contacts'][0]['input'] ?? $member->phone_no,
+                    'wa_id' => $result['response']['id'] ?? null,
+                    'phone_no' => $member->phone_no ?? null,
                     'stu_teacher_id' => $memberId,
                     'notice_id' => $copyId,
                     'message_type' => 'bookissued',
