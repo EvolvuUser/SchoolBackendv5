@@ -1382,6 +1382,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/library/issued_books', [LibraryController::class, 'getIssuedBooksByMember']);
         Route::post('/library/get_book_by_copy', [LibraryController::class, 'getBookByAccession']);
         Route::get('/library/get_due_date/{memberType}/{issueDate}', [LibraryController::class, 'getDueDate']);
+        Route::get('/library/get_due_date_dynamic/{memberType}/{bookId}/{issueDate}', [LibraryController::class, 'getDueDateDynamic']);
         Route::post('/issue_book', [LibraryController::class, 'issueBook']);
 
         // Principal Reports (HSCS) Dev Name - Mahima Chaudhari 24-11-2025

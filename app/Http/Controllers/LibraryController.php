@@ -1107,6 +1107,48 @@ class LibraryController extends Controller
         }
     }
 
+    public function getDueDateDynamic($memberType, $bookId, $issueDate)
+    {
+        if (!in_array($memberType, ['S', 'T'])) {
+            return response()->json([
+                'error' => 'Invalid member type'
+            ], 400);
+        }
+
+        try {
+            // Get borrow days from book table
+            $book = DB::table('book')
+                ->where('book_id', $bookId)
+                ->select('days_borrow', 'days_borrow_staff')
+                ->first();
+
+            if (!$book) {
+                return response()->json([
+                    'error' => 'Book not found.'
+                ], 404);
+            }
+
+            // Calculate borrow days based on member type
+            $borrowDays = ($memberType == 'S')
+                ? $book->days_borrow
+                : $book->days_borrow_staff;
+
+            // Calculate due date
+            $dueDate = date(
+                'd-m-Y',
+                strtotime($issueDate . " +{$borrowDays} days")
+            );
+
+            return response()->json([
+                'due_date' => $dueDate
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Invalid date format'
+            ], 400);
+        }
+    }
+
     private function authenticateUser()
     {
         try {
