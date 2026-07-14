@@ -1839,3 +1839,5 @@ Route::get('/test-log', function () {
         'Content-Type' => 'text/plain',
     ]);
 });
+
+Route::post('validate_user', [ParentController::class, 'validateUser']);

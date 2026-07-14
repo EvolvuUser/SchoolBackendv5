@@ -24,6 +24,83 @@ class ParentController extends Controller
         }
     }
 
+    public function validateUser(request $request)
+    {
+        try {
+            $fetch = strtolower($request->input('fetch', 'all'));
+
+            $db = DB::connection('school_database');
+
+            $response = [
+                'status' => true
+            ];
+
+            // Fetch School Data
+            if (in_array($fetch, ['school', 'all'])) {
+                $request->validate([
+                    'user_id' => 'required'
+                ]);
+
+                $schools = $db
+                    ->table('user_schoolwise as us')
+                    ->join('school as s', 's.school_id', '=', 'us.school_id')
+                    ->where('us.user_id', $request->user_id)
+                    ->select('s.*')
+                    ->get();
+
+                if ($schools->isEmpty()) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Not a valid user'
+                    ], 404);
+                }
+
+                $response['schools'] = $schools;
+            }
+
+            // Fetch Flutter Version
+            if (in_array($fetch, ['flutter', 'all'])) {
+                $request->validate([
+                    'type' => 'required|string'
+                ]);
+
+                $version = $db
+                    ->table('flutter_apk_version')
+                    ->where('type', $request->type)
+                    ->orderByDesc('major')
+                    ->orderByDesc('minor')
+                    ->orderByDesc('fixes')
+                    ->selectRaw("
+                    CONCAT(major,'.',minor,'.',fixes) AS latest_version,
+                    release_notes,
+                    forced_update
+                ")
+                    ->first();
+
+                $response['flutter'] = $version;
+            }
+
+            return response()->json($response);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Validate User API Error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong.',
+            ], 500);
+        }
+    }
+
     public function getParentDetails(Request $request)
     {
         try {
