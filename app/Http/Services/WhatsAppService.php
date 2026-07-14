@@ -4,6 +4,7 @@ namespace App\Http\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use DB;
 
 class WhatsAppService
 {
@@ -14,8 +15,12 @@ class WhatsAppService
     public function __construct()
     {
         $this->apiUrl = 'https://mediaapi.smsgupshup.com/GatewayAPI/rest';
-        $this->userId = '2000266228';
-        $this->password = 'PzMg*u$Y';
+        $settings = DB::table('school_settings')
+            ->where('is_active', 'Y')
+            ->first();
+
+        $this->userId = $settings->user_id ?? null;
+        $this->password = $settings->password ?? null;
     }
 
     public function sendTextMessage($phoneNumber, $templateName = null, $parameters = [])
