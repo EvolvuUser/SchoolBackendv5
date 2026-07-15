@@ -27,60 +27,28 @@ class ParentController extends Controller
     public function validateUser(request $request)
     {
         try {
-            $fetch = strtolower($request->input('fetch', 'all'));
+            $request->validate([
+                'user_id' => 'required'
+            ]);
 
-            $db = DB::connection('school_database');
+            $schools = DB::connection('school_database')
+                ->table('user_schoolwise as us')
+                ->join('school as s', 's.school_id', '=', 'us.school_id')
+                ->where('us.user_id', $request->user_id)
+                ->select('s.*')
+                ->get();
 
-            $response = [
-                'status' => true
-            ];
-
-            // Fetch School Data
-            if (in_array($fetch, ['school', 'all'])) {
-                $request->validate([
-                    'user_id' => 'required'
-                ]);
-
-                $schools = $db
-                    ->table('user_schoolwise as us')
-                    ->join('school as s', 's.school_id', '=', 'us.school_id')
-                    ->where('us.user_id', $request->user_id)
-                    ->select('s.*')
-                    ->get();
-
-                if ($schools->isEmpty()) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Not a valid user'
-                    ], 404);
-                }
-
-                $response['schools'] = $schools;
+            if ($schools->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Not a valid user'
+                ], 404);
             }
 
-            // Fetch Flutter Version
-            if (in_array($fetch, ['flutter', 'all'])) {
-                $request->validate([
-                    'type' => 'required|string'
-                ]);
-
-                $version = $db
-                    ->table('flutter_apk_version')
-                    ->where('type', $request->type)
-                    ->orderByDesc('major')
-                    ->orderByDesc('minor')
-                    ->orderByDesc('fixes')
-                    ->selectRaw("
-                    CONCAT(major,'.',minor,'.',fixes) AS latest_version,
-                    release_notes,
-                    forced_update
-                ")
-                    ->first();
-
-                $response['flutter'] = $version;
-            }
-
-            return response()->json($response);
+            return response()->json([
+                'status' => true,
+                'schools' => $schools
+            ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'status' => false,
@@ -96,7 +64,57 @@ class ParentController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => 'Something went wrong.',
+                'message' => 'Something went wrong.'
+            ], 500);
+        }
+    }
+
+    public function getChilds(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+            $parent_id = JWTAuth::getPayload()->get('reg_id');
+
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->leftJoin('class_teachers', function ($join) {
+                    $join
+                        ->on('student.class_id', '=', 'class_teachers.class_id')
+                        ->on('student.section_id', '=', 'class_teachers.section_id');
+                })
+                ->leftJoin('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
+                ->where('student.parent_id', $parent_id)
+                ->where('student.IsDelete', 'N')
+                ->where('student.academic_yr', $academic_yr)
+                ->where('student.isActive', 'Y')
+                ->select(
+                    'student.*',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'class_teachers.*',
+                    'teacher.name as class_teacher'
+                )
+                ->get();
+
+            if ($students->isNotEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Students fetched successfully.',
+                    'data' => $students
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Student data not found in current academic year.',
+                'data' => []
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }
