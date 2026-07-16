@@ -667,5 +667,3 @@ foreach ($student_info as $row1):
 </body>
 </html> 
 <?php endforeach; ?>
-</head>
-<body>

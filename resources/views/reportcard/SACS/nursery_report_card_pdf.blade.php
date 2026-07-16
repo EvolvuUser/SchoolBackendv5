@@ -334,7 +334,7 @@ foreach ($student_info as $row1):
 										$date_to = date_format(date_create(substr($date_from, 0, 4) . '-09-30'), 'Y-m-d');  // Creating date to as last day of sep;
 									} elseif ($term->term_id == 2) {
 										$date_from = date_format(date_create(substr($date_from, 0, 4) . '-10-01'), 'Y-m-d');  // Creating date to as first day of Oct;
-										$date_to = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_to;
+										$date_to = getSettingsDataForAcademicYr($row1->academic_yr)->academic_yr_to;
 									}
 									if (get_total_stu_attendance_till_a_month($row1->student_id, $date_from, $date_to, $row1->academic_yr) <> '') {
 										echo get_total_stu_attendance_till_a_month($row1->student_id, $date_from, $date_to, $row1->academic_yr) . '/' . get_total_stu_workingday_till_a_month($row1->student_id, $date_from, $date_to, $row1->academic_yr);
@@ -368,8 +368,8 @@ foreach ($student_info as $row1):
                         <td  class="signtd" style=""><b>Promoted To</b></td>
                          <?php
 						$promote_to = '';
-						if (isset($term_list[1]['term_id']))
-							$promote_to = $this->assessment_model->get_promote_to_of_a_student($row1['student_id'], $term_list[1]['term_id']);
+						if (isset($term_list[1]->term_id))
+							$promote_to = get_promote_to_of_a_student($row1->student_id, $term_list[1]->term_id);
 						?>
 							<td class="td2" colspan="2" style="text-align:center;font-size:13px"><?php echo $promote_to; ?></td>
                     </tr>
@@ -378,7 +378,7 @@ foreach ($student_info as $row1):
                       
 							<td class="td2" colspan="2" style="text-align:center;font-size:13px">
 							<?php
-							$reopen_date = $this->assessment_model->get_school_reopen_date($row1['class_id'], $row1['section_id']);
+							$reopen_date = get_school_reopen_date($row1->class_id, $row1->section_id);
 							if ($reopen_date <> NULL && $reopen_date <> '0000-00-00')
 								echo date_format(date_create($reopen_date), 'd-m-Y');
 							?>
