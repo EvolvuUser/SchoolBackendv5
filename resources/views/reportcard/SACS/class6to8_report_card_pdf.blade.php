@@ -22,52 +22,55 @@
     object-fit: cover;
     background-repeat:no-repeat;
 }
-      .school{
-        color:red;
-        font-family: cursive !important;
-    } 
     p{
         color:blue;
-        font-family: Comic Sans MS;
+        font-family: Comic Sans MS, DejaVu Sans, sans-serif;
+    }
+    h3, h4 {
+        margin: 0;
     }
     h4{
         color:red;
-        font-family: 'Comic Sans MS' !important;
+        font-family: 'Comic Sans MS', DejaVu Sans, sans-serif !important;
     }
    
    .mark_heading_td{
 		width: auto;
 		max-width: 1px;
 		vertical-align:middle;
-		height:25px;
+		height:21px;
 		border:1px solid grey;
 		word-wrap:break-word;
-		font-size:12px;
+		font-size:11px;
+		line-height:1.1;
 	} 
     .th{
         vertical-align:middle;
         text-align:center;
-        height:25px;
+        height:21px;
         border:1px solid grey;
         text-transform: uppercase;
-		font-size:12px;
+		font-size:11px;
+        line-height:1.1;
     }
     .th1{
         vertical-align:middle;
         text-align:center;
-        height:25px;
-		font-size:12px;
+        height:21px;
+		font-size:11px;
         border:1px solid grey;
         text-transform: uppercase;
         color:red;
-        padding-top: 8px;
+        padding-top: 4px;
+        line-height:1.1;
     }
 	
     .td{
         vertical-align:middle;
-        height:25px;
+        height:21px;
         border:1px solid grey;
-		font-size:12px;
+		font-size:11px;
+        line-height:1.05;
 		
     }
     .lasttd{
@@ -83,14 +86,42 @@
         border-bottom:1px solid #000;
         padding:4px;
     }
-	.pdfdiv {
-	   page-break-after: always;
-	}
-	.pdfdiv:last-child{
-		page-break-after: avoid;
-		page-break-inside: avoid;
-		margin-bottom: 0px;
-	}
+    .bottom-summary {
+        width:85%;
+        margin-left:5%;
+        margin-right:auto;
+        border-spacing:0;
+        background-color:white;
+    }
+    .bottom-summary-label {
+        font-size:12px;
+        text-align:left;
+        white-space:nowrap;
+        vertical-align:middle;
+    }
+    .bottom-summary-value {
+        font-size:12px;
+        text-align:center;
+        vertical-align:middle;
+    }
+    .attendance-section {
+        margin-bottom: 0;
+    }
+    .signature-section {
+        margin-top: -2px;
+    }
+    .signature-section td {
+        padding-top: 1px;
+        padding-bottom: 1px;
+    }
+    .pdfdiv {
+        page-break-after: always;
+    }
+    .pdfdiv:last-child {
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        margin-bottom: 0;
+    }
  </style> 
 <?php
 $student_info1 = array();
@@ -128,8 +159,8 @@ foreach ($student_info as $row1):
 	<body>
     <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
-	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
-        <table border="0" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 20%;">
+	<div class="col-md-8 table-responsive bgimg" style="text-align:center;">
+        <table border="0" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 19%;">
 			<tr>
 				<td style="width:30%;text-align: left;font-size:14px;" >
 					UDISE No. - 27251501213
@@ -159,7 +190,7 @@ foreach ($student_info as $row1):
             <tr>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-size:15px;width: 35%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Gaurdian's Name : </td>
+                        <td style="font-size:15px;width: 35%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's /Father's /Gaurdian's Name : </td>
                         <td style="font-size:15px;width: 45%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:15px;margin-left: 10px;word-wrap:break-word;width:12%;padding-top: 8px; padding-bottom:8px;">GR No.: </td>
@@ -184,10 +215,10 @@ foreach ($student_info as $row1):
             </tr>
 		</table>
 		<?php
-		$scholastic_table_width = '88%';
+		$scholastic_table_width = '86%';
 		$term_list = get_published_terms($row1['class_id'], $row1['section_id']);
 		if (count($term_list) == 1)
-			$scholastic_table_width = '85%';
+			$scholastic_table_width = '83%';
 
 		?>
 		<table class="table-responsive" style="width:<?php echo $scholastic_table_width; ?>;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;border: 0px solid black !important;" cellpadding="0" cellspacing="0">
@@ -748,7 +779,7 @@ foreach ($student_info as $row1):
             </tr>
         </table>
         
-			<table class="table-responsive" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="10" cellspacing="10" border="0">
+			<table class="table-responsive bottom-summary" cellpadding="8" cellspacing="6" border="0">
 			<tr> 
 				<td>
 					<?php
@@ -769,8 +800,8 @@ foreach ($student_info as $row1):
 					?>
 			       <table class="table-responsive" width="<?php echo $width; ?>" style="border-spacing: 0px;background-color:white;">
                         <tr>
-            				<td style="font-size:12px;text-align:left;white-space:nowrap;width: 25%;"><b>Class Teacher's Remark :</b></td>
-            				<td style="font-size:12px;">
+            				<td class="bottom-summary-label" style="width: 25%;"><b>Class Teacher's Remark :</b></td>
+            				<td class="bottom-summary-value">
                 				<div class="statistics_line">
                 				<?php
 								echo $remark_string;
@@ -782,16 +813,6 @@ foreach ($student_info as $row1):
         		</td>
 			</tr>
 			<?php
-
-			/*
-			 * if(count($term_list)==1){
-			 * 	$date_from=get_academic_yr_from_of_particular_yr($acd_yr);
-			 * 	$date_to=date_format(date_create(substr($date_from,0,4)."-09-30") , 'Y-m-d') ; // Creating date to as last day of sep;
-			 * }elseif(count($term_list)==2){
-			 * 	$date_from=date_format(date_create(substr($date_from,0,4)."-10-01") , 'Y-m-d') ; // Creating date to as first day of Oct;
-			 * 	$date_to=get_academic_yr_to_of_particular_yr($acd_yr);
-			 * }
-			 */
 			$date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;
 			if (count($term_list) == 1) {
 				$date_to = date_format(date_create(substr($date_from, 0, 4) . '-09-30'), 'Y-m-d');  // Creating date to as last day of sep;
@@ -801,10 +822,10 @@ foreach ($student_info as $row1):
 			?>
         <tr> 
             <td>
-				<table class="table-responsive" style="width:100%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;">
+				<table class="table-responsive attendance-section" style="width:100%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;">
                     <tr>
-						<td style="font-size:12px;text-align:left;white-space:nowrap;width: 10% !important" ><b> Attendance : </b></td>
-    					<td style="font-size:12px;white-space:nowrap;width:20%!important;margin-right:2%;text-align:center;" ><div class="statistics_line">
+						<td class="bottom-summary-label" style="width: 10% !important" ><b> Attendance : </b></td>
+    					<td class="bottom-summary-value" style="white-space:nowrap;width:20%!important;margin-right:2%;" ><div class="statistics_line">
 						<?php
 						if (get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) <> '') {
 							echo get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) . '/' . get_total_stu_workingday_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']);
@@ -813,20 +834,20 @@ foreach ($student_info as $row1):
 							</div> 
 						</td>
 						<?php if (count($term_list) > 1) { ?>
-							<td style="font-size:12px;width: 15%;"><b> Promoted To :</b></td>
+							<td class="bottom-summary-label" style="width: 15%;"><b> Promoted To :</b></td>
 							<?php
 							$promote_to = '';
 							if (isset($term_list[1]->term_id))
 								$promote_to = get_promote_to_of_a_student($row1['student_id'], $term_list[1]->term_id);
 
 							?>
-							<td style="margin-left:5%;text-align:center;font-size:12px;">
+							<td class="bottom-summary-value" style="margin-left:5%;">
 								<div class="statistics_line">
 									<?php echo $promote_to; ?>&nbsp;
 								</div> 
 							</td>
-							<td style="font-size:12px;width: 21%;"><b> Date Of Reopening :</b></td>
-							<td style="text-align:center;font-size:12px;">
+							<td class="bottom-summary-label" style="width: 21%;"><b> Date Of Reopening :</b></td>
+							<td class="bottom-summary-value">
 								<div class="statistics_line">
 									<?php
 									$reopen_date = get_school_reopen_date($row1['class_id'], $row1['section_id']);
@@ -846,8 +867,7 @@ foreach ($student_info as $row1):
              
         </tr>
 		</table>
-        <br>
-		<table class="table-responsive" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
+		<table class="table-responsive signature-section" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="6">
 			<tr>
 				<td style="width:35%;">
 					<table class="table-responsive" width="90%" cellspacing="0">

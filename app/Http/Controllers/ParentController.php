@@ -24,6 +24,101 @@ class ParentController extends Controller
         }
     }
 
+    public function validateUser(request $request)
+    {
+        try {
+            $request->validate([
+                'user_id' => 'required'
+            ]);
+
+            $schools = DB::connection('school_database')
+                ->table('user_schoolwise as us')
+                ->join('school as s', 's.school_id', '=', 'us.school_id')
+                ->where('us.user_id', $request->user_id)
+                ->select('s.*')
+                ->get();
+
+            if ($schools->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Not a valid user'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'schools' => $schools
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Validate User API Error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong.'
+            ], 500);
+        }
+    }
+
+    public function getChilds(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+            $academic_yr = JWTAuth::getPayload()->get('academic_year');
+            $parent_id = JWTAuth::getPayload()->get('reg_id');
+
+            $students = DB::table('student')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->leftJoin('class_teachers', function ($join) {
+                    $join
+                        ->on('student.class_id', '=', 'class_teachers.class_id')
+                        ->on('student.section_id', '=', 'class_teachers.section_id');
+                })
+                ->leftJoin('teacher', 'class_teachers.teacher_id', '=', 'teacher.teacher_id')
+                ->where('student.parent_id', $parent_id)
+                ->where('student.IsDelete', 'N')
+                ->where('student.academic_yr', $academic_yr)
+                ->where('student.isActive', 'Y')
+                ->select(
+                    'student.*',
+                    'class.name as class_name',
+                    'section.name as section_name',
+                    'class_teachers.*',
+                    'teacher.name as class_teacher'
+                )
+                ->get();
+
+            if ($students->isNotEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Students fetched successfully.',
+                    'data' => $students
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Student data not found in current academic year.',
+                'data' => []
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getParentDetails(Request $request)
     {
         try {

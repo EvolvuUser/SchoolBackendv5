@@ -1382,6 +1382,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/library/issued_books', [LibraryController::class, 'getIssuedBooksByMember']);
         Route::post('/library/get_book_by_copy', [LibraryController::class, 'getBookByAccession']);
         Route::get('/library/get_due_date/{memberType}/{issueDate}', [LibraryController::class, 'getDueDate']);
+        Route::get('/library/get_due_date_dynamic/{memberType}/{bookId}/{issueDate}', [LibraryController::class, 'getDueDateDynamic']);
         Route::post('/issue_book', [LibraryController::class, 'issueBook']);
 
         // Principal Reports (HSCS) Dev Name - Mahima Chaudhari 24-11-2025
@@ -1733,6 +1734,9 @@ Route::middleware(['school.db'])->group(function () {
         // Sync Teachers in Evolvu DB
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
+
+        // Parent App APIS
+        Route::get('get_childs', [ParentController::class, 'getChilds']);
     });
 
     // Impersonate
@@ -1839,3 +1843,5 @@ Route::get('/test-log', function () {
         'Content-Type' => 'text/plain',
     ]);
 });
+
+Route::post('validate_user', [ParentController::class, 'validateUser']);

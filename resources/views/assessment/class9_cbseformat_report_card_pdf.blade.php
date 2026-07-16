@@ -34,52 +34,56 @@
         color:red;
         font-family: 'Comic Sans MS' !important;
     }
+    h3, h4 {
+        margin: 0;
+        line-height: 1.1;
+    }
    
    .mark_heading_td{
-		font-size:14px;
+		font-size:11px;
 		vertical-align:center;
         height:10px;
  	}
 	.signtag{
-		font-size:14px;
+		font-size:12px;
 		vertical-align:center;
         height:10px;
  	}
     .th{
         vertical-align:middle;
         text-align:center;
-        height:38px;
-        font-size:14px;
+        height:28px;
+        font-size:12px;
         text-transform: uppercase;
 /*        color:red;*/
     }
     .th1{
         vertical-align:middle;
         text-align:center;
-        height:38px;
-        font-size:14px;
+        height:28px;
+        font-size:12px;
         text-transform: uppercase;
     /*    color:red;*/
     }
 	.thc{
         vertical-align:middle;
         text-align:center;
-        height:30px;
+        height:24px;
         border-bottom:1px solid grey;
-        font-size:14px;
+        font-size:12px;
     }
     
     .td{
         vertical-align:middle;
-        height:28px;
-        padding-left:15%;
-        font-size:14px;
+        height:22px;
+        padding-left:8%;
+        font-size:12px;
     }
 	.tdx{
         vertical-align:middle;
-        height:28px;
+        height:22px;
         padding-left:5%;
-        font-size:14px;
+        font-size:11px;
     }
     
     
@@ -94,8 +98,19 @@
 	.statistics_line {
         width:100%;
         border-bottom:1px solid #000;
-        padding:4px;
-        font-size:14px;
+        padding:2px 4px;
+        font-size:12px;
+    }
+    .compact-info td {
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+        font-size: 13px !important;
+    }
+    .bottom-block {
+        margin-top: 10px !important;
+    }
+    .signature-block {
+        margin-top: 8px !important;
     }
 	.pdfdiv {
 	   page-break-after: always;
@@ -121,14 +136,14 @@ foreach ($student_info as $row1):
     <div class="col-md-12 pdfdiv">
 	<div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
- 		<div style="margin-left:7%;margin-top: 18%;">
+ 		<div style="margin-left:7%;margin-top: 20%;">
 				<h4 >ACADEMIC SESSION (<?php echo $row1['academic_yr']; ?>)</h4>
 				<h3><font color="#000000">REPORT CARD</font></h3>
 			</div>
 		<table border="0" class="table-responsive" style="width:80%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 0%;" cellpadding="1" cellspacing="10">
 			<tr> 
                 <td>
-                    <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+                    <table class="table-responsive compact-info" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:17px;width: 22%; padding-top: 6px; padding-bottom:6px;	word-wrap:break-word;">Student's Name : </td>
 						<td style="font-size:16px;width: auto;text-align:center;"><div class="statistics_line"><?php echo $row1['first_name'] . ' ' . $row1['mid_name'] . ' ' . $row1['last_name']; ?></div> </td>
 						<td style="font-size:17px;width: 1%;"></td>
@@ -145,7 +160,7 @@ foreach ($student_info as $row1):
 			</tr>
             <tr>
                 <td>
-                    <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+                    <table class="table-responsive compact-info" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:17px;padding:5px;width: 50%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Guardian's Name : </td>
                         <td style="font-size:16px;padding:5px;width: auto;text-align:center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
                     </table>
@@ -155,7 +170,7 @@ foreach ($student_info as $row1):
             </tr>
             <tr>
                 <td>
-                    <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+                    <table class="table-responsive compact-info" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:17px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Date of Birth : </td>
                         <td style="font-size:16px;width:20%;text-align:center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
                         <td style="font-size:17px;padding:5px;width: 25%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
@@ -470,7 +485,11 @@ foreach ($student_info as $row1):
 							<td class="col-md-1 col-sm-1 col-xs-1 td"  style="text-align:center;height:30px;"><?php echo $final_grand_total_marks . '/' . $final_grand_highest_marks; ?></td>
 						<?php } ?>
 						<?php
-                        $grand_marks_per_100 = ($final_grand_total_marks * 100) / $final_grand_highest_marks;  // Convert to out of 100
+                        if ($final_grand_highest_marks > 0) {
+                            $grand_marks_per_100 = ($final_grand_total_marks * 100) / $final_grand_highest_marks;
+                        } else {
+                            $grand_marks_per_100 = 0;
+                        }
                         $grand_grade = get_grade_based_on_marks(round($grand_marks_per_100), 'Scholastic', $row1['class_id']);  // Lija 19-03-21
                         ?>
                             <td class="col-md-1 col-sm-1 col-xs-1 td" style="text-align:center;height:30px;"><?php echo $grand_grade; ?></td>
@@ -620,7 +639,7 @@ foreach ($student_info as $row1):
 					</td>
 				</tr>
 			</table>
-			<table class="table-responsive" style="width:82%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top:65%;" cellpadding="10" cellspacing="10" border="0">
+			<table class="table-responsive bottom-block" style="width:82%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="6" cellspacing="4" border="0">
 			<tr> 
 				<td >
 				    <table class="table-responsive" style="width:100%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;border:0">
@@ -686,7 +705,7 @@ foreach ($student_info as $row1):
              
         </tr>
 		</table>
-		<table border="0" class="table-responsive" style="width:92%;margin-top:73%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
+		<table border="0" class="table-responsive signature-block" style="width:82%;margin-left:7%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="6">
 			<tr>
 				<td style="width:35%;" >
 					<table class="" width="90%" cellspacing="0" id="term" style="border: 0;text-align:center">
