@@ -325,7 +325,13 @@ foreach ($student_info as $row1):
 													if ($total_marks_obtained == '')
 														$total_marks_obtained = 0;
 													$total_marks_obtained = $total_marks_obtained + (float) $value;
-													${'total_marks_' . $term->term_id . $key} = ${'total_marks_' . $term->term_id . $key} + (float) $value;
+													$varName = 'total_marks_' . $term->term_id . $key;
+
+													if (!isset($$varName)) {
+														$$varName = 0;
+													}
+
+													$$varName += (float) $value;
 													// echo "marks_".$term->term_id.$key." ".${'total_marks_'.$term->term_id.$key}."<br/>";
 													?> 
 												<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
