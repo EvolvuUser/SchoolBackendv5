@@ -1736,6 +1736,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
 
         // Parent App APIS
+
         Route::get('get_childs', [ParentController::class, 'getChilds']);
     });
 
@@ -1843,5 +1844,5 @@ Route::get('/test-log', function () {
         'Content-Type' => 'text/plain',
     ]);
 });
-
+Route::get('get_url', [ParentController::class, 'getUrl']);
 Route::post('validate_user', [ParentController::class, 'validateUser']);

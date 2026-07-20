@@ -24,6 +24,14 @@ class ParentController extends Controller
         }
     }
 
+    public function getUrl()
+    {
+        return response()->json([
+            'status' => true,
+            'url' => config('externalapis.laravel_url'),
+        ]);
+    }
+
     public function validateUser(request $request)
     {
         try {

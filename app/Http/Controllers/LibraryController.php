@@ -3847,12 +3847,6 @@ class LibraryController extends Controller
                 )
                 ->join('book_copies', 'a.book_id', '=', 'book_copies.book_id')
                 ->join('category as c', 'c.category_id', '=', 'a.category_id')
-                ->join(
-                    'category_categorygroup as d',
-                    'c.category_id',
-                    '=',
-                    'd.category_id'
-                )
                 ->when($searchFrom, function ($q) use ($searchFrom) {
                     $q->whereDate('book_copies.added_date', '>=', $searchFrom);
                 })
@@ -3861,9 +3855,6 @@ class LibraryController extends Controller
                 })
                 ->when($categoryId, function ($query) use ($categoryId) {
                     $query->where('a.category_id', $categoryId);
-                })
-                ->when($categoryGroupId, function ($query) use ($categoryGroupId) {
-                    $query->where('d.category_group_id', $categoryGroupId);
                 })
                 ->when($sourceOfBook, function ($query) use ($sourceOfBook) {
                     $query->where('book_copies.source_of_book', 'LIKE', '%' . trim($sourceOfBook) . '%');
