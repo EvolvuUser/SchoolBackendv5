@@ -11,14 +11,14 @@ class QueueWorkerCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:queue-worker-command';
+    protected $signature = 'queue:school {connection}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Run queue worker for a specific database connection';
 
     /**
      * Execute the console command.
