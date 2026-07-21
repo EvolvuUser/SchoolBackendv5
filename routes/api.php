@@ -1735,6 +1735,8 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
 
+        // Send UserId to Parents
+        Route::get('get_students_send_user_id', [AdminController::class, 'getStudentsListSendUserId']);
         // Parent App APIS
 
         Route::get('get_childs', [ParentController::class, 'getChilds']);
