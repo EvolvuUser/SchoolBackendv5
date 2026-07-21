@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\SmsService;
 use App\Http\Services\WhatsAppService;
+use App\Jobs\SendUserIdParentsWhatsAppJob;
 use App\Jobs\SendTeacherMessageJob;
 use App\Mail\TeacherBirthdayEmail;
 use App\Mail\WelcomeEmail;
@@ -6964,6 +6965,7 @@ class AdminController extends Controller
         $customClaims = JWTAuth::getPayload()->get('academic_year');
 
         $checkbx = $request->input('studentId');
+        $whatsAppBatch = [];
 
         foreach ($checkbx as $parent_id) {
             $student = DB::table('student')
@@ -6974,17 +6976,23 @@ class AdminController extends Controller
                     'student.isNew',
                     'student.first_name',
                     'student.last_name',
+                    'student.student_id',
+                    'student.parent_id',
                     'contact_details.email_id',
                     'contact_details.m_emailid',
+                    'contact_details.phone_no',
                     'user_master.user_id',
                     'user_master.password'
                 )
                 ->first();
 
-            // dd($student);
+            if (!$student) {
+                continue;
+            }
 
             $f_emailid = $student->email_id ?? null;
             $m_emailid = $student->m_emailid ?? null;
+            $phoneNo = $student->phone_no ?? null;
             $user_id = $student->user_id ?? null;
             $isNew = $student->isNew ?? null;
             $first_name = $student->first_name ?? '';
@@ -7061,7 +7069,22 @@ class AdminController extends Controller
                         $emailData
                     );
                 }
+
+                if ($phoneNo) {
+                    $whatsAppBatch[] = [
+                        'student_id' => $student->student_id,
+                        'parent_id' => $student->parent_id,
+                        'phone_no' => $phoneNo,
+                        'student_name' => $studentName,
+                        'user_id' => $user_id,
+                        'is_new' => $isNew,
+                    ];
+                }
             }
+        }
+
+        if (!empty($whatsAppBatch)) {
+            SendUserIdParentsWhatsAppJob::dispatch($whatsAppBatch);
         }
 
         return response()->json([
