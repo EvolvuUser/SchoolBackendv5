@@ -27,14 +27,15 @@ class SendUserIdParentsWhatsAppJob implements ShouldQueue
         try {
             $schoolSettings = getSchoolSettingsData();
 
-            if (($schoolSettings->whatsapp_integration ?? 'N') !== 'Y') {
+            if (
+                ($schoolSettings->whatsapp_integration ?? 'N') !== 'Y' ||
+                !isWhatsappMessageEnabled('parent_login_details')
+            ) {
                 return;
             }
 
             $schoolName = $schoolSettings->institute_name ?? 'School';
             $defaultPassword = $schoolSettings->default_pwd ?? '';
-            $shortName = $schoolSettings->short_name ?? 'School';
-            $supportEmail = $schoolSettings->support_email_id ?? '';
 
             foreach ($this->students as $student) {
                 $phoneNo = $student['phone_no'] ?? null;
@@ -46,23 +47,29 @@ class SendUserIdParentsWhatsAppJob implements ShouldQueue
                 $studentName = trim($student['student_name'] ?? '');
                 $userId = $student['user_id'] ?? '';
 
-                $message = "Dear Parent,\n";
-                $message .= "Welcome to {$schoolName} application powered by EvolvU.\n";
+                $message = "Dear Parent\n, Welcome to {$schoolName} application powered by EvolvU. ";
 
                 if (!empty($studentName)) {
-                    $message .= "{$studentName} is registered in the application.\n";
+                    $message .= "{$studentName} is registered in the application. ";
                 }
 
-                $message .= "Your login credentials are:\n";
-                $message .= "User Id: {$userId}\n";
-                $message .= "Password: {$defaultPassword}\n";
-                $message .= "You may change your password after login.\n";
+                $message .= 'For Android Users: https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool ';
+                $message .= 'For Iphone Users: https://apps.apple.com/in/app/evolvu-smart-school-parent/id6738838553 ';
+                $message .= 'Your login credentials are: ';
+                $message .= "User Id: {$userId} ";
+                $message .= "Password: {$defaultPassword} ";
+                $message .= "You may change your password after login.\n ";
+                $message .= "Please check the school application for more details.\n ";
+                $message .= "- Evolvu\n";
 
-                if (!empty($supportEmail)) {
-                    $message .= "For support, write to {$supportEmail}.\n";
-                }
-
-                $message .= "Regards,\n{$shortName} Support\nTeam Evolvu";
+                Log::info('Parent WhatsApp Message', [
+                    'student_id' => $student['student_id'] ?? null,
+                    'parent_id' => $student['parent_id'] ?? null,
+                    'phone_no' => $phoneNo,
+                    'student_name' => $studentName,
+                    'user_id' => $userId,
+                    'message' => $message,
+                ]);
 
                 $result = app(WhatsAppService::class)->sendTextMessage(
                     $phoneNo,

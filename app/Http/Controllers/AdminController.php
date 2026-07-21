@@ -7083,7 +7083,7 @@ class AdminController extends Controller
             }
         }
 
-        if (!empty($whatsAppBatch)) {
+        if (!empty($whatsAppBatch) && isWhatsappMessageEnabled('parent_login_details')) {
             SendUserIdParentsWhatsAppJob::dispatch($whatsAppBatch);
         }
 
