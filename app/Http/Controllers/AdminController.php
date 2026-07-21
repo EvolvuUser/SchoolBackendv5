@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\SmsService;
 use App\Http\Services\WhatsAppService;
-use App\Jobs\SendUserIdParentsWhatsAppJob;
 use App\Jobs\SendTeacherMessageJob;
+use App\Jobs\SendUserIdParentsWhatsAppJob;
 use App\Mail\TeacherBirthdayEmail;
 use App\Mail\WelcomeEmail;
 use App\Models\Allot_mark_headings;
@@ -2427,12 +2427,31 @@ class AdminController extends Controller
         }
         $query->orderBy('roll_no', 'asc');
         $students = $query->get();
+        $studentIds = $students->pluck('student_id')->filter()->values()->all();
+        $parentLoginWhatsappStatus = collect();
+
+        if (!empty($studentIds)) {
+            $latestWebhookIds = DB::table('redington_webhook_details')
+                ->select('stu_teacher_id', DB::raw('MAX(webhook_id) as webhook_id'))
+                ->whereIn('stu_teacher_id', $studentIds)
+                ->where('message_type', 'parent_login_details')
+                ->groupBy('stu_teacher_id')
+                ->pluck('webhook_id');
+
+            if ($latestWebhookIds->isNotEmpty()) {
+                $parentLoginWhatsappStatus = DB::table('redington_webhook_details')
+                    ->whereIn('webhook_id', $latestWebhookIds->all())
+                    ->get()
+                    ->keyBy('stu_teacher_id');
+            }
+        }
+
         $globalVariables = App::make('global_variables');
         $parent_app_url = $globalVariables['parent_app_url'];
         $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
 
         // Append image URLs for each student
-        $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url) {
+        $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url, $parentLoginWhatsappStatus) {
             // Check if the image_name is present and not empty
             $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
             if (!empty($student->image_name)) {
@@ -2462,6 +2481,10 @@ class AdminController extends Controller
                 ->where('student_id', $student->student_id)
                 ->orderBy('changed_at', 'desc')
                 ->first();
+
+            $whatsappStatus = $parentLoginWhatsappStatus->get($student->student_id);
+            $student->sms_sent = $whatsappStatus->sms_sent ?? '';
+            $student->whatsapp_status = $whatsappStatus->status ?? '';
 
             $student->last_permanent_address_change = $lastAddressChange;
         });
@@ -20551,5 +20574,191 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         }
 
         return $result;
+    }
+
+    public function getStudentsListSendUserId(Request $request)
+    {
+        set_time_limit(300);
+        $section_id = $request->section_id;
+        $class_id = $request->class_id;
+        $student_id = $request->student_id;
+        $reg_no = $request->reg_no;
+        $user = $this->authenticateUser();
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        $query = Student::query();
+
+        $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+        if ($class_id && $section_id && $reg_no) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($student_id && $reg_no) {
+            $query
+                ->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id && $student_id && $reg_no) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id && $student_id) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('student_id', $student_id)
+                ->where('section_id', $section_id)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id) {
+            $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($student_id) {
+            $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($reg_no) {
+            $query->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+            if ($user->role_id == 'T') {
+                $teacherSubjects = DB::table('subject')
+                    ->select('class_id', 'section_id')
+                    ->where('teacher_id', $user->reg_id)
+                    ->where('academic_yr', $academicYr)
+                    ->get();
+
+                $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+                $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+
+                if (!empty($classIds) && !empty($sectionIds)) {
+                    $query
+                        ->whereIn('class_id', $classIds)
+                        ->whereIn('section_id', $sectionIds);
+                } else {
+                    return response()->json([
+                        'status' => 402,
+                        'message' => 'No assigned classes found',
+                        'success' => false
+                    ]);
+                }
+            }
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Please provide at least one search condition.',
+            ], 400);
+        }
+        $query->orderBy('roll_no', 'asc');
+        $students = $query->get();
+
+        if ($students->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No student found.',
+            ], 404);
+        }
+
+        $studentIds = $students->pluck('student_id')->filter()->values()->all();
+        $parentIds = $students->pluck('parent_id')->filter()->unique()->values()->all();
+
+        $contactDetailsMap = empty($parentIds)
+            ? collect()
+            : ContactDetails::query()
+                ->select('id', 'phone_no')
+                ->whereIn('id', $parentIds)
+                ->get()
+                ->keyBy('id');
+
+        $userMasterMap = empty($parentIds)
+            ? collect()
+            : UserMaster::query()
+                ->select('reg_id', 'user_id')
+                ->where('role_id', 'P')
+                ->whereIn('reg_id', $parentIds)
+                ->get()
+                ->keyBy('reg_id');
+
+        $parentLoginWhatsappStatus = collect();
+        if (!empty($studentIds)) {
+            $latestParentLoginWhatsapp = DB::table('redington_webhook_details as rwd1')
+                ->select('rwd1.stu_teacher_id', DB::raw('MAX(rwd1.webhook_id) as webhook_id'))
+                ->whereIn('rwd1.stu_teacher_id', $studentIds)
+                ->where('rwd1.message_type', 'parent_login_details')
+                ->groupBy('rwd1.stu_teacher_id');
+
+            $parentLoginWhatsappStatus = DB::table('redington_webhook_details as rwd')
+                ->joinSub($latestParentLoginWhatsapp, 'latest_rwd', function ($join) {
+                    $join->on('rwd.webhook_id', '=', 'latest_rwd.webhook_id');
+                })
+                ->select('rwd.stu_teacher_id', 'rwd.sms_sent', 'rwd.status')
+                ->get()
+                ->keyBy('stu_teacher_id');
+        }
+
+        $lastAddressChangeMap = collect();
+        if (!empty($studentIds)) {
+            $latestAddressChange = DB::table('permanent_address_change_log as pacl1')
+                ->select('pacl1.student_id', DB::raw('MAX(pacl1.changed_at) as changed_at'))
+                ->whereIn('pacl1.student_id', $studentIds)
+                ->groupBy('pacl1.student_id');
+
+            $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
+                ->joinSub($latestAddressChange, 'latest_pacl', function ($join) {
+                    $join->on('pacl.student_id', '=', 'latest_pacl.student_id')
+                        ->on('pacl.changed_at', '=', 'latest_pacl.changed_at');
+                })
+                ->select('pacl.*')
+                ->get()
+                ->keyBy('student_id');
+        }
+
+        $globalVariables = App::make('global_variables');
+        $parent_app_url = $globalVariables['parent_app_url'];
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+        // Append image URLs for each student
+        $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url, $contactDetailsMap, $userMasterMap, $parentLoginWhatsappStatus, $lastAddressChangeMap) {
+            // Check if the image_name is present and not empty
+            $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
+            if (!empty($student->image_name)) {
+                $student->image_name = $concatprojecturl . '' . $student->image_name;
+            } else {
+                $student->image_name = '';
+            }
+
+            $contactDetails = $contactDetailsMap->get($student->parent_id);
+            $student->SetToReceiveSMS = $contactDetails->phone_no ?? '';
+
+            $userMaster = $userMasterMap->get($student->parent_id);
+            $student->SetEmailIDAsUsername = $userMaster->user_id ?? '';
+
+            $whatsappStatus = $parentLoginWhatsappStatus->get($student->student_id);
+            $student->sms_sent = $whatsappStatus->sms_sent ?? '';
+            $student->whatsapp_status = $whatsappStatus->status ?? '';
+
+            $student->last_permanent_address_change = $lastAddressChangeMap->get($student->student_id);
+        });
+
+        $students->transform(function ($student) {
+            if (isset($student->religion)) {
+                // Force proper camel case (first letter lowercase)
+                $student->religion = ucfirst(strtolower($student->religion));
+            }
+            return $student;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'students' => $students,
+        ]);
     }
 }

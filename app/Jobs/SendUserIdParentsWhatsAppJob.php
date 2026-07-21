@@ -47,10 +47,11 @@ class SendUserIdParentsWhatsAppJob implements ShouldQueue
                 $studentName = trim($student['student_name'] ?? '');
                 $userId = $student['user_id'] ?? '';
 
-                $message = "Dear Parent\n, Welcome to {$schoolName} application powered by EvolvU. ";
+                $message = "Dear Parent,\n";
+                $message .= "Welcome to {$schoolName} application powered by EvolvU.";
 
                 if (!empty($studentName)) {
-                    $message .= "{$studentName} is registered in the application. ";
+                    $message .= "{$studentName} is registered in the application.";
                 }
 
                 $message .= 'For Android Users: https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool ';
@@ -58,9 +59,9 @@ class SendUserIdParentsWhatsAppJob implements ShouldQueue
                 $message .= 'Your login credentials are: ';
                 $message .= "User Id: {$userId} ";
                 $message .= "Password: {$defaultPassword} ";
-                $message .= "You may change your password after login.\n ";
-                $message .= "Please check the school application for more details.\n ";
-                $message .= "- Evolvu\n";
+                $message .= "You may change your password after login.\n";
+                $message .= "Please check the school application for more details.\n";
+                $message .= '– Evolvu';
 
                 Log::info('Parent WhatsApp Message', [
                     'student_id' => $student['student_id'] ?? null,
