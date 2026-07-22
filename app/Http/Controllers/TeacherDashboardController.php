@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\StaffNotice;
 use App\Models\Teacher;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -153,6 +154,7 @@ class TeacherDashboardController extends Controller
             $classTeacherSectionId = $classTeacher->section_id ?? null;
 
             $isAttendanceMarked = false;
+            $attendanceReminder = [];
 
             $today = now()->toDateString();
 
@@ -162,6 +164,71 @@ class TeacherDashboardController extends Controller
                     ->where('section_id', $classTeacherSectionId)
                     ->where('only_date', $today)
                     ->exists();
+
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+
+                // Get all attendance dates for this month
+                $attendanceDates = DB::table('attendance')
+                    ->where('class_id', $classTeacherClassId)
+                    ->where('section_id', $classTeacherSectionId)
+                    ->whereBetween('only_date', [
+                        $startDate->toDateString(),
+                        $endDate->toDateString()
+                    ])
+                    ->pluck('only_date')
+                    ->map(fn($date) => Carbon::parse($date)->toDateString())
+                    ->toArray();
+
+                $attendanceDates = array_flip($attendanceDates);
+                $holidayDates = [];
+
+                $holidays = DB::table('holidaylist')
+                    ->where('publish', 'Y')
+                    ->where('isDelete', 'N')
+                    ->where('academic_yr', $academic_yr)
+                    ->where(function ($q) use ($startDate, $endDate) {
+                        $q
+                            ->whereBetween('holiday_date', [$startDate, $endDate])
+                            ->orWhereBetween(DB::raw('COALESCE(to_date, holiday_date)'), [$startDate, $endDate])
+                            ->orWhere(function ($q2) use ($startDate, $endDate) {
+                                $q2
+                                    ->where('holiday_date', '<=', $startDate)
+                                    ->where(DB::raw('COALESCE(to_date, holiday_date)'), '>=', $endDate);
+                            });
+                    })
+                    ->get();
+
+                foreach ($holidays as $holiday) {
+                    $endHolidayDate = $holiday->to_date ?? $holiday->holiday_date;
+
+                    foreach (CarbonPeriod::create($holiday->holiday_date, $endHolidayDate) as $date) {
+                        $holidayDates[$date->toDateString()] = true;
+                    }
+                }
+
+                foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+                    $currentDate = $date->toDateString();
+                    if ($date->isSunday()) {
+                        continue;
+                    }
+
+                    if (isset($holidayDates[$currentDate])) {
+                        continue;
+                    }
+
+                    // Skip future dates
+                    if ($date->greaterThan(Carbon::today())) {
+                        break;
+                    }
+
+                    if (!isset($attendanceDates[$currentDate])) {
+                        $attendanceReminder[] = [
+                            'date' => $currentDate,
+                            'day' => $date->format('l')
+                        ];
+                    }
+                }
             }
 
             // Library book reminder
@@ -199,6 +266,7 @@ class TeacherDashboardController extends Controller
                     'isAttendanceMarked' => $isAttendanceMarked,
                     'isClassTeacher' => $isClassTeacher,
                     'libraryBookReturn' => $libraryBookReturnReminders,
+                    'attendanceReminder' => $attendanceReminder,
                 ]
             ], 200);
         } catch (\Throwable $e) {

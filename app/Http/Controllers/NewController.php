@@ -4356,11 +4356,11 @@ ORDER BY Z.t_remark_id DESC;");
                     first_name, 
                     last_name, 
                     roll_no, 
-                    section_id, 
-                    installment_fees, 
+                    s.section_id as section_id, 
+                    s.installment_fees, 
                     COALESCE(SUM(d.amount), 0) AS concession, 
                     0 AS paid_amount,
-                    (installment_fees - COALESCE(SUM(d.amount), 0) ) AS pending_fee 
+                    (s.installment_fees - COALESCE(SUM(d.amount), 0) ) AS pending_fee 
                   FROM 
                     view_student_fees_category s 
                     LEFT JOIN fee_concession_details d ON s.student_id = d.student_id AND s.installment = d.installment 
@@ -4383,11 +4383,11 @@ ORDER BY Z.t_remark_id DESC;");
                     first_name, 
                     last_name, 
                     roll_no, 
-                    section_id, 
+                    e.section_id, 
                     b.installment_fees, 
                     COALESCE(SUM(c.amount), 0) AS concession, 
                     SUM(f.fees_paid) AS paid_amount,
-                    (installment_fees - COALESCE(SUM(c.amount), 0) - SUM(f.fees_paid)) AS pending_fee
+                    (b.installment_fees - COALESCE(SUM(c.amount), 0) - SUM(f.fees_paid)) AS pending_fee
                     FROM view_student_fees_payment f 
                     LEFT JOIN fee_concession_details c ON f.student_id = c.student_id 
                     AND f.installment = c.installment 
