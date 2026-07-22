@@ -7022,7 +7022,7 @@ class AdminController extends Controller
             $last_name = $student->last_name ?? '';
             $studentName = trim($first_name . ' ' . $last_name);
 
-            if ($user_id && $isNew && $first_name) {
+            if ($user_id && $first_name) {
                 $settingsData = getSchoolSettingsData();
 
                 $schoolName = $settingsData->institute_name;
@@ -20713,7 +20713,8 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
                 ->joinSub($latestAddressChange, 'latest_pacl', function ($join) {
-                    $join->on('pacl.student_id', '=', 'latest_pacl.student_id')
+                    $join
+                        ->on('pacl.student_id', '=', 'latest_pacl.student_id')
                         ->on('pacl.changed_at', '=', 'latest_pacl.changed_at');
                 })
                 ->select('pacl.*')

@@ -181,10 +181,37 @@ class TeacherDashboardController extends Controller
                     ->toArray();
 
                 $attendanceDates = array_flip($attendanceDates);
+                $holidayDates = [];
+
+                $holidays = DB::table('holidaylist')
+                    ->where('publish', 'Y')
+                    ->where('isDelete', 'N')
+                    ->where('academic_yr', $academic_yr)
+                    ->where(function ($q) use ($startDate, $endDate) {
+                        $q
+                            ->whereBetween('holiday_date', [$startDate, $endDate])
+                            ->orWhereBetween('to_date', [$startDate, $endDate])
+                            ->orWhere(function ($q2) use ($startDate, $endDate) {
+                                $q2
+                                    ->where('holiday_date', '<=', $startDate)
+                                    ->where('to_date', '>=', $endDate);
+                            });
+                    })
+                    ->get();
+
+                foreach ($holidays as $holiday) {
+                    foreach (CarbonPeriod::create($holiday->holiday_date, $holiday->to_date) as $date) {
+                        $holidayDates[$date->toDateString()] = true;
+                    }
+                }
 
                 foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
                     $currentDate = $date->toDateString();
                     if ($date->isSunday()) {
+                        continue;
+                    }
+
+                    if (isset($holidayDates[$currentDate])) {
                         continue;
                     }
 
