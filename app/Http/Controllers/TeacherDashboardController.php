@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\StaffNotice;
 use App\Models\Teacher;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -153,6 +154,7 @@ class TeacherDashboardController extends Controller
             $classTeacherSectionId = $classTeacher->section_id ?? null;
 
             $isAttendanceMarked = false;
+            $attendanceReminder = [];
 
             $today = now()->toDateString();
 
@@ -162,6 +164,42 @@ class TeacherDashboardController extends Controller
                     ->where('section_id', $classTeacherSectionId)
                     ->where('only_date', $today)
                     ->exists();
+
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+
+                // Get all attendance dates for this month
+                $attendanceDates = DB::table('attendance')
+                    ->where('class_id', $classTeacherClassId)
+                    ->where('section_id', $classTeacherSectionId)
+                    ->whereBetween('only_date', [
+                        $startDate->toDateString(),
+                        $endDate->toDateString()
+                    ])
+                    ->pluck('only_date')
+                    ->map(fn($date) => Carbon::parse($date)->toDateString())
+                    ->toArray();
+
+                $attendanceDates = array_flip($attendanceDates);
+
+                foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+                    $currentDate = $date->toDateString();
+                    if ($date->isSunday()) {
+                        continue;
+                    }
+
+                    // Skip future dates
+                    if ($date->greaterThan(Carbon::today())) {
+                        break;
+                    }
+
+                    if (!isset($attendanceDates[$currentDate])) {
+                        $attendanceReminder[] = [
+                            'date' => $currentDate,
+                            'day' => $date->format('l')
+                        ];
+                    }
+                }
             }
 
             // Library book reminder
@@ -199,6 +237,7 @@ class TeacherDashboardController extends Controller
                     'isAttendanceMarked' => $isAttendanceMarked,
                     'isClassTeacher' => $isClassTeacher,
                     'libraryBookReturn' => $libraryBookReturnReminders,
+                    'attendanceReminder' => $attendanceReminder,
                 ]
             ], 200);
         } catch (\Throwable $e) {
