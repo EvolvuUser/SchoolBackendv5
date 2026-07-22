@@ -190,17 +190,19 @@ class TeacherDashboardController extends Controller
                     ->where(function ($q) use ($startDate, $endDate) {
                         $q
                             ->whereBetween('holiday_date', [$startDate, $endDate])
-                            ->orWhereBetween('to_date', [$startDate, $endDate])
+                            ->orWhereBetween(DB::raw('COALESCE(to_date, holiday_date)'), [$startDate, $endDate])
                             ->orWhere(function ($q2) use ($startDate, $endDate) {
                                 $q2
                                     ->where('holiday_date', '<=', $startDate)
-                                    ->where('to_date', '>=', $endDate);
+                                    ->where(DB::raw('COALESCE(to_date, holiday_date)'), '>=', $endDate);
                             });
                     })
                     ->get();
 
                 foreach ($holidays as $holiday) {
-                    foreach (CarbonPeriod::create($holiday->holiday_date, $holiday->to_date) as $date) {
+                    $endHolidayDate = $holiday->to_date ?? $holiday->holiday_date;
+
+                    foreach (CarbonPeriod::create($holiday->holiday_date, $endHolidayDate) as $date) {
                         $holidayDates[$date->toDateString()] = true;
                     }
                 }
