@@ -128,6 +128,21 @@ return [
                 PDO::ATTR_PERSISTENT => true,
             ]) : [],
         ],
+        'JPS' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_JPS'),
+            'port' => env('DB_PORT_JPS', '3306'),
+            'database' => env('DB_DATABASE_JPS'),
+            'username' => env('DB_USERNAME_JPS'),
+            'password' => env('DB_PASSWORD_JPS'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::ATTR_PERSISTENT => true,
+            ]) : [],
+        ],
         'school_database' => [
             'driver' => 'mysql',
             'host' => env('SCHOOL_DB_HOST'),
