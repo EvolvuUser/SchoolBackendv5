@@ -1813,6 +1813,7 @@ Route::post('sendwhatsappmessages', [AdminController::class, 'sendwhatsappmessag
 
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 Route::post('webhook/redingtonhscs', [AdminController::class, 'webhookredingtonhscs']);
+Route::post('webhook/redingtonstcs', [AdminController::class, 'webhookredingtonstcs']);
 
 Route::get('whatsapp_messages_for_not_approving_lesson', [ReportController::class, 'whatsappmessagesfornotapprovinglessonplan']);
 Route::get('get_supportemailid', [NewController::class, 'getSupportEmailId']);

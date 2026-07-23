@@ -12931,6 +12931,74 @@ class AdminController extends Controller
         }
     }
 
+    public function webhookredingtonstcs(Request $request)
+    {
+        $shortName = 'STCS';
+        if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd('No database configuration for the given short_name');
+        }
+        Log::info('Gupshup Webhook Received:', $request->all());
+
+        try {
+            $responseData = $request->input('response');
+
+            if (!$responseData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Response key missing'
+                ], 400);
+            }
+
+            $events = json_decode($responseData, true);
+
+            if (!is_array($events)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid JSON'
+                ], 400);
+            }
+
+            foreach ($events as $event) {
+                $waId = $event['externalId'] ?? null;
+                $status = strtolower($event['eventType'] ?? '');
+
+                if (!$waId) {
+                    continue;
+                }
+
+                $updateData = [
+                    'status' => $status,
+                    'updated_at' => now(),
+                ];
+
+                if (in_array($status, ['sent', 'delivered', 'read'])) {
+                    $updateData['sms_sent'] = 'Y';
+                }
+
+                DB::table('redington_webhook_details')
+                    ->where('wa_id', $waId)
+                    ->update($updateData);
+
+                Log::info("Updated WA ID {$waId} with status {$status}");
+            }
+
+            return response()->json([
+                'status' => 'success'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Error', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
     public function getAbsentStudentForToday(Request $request)
     {
