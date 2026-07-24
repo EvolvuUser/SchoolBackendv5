@@ -228,6 +228,7 @@ foreach ($student_info as $row1):
 							//	$count_of_mark_headings=0;
 							foreach ($term_list as $term) {
 								${'general_highest_marks_array_' . $term->term_id} = array();
+								${'general_highest_marks_list_' . $term->term_id} = array();
 								${'count_of_mark_headings_' . $term->term_id} = 0;
 								// $count_of_mark_headings=0;
 								$exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
@@ -241,9 +242,19 @@ foreach ($student_info as $row1):
 									}
 									${'general_highest_marks_json_' . $term->term_id} = rtrim(${'general_highest_marks_json_' . $term->term_id}, ',');  // Lija report card
 									${'general_highest_marks_json_' . $term->term_id} = ${'general_highest_marks_json_' . $term->term_id} . '}';
-									${'general_highest_marks_array_' . $term->term_id} = array_merge(${'general_highest_marks_array_' . $term->term_id}, json_decode(${'general_highest_marks_json_' . $term->term_id}, true));
+									${'decoded_general_highest_marks_' . $term->term_id} = json_decode(${'general_highest_marks_json_' . $term->term_id}, true);
+									if (is_array(${'decoded_general_highest_marks_' . $term->term_id})) {
+										foreach (${'decoded_general_highest_marks_' . $term->term_id} as $key => $value) {
+											${'general_highest_marks_list_' . $term->term_id}[] = array(
+												'id' => $exam->exam_id . '_' . $key,
+												'name' => $key,
+												'highest_marks' => $value,
+											);
+										}
+									}
+									${'general_highest_marks_array_' . $term->term_id} = array_merge(${'general_highest_marks_array_' . $term->term_id}, ${'decoded_general_highest_marks_' . $term->term_id});
 									// echo ${'general_highest_marks_json_'.$term->term_id}."<br>";
-									${'count_of_mark_headings_' . $term->term_id} = count(${'general_highest_marks_array_' . $term->term_id});
+									${'count_of_mark_headings_' . $term->term_id} = count(${'general_highest_marks_list_' . $term->term_id});
 								}
 
 								?>
@@ -264,17 +275,17 @@ foreach ($student_info as $row1):
 								${'grand_highest_marks_' . $term->term_id} = 0;
 
 								$highest_total_marks = 0;
-								if (isset(${'general_highest_marks_array_' . $term->term_id}) && ${'general_highest_marks_array_' . $term->term_id} <> null) {
-									foreach (${'general_highest_marks_array_' . $term->term_id} as $key => $value) {
+								if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
+									foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
 										// Lija For term 1 marks were doubled for acd yr 2020-2021. Remove this if condtion next yr
-										if ($term->term_id == 1 && $key == 'Term' && $row1['academic_yr'] == '2020-2021') {  // Lija 10-09-21
-											$value = $value * 2;
+										if ($term->term_id == 1 && $heading['name'] == 'Term' && $row1['academic_yr'] == '2020-2021') {  // Lija 10-09-21
+											$heading['highest_marks'] = $heading['highest_marks'] * 2;
 										}
-										$highest_total_marks = $highest_total_marks + (float) $value;
+										$highest_total_marks = $highest_total_marks + (float) $heading['highest_marks'];
 
-										${'total_marks_' . $term->term_id . $key} = 0;
+										${'total_marks_' . $term->term_id . $heading['id']} = 0;
 										?> 
-										<td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;"><?php echo $key . '<br/>(' . $value . ')'; ?></td>
+										<td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;"><?php echo $heading['name'] . '<br/>(' . $heading['highest_marks'] . ')'; ?></td>
 							 <?php
 									}
 
@@ -325,7 +336,7 @@ foreach ($student_info as $row1):
 													if ($total_marks_obtained == '')
 														$total_marks_obtained = 0;
 													$total_marks_obtained = $total_marks_obtained + (float) $value;
-													$varName = 'total_marks_' . $term->term_id . $key;
+													$varName = 'total_marks_' . $term->term_id . $exam->exam_id . '_' . $key;
 
 													if (!isset($$varName)) {
 														$$varName = 0;
@@ -382,10 +393,10 @@ foreach ($student_info as $row1):
 							<td class="td" style="text-align:center;height:45px;">TOTAL</td>
 							<?php
 							foreach ($term_list as $term) {
-								if (isset(${'general_highest_marks_array_' . $term->term_id}) && ${'general_highest_marks_array_' . $term->term_id} <> null) {
-									foreach (${'general_highest_marks_array_' . $term->term_id} as $key => $value) {
+								if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
+									foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
 										?>
-										<td class="col-md-1 td" style="text-align:center;height:45px;"><?php echo ${'total_marks_' . $term->term_id . $key}; ?></td>
+										<td class="col-md-1 td" style="text-align:center;height:45px;"><?php echo ${'total_marks_' . $term->term_id . $heading['id']}; ?></td>
 							<?php
 									}
 									$grand_grade = '';

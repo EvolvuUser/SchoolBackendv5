@@ -11202,6 +11202,12 @@ class AssessmentController extends Controller
                 case '10':
                     return PDF::loadView('reportcard.SACS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
+                case '11':
+                    return PDF::loadView('reportcard.SACS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
+                case '12':
+                    return PDF::loadView('reportcard.SACS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
+                    break;
 
                 default:
                     abort(404, 'Invalid class');
