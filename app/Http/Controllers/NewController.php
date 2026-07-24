@@ -9,6 +9,7 @@ use App\Jobs\SendEventNotificationJob;
 use App\Jobs\SendOutstandingFeeSmsJob;
 use App\Models\Student;
 use App\Models\Teacher;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
@@ -5735,15 +5736,123 @@ ORDER BY Z.t_remark_id DESC;");
     public function getRemarkOfTeacher(Request $request)
     {
         $user = $this->authenticateUser();
+        $teacher_id = $user->reg_id;
         $customClaims = JWTAuth::getPayload()->get('academic_year');
         $teacherremark = DB::select("select * from(select  tr.*,0 as read_status from teachers_remark tr  join teacher  on teacher.teacher_id=tr.teachers_id where tr.remark_type='Remark' and tr.academic_yr='" . $customClaims . "' and tr.teachers_id='" . $user->reg_id . "'
          AND t_remark_id not IN( select t_remark_id FROM tremarks_read_log where teachers_id='" . $user->reg_id . "'  )
               UNION
              select  tr.*,1 as read_status from teachers_remark tr  join teacher on teacher.teacher_id=tr.teachers_id where  tr.remark_type='Remark' and tr.academic_yr= '" . $customClaims . "'and tr.teachers_id='" . $user->reg_id . "'  AND t_remark_id IN(select t_remark_id FROM tremarks_read_log where teachers_id='" . $user->reg_id . "' ) )  as x ORDER BY publish_date DESC");
+        $attendanceReminder = [];
+        $isClassTeacher = false;
+        $isAttendanceMarked = false;
+
+        $classTeacher = DB::table('class_teachers')
+            ->join('class', 'class_teachers.class_id', '=', 'class.class_id')
+            ->join('section', 'class_teachers.section_id', '=', 'section.section_id')
+            ->select(
+                'class.name as classname',
+                'section.name as sectionname',
+                'class_teachers.class_id',
+                'class_teachers.section_id'
+            )
+            ->where('class_teachers.teacher_id', $teacher_id)
+            ->where('class_teachers.academic_yr', $customClaims)
+            ->orderBy('class_teachers.section_id')
+            ->first();
+
+        if ($classTeacher) {
+            $isClassTeacher = true;
+
+            $classId = $classTeacher->class_id;
+            $sectionId = $classTeacher->section_id;
+
+            $today = Carbon::today()->toDateString();
+
+            $isAttendanceMarked = DB::table('attendance')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('only_date', $today)
+                ->exists();
+
+            $startDate = Carbon::now()->startOfMonth();
+            $endDate = Carbon::now()->endOfMonth();
+
+            $attendanceDates = DB::table('attendance')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->whereBetween('only_date', [
+                    $startDate->toDateString(),
+                    $endDate->toDateString()
+                ])
+                ->pluck('only_date')
+                ->map(fn($date) => Carbon::parse($date)->toDateString())
+                ->flip()
+                ->toArray();
+
+            $holidayDates = [];
+
+            $holidays = DB::table('holidaylist')
+                ->where('publish', 'Y')
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $customClaims)
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q
+                        ->whereBetween('holiday_date', [$startDate, $endDate])
+                        ->orWhereBetween(DB::raw('COALESCE(to_date, holiday_date)'), [$startDate, $endDate])
+                        ->orWhere(function ($q2) use ($startDate, $endDate) {
+                            $q2
+                                ->where('holiday_date', '<=', $startDate)
+                                ->where(DB::raw('COALESCE(to_date, holiday_date)'), '>=', $endDate);
+                        });
+                })
+                ->get();
+
+            foreach ($holidays as $holiday) {
+                $holidayEnd = $holiday->to_date ?: $holiday->holiday_date;
+
+                foreach (CarbonPeriod::create($holiday->holiday_date, $holidayEnd) as $date) {
+                    $holidayDates[$date->toDateString()] = true;
+                }
+            }
+
+            foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+                $currentDate = $date->toDateString();
+
+                // Skip Sundays
+                if ($date->isSunday()) {
+                    continue;
+                }
+
+                // Skip holidays
+                if (isset($holidayDates[$currentDate])) {
+                    continue;
+                }
+
+                // Skip future dates
+                if ($date->greaterThan(Carbon::today())) {
+                    break;
+                }
+
+                // Attendance not marked
+                if (!isset($attendanceDates[$currentDate])) {
+                    $attendanceReminder[] = [
+                        'date' => $currentDate,
+                        'day' => $date->format('l')
+                    ];
+                }
+            }
+        }
 
         return response([
             'status' => 200,
             'data' => $teacherremark,
+            'attendance' => [
+                'is_class_teacher' => $isClassTeacher,
+                'class_name' => $classTeacher->classname ?? null,
+                'section_name' => $classTeacher->sectionname ?? null,
+                'is_attendance_marked_today' => $isAttendanceMarked,
+                'pending_attendance' => $attendanceReminder
+            ],
             'message' => 'Teacher remark fetched successfully.',
             'success' => true
         ]);
