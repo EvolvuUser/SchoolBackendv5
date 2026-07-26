@@ -250,42 +250,43 @@ foreach ($student_info as $row1):
 			</tr>
 		</table>
         
-		<table border="0"  class="table-responsive" style="width:82%;margin-left: 6%;margin-right: auto;margin-top: 1%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-		<tr><td>
-		<table border="1" class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;" cellpadding="0" cellspacing="0">
-			<tr>
-				<td style="text-align:center;height:60px;width:135px">Class Teacher</td>
-				<?php
-                foreach ($exam_list as $exam) {
-                    ?>
-					<td style="width:100px">&nbsp;</td>
-				<?php
-                }
-                ?>
-				</tr>
-				<tr>
-					<td style="text-align:center;height:60px;width:135px">Parent</td>
-					<?php
-                    foreach ($exam_list as $exam) {
-                        ?>
-						<td style="width:100px">&nbsp;</td>
-					<?php
-                    }
-                    ?>
-				</tr>
-				<tr>
-					<td style="text-align:center;height:60px;width:135px">Principal</td>
-					<?php
-                    foreach ($exam_list as $exam) {
-                        ?>
-						<td style="width:100px">&nbsp;</td>
-					<?php
-                    }
-                    ?>
-				</tr>
-		</table>
-		</td></tr>
-		</table>
+		<table style="width:80%;margin:1% auto; margin-left:6%;border-collapse:collapse;" cellpadding="0" cellspacing="0">
+    <tr>
+        <td>
+            <table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td style="width:50%;text-align:center;height:59px;border:1px solid #666;">
+                        Class Teacher
+                    </td>
+
+                    <?php foreach ($exam_list as $exam) { ?>
+                        <td style="width:50%;border:1px solid #666;">&nbsp;</td>
+                    <?php } ?>
+                </tr>
+
+                <tr>
+                    <td style="width:50%;text-align:center;height:59px;border:1px solid #666;">
+                        Parent
+                    </td>
+
+                    <?php foreach ($exam_list as $exam) { ?>
+                        <td style="width:50%;border:1px solid #666;">&nbsp;</td>
+                    <?php } ?>
+                </tr>
+
+                <tr>
+                    <td style="width:50%;text-align:center;height:59px;border:1px solid #666;">
+                        Principal
+                    </td>
+
+                    <?php foreach ($exam_list as $exam) { ?>
+                        <td style="width:50%;border:1px solid #666;">&nbsp;</td>
+                    <?php } ?>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
     </div>
 </div>
 </body>
