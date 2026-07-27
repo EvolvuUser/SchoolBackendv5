@@ -73,9 +73,17 @@
 </style> 
 <br>
 <?php
-$student_info1 = array();
-$student_info = get_students($class_id, $section_id, $academic_yr);
+$student_info = $reportCardData['students'] ?? array();
+$exam_list_master = $reportCardData['exam_list'] ?? array();
+$subjects_by_student_master = $reportCardData['subjects_by_student'] ?? array();
+$marks_by_student_master = $reportCardData['marks_by_student'] ?? array();
+$academic_yr = $reportCardData['academic_yr'] ?? '';
 foreach ($student_info as $row1):
+    $class_name = $row1->class_name ?? '';
+    $section_name = $row1->sec_name ?? '';
+    $exam_list = $exam_list_master;
+    $sub_list = $subjects_by_student_master[$row1->student_id] ?? array();
+    $student_marks = $marks_by_student_master[$row1->student_id] ?? array();
 	?>
 <html>
     
@@ -114,7 +122,7 @@ foreach ($student_info as $row1):
 						if ($row1->roll_no <> null) {
 							$roll_no = $row1->roll_no;
 						}
-						?>
+                        ?>
 						<td style="font-size:16px;width: 8%;text-align: center;"><div class="statistics_line"> <?php echo $roll_no; ?></div></td>
                     </table>
                 </td>
@@ -123,7 +131,7 @@ foreach ($student_info as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Guardian's Name : </td>
-                        <td style="font-size:14px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1->parent_id); ?></div></td>
+                        <td style="font-size:14px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo $row1->father_name ?? ''; ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;padding-top: 8px; padding-bottom:8px;word-wrap:break-word;width:12%">GR No. : </td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1->reg_no; ?></div></td>
@@ -137,7 +145,7 @@ foreach ($student_info as $row1):
                         <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1->dob), 'd-m-Y'); ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1->class_id) . ' ' . get_section_name($row1->section_id); ?></div></td>
+						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo trim($class_name . ' ' . $section_name); ?></div></td>
                     </table>
                     
                 </td>
@@ -147,10 +155,7 @@ foreach ($student_info as $row1):
 		<table style="width:90%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 			 <tr>
 				 <td style="text-align:center;" cellpadding="0" cellspacing="0">
-					<?php
-					$exam_list = get_published_exams_class9n10($row1->class_id, $row1->section_id, $academic_yr);
-					$count_of_exams = count($exam_list);
-					?>
+					<?php $count_of_exams = count($exam_list); ?>
 					
 					<table border="1" style="width:100%;margin-left: auto;margin-right: 1%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <tr>
@@ -173,8 +178,6 @@ foreach ($student_info as $row1):
 
 						<?php
 
-						// $sub_list = get_scholastic_subject_alloted_to_class($row1->class_id,$academic_yr);
-						$sub_list = get_scholastic_subject_for_which_marks_are_alloted_to_student($row1->student_id);  // Lija 30-10-25
 						foreach ($sub_list as $sub_row) {
 							?>
 						<tr>
@@ -192,15 +195,13 @@ foreach ($student_info as $row1):
 								// $highest_total_marks=0;
 								// $total_marks_obtained=0;
 
-								${'marks_resultarray_' . $exam->exam_id} = get_marks($exam->exam_id, $row1->class_id, $row1->section_id, $sub_row->sub_rc_master_id, $row1->student_id, $academic_yr);
+								${'marks_resultarray_' . $exam->exam_id} = isset($student_marks[$exam->exam_id][$sub_row->sub_rc_master_id])
+                                    ? array($student_marks[$exam->exam_id][$sub_row->sub_rc_master_id])
+                                    : array();
 								// var_dump (${'marks_resultarray_'.$exam->exam_id})."<br/>";
 								if (isset(${'marks_resultarray_' . $exam->exam_id}[0])) {
-									${'marks_obtained_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_marks'];
-									// echo (${'marks_obtained_json_'.$exam->exam_id}."<br/>");
-									${'mark_obtained_array_' . $exam->exam_id} = json_decode(${'marks_obtained_json_' . $exam->exam_id}, true);
-									// var_dump (${'mark_obtained_array_'.$exam->exam_id});
-									${'highest_marks_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_highest_marks'];
-									${'highest_marks_array_' . $exam->exam_id} = json_decode(${'highest_marks_json_' . $exam->exam_id}, true);
+									${'mark_obtained_array_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_marks'];
+									${'highest_marks_array_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['reportcard_highest_marks'];
 									foreach (${'mark_obtained_array_' . $exam->exam_id} as $key => $value) {
 										if ($value <> 'Ab') {
 											if (is_numeric($value))
