@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\GenerateReportCardJob;
+use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Models\Allot_mark_headings;
 use App\Models\Classes;
@@ -11421,6 +11422,20 @@ class AssessmentController extends Controller
         $section_id = $request->input('section_id');
         $stud_count = $request->input('stud_count');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
+
+        if ($short_name == 'SACS' && in_array($class_name, ['3', '4', '5'])) {
+            $reportCardData = app(Class3To5BulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr, $stud_count);
+
+            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+
+            return PDF::loadView(
+                'reportcard.SACS.class3to5_report_card_pdf_all',
+                [
+                    'reportCardData' => $reportCardData,
+                ]
+            )->download($fileName);
+        }
 
         if ($short_name == 'SACS' && in_array($class_name, ['6', '7', '8'])) {
             $reportCardData = app(Class6To8BulkReportCardDataBuilder::class)
