@@ -41,7 +41,7 @@ class GenerateReportCardJob implements ShouldQueue
         switch ($this->class_name) {
             case 'Nursery':
                 Pdf::loadView(
-                    'reportcard.SACS.nursery_report_card_pdf',
+                    'reportcard.SACS.nursery_report_card_pdf_all',
                     [
                         'section_id' => $this->section_id,
                         'class_id' => $this->class_id,
@@ -52,7 +52,7 @@ class GenerateReportCardJob implements ShouldQueue
 
             case 'LKG':
                 Pdf::loadView(
-                    'reportcard.SACS.lkg_report_card_pdf',
+                    'reportcard.SACS.lkg_report_card_pdf_all',
                     [
                         'student_id' => $this->student_id,
                         'class_id' => $this->class_id,
@@ -63,7 +63,7 @@ class GenerateReportCardJob implements ShouldQueue
 
             case 'UKG':
                 Pdf::loadView(
-                    'reportcard.SACS.ukg_report_card_pdf',
+                    'reportcard.SACS.ukg_report_card_pdf_all',
                     [
                         'student_id' => $this->student_id,
                         'class_id' => $this->class_id,
@@ -75,7 +75,7 @@ class GenerateReportCardJob implements ShouldQueue
             case '1':
             case '2':
                 Pdf::loadView(
-                    'reportcard.SACS.class1to2_report_card_pdf',
+                    'reportcard.SACS.class1to2_report_card_pdf_all',
                     compact('student_id', 'class_id', 'academic_yr')
                 )->save($fullPath);
                 break;
@@ -84,7 +84,7 @@ class GenerateReportCardJob implements ShouldQueue
             case '4':
             case '5':
                 Pdf::loadView(
-                    'reportcard.SACS.class3to5_report_card_pdf',
+                    'reportcard.SACS.class3to5_report_card_pdf_all',
                     compact('student_id', 'class_id', 'academic_yr')
                 )->save($fullPath);
                 break;
