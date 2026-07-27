@@ -20830,4 +20830,62 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             'students' => $students,
         ]);
     }
+
+    public function getCommunicationLimit()
+    {
+        try {
+            // Email Summary
+            $email = DB::table('emails_smtp_details')
+                ->where('active', 'Y')
+                ->selectRaw('
+                        COALESCE(SUM(daily_limit),0) as daily_limit,
+                        COALESCE(SUM(
+                            CASE
+                                WHEN last_sent_date = CURDATE() THEN emails_sent_today
+                                ELSE 0
+                            END
+                        ),0) as sent_today
+                    ')
+                ->first();
+
+            // WhatsApp Summary
+            $whatsapp = DB::table('school_settings as ss')
+                ->selectRaw("
+                    ss.whatsapp_threshold,
+                    ss.threshold_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM redington_webhook_details rwd
+                        WHERE rwd.sms_sent='Y'
+                        AND rwd.status <> 'failed'
+                        AND YEAR(rwd.created_at)=YEAR(CURDATE())
+                        AND MONTH(rwd.created_at)=MONTH(CURDATE())
+                    ) as sent_this_month
+                ")
+                ->where('ss.is_active', 'Y')
+                ->first();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'email_daily_limit' => (int) $email->daily_limit,
+                    'email_sent_today' => (int) $email->sent_today,
+                    'email_pending_today' => max(0, $email->daily_limit - $email->sent_today),
+                    'whatsapp_threshold' => $whatsapp->whatsapp_threshold,
+                    'whatsapp_monthly_limit' => (int) $whatsapp->threshold_count,
+                    'whatsapp_sent_month' => (int) $whatsapp->sent_this_month,
+                    'whatsapp_pending_month' => max(0, $whatsapp->threshold_count - $whatsapp->sent_this_month),
+                    'whatsapp_can_send' => !(
+                        $whatsapp->whatsapp_threshold == 'Y' &&
+                        $whatsapp->sent_this_month >= $whatsapp->threshold_count
+                    ),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

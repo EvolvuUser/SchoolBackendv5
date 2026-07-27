@@ -1738,6 +1738,9 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
 
+        // Communication limit API
+        Route::get('get_communication_limit', [AdminController::class, 'getCommunicationLimit']);
+
         // Send UserId to Parents
         Route::get('get_students_send_user_id', [AdminController::class, 'getStudentsListSendUserId']);
         // Parent App APIS
