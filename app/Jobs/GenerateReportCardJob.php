@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
+use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -41,7 +43,7 @@ class GenerateReportCardJob implements ShouldQueue
         switch ($this->class_name) {
             case 'Nursery':
                 Pdf::loadView(
-                    'reportcard.SACS.nursery_report_card_pdf',
+                    'reportcard.SACS.nursery_report_card_pdf_all',
                     [
                         'section_id' => $this->section_id,
                         'class_id' => $this->class_id,
@@ -52,7 +54,7 @@ class GenerateReportCardJob implements ShouldQueue
 
             case 'LKG':
                 Pdf::loadView(
-                    'reportcard.SACS.lkg_report_card_pdf',
+                    'reportcard.SACS.lkg_report_card_pdf_all',
                     [
                         'student_id' => $this->student_id,
                         'class_id' => $this->class_id,
@@ -63,7 +65,7 @@ class GenerateReportCardJob implements ShouldQueue
 
             case 'UKG':
                 Pdf::loadView(
-                    'reportcard.SACS.ukg_report_card_pdf',
+                    'reportcard.SACS.ukg_report_card_pdf_all',
                     [
                         'student_id' => $this->student_id,
                         'class_id' => $this->class_id,
@@ -75,7 +77,7 @@ class GenerateReportCardJob implements ShouldQueue
             case '1':
             case '2':
                 Pdf::loadView(
-                    'reportcard.SACS.class1to2_report_card_pdf',
+                    'reportcard.SACS.class1to2_report_card_pdf_all',
                     compact('student_id', 'class_id', 'academic_yr')
                 )->save($fullPath);
                 break;
@@ -83,21 +85,27 @@ class GenerateReportCardJob implements ShouldQueue
             case '3':
             case '4':
             case '5':
+                $reportCardData = app(Class3To5BulkReportCardDataBuilder::class)
+                    ->build($this->class_id, $this->section_id, $this->academic_yr);
+
                 Pdf::loadView(
-                    'reportcard.SACS.class3to5_report_card_pdf',
-                    compact('student_id', 'class_id', 'academic_yr')
+                    'reportcard.SACS.class3to5_report_card_pdf_all',
+                    [
+                        'reportCardData' => $reportCardData,
+                    ]
                 )->save($fullPath);
                 break;
 
             case '6':
             case '7':
             case '8':
+                $reportCardData = app(Class6To8BulkReportCardDataBuilder::class)
+                    ->build($this->class_id, $this->section_id, $this->academic_yr);
+
                 Pdf::loadView(
                     'reportcard.SACS.class6to8_report_card_pdf_all',
                     [
-                        'section_id' => $this->section_id,
-                        'class_id' => $this->class_id,
-                        'academic_yr' => $this->academic_yr
+                        'reportCardData' => $reportCardData,
                     ]
                 )->save($fullPath);
                 break;

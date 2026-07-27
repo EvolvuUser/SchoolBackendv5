@@ -589,3 +589,54 @@ function get_published_peer_feedback_parameter_value_by_id($student_id, $pfm_id,
     foreach ($res as $row)
         return $row->parameter_value;
 }
+
+function get_scholastic_subject_alloted_to_hsc_student($student_id)
+{
+    return DB::table('view_hsc_student_rc_subjects as a')
+        ->join('subjects_on_report_card_master as b', 'a.sub_rc_master_id', '=', 'b.sub_rc_master_id')
+        ->select('a.sub_rc_master_id', 'b.name')
+        ->where('a.student_id', $student_id)
+        ->where('a.subject_type', '<>', 'Co-scholastic_hsc')
+        ->orderBy('b.sequence')
+        ->get()
+        ->toArray();
+}
+
+function get_coscholastic_subject_alloted_to_hsc_student($student_id)
+{
+    return DB::table('view_hsc_student_rc_subjects as a')
+        ->join('subjects_on_report_card_master as b', 'a.sub_rc_master_id', '=', 'b.sub_rc_master_id')
+        ->select('a.sub_rc_master_id', 'b.name')
+        ->where('a.subject_type', 'Co-scholastic_hsc')
+        ->where('a.student_id', $student_id)
+        ->orderBy('b.sequence')
+        ->get()
+        ->map(function ($item) {
+            return (array) $item;
+        })
+        ->toArray();
+}
+
+function get_highest_marks_of_a_marksheading($marks_head_name, $class_id, $exam_id)
+{
+    $marks_list = '';
+
+    $res = DB::table('allot_mark_headings as a')
+        ->join('marks_headings as m', 'a.marks_headings_id', '=', 'm.marks_headings_id')
+        ->select(DB::raw('DISTINCT highest_marks as marks'))
+        ->where('m.name', $marks_head_name)
+        ->where('a.class_id', $class_id)
+        ->where('a.exam_id', $exam_id)
+        ->orderBy('highest_marks')
+        ->get();
+
+    foreach ($res as $row) {
+        if ($marks_list == '') {
+            $marks_list = $row->marks;
+        } else {
+            $marks_list .= '/' . $row->marks;
+        }
+    }
+
+    return $marks_list;
+}

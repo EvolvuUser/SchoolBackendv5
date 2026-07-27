@@ -1731,6 +1731,9 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_cbse9threportcard/{student_id}', [AssessmentController::class, 'getCbse9thReportCard']);
         Route::get('get_report_cards/{class_id}', [AssessmentController::class, 'getReportCards']);
 
+        // Cbse 11th report card
+        Route::get('/get_cbse11threportcard/{student_id}', [AssessmentController::class, 'getCbse11thReportCard']);
+
         // Sync Teachers in Evolvu DB
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);

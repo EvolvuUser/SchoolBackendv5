@@ -125,34 +125,46 @@
 	}
 </style>   
 <?php
-$student_info1 = array();
-if (isset($class_id) && isset($section_id)) {
-	$student_info1 = get_students($class_id, $section_id, $this->session->userdata['acd_yr']);
-} else {
-	$student_info = get_student_info($student_id, $academic_yr);
+if (!function_exists('resolveClass3To5ReportCardGradeFromScale')) {
+    function resolveClass3To5ReportCardGradeFromScale($mark, $subjectType, $gradeScale)
+    {
+        if (!is_numeric($mark) || is_nan($mark)) {
+            return '';
+        }
+
+        foreach ($gradeScale[$subjectType] ?? [] as $range) {
+            if ($mark >= $range['mark_from'] && $mark <= $range['mark_upto']) {
+                return $range['name'];
+            }
+        }
+
+        return '';
+    }
 }
 
-$slot = count($student_info1) / 10;
-$slot_no = intval($slot);  // 12
-$last_slot = explode('.', number_format($slot, 1))[1];
-$c = count($student_info1) - $last_slot;
+$student_info = $reportCardData['students'] ?? [];
+$term_list_master = $reportCardData['term_list'] ?? [];
+$scholastic_subjects_master = $reportCardData['scholastic_subjects'] ?? [];
+$co_scholastic_subjects_master = $reportCardData['co_scholastic_subjects'] ?? [];
+$term_metadata_master = $reportCardData['term_metadata'] ?? [];
+$marks_by_student_master = $reportCardData['marks_by_student'] ?? [];
+$remarks_by_student_master = $reportCardData['remarks_by_student'] ?? [];
+$attendance_by_student_master = $reportCardData['attendance_by_student'] ?? [];
+$grade_scale_master = $reportCardData['grade_scale'] ?? [];
+$reopen_date_master = $reportCardData['reopen_date'] ?? null;
 
-// print_r($student_info1[0]);
-if (isset($stud_count)) {
-	if ($last_slot != $stud_count) {
-		for ($i = $stud_count - 10; $i < $stud_count; $i++) {
-			$student_info[$i] = $student_info1[$i];
-		}
-	} else {
-		for ($i = $c; $i < count($student_info1); $i++) {
-			$student_info[$i] = $student_info1[$i];
-		}
-	}
-}
 foreach ($student_info as $row1):
-	$class_name = get_class_name($row1['class_id']);
-	$section_name = get_section_name($row1['section_id']);
-	?>
+    $class_name = $row1['class_name'] ?? '';
+    $section_name = $row1['sec_name'] ?? '';
+    $term_list = $term_list_master;
+    $scholastic_subjects = $scholastic_subjects_master;
+    $co_scholastic_subjects = $co_scholastic_subjects_master;
+    $term_metadata = $term_metadata_master;
+    $student_marks = $marks_by_student_master[$row1['student_id']] ?? [];
+    $student_remarks = $remarks_by_student_master[$row1['student_id']] ?? [];
+    $student_attendance = $attendance_by_student_master[$row1['student_id']] ?? ['present' => '', 'working' => ''];
+    $grade_scale = $grade_scale_master;
+    ?>
 <html>
     <head>
         <meta charset="utf-16" />
@@ -191,7 +203,7 @@ foreach ($student_info as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Guardian's Name : </td>
-                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
+                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo $row1['father_name'] ?? ''; ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1['reg_no']; ?></div></td>
@@ -207,7 +219,7 @@ foreach ($student_info as $row1):
                         <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']) . ' ' . get_section_name($row1['section_id']); ?></div></td>
+						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo trim($class_name . ' ' . $section_name); ?></div></td>
                     </table>
                     
                 </td>
@@ -220,202 +232,183 @@ foreach ($student_info as $row1):
 					<table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border: 1px solid grey !important;" cellpadding="0" cellspacing="0">
                          <tr>
 							<?php
-							$term_list = get_published_terms($row1['class_id'], $row1['section_id']);
-							// print_r($term_list);
-							?>
+                            ?>
 							<th class="col-md-3 col-sm-3 col-xs-3 th" style="word-wrap: break-word; font-size:10px"><b>Scholastic Areas</b></th>
 							<?php
-							//	$count_of_mark_headings=0;
-							foreach ($term_list as $term) {
-								${'general_highest_marks_array_' . $term->term_id} = array();
-								${'general_highest_marks_list_' . $term->term_id} = array();
-								${'count_of_mark_headings_' . $term->term_id} = 0;
-								// $count_of_mark_headings=0;
-								$exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
-								foreach ($exam_list as $exam) {
-									${'count_of_mark_headings_' . $exam->exam_id} = 0;
-									$marks_headings = get_marks_heading_class($row1['class_id'], 1, $exam->exam_id, $row1['academic_yr']);
-									${'general_highest_marks_json_' . $term->term_id} = '{';
-									foreach ($marks_headings as $mrow) {
-										${'general_highest_marks_json_' . $term->term_id} = ${'general_highest_marks_json_' . $term->term_id} . '"' . $mrow->marks_headings_name . '":"' . $mrow->highest_marks . '",';
-										${'count_of_mark_headings_' . $exam->exam_id} = ${'count_of_mark_headings_' . $exam->exam_id} + 1;
-									}
-									${'general_highest_marks_json_' . $term->term_id} = rtrim(${'general_highest_marks_json_' . $term->term_id}, ',');  // Lija report card
-									${'general_highest_marks_json_' . $term->term_id} = ${'general_highest_marks_json_' . $term->term_id} . '}';
-									${'decoded_general_highest_marks_' . $term->term_id} = json_decode(${'general_highest_marks_json_' . $term->term_id}, true);
-									if (is_array(${'decoded_general_highest_marks_' . $term->term_id})) {
-										foreach (${'decoded_general_highest_marks_' . $term->term_id} as $key => $value) {
-											${'general_highest_marks_list_' . $term->term_id}[] = array(
-												'id' => $exam->exam_id . '_' . $key,
-												'name' => $key,
-												'highest_marks' => $value,
-											);
-										}
-									}
-									${'general_highest_marks_array_' . $term->term_id} = array_merge(${'general_highest_marks_array_' . $term->term_id}, ${'decoded_general_highest_marks_' . $term->term_id});
-									// echo ${'general_highest_marks_json_'.$term->term_id}."<br>";
-									${'count_of_mark_headings_' . $term->term_id} = count(${'general_highest_marks_list_' . $term->term_id});
-								}
+                            //	$count_of_mark_headings=0;
+                            foreach ($term_list as $term) {
+                                ${'general_highest_marks_array_' . $term->term_id} = array();
+                                ${'general_highest_marks_list_' . $term->term_id} = array();
+                                ${'count_of_mark_headings_' . $term->term_id} = 0;
+                                // $count_of_mark_headings=0;
+                                $exam_list = $term_metadata[$term->term_id]['exam_list'] ?? array();
+                                foreach ($exam_list as $exam) {
+                                    ${'count_of_mark_headings_' . $exam->exam_id} = $term_metadata[$term->term_id]['count_of_mark_headings_by_exam'][$exam->exam_id] ?? 0;
+                                }
+                                ${'general_highest_marks_array_' . $term->term_id} = $term_metadata[$term->term_id]['general_highest_marks_array'] ?? array();
+                                ${'general_highest_marks_list_' . $term->term_id} = $term_metadata[$term->term_id]['general_highest_marks_list'] ?? array();
+                                ${'count_of_mark_headings_' . $term->term_id} = $term_metadata[$term->term_id]['count_of_mark_headings'] ?? 0;
 
-								?>
+                                ?>
 							 <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id} + 2; ?>"><?php echo $term->name; ?></th>
                          <?php
-							}
-							?>
+                            }
+                            ?>
 						</tr>		
 						<tr>
 							<?php
-							// $term_list	=	get_term($acd_yr);
-							?>
+                            // $term_list	=	get_term($acd_yr);
+                            ?>
                             <td class="col-md-3 td" style="text-align:center;height:30px;">SUBJECT</th>
 							<?php
 
-							foreach ($term_list as $term) {
-								${'grand_total_marks ' . $term->term_id} = 0;
-								${'grand_highest_marks_' . $term->term_id} = 0;
+                            foreach ($term_list as $term) {
+                                ${'grand_total_marks ' . $term->term_id} = 0;
+                                ${'grand_highest_marks_' . $term->term_id} = 0;
 
-								$highest_total_marks = 0;
-								if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
-									foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
-										// Lija For term 1 marks were doubled for acd yr 2020-2021. Remove this if condtion next yr
-										if ($term->term_id == 1 && $heading['name'] == 'Term' && $row1['academic_yr'] == '2020-2021') {  // Lija 10-09-21
-											$heading['highest_marks'] = $heading['highest_marks'] * 2;
-										}
-										$highest_total_marks = $highest_total_marks + (float) $heading['highest_marks'];
+                                $highest_total_marks = 0;
+                                if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
+                                    foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
+                                        // Lija For term 1 marks were doubled for acd yr 2020-2021. Remove this if condtion next yr
+                                        if ($term->term_id == 1 && $heading['name'] == 'Term' && $row1['academic_yr'] == '2020-2021') {  // Lija 10-09-21
+                                            $heading['highest_marks'] = $heading['highest_marks'] * 2;
+                                        }
+                                        $highest_total_marks = $highest_total_marks + (float) $heading['highest_marks'];
 
-										${'total_marks_' . $term->term_id . $heading['id']} = 0;
-										?> 
+                                        ${'total_marks_' . $term->term_id . $heading['id']} = 0;
+                                        ?> 
 										<td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;"><?php echo $heading['name'] . '<br/>(' . $heading['highest_marks'] . ')'; ?></td>
 							 <?php
-									}
+                                    }
 
-									?>
+                                    ?>
 										<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;">Total<br/>(<?php echo $highest_total_marks; ?>)</td>
 										<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;">Grade</td>
 							 <?php
-								} else {
-									?>
+                                } else {
+                                    ?>
 								        <td class="col-md-1 td"  colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id} + 2; ?>" style="text-align:center;height:30px;"></td>
 							        
 							<?php
-								}
-							}
-							?>
+                                }
+                            }
+                            ?>
 						</tr>
 
 						<?php
-						// $grand_highest_marks=0;
-						$sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+                        // $grand_highest_marks=0;
+                        $sub_list = $scholastic_subjects;
 
-						foreach ($sub_list as $sub_row) {
-							?>
+                        foreach ($sub_list as $sub_row) {
+                            ?>
 						<tr>
                              <td  class="col-md-1 td" style="text-align:center;height:30px;">  
 								<?php
-								echo $sub_row->name;
-								?>
+                                echo $sub_row->name;
+                                ?>
 							</td>
 							<?php
-							foreach ($term_list as $term) {
-								$total_marks_obtained = '';
+                            foreach ($term_list as $term) {
+                                $total_marks_obtained = '';
 
-								${'mark_obtained_array_' . $term->term_id} = array();
-								${'highest_marks_array_' . $term->term_id} = array();
-								$exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
-								if (isset($exam_list) && count($exam_list) > 0) {
-									foreach ($exam_list as $exam) {
-										${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
-										if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
-											// $grand_highest_marks=$grand_highest_marks+50; //As each subject total marks is of 50 marks
+                                ${'mark_obtained_array_' . $term->term_id} = array();
+                                ${'highest_marks_array_' . $term->term_id} = array();
+                                $exam_list = $term_metadata[$term->term_id]['exam_list'] ?? array();
+                                if (isset($exam_list) && count($exam_list) > 0) {
+                                    foreach ($exam_list as $exam) {
+                                        ${'marks_resultarray_' . $term->term_id} = isset($student_marks[$term->term_id][$sub_row->sub_rc_master_id][$exam->exam_id])
+                                            ? array($student_marks[$term->term_id][$sub_row->sub_rc_master_id][$exam->exam_id])
+                                            : array();
+                                        if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
+                                            // $grand_highest_marks=$grand_highest_marks+50; //As each subject total marks is of 50 marks
 
-											${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
-											${'mark_obtained_array_' . $term->term_id} = json_decode(${'marks_obtained_json_' . $term->term_id}, true);  // ${'mark_obtained_array_'.$term->term_id}=array_merge(${'mark_obtained_array_'.$term->term_id},json_decode(${'marks_obtained_json_'.$term->term_id},true));
+                                            ${'mark_obtained_array_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
 
-											if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
-												foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
-													if ($total_marks_obtained == '')
-														$total_marks_obtained = 0;
-													$total_marks_obtained = $total_marks_obtained + (float) $value;
-													$varName = 'total_marks_' . $term->term_id . $exam->exam_id . '_' . $key;
+                                            if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
+                                                foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+                                                    if ($total_marks_obtained == '')
+                                                        $total_marks_obtained = 0;
+                                                    $total_marks_obtained = $total_marks_obtained + (float) $value;
+                                                    $varName = 'total_marks_' . $term->term_id . $exam->exam_id . '_' . $key;
 
-													if (!isset($$varName)) {
-														$$varName = 0;
-													}
+                                                    if (!isset($$varName)) {
+                                                        $$varName = 0;
+                                                    }
 
-													$$varName += (float) $value;
-													// echo "marks_".$term->term_id.$key." ".${'total_marks_'.$term->term_id.$key}."<br/>";
-													?> 
+                                                    $$varName += (float) $value;
+                                                    // echo "marks_".$term->term_id.$key." ".${'total_marks_'.$term->term_id.$key}."<br/>";
+                                                    ?> 
 												<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
 										<?php }
-											} else { ?>
+                                            } else { ?>
 								                <td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 								<?php
-											}
-										} else {
-											for ($i = 0; $i < ${'count_of_mark_headings_' . $exam->exam_id}; $i++) {
-								?>
+                                            }
+                                        } else {
+                                            for ($i = 0; $i < ${'count_of_mark_headings_' . $exam->exam_id}; $i++) {
+                                ?>
 									<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"></td>
 							<?php
-											}
-										}
-									}
-									?>
+                                            }
+                                        }
+                                    }
+                                    ?>
 						<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $total_marks_obtained; ?></td>
 									
 						<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;">
 						<?php
-						if ($total_marks_obtained <> '') {
-							${'grand_total_marks ' . $term->term_id} = ${'grand_total_marks ' . $term->term_id} + $total_marks_obtained;
-							${'grand_highest_marks_' . $term->term_id} = ${'grand_highest_marks_' . $term->term_id} + 100;
-						}
-						if ($total_marks_obtained == '') {
-							echo '';
-						} else {
-							$final_grade = get_grade_based_on_marks(round($total_marks_obtained), 'Scholastic', $row1['class_id']);
-							echo $final_grade;
-						}
-						?>
+                        if ($total_marks_obtained <> '') {
+                            ${'grand_total_marks ' . $term->term_id} = ${'grand_total_marks ' . $term->term_id} + $total_marks_obtained;
+                            ${'grand_highest_marks_' . $term->term_id} = ${'grand_highest_marks_' . $term->term_id} + 100;
+                        }
+                        if ($total_marks_obtained == '') {
+                            echo '';
+                        } else {
+                            $final_grade = resolveClass3To5ReportCardGradeFromScale(round($total_marks_obtained), 'Scholastic', $grade_scale);
+                            echo $final_grade;
+                        }
+                        ?>
 						</td>
 					<?php
-								} else {
-					?>
+                                } else {
+                    ?>
 							<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 					<?php
-								}
-							}
-							?>
+                                }
+                            }
+                            ?>
 				
                         </tr>
                         <?php
-						}
-						?>
+                        }
+                        ?>
 						<tr>
 							<td class="td" style="text-align:center;height:45px;">TOTAL</td>
 							<?php
-							foreach ($term_list as $term) {
-								if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
-									foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
-										?>
+                            foreach ($term_list as $term) {
+                                if (isset(${'general_highest_marks_list_' . $term->term_id}) && ${'general_highest_marks_list_' . $term->term_id} <> null) {
+                                    foreach (${'general_highest_marks_list_' . $term->term_id} as $heading) {
+                                        ?>
 										<td class="col-md-1 td" style="text-align:center;height:45px;"><?php echo ${'total_marks_' . $term->term_id . $heading['id']}; ?></td>
 							<?php
-									}
-									$grand_grade = '';
-									if (${'grand_highest_marks_' . $term->term_id} <> 0) {
-										$grand_marks_per_100 = (${'grand_total_marks ' . $term->term_id} * 100) / ${'grand_highest_marks_' . $term->term_id};  // Convert to out of 100
-										$grand_grade = get_grade_based_on_marks(round($grand_marks_per_100), 'Scholastic', $row1['class_id']);
-									}
-									?>
+                                    }
+                                    $grand_grade = '';
+                                    if (${'grand_highest_marks_' . $term->term_id} <> 0) {
+                                        $grand_marks_per_100 = (${'grand_total_marks ' . $term->term_id} * 100) / ${'grand_highest_marks_' . $term->term_id};  // Convert to out of 100
+                                        $grand_grade = resolveClass3To5ReportCardGradeFromScale(round($grand_marks_per_100), 'Scholastic', $grade_scale);
+                                    }
+                                    ?>
 								<td class="col-md-1 td" style="text-align:center;height:30px;"><?php echo ${'grand_total_marks ' . $term->term_id} . '/' . ${'grand_highest_marks_' . $term->term_id}; ?></td>
 									
 								<td class="col-md-1 td" style="text-align:center;height:30px;"><?php echo $grand_grade; ?></td>
 							<?php
-								} else {
-							?>
+                                } else {
+                            ?>
 							       <td class="col-md-1 td" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>" style="vertical-align:middle;text-align:center;"></td> 
 							<?php
-								}
-							}
-							?>
+                                }
+                            }
+                            ?>
 						</tr>
 						
 				</table>
@@ -433,86 +426,86 @@ foreach ($student_info as $row1):
                             <td class="" style="vertical-align:middle;" cellpadding="0" cellspacing="0">
                             <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white; font-size:15px;" cellpadding="2" cellspacing="0">
                                 <?php
-								$term_list = get_published_terms($row1['class_id'], $row1['section_id']);
-								$colspan = count($term_list) + 1;
-								?>
+                                $colspan = count($term_list) + 1;
+                                ?>
                                 <tr>
                                     <th class="td" cellpadding="0" colspan="<?php echo $colspan; ?>">CO- SCHOLASTICS AREA (Graded on 5 point Scale)</th>
                                 </tr>
                                 <tr>
                                     <th class="col-md-3 th" style="height:25px;">Subjects</th>
                                     <?php
-									foreach ($term_list as $term):
-										?>
+                                    foreach ($term_list as $term):
+                                        ?>
                                     <th class="col-md-1 th1" style="height:25px;" width=""><?php echo $term->name; ?></th>
                                      <?php
-									endforeach;
-									?>
+                                    endforeach;
+                                    ?>
                                 </tr>
                                  <?php
-	$sub_list = get_coscholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+    $sub_list = $co_scholastic_subjects;
 
-	foreach ($sub_list as $sub_row):
-		$acd_yr_frm = substr($row1['academic_yr'], 0, 4);
-		// Music was added in 2023-2024 Term 1 but by Term 2 it was told to remove from reportcard
-		if ($acd_yr_frm == 2023 && $sub_row['name'] == 'Music') {
-			continue;
-		}
-		?>
+    foreach ($sub_list as $sub_row):
+        $acd_yr_frm = substr($row1['academic_yr'], 0, 4);
+        // Music was added in 2023-2024 Term 1 but by Term 2 it was told to remove from reportcard
+        if ($acd_yr_frm == 2023 && $sub_row['name'] == 'Music') {
+            continue;
+        }
+        ?>
 
                                 <tr>
                                     <td  class="col-md-1 td" style="text-align:center;height:20px;"> 
                                         <?php
-										if ($acd_yr_frm >= 2023 && $sub_row->name == 'GK') {
-											echo 'V.Ed / G.K';
-										} else {
-											echo $sub_row->name;
-										}
-										?>
+                                        if ($acd_yr_frm >= 2023 && $sub_row->name == 'GK') {
+                                            echo 'V.Ed / G.K';
+                                        } else {
+                                            echo $sub_row->name;
+                                        }
+                                        ?>
                                     </td>
                              <?php
-		foreach ($term_list as $term) {
-			${'mark_obtained_array_' . $term->term_id} = array();
-			$exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
-			$sub_marks_per_term = 0;  // Lija 28-09-20
-			$coscholastic_grade = '';
-			foreach ($exam_list as $exam) {
-				${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
+        foreach ($term_list as $term) {
+            ${'mark_obtained_array_' . $term->term_id} = array();
+            $exam_list = $term_metadata[$term->term_id]['exam_list'] ?? array();
+            $sub_marks_per_term = 0;  // Lija 28-09-20
+            $coscholastic_grade = '';
+            foreach ($exam_list as $exam) {
+                ${'marks_resultarray_' . $term->term_id} = isset($student_marks[$term->term_id][$sub_row->sub_rc_master_id][$exam->exam_id])
+                    ? array($student_marks[$term->term_id][$sub_row->sub_rc_master_id][$exam->exam_id])
+                    : array();
 
-				if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
-					${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
-					${'mark_obtained_array_' . $term->term_id} = array_merge(${'mark_obtained_array_' . $term->term_id}, json_decode(${'marks_obtained_json_' . $term->term_id}, true));
+                if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
+                    ${'mark_obtained_array_' . $term->term_id} = array_merge(${'mark_obtained_array_' . $term->term_id}, ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks']);
 
-					if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
-						${'coscholastic_marksobtained_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['total_marks'];
+                    if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
+                        ${'coscholastic_marksobtained_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['total_marks'];
 
-						${'coscholastic_highestmarks_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['highest_total_marks'];
+                        ${'coscholastic_highestmarks_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['highest_total_marks'];
 
-						foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
-							if ($value == 'Ab')
-								$coscholastic_grade = 'Ab';
-						}
-						if ($coscholastic_grade == 'Ab' && ${'coscholastic_marksobtained_' . $term->term_id} == 0) {
-							// If reportcard marks is Ab and total marks is 0 then Grade will be Ab
-							$coscholastic_grade = 'Ab';
-						} else {
-							// Convert co-scholastic marks to out of 50 as for some subjects like computer it is out of 25 n for others it is out of 50
-							$marks_per_50 = (${'coscholastic_marksobtained_' . $term->term_id} * 50) / ${'coscholastic_highestmarks_' . $term->term_id};  // Convert to out of 50
-							if ($sub_row->sub_rc_master_id == 8 && $term->term_id == 2 && $row1['academic_yr'] == '2020-2021' && $marks_per_50 <= 30) {
-								// Lija 13-03-21 Art/craft if marks is less than 30 give C grade.
-								$coscholastic_grade = 'C';
-							} else {
-								$coscholastic_grade = get_grade_based_on_marks(round($marks_per_50), 'Co-Scholastic', $row1['class_id']);
-							}
-						}
-					}
-				}
-			}
-			?>
+                        foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
+                            if ($value == 'Ab')
+                                $coscholastic_grade = 'Ab';
+                        }
+                        if ($coscholastic_grade == 'Ab' && ${'coscholastic_marksobtained_' . $term->term_id} == 0) {
+                            // If reportcard marks is Ab and total marks is 0 then Grade will be Ab
+                            $coscholastic_grade = 'Ab';
+                        } else {
+                            // Convert co-scholastic marks to out of 50 as for some subjects like computer it is out of 25 n for others it is out of 50
+                            $marks_per_50 = (${'coscholastic_marksobtained_' . $term->term_id} * 50) / ${'coscholastic_highestmarks_' . $term->term_id};  // Convert to out of 50
+                            if ($sub_row->sub_rc_master_id == 8 && $term->term_id == 2 && $row1['academic_yr'] == '2020-2021' && $marks_per_50 <= 30) {
+                                // Lija 13-03-21 Art/craft if marks is less than 30 give C grade.
+                                $coscholastic_grade = 'C';
+                            } else {
+                                $coscholastic_grade = resolveClass3To5ReportCardGradeFromScale(round($marks_per_50), 'Co-Scholastic', $grade_scale);
+                            }
+                        }
+                    }
+                }
+            }
+            ?>
 							<td class="td" style="text-align:center;height:20px;"><?php echo $coscholastic_grade; ?></td>
 							<?php
-		}
-		?>
+        }
+        ?>
 						</tr>
                                 <?php endforeach; ?>
                             </table>
@@ -570,42 +563,37 @@ foreach ($student_info as $row1):
 			<tr> 
 			   <!--td-->
 				<?php
-				$remark_string = '';
-				$width = '100%';
-				foreach ($term_list as $term) {
-					$remark = get_reportcard_remark_of_a_student($row1['student_id'], $term->term_id);
-					if ($remark_string == '' && $remark <> '') {
-						$remark_string = $remark_string . 'Term ' . $term->term_id . ' - ' . $remark;
-					} elseif ($remark_string <> '' && $remark <> '') {
-						$remark_string = $remark_string . '<br/> Term ' . $term->term_id . ' - ' . $remark;
-					} else {
-						$remark_string = '<br>';
-						$width = '85%';
-					}
-				}
+                $remark_string = '';
+                $width = '100%';
+                foreach ($term_list as $term) {
+                    $remark = $student_remarks[$term->term_id]['remark'] ?? '';
+                    if ($remark_string == '' && $remark <> '') {
+                        $remark_string = $remark_string . 'Term ' . $term->term_id . ' - ' . $remark;
+                    } elseif ($remark_string <> '' && $remark <> '') {
+                        $remark_string = $remark_string . '<br/> Term ' . $term->term_id . ' - ' . $remark;
+                    } else {
+                        $remark_string = '<br>';
+                        $width = '85%';
+                    }
+                }
 
-				?>
+                ?>
 				<td style="font-size:14px;width: 28%;"><b>Class Teacher's Remark :</b></td>
 				<td style="font-size:12px;width: 70%;">
     				<div class="statistics_line">
     				<?php
-					echo $remark_string;
-					?>
+                    echo $remark_string;
+                    ?>
     				</div>
 				</td>
         </tr>
 		<?php
 
-		if (count($term_list) == 1) {
-			$date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;
-			$date_to = date_format(date_create(substr($date_from, 0, 4) . '-09-30'), 'Y-m-d');  // Creating date to as last day of sep;
-		} elseif (count($term_list) == 2) {
-			$date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;  // date_format(date_create(substr($date_from,0,4)."-10-01") , 'Y-m-d') ; // Creating date to as first day of Oct;
-			$date_to = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_to;
-		}
-		// $date_from=get_academic_yr_from_of_particular_yr($acd_yr);
-		// $date_to=get_academic_yr_to_of_particular_yr($acd_yr);
-		?>
+        $date_from = $reportCardData['date_from'] ?? null;
+        $date_to = $reportCardData['date_to'] ?? null;
+        // $date_from=get_academic_yr_from_of_particular_yr($acd_yr);
+        // $date_to=get_academic_yr_to_of_particular_yr($acd_yr);
+        ?>
         <tr> 
             <td colspan="2">
 				<table class="table-responsive" border=0 style="width:100%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;">
@@ -613,31 +601,31 @@ foreach ($student_info as $row1):
 						<td style="font-size:14px;text-align:left;white-space:nowrap;width: 10% !important" ><b> Attendance : </b></td>
     					<td style="font-size:14px;white-space:nowrap;width:20%!important;margin-right:2%;text-align:center;" ><div class="statistics_line">
 						<?php
-						if (get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) <> '') {
-							echo get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) . '/' . get_total_stu_workingday_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']);
-						}
-						?>&nbsp;
+                        if (($student_attendance['present'] ?? '') !== '') {
+                            echo ($student_attendance['present'] ?? '') . '/' . ($student_attendance['working'] ?? '');
+                        }
+                        ?>&nbsp;
 							</div> 
 						</td>
 					<?php
-					if (count($term_list) > 1) {
-						?>
+                    if (count($term_list) > 1) {
+                        ?>
                         <td style="font-size:14px;;text-align:left;white-space:nowrap;width: 15%;"><b> Promoted To :</b></td>
 						<?php
-						$promote_to = '';
-						if (isset($term_list[1]->term_id))
-							$promote_to = get_promote_to_of_a_student($row1['student_id'], $term_list[1]->term_id);
+                        $promote_to = '';
+                        if (isset($term_list[1]->term_id))
+                            $promote_to = $student_remarks[$term_list[1]->term_id]['promot'] ?? '';
 
-						?>
+                        ?>
                         <td style="margin-left:5%;text-align:center;font-size:14px;width:20%!important;">
 						<div class="statistics_line"><?php echo $promote_to; ?>&nbsp;</div> </td>
                         <td style="text-align:center;font-size:14px;width:15%;"><b> Date Of Reopening :</b></td>
                         <td style="width:auto;text-align:center;" ><div class="statistics_line">
 							<?php
-							$reopen_date = get_school_reopen_date($row1['class_id'], $row1['section_id']);
-							if ($reopen_date <> NULL && $reopen_date <> '0000-00-00')
-								echo date_format(date_create($reopen_date), 'd-m-Y');
-							?>
+                            $reopen_date = $reopen_date_master;
+                            if ($reopen_date <> NULL && $reopen_date <> '0000-00-00')
+                                echo date_format(date_create($reopen_date), 'd-m-Y');
+                            ?>
 						&nbsp;</div></td>
 					<?php } else { ?>
 						<td style="width: auto"> </td>
