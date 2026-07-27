@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Log;
 
 class SendFeeReminderCommand extends Command
 {
@@ -62,6 +63,7 @@ class SendFeeReminderCommand extends Command
             ->join('student as st', 'fc.student_id', '=', 'st.student_id')
             ->leftjoin('contact_details as ct', 'st.parent_id', '=', 'ct.id')
             ->where('fc.academic_yr', $academicYear)
+            ->where('st.isDelete', '!=', 'Y')
             ->whereNotNull('fc.due_date')
             ->whereRaw('DATEDIFF(fc.due_date, CURDATE()) = ?', [$reminderDays])
             ->groupBy(
@@ -135,6 +137,58 @@ class SendFeeReminderCommand extends Command
                 . ' | Pending : ' . $pending
                 . ' | Due : ' . $student->due_date);
 
+            // $message = "Dear Parent,\n";
+            // $message .= 'This is a reminder that the '
+            //     . $student->installment . $this->getOrdinalSuffix($student->installment)
+            //     . ' fee installment is due by '
+            //     . date('d M Y', strtotime($student->due_date)) . '.';
+            // $message .= "Please pay the fees as soon as possible to avoid a fine.\n";
+            // $message .= "Please check the school application for more details.\n";
+            // $message .= '– Evolvu';
+
+            // Log::info('Fee Reminder WhatsApp Message', [
+            //     'student_id' => $student->student_id,
+            //     'phone' => $mobile,
+            //     'message' => $message
+            // ]);
+
+            // $result = app('App\Http\Services\WhatsAppService')
+            //     ->sendTextMessage(
+            //         $mobile,
+            //         null,
+            //         [$message]
+            //     );
+
+            // if (isset($result['code']) && isset($result['message'])) {
+            //     Log::warning('Fee Reminder WhatsApp Failed', [
+            //         'student_id' => $student->student_id,
+            //         'phone' => $mobile,
+            //         'response' => $result
+            //     ]);
+
+            //     DB::table('redington_webhook_details')->insert([
+            //         'wa_id' => null,
+            //         'phone_no' => $mobile,
+            //         'stu_teacher_id' => $student->student_id,
+            //         'notice_id' => null,
+            //         'message_type' => 'fee_reminder',
+            //         'status' => 'failed',
+            //         'sms_sent' => 'N',
+            //         'created_at' => now()
+            //     ]);
+            // } else {
+            //     DB::table('redington_webhook_details')->insert([
+            //         'wa_id' => $result['response']['id'] ?? null,
+            //         'phone_no' => $mobile,
+            //         'stu_teacher_id' => $student->student_id,
+            //         'notice_id' => null,
+            //         'message_type' => 'fee_reminder',
+            //         'created_at' => now()
+            //     ]);
+
+            //     $this->info("Reminder sent to {$student->first_name} {$student->last_name}");
+            // }
+
             // Call your existing WhatsApp/SMS service here
             // $this->whatsappService->sendMessage($mobile, $message);
         }
@@ -149,5 +203,25 @@ class SendFeeReminderCommand extends Command
         $this->info('Students Found : ' . $students->count());
 
         return Command::SUCCESS;
+    }
+
+    private function getOrdinalSuffix($number)
+    {
+        $number = (int) $number;
+
+        if (($number % 100) >= 11 && ($number % 100) <= 13) {
+            return 'th';
+        }
+
+        switch ($number % 10) {
+            case 1:
+                return 'st';
+            case 2:
+                return 'nd';
+            case 3:
+                return 'rd';
+            default:
+                return 'th';
+        }
     }
 }
