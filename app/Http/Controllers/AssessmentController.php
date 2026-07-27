@@ -3,9 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\GenerateReportCardJob;
-use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
-use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
-use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Models\Allot_mark_headings;
 use App\Models\Classes;
 use App\Models\Division;
@@ -20,6 +17,9 @@ use App\Models\SubjectForReportCard;
 use App\Models\Teacher;
 use App\Models\Term;
 use App\Models\User;
+use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
+use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
+use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11460,6 +11460,20 @@ class AssessmentController extends Controller
 
             return PDF::loadView(
                 'reportcard.SACS.class9to10_report_card_pdf_all',
+                [
+                    'reportCardData' => $reportCardData,
+                ]
+            )->download($fileName);
+        }
+
+        if ($short_name == 'SACS' && in_array($class_name, ['11', '12'])) {
+            $reportCardData = app(Class11To12BulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr);
+
+            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+
+            return PDF::loadView(
+                'reportcard.SACS.class11to12_report_card_pdf_all',
                 [
                     'reportCardData' => $reportCardData,
                 ]
