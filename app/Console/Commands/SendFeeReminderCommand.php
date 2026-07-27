@@ -137,57 +137,57 @@ class SendFeeReminderCommand extends Command
                 . ' | Pending : ' . $pending
                 . ' | Due : ' . $student->due_date);
 
-            // $message = "Dear Parent,\n";
-            // $message .= 'This is a reminder that the '
-            //     . $student->installment . $this->getOrdinalSuffix($student->installment)
-            //     . ' fee installment is due by '
-            //     . date('d M Y', strtotime($student->due_date)) . '.';
-            // $message .= "Please pay the fees as soon as possible to avoid a fine.\n";
-            // $message .= "Please check the school application for more details.\n";
-            // $message .= '– Evolvu';
+            $message = "Dear Parent,\n";
+            $message .= 'This is a reminder that the '
+                . $student->installment . $this->getOrdinalSuffix($student->installment)
+                . ' fee installment is due by '
+                . date('d M Y', strtotime($student->due_date)) . '.';
+            $message .= "Please pay the fees as soon as possible to avoid a fine.\n";
+            $message .= "Please check the school application for more details.\n";
+            $message .= '– Evolvu';
 
-            // Log::info('Fee Reminder WhatsApp Message', [
-            //     'student_id' => $student->student_id,
-            //     'phone' => $mobile,
-            //     'message' => $message
-            // ]);
+            Log::info('Fee Reminder WhatsApp Message', [
+                'student_id' => $student->student_id,
+                'phone' => $mobile,
+                'message' => $message
+            ]);
 
-            // $result = app('App\Http\Services\WhatsAppService')
-            //     ->sendTextMessage(
-            //         $mobile,
-            //         null,
-            //         [$message]
-            //     );
+            $result = app('App\Http\Services\WhatsAppService')
+                ->sendTextMessage(
+                    $mobile,
+                    null,
+                    [$message]
+                );
 
-            // if (isset($result['code']) && isset($result['message'])) {
-            //     Log::warning('Fee Reminder WhatsApp Failed', [
-            //         'student_id' => $student->student_id,
-            //         'phone' => $mobile,
-            //         'response' => $result
-            //     ]);
+            if (isset($result['code']) && isset($result['message'])) {
+                Log::warning('Fee Reminder WhatsApp Failed', [
+                    'student_id' => $student->student_id,
+                    'phone' => $mobile,
+                    'response' => $result
+                ]);
 
-            //     DB::table('redington_webhook_details')->insert([
-            //         'wa_id' => null,
-            //         'phone_no' => $mobile,
-            //         'stu_teacher_id' => $student->student_id,
-            //         'notice_id' => null,
-            //         'message_type' => 'fee_reminder',
-            //         'status' => 'failed',
-            //         'sms_sent' => 'N',
-            //         'created_at' => now()
-            //     ]);
-            // } else {
-            //     DB::table('redington_webhook_details')->insert([
-            //         'wa_id' => $result['response']['id'] ?? null,
-            //         'phone_no' => $mobile,
-            //         'stu_teacher_id' => $student->student_id,
-            //         'notice_id' => null,
-            //         'message_type' => 'fee_reminder',
-            //         'created_at' => now()
-            //     ]);
+                DB::table('redington_webhook_details')->insert([
+                    'wa_id' => null,
+                    'phone_no' => $mobile,
+                    'stu_teacher_id' => $student->student_id,
+                    'notice_id' => null,
+                    'message_type' => 'fee_reminder',
+                    'status' => 'failed',
+                    'sms_sent' => 'N',
+                    'created_at' => now()
+                ]);
+            } else {
+                DB::table('redington_webhook_details')->insert([
+                    'wa_id' => $result['response']['id'] ?? null,
+                    'phone_no' => $mobile,
+                    'stu_teacher_id' => $student->student_id,
+                    'notice_id' => null,
+                    'message_type' => 'fee_reminder',
+                    'created_at' => now()
+                ]);
 
-            //     $this->info("Reminder sent to {$student->first_name} {$student->last_name}");
-            // }
+                $this->info("Reminder sent to {$student->first_name} {$student->last_name}");
+            }
 
             // Call your existing WhatsApp/SMS service here
             // $this->whatsappService->sendMessage($mobile, $message);
