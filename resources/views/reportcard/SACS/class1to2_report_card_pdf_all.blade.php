@@ -266,7 +266,7 @@ foreach ($student_info as $row1):
                                                         $total_marks_obtained = 0;
                                                     $total_marks_obtained = $total_marks_obtained + (float) $value;
                                                     ${'total_marks_' . $term->term_id . $key} = ${'total_marks_' . $term->term_id . $key} + (float) $value;
-                                                    // echo "marks_".$term['term_id'].$key." ".${'total_marks_'.$term['term_id'].$key}."<br/>";
+                                                    // echo "marks_".$term->term_id.$key." ".${'total_marks_'.$term->term_id.$key}."<br/>";
                                                     ?> 
 												<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;"><?php echo $value; ?></td>
 										<?php
@@ -281,7 +281,7 @@ foreach ($student_info as $row1):
 				
 										
 								<?php } else { ?>
-								                <td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term['term_id']} + 2); ?>"></td> 
+								                <td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 								<?php
                                             }
                                         } else {
@@ -322,7 +322,7 @@ foreach ($student_info as $row1):
 					<?php
                                 } else {
                     ?>
-							<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term['term_id']} + 2); ?>"></td> 
+							<td class="col-md-1 td"  style="vertical-align:middle;text-align:center;height:30px;" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>"></td> 
 					<?php
                                 }
                             }
@@ -360,7 +360,7 @@ foreach ($student_info as $row1):
 							<?php
                                 } else {
                             ?>
-							       <td class="col-md-1 td" colspan="<?php echo (${'count_of_mark_headings_' . $term['term_id']} + 2); ?>" style="vertical-align:middle;text-align:center;"></td> 
+							       <td class="col-md-1 td" colspan="<?php echo (${'count_of_mark_headings_' . $term->term_id} + 2); ?>" style="vertical-align:middle;text-align:center;"></td> 
 							<?php
                                 }
                             }
@@ -441,7 +441,7 @@ foreach ($student_info as $row1):
                             if ($value == 'Ab')
                                 $coscholastic_grade = 'Ab';
                         }
-                        if ($coscholastic_grade == 'Ab' && ${'coscholastic_marksobtained_' . $term['term_id']} == 0) {
+                        if ($coscholastic_grade == 'Ab' && ${'coscholastic_marksobtained_' . $term->term_id} == 0) {
                             // If reportcard marks is Ab and total marks is 0 then Grade will be Ab
                             $coscholastic_grade = 'Ab';
                         } else {
@@ -530,9 +530,9 @@ foreach ($student_info as $row1):
     foreach ($term_list as $term) {
         $remark = $student_remarks[$term->term_id]['remark'] ?? '';
         if ($remark_string == '' && $remark <> '') {
-            $remark_string = $remark_string . 'Term ' . $term['term_id'] . ' - ' . $remark;
+            $remark_string = $remark_string . 'Term ' . $term->term_id . ' - ' . $remark;
         } elseif ($remark_string <> '' && $remark <> '') {
-            $remark_string = $remark_string . '<br/> Term ' . $term['term_id'] . ' - ' . $remark;
+            $remark_string = $remark_string . '<br/> Term ' . $term->term_id . ' - ' . $remark;
         } else {
             $remark_string = '<br>';
             $width = '85%';

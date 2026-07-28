@@ -7,6 +7,7 @@ use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class11To12BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
+use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,12 +46,13 @@ class GenerateReportCardJob implements ShouldQueue
 
         switch ($this->class_name) {
             case 'Nursery':
+                $reportCardData = app(NurseryBulkReportCardDataBuilder::class)
+                    ->build($this->class_id, $this->section_id, $this->academic_yr);
+
                 Pdf::loadView(
                     'reportcard.SACS.nursery_report_card_pdf_all',
                     [
-                        'section_id' => $this->section_id,
-                        'class_id' => $this->class_id,
-                        'academic_yr' => $this->academic_yr
+                        'reportCardData' => $reportCardData,
                     ]
                 )->save($fullPath);
                 break;
