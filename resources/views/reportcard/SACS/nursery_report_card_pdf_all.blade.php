@@ -109,31 +109,41 @@
     .pdfdiv {
 	   page-break-after: always;
 	}
-    .pdfdiv:last-child{
+	.pdfdiv:last-child{
 		page-break-after: avoid;
 		page-break-inside: avoid;
 		margin-bottom: 0px;
 	}
-    .star-mark{
-        color:#f2c300;
-        font-size:22px;
-        line-height:1;
-        letter-spacing:1px;
-        white-space:nowrap;
+    .star-img{
+        width:25px;
+        height:20px;
+        vertical-align:middle;
     }
 </style>
 <br>
 <?php
 if (!function_exists('renderNurseryStars')) {
-    function renderNurseryStars($count)
+    function renderNurseryStars($count, $starImageSrc)
     {
         $count = (int) $count;
         if ($count <= 0) {
             return "<font size='5'>#</font>";
         }
 
-        return '<span class="star-mark">' . str_repeat('★', $count) . '</span>';
+        $html = '';
+        for ($i = 0; $i < $count; $i++) {
+            $html .= '<img src="' . $starImageSrc . '" class="star-img">';
+        }
+
+        return $html;
     }
+}
+
+$starImagePath = public_path('reportcard/SACS/Plain_Yellow_Star.jpg');
+$starImageSrc = '';
+if (file_exists($starImagePath)) {
+    $starImageData = base64_encode(file_get_contents($starImagePath));
+    $starImageSrc = 'data:image/jpeg;base64,' . $starImageData;
 }
 
 $student_info = $reportCardData['students'] ?? array();
@@ -231,7 +241,7 @@ foreach ($student_info as $row1):
                                         foreach ($mark_obtained_array as $key => $value) {
 											if ($key == 'Term') { ?>
 												<td class="imagetd"> 
-													<?php echo renderNurseryStars($value); ?>
+													<?php echo renderNurseryStars($value, $starImageSrc); ?>
 												</td>
 									<?php }
                                         }
@@ -289,7 +299,7 @@ foreach ($student_info as $row1):
 										<td class="imagetd">
 											<?php
                                         if ($marks_exists == 'Y') {
-                                            echo renderNurseryStars($marks_obtained);
+                                            echo renderNurseryStars($marks_obtained, $starImageSrc);
                                         }
                                         ?>
 										</td>
