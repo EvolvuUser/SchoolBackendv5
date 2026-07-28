@@ -146,8 +146,50 @@ if (!function_exists('renderNurseryStars')) {
 $starImagePath = public_path('reportcard/SACS/Plain_Yellow_Star.jpg');
 $starImageSrc = '';
 if (file_exists($starImagePath)) {
-    $starImageData = base64_encode(file_get_contents($starImagePath));
-    $starImageSrc = 'data:image/jpeg;base64,' . $starImageData;
+    $starImageData = null;
+
+    if (function_exists('imagecreatefromjpeg') && function_exists('imagecreatetruecolor')) {
+        $sourceImage = @imagecreatefromjpeg($starImagePath);
+        if ($sourceImage !== false) {
+            $targetWidth = 25;
+            $targetHeight = 20;
+            $resizedImage = imagecreatetruecolor($targetWidth, $targetHeight);
+
+            imagealphablending($resizedImage, false);
+            imagesavealpha($resizedImage, true);
+
+            $transparent = imagecolorallocatealpha($resizedImage, 0, 0, 0, 127);
+            imagefilledrectangle($resizedImage, 0, 0, $targetWidth, $targetHeight, $transparent);
+
+            imagecopyresampled(
+                $resizedImage,
+                $sourceImage,
+                0,
+                0,
+                0,
+                0,
+                $targetWidth,
+                $targetHeight,
+                imagesx($sourceImage),
+                imagesy($sourceImage)
+            );
+
+            ob_start();
+            imagepng($resizedImage);
+            $starImageData = ob_get_clean();
+
+            imagedestroy($resizedImage);
+            imagedestroy($sourceImage);
+        }
+    }
+
+    if ($starImageData === null) {
+        $starImageData = file_get_contents($starImagePath);
+    }
+
+    if ($starImageData !== false) {
+        $starImageSrc = 'data:image/png;base64,' . base64_encode($starImageData);
+    }
 }
 
 $student_info = $reportCardData['students'] ?? array();
