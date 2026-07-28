@@ -114,10 +114,14 @@
 		page-break-inside: avoid;
 		margin-bottom: 0px;
 	}
-    .star-img{
+    .star-icon{
         width:25px;
         height:20px;
         vertical-align:middle;
+        display:inline-block;
+        background-repeat:no-repeat;
+        background-position:center;
+        background-size:contain;
     }
 </style>
 <br>
@@ -132,7 +136,7 @@ if (!function_exists('renderNurseryStars')) {
 
         $html = '';
         for ($i = 0; $i < $count; $i++) {
-            $html .= '<img src="' . $starImageSrc . '" class="star-img">';
+            $html .= '<span class="star-icon"></span>';
         }
 
         return $html;
@@ -166,6 +170,11 @@ foreach ($student_info as $row1):
     $student_remarks = $remarks_by_student_master[$row1['student_id']] ?? [];
     $student_attendance = $attendance_by_student_master[$row1['student_id']] ?? [];
     ?>
+<style type="text/css">
+    .star-icon{
+        background-image:url('<?php echo $starImageSrc; ?>');
+    }
+</style>
 <br>
 <html>
     <body>
