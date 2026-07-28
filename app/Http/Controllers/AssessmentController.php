@@ -24,6 +24,7 @@ use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
+use App\Services\ReportCard\UkgBulkReportCardDataBuilder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11452,6 +11453,21 @@ class AssessmentController extends Controller
 
             return PDF::loadView(
                 'reportcard.SACS.lkg_report_card_pdf_all',
+                [
+                    'reportCardData' => $reportCardData,
+                ]
+            )->download($fileName);
+        }
+
+        if ($short_name == 'SACS' && $class_name == 'UKG') {
+            $reportCardData = app(UkgBulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr, $stud_count);
+
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+
+            return PDF::loadView(
+                'reportcard.SACS.ukg_report_card_pdf_all',
                 [
                     'reportCardData' => $reportCardData,
                 ]
