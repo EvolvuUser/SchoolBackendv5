@@ -109,14 +109,33 @@
     .pdfdiv {
 	   page-break-after: always;
 	}
-	.pdfdiv:last-child{
+    .pdfdiv:last-child{
 		page-break-after: avoid;
 		page-break-inside: avoid;
 		margin-bottom: 0px;
 	}
+    .star-mark{
+        color:#f2c300;
+        font-size:22px;
+        line-height:1;
+        letter-spacing:1px;
+        white-space:nowrap;
+    }
 </style>
 <br>
 <?php
+if (!function_exists('renderNurseryStars')) {
+    function renderNurseryStars($count)
+    {
+        $count = (int) $count;
+        if ($count <= 0) {
+            return "<font size='5'>#</font>";
+        }
+
+        return '<span class="star-mark">' . str_repeat('★', $count) . '</span>';
+    }
+}
+
 $student_info = $reportCardData['students'] ?? array();
 $term_list_master = $reportCardData['term_list'] ?? array();
 $subjects_master = $reportCardData['subjects'] ?? array();
@@ -210,15 +229,9 @@ foreach ($student_info as $row1):
                                     }
                                     if (count($mark_obtained_array) == 1) {
                                         foreach ($mark_obtained_array as $key => $value) {
-                                            if ($key == 'Term') { ?>
+											if ($key == 'Term') { ?>
 												<td class="imagetd"> 
-													<?php for ($i = 1; $i <= $value; $i++) { ?>
-													<img src="https://sms.evolvu.in/public/reportcard/SACS/Plain_Yellow_Star.jpg" style="width:25px;height:20px">
-													<?php
-                                                }
-                                                if ($value == 0)
-                                                    echo "<font size='5'>#</font>";
-                                                ?>
+													<?php echo renderNurseryStars($value); ?>
 												</td>
 									<?php }
                                         }
@@ -274,12 +287,10 @@ foreach ($student_info as $row1):
                                     if ($mh_row->name != 'Term') {
                                         ?>
 										<td class="imagetd">
-											<?php for ($k = 1; $k <= $marks_obtained; $k++) { ?> 
-												<img src="https://sms.evolvu.in/public/reportcard/SACS/Plain_Yellow_Star.jpg" style="width:25px;height:20px"> 
 											<?php
+                                        if ($marks_exists == 'Y') {
+                                            echo renderNurseryStars($marks_obtained);
                                         }
-                                        if ($marks_obtained == 0 && $marks_exists == 'Y')
-                                            echo "<font size='5'>#</font>";
                                         ?>
 										</td>
 							   <?php
