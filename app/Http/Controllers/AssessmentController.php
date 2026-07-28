@@ -22,6 +22,7 @@ use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
+use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -11431,10 +11432,26 @@ class AssessmentController extends Controller
             $reportCardData = app(NurseryBulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.nursery_report_card_pdf_all',
+                [
+                    'reportCardData' => $reportCardData,
+                ]
+            )->download($fileName);
+        }
+
+        if ($short_name == 'SACS' && $class_name == 'LKG') {
+            $reportCardData = app(LkgBulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr, $stud_count);
+
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+
+            return PDF::loadView(
+                'reportcard.SACS.lkg_report_card_pdf_all',
                 [
                     'reportCardData' => $reportCardData,
                 ]
@@ -11445,7 +11462,8 @@ class AssessmentController extends Controller
             $reportCardData = app(Class1To2BulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class1to2_report_card_pdf_all',
@@ -11459,7 +11477,8 @@ class AssessmentController extends Controller
             $reportCardData = app(Class3To5BulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class3to5_report_card_pdf_all',
@@ -11473,7 +11492,8 @@ class AssessmentController extends Controller
             $reportCardData = app(Class6To8BulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class6to8_report_card_pdf_all',
@@ -11487,7 +11507,8 @@ class AssessmentController extends Controller
             $reportCardData = app(Class9To10BulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class9to10_report_card_pdf_all',
@@ -11501,7 +11522,8 @@ class AssessmentController extends Controller
             $reportCardData = app(Class11To12BulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr);
 
-            $fileName = 'report_card_class_' . $class_name . '_' . $section_id . '_' . $academic_yr . '.pdf';
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class11to12_report_card_pdf_all',
