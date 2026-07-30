@@ -127,29 +127,29 @@
 <br>
 <?php
 if (!function_exists('renderNurseryStars')) {
-    function renderNurseryStars($count, $starImageSrc)
+    function renderNurseryStars($count)
     {
-        $count = (int) $count;
-        if ($count <= 0) {
-            return "<font size='5'>#</font>";
-        }
-
         $html = '';
-        for ($i = 0; $i < $count; $i++) {
-            $html .= '<span class="star-icon"></span>';
+
+        for ($i = 0; $i < (int) $count; $i++) {
+            $html .= '<img src="https://sms.evolvu.in/public/reportcard/SACS/Plain_Yellow_Star.jpg"
+                          width="25"
+                          height="20">';
         }
 
         return $html;
     }
 }
 
-$starImagePath = public_path('reportcard/SACS/Plain_Yellow_Star.jpg');
+$starImageUrl = 'https://sms.evolvu.in/public/reportcard/SACS/Plain_Yellow_Star.jpg';
 $starImageSrc = '';
-if (file_exists($starImagePath)) {
-    $starImageData = null;
 
-    if (function_exists('imagecreatefromjpeg') && function_exists('imagecreatetruecolor')) {
-        $sourceImage = @imagecreatefromjpeg($starImagePath);
+$starImageData = @file_get_contents($starImageUrl);
+
+if ($starImageData !== false) {
+    // Optional: resize with GD before embedding, same as before
+    if (function_exists('imagecreatefromstring') && function_exists('imagecreatetruecolor')) {
+        $sourceImage = @imagecreatefromstring($starImageData);
         if ($sourceImage !== false) {
             $targetWidth = 25;
             $targetHeight = 20;
@@ -157,21 +157,14 @@ if (file_exists($starImagePath)) {
 
             imagealphablending($resizedImage, false);
             imagesavealpha($resizedImage, true);
-
             $transparent = imagecolorallocatealpha($resizedImage, 0, 0, 0, 127);
             imagefilledrectangle($resizedImage, 0, 0, $targetWidth, $targetHeight, $transparent);
 
             imagecopyresampled(
-                $resizedImage,
-                $sourceImage,
-                0,
-                0,
-                0,
-                0,
-                $targetWidth,
-                $targetHeight,
-                imagesx($sourceImage),
-                imagesy($sourceImage)
+                $resizedImage, $sourceImage,
+                0, 0, 0, 0,
+                $targetWidth, $targetHeight,
+                imagesx($sourceImage), imagesy($sourceImage)
             );
 
             ob_start();
@@ -183,13 +176,7 @@ if (file_exists($starImagePath)) {
         }
     }
 
-    if ($starImageData === null) {
-        $starImageData = file_get_contents($starImagePath);
-    }
-
-    if ($starImageData !== false) {
-        $starImageSrc = 'data:image/png;base64,' . base64_encode($starImageData);
-    }
+    $starImageSrc = 'data:image/png;base64,' . base64_encode($starImageData);
 }
 
 $student_info = $reportCardData['students'] ?? array();
@@ -212,13 +199,8 @@ foreach ($student_info as $row1):
     $student_remarks = $remarks_by_student_master[$row1['student_id']] ?? [];
     $student_attendance = $attendance_by_student_master[$row1['student_id']] ?? [];
     ?>
-<style type="text/css">
-    .star-icon{
-        background-image:url('<?php echo $starImageSrc; ?>');
-    }
-</style>
+
 <br>
-<html>
     <body>
     <div class="col-md-12 pdfdiv" style="align:center;">
 <div class="col-md-2"></div>
@@ -290,8 +272,10 @@ foreach ($student_info as $row1):
                                     }
                                     if (count($mark_obtained_array) == 1) {
                                         foreach ($mark_obtained_array as $key => $value) {
-											if ($key == 'Term') { ?>
-												<td class="imagetd"> 
+                                            if ($key == 'Term') {
+                                                ?>
+												<td class="imagetd">
+												    
 													<?php echo renderNurseryStars($value, $starImageSrc); ?>
 												</td>
 									<?php }
@@ -349,10 +333,10 @@ foreach ($student_info as $row1):
                                         ?>
 										<td class="imagetd">
 											<?php
-                                        if ($marks_exists == 'Y') {
-                                            echo renderNurseryStars($marks_obtained, $starImageSrc);
-                                        }
-                                        ?>
+                                            if ($marks_exists == 'Y') {
+                                                echo renderNurseryStars($marks_obtained, $starImageSrc);
+                                            }
+                                            ?>
 										</td>
 							   <?php
                                     }
@@ -441,7 +425,6 @@ foreach ($student_info as $row1):
         </div>
         </div>
         </body>
-</html>  
 <?php endforeach; ?>
 </head>
 <body>

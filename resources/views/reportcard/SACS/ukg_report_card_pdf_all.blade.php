@@ -135,7 +135,7 @@ foreach ($student_info as $row1):
     <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
-		<table class="table-responsive" style="width:85%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 14%;" cellpadding="1" cellspacing="10">
+		<table class="table-responsive" style="width:85%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 20%;" cellpadding="1" cellspacing="10">
 			<tr>
 			<td style="font-size:18px;border-left:2px solid black;border-right:2px solid black;border-bottom:2px solid black;border-top:2px solid black;">
 				<table class="table-responsive col-md-12" border="0" width="100%" style="margin-top: 1%;margin-bottom: 1%;">
