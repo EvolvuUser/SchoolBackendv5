@@ -732,7 +732,7 @@ class AdminController extends Controller
         $user = Auth::user();
         $activeAcademicYear = Setting::where('active', 'Y')->first()->academic_yr;
 
-        $settings = Setting::all();
+        $settings = Setting::orderByDesc('academic_yr')->get();
 
         if ($user->role_id === 'P') {
             $settings = $settings->filter(function ($setting) use ($activeAcademicYear) {

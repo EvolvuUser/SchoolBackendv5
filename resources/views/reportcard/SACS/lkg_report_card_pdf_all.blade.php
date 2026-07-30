@@ -90,6 +90,7 @@
     } 
     .pdfdiv {
 	   page-break-after: always;
+	   padding-top: 150px;
 	}
 	.pdfdiv:last-child{
 		page-break-after: avoid;
@@ -97,7 +98,6 @@
 		margin-bottom: 0px;
 	}
 </style> 
-<br>
 <?php
 $student_info = $reportCardData['students'] ?? array();
 $term_list_master = $reportCardData['term_list'] ?? array();
@@ -121,18 +121,16 @@ foreach ($student_info as $row1):
     $student_attendance = $attendance_by_student_master[$row1['student_id']] ?? [];
     $grade_scale = $grade_scale_master;
     ?>
-<html>
-    <head>
-        <meta charset="utf-16" />
-    </head>
+</head>
+    
     <body>
     <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
-		<table class="table-responsive" style="width:80%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 14%;" cellpadding="1" cellspacing="8">
+		<table class="table-responsive" style="width:80%;margin-left:auto;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 3%;" cellpadding="1" cellspacing="8">
 			<tr>
 			<td style="font-size:18px;border-left:2px solid black;border-right:2px solid black;border-bottom:2px solid black;border-top:2px solid black;">
-				<table class="table-responsive col-md-12" border="0" width="100%" style="margin-top: 1%;margin-bottom: 1%;">
+				<table class="table-responsive col-md-12" border="0" width="100%" style="margin-top: 3%;margin-bottom: 1%;">
 					 <tr> 
                          <td colspan="3" style="align:'left';padding-left:18px;" class="col-md-12" ><b>My Name : <u><?php echo $row1['first_name'] . ' ' . $row1['mid_name'] . ' ' . $row1['last_name']; ?></u></b>
 					   </td>
@@ -235,8 +233,8 @@ foreach ($student_info as $row1):
                                                     if ($value == 'Ab') {
                                                         echo "<font color='red'>Ab</font>";
                                                     } else {
-                                                            if ($value <> '') {
-                                                                $value_per_100 = ($value * 100) / $highest_mark_of_a_markheading;  // Convert to out of 100 Lija 30-09-22
+                                                        if ($value <> '') {
+                                                            $value_per_100 = ($value * 100) / $highest_mark_of_a_markheading;  // Convert to out of 100 Lija 30-09-22
                                                             $grade = '';
                                                             foreach ($grade_scale[$rw->subject_type] ?? [] as $range) {
                                                                 if ($value_per_100 >= $range['mark_from'] && $value_per_100 <= $range['mark_upto']) {
@@ -503,8 +501,8 @@ foreach ($student_info as $row1):
 		</table>
     </div>
 </div>
+
+<?php endforeach; ?>
 </body>
 </html> 
-<?php endforeach; ?>
-</head>
-<body>
+
