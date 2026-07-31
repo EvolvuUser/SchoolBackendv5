@@ -54,6 +54,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use League\Csv\Writer;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Exception;
@@ -20885,6 +20887,29 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getTeacherIdCardExcel(Request $request)
+    {
+        try {
+            $spreadsheet = new Spreadsheet();
+
+            // Create an empty worksheet
+            $spreadsheet->setActiveSheetIndex(0);
+
+            $writer = new Xlsx($spreadsheet);
+
+            $tempFile = storage_path('app/Empty.xlsx');
+            $writer->save($tempFile);
+
+            return response()->download($tempFile)->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

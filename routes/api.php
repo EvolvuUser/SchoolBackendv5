@@ -1855,3 +1855,4 @@ Route::get('/test-log', function () {
 });
 Route::get('get_url', [ParentController::class, 'getUrl']);
 Route::post('validate_user', [ParentController::class, 'validateUser']);
+Route::get('/teacher-id-card/excel', [AdminController::class, 'getTeacherIdCardExcel']);
