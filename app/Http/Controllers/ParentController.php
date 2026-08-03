@@ -24,21 +24,42 @@ class ParentController extends Controller
         }
     }
 
-    public function getUrl()
+    public function getUrl(Request $request)
     {
+        $request->validate([
+            'type' => 'required|string',
+        ]);
+
+        $version = DB::connection('school_database')
+            ->table('flutter_apk_version')
+            ->where('type', $request->type)
+            ->orderByDesc('major')
+            ->orderByDesc('minor')
+            ->orderByDesc('fixes')
+            ->selectRaw("
+            CONCAT(major, '.', minor, '.', fixes) AS flutter_apk_version,
+            release_notes,
+            forced_update
+        ")
+            ->first();
+
         return response()->json([
             'status' => true,
             'url' => config('externalapis.laravel_url'),
+            'flutter_apk_version' => $version?->flutter_apk_version,
+            'release_notes' => $version?->release_notes,
+            'forced_update' => $version?->forced_update,
         ]);
     }
 
-    public function validateUser(request $request)
+    public function validateUser(Request $request)
     {
         try {
             $request->validate([
                 'user_id' => 'required'
             ]);
 
+            // School List
             $schools = DB::connection('school_database')
                 ->table('user_schoolwise as us')
                 ->join('school as s', 's.school_id', '=', 'us.school_id')
@@ -77,13 +98,17 @@ class ParentController extends Controller
         }
     }
 
-    public function getChilds(Request $request)
+    public function getDashboardData(Request $request)
     {
         try {
             $user = $this->authenticateUser();
             $academic_yr = JWTAuth::getPayload()->get('academic_year');
             $parent_id = JWTAuth::getPayload()->get('reg_id');
+            $today_date = date('Y-m-d');
+            $tomorrow_date = date('Y-m-d', strtotime($today_date . ' +1 day'));
+            $type_link = $request->input('type_link');
 
+            // Student Data
             $students = DB::table('student')
                 ->join('class', 'student.class_id', '=', 'class.class_id')
                 ->join('section', 'student.section_id', '=', 'section.section_id')
@@ -106,20 +131,175 @@ class ParentController extends Controller
                 )
                 ->get();
 
+            // News
+            $news = DB::table('news')
+                ->select(
+                    'news_id',
+                    'title',
+                    DB::raw("REPLACE(description,'<br/>','\n') as description"),
+                    'date_posted',
+                    'active_till_date',
+                    'posted_by',
+                    'url',
+                    'image_name',
+                    'publish',
+                    'isDelete'
+                )
+                ->where('publish', 'Y')
+                ->where('isDelete', 'N')
+                ->where(function ($query) use ($today_date) {
+                    $query
+                        ->whereNull('active_till_date')
+                        ->orWhere('active_till_date', '>', $today_date);
+                })
+                ->orderBy('date_posted', 'DESC')
+                ->get();
+
+            // Important Links
+            $importantLinks = DB::table('important_links')
+                ->where('publish', 'Y')
+                ->where('isDelete', 'N')
+                ->when($type_link, function ($query) use ($type_link) {
+                    return $query->where('type_link', $type_link);
+                })
+                ->orderBy('create_date', 'DESC')
+                ->get();
+
+            // Evolvu Updates
+            $evolvuUpdates = DB::table('evolvu_updates')
+                ->where('publish', 'Y')
+                ->where('isDelete', 'N')
+                ->whereDate('expiry_date', '>=', $today_date)
+                ->where('role', 'P')
+                ->orderBy('publish_date', 'DESC')
+                ->get();
+
+            // Attach Images (batched - single query instead of N+1)
+            if ($evolvuUpdates->isNotEmpty()) {
+                $updateIds = $evolvuUpdates->pluck('update_id');
+
+                $imagesByUpdate = DB::table('evolvu_updates_detail')
+                    ->whereIn('update_id', $updateIds)
+                    ->select('update_id', 'image_name')
+                    ->get()
+                    ->groupBy('update_id');
+
+                foreach ($evolvuUpdates as $update) {
+                    $update->image_list = $imagesByUpdate->get($update->update_id, collect())->values();
+                }
+            }
+
+            $todaysExam = [];
+
             if ($students->isNotEmpty()) {
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Students fetched successfully.',
-                    'data' => $students
-                ], 200);
+                $classIds = $students->pluck('class_id')->unique()->values();
+
+                $allExamRows = DB::table('exam_timetable')
+                    ->join('exam_timetable_details', 'exam_timetable.exam_tt_id', '=', 'exam_timetable_details.exam_tt_id')
+                    ->join('exam', 'exam_timetable.exam_id', '=', 'exam.exam_id')
+                    ->whereIn('exam_timetable.class_id', $classIds)
+                    ->where('exam_timetable.publish', 'Y')
+                    ->where(function ($query) {
+                        $query
+                            ->whereNotNull('subject_rc_id')
+                            ->where('subject_rc_id', '!=', '')
+                            ->orWhere(function ($q) {
+                                $q
+                                    ->where('study_leave', 'Y')
+                                    ->whereNull('subject_rc_id');
+                            });
+                    })
+                    ->where(function ($query) use ($today_date, $tomorrow_date) {
+                        $query
+                            ->whereDate('exam_timetable_details.date', $today_date)
+                            ->orWhereDate('exam_timetable_details.date', $tomorrow_date);
+                    })
+                    ->select(
+                        'exam_timetable.*',
+                        'exam_timetable_details.*',
+                        'exam.name as exam_name'
+                    )
+                    ->get()
+                    ->groupBy('class_id');
+
+                // Collect all subject_rc_ids across all exam rows, resolve names in ONE query
+                $allSubjectIds = [];
+                foreach ($allExamRows as $classExams) {
+                    foreach ($classExams as $exam) {
+                        if (!empty($exam->subject_rc_id)) {
+                            $ids = preg_split('/[,\/]/', $exam->subject_rc_id);
+                            $allSubjectIds = array_merge($allSubjectIds, $ids);
+                        }
+                    }
+                }
+                $allSubjectIds = array_values(array_unique(array_filter($allSubjectIds)));
+
+                $subjectNameMap = collect();
+                if (!empty($allSubjectIds)) {
+                    $subjectNameMap = DB::table('subjects_on_report_card_master')
+                        ->whereIn('sub_rc_master_id', $allSubjectIds)
+                        ->pluck('name', 'sub_rc_master_id');
+                }
+
+                foreach ($students as $student) {
+                    $examTimetable = $allExamRows->get($student->class_id, collect());
+
+                    foreach ($examTimetable as $exam) {
+                        $subjectNames = '';
+
+                        if (!empty($exam->subject_rc_id)) {
+                            if (str_contains($exam->subject_rc_id, ',')) {
+                                $subjectIds = explode(',', $exam->subject_rc_id);
+                                $delimiter = ' & ';
+                            } elseif (str_contains($exam->subject_rc_id, '/')) {
+                                $subjectIds = explode('/', $exam->subject_rc_id);
+                                $delimiter = ' / ';
+                            } else {
+                                $subjectIds = [$exam->subject_rc_id];
+                                $delimiter = '';
+                            }
+
+                            $names = [];
+                            foreach ($subjectIds as $sid) {
+                                if (isset($subjectNameMap[$sid])) {
+                                    $names[] = $subjectNameMap[$sid];
+                                }
+                            }
+
+                            $subjectNames = implode($delimiter, $names);
+                        }
+
+                        $todaysExam[] = [
+                            'student_id' => $student->student_id,
+                            'student_name' => $student->first_name,
+                            'class_name' => $student->class_name,
+                            'section_name' => $student->section_name,
+                            'exam_id' => $exam->exam_id,
+                            'exam_name' => $exam->exam_name,
+                            'exam_date' => $exam->date,
+                            'start_time' => $exam->start_time ?? null,
+                            'end_time' => $exam->end_time ?? null,
+                            'study_leave' => $exam->study_leave,
+                            'subject_name' => $subjectNames
+                        ];
+                    }
+                }
             }
 
             return response()->json([
-                'status' => false,
-                'message' => 'Student data not found in current academic year.',
-                'data' => []
+                'status' => true,
+                'message' => 'Dashboard data fetched successfully.',
+                'data' => [
+                    'get_childs' => $students,
+                    'news' => $news,
+                    'important_links' => $importantLinks,
+                    'evolvu_updates' => $evolvuUpdates,
+                    'todays_exam' => $todaysExam
+                ]
             ], 200);
         } catch (\Exception $e) {
+            \Log::error('getDashboardData error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
