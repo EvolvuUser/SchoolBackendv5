@@ -54,6 +54,10 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use League\Csv\Writer;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -20894,21 +20898,382 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function getTeacherIdCardExcel(Request $request)
     {
         try {
-            $spreadsheet = new Spreadsheet();
+            $user = $this->authenticateUser();
+            $payload = getTokenPayload($request);
+            $shortName = $payload->get('short_name');
+            $staffdata = DB::table('teacher as t')
+                ->leftJoin('confirmation_teacher_idcard as c', 'c.teacher_id', '=', 't.teacher_id')
+                ->select('t.*', 'c.confirm')
+                ->where('t.isDelete', 'N')
+                ->where('c.confirm', 'Y')
+                ->orderBy('t.teacher_id')
+                ->get();
 
-            // Create an empty worksheet
-            $spreadsheet->setActiveSheetIndex(0);
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Teacher ID Card');
+
+            // Header
+            $headers = [
+                'A1' => 'Sr No.',
+                'B1' => 'Photo',
+                'C1' => 'Employee Id',
+                'D1' => 'Name',
+                'E1' => 'Phone No',
+                'F1' => 'Address',
+                'G1' => 'Gender',
+                'H1' => 'Blood Group',
+                'I1' => 'Profile Image Name'
+            ];
+
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
+
+            // Header Style
+            $sheet->getStyle('A1:I1')->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 12
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => [
+                        'rgb' => 'D9EAD3'
+                    ]
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_MEDIUM
+                    ]
+                ]
+            ]);
+
+            $row = 2;
+            $sr = 1;
+
+            foreach ($staffdata as $teacher) {
+                $sheet->setCellValue('A' . $row, $sr);
+                $sheet->setCellValue('C' . $row, $teacher->employee_id);
+                $sheet->setCellValue('D' . $row, $teacher->name);
+                $sheet->setCellValue('E' . $row, $teacher->phone);
+                $sheet->setCellValue('F' . $row, $teacher->address);
+                $sheet->setCellValue('G' . $row, ucfirst($teacher->sex));
+                $sheet->setCellValue('H' . $row, $teacher->blood_group);
+                $sheet->setCellValue('I' . $row, $teacher->teacher_image_name);
+
+                // Wrap text
+                $sheet
+                    ->getStyle("A{$row}:I{$row}")
+                    ->getAlignment()
+                    ->setWrapText(true);
+
+                $sheet
+                    ->getStyle("A{$row}:I{$row}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+
+                // Row Height
+                $sheet->getRowDimension($row)->setRowHeight(65);
+
+                // Image
+                if (!empty($teacher->teacher_image_name)) {
+                    $configKey = strtoupper($shortName) . '_UPLOAD_PATH';
+
+                    $uploadPath = config('externalapis.' . $configKey);
+                    $imagePath = $uploadPath . '/teacher_image/' . $teacher->teacher_image_name;
+
+                    if (file_exists($imagePath)) {
+                        list($width, $height) = getimagesize($imagePath);
+
+                        $drawing = new Drawing();
+                        $drawing->setPath($imagePath);
+                        $drawing->setResizeProportional(true);
+                        $drawing->setHeight(55);
+                        $drawing->setCoordinates('B' . $row);
+
+                        // Approximate cell dimensions in pixels
+                        $cellWidth = 120;
+                        $cellHeight = 70;
+
+                        $newWidth = ($width / $height) * 55;
+
+                        $offsetX = max(0, ($cellWidth - $newWidth) / 2);
+                        $offsetY = max(0, ($cellHeight - 55) / 2);
+
+                        $drawing->setOffsetX((int) $offsetX);
+                        $drawing->setOffsetY((int) $offsetY);
+
+                        $drawing->setWorksheet($sheet);
+                    }
+                }
+
+                $row++;
+                $sr++;
+            }
+
+            // Borders
+            $sheet->getStyle('A1:I' . ($row - 1))->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_MEDIUM
+                    ]
+                ]
+            ]);
+
+            // Column Widths
+            $sheet->getColumnDimension('A')->setWidth(8);
+            $sheet->getColumnDimension('B')->setWidth(15);
+            $sheet->getColumnDimension('C')->setWidth(15);
+            $sheet->getColumnDimension('D')->setWidth(35);
+            $sheet->getColumnDimension('E')->setWidth(18);
+            $sheet->getColumnDimension('F')->setWidth(45);
+            $sheet->getColumnDimension('G')->setWidth(12);
+            $sheet->getColumnDimension('H')->setWidth(15);
+            $sheet->getColumnDimension('I')->setWidth(20);
 
             $writer = new Xlsx($spreadsheet);
 
-            $tempFile = storage_path('app/Empty.xlsx');
-            $writer->save($tempFile);
+            $fileName = storage_path('app/Teacher_ID_Card_List.xlsx');
 
-            return response()->download($tempFile)->deleteFileAfterSend(true);
+            $writer->save($fileName);
+
+            return response()->download($fileName)->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getStudentIdCardExcel(Request $request)
+    {
+        try {
+            $user = $this->authenticateUser();
+
+            $payload = getTokenPayload($request);
+            $shortName = $payload->get('short_name');
+
+            $section_id = $request->section_id;
+
+            $students = DB::table('confirmation_idcard')
+                ->join('student', 'student.parent_id', '=', 'confirmation_idcard.parent_id')
+                ->join('class', 'student.class_id', '=', 'class.class_id')
+                ->join('section', 'student.section_id', '=', 'section.section_id')
+                ->join('parent', 'student.parent_id', '=', 'parent.parent_id')
+                ->leftJoin('house', 'student.house', '=', 'house.house_id')
+                ->select(
+                    'student.roll_no',
+                    'student.reg_no',
+                    'student.image_name',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.permant_add',
+                    'student.blood_group',
+                    'student.dob',
+                    'student.student_id',
+                    'parent.f_mobile',
+                    'parent.m_mobile',
+                    'class.name as class_name',
+                    'section.name as sec_name',
+                    'house.house_name as house'
+                )
+                ->where('student.section_id', $section_id)
+                ->where('confirmation_idcard.confirm', 'Y')
+                ->where('student.IsDelete', 'N')
+                ->orderBy('student.roll_no')
+                ->get();
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Student ID Card');
+
+            // Header
+            $headers = [
+                'A1' => 'Sr No.',
+                'B1' => 'Photo',
+                'C1' => 'Roll No',
+                'D1' => 'Class',
+                'E1' => 'Student Name',
+                'F1' => 'DOB',
+                'G1' => 'Father Mobile No.',
+                'H1' => 'Mother Mobile No.',
+                'I1' => 'Address',
+                'J1' => 'Blood Group',
+                'K1' => 'GRN No.',
+                'L1' => 'House',
+                'M1' => 'Image Name'
+            ];
+
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
+
+            // Header Style
+            $sheet->getStyle('A1:M1')->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 12
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => [
+                        'rgb' => 'D9EAD3'
+                    ]
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_MEDIUM
+                    ]
+                ]
+            ]);
+
+            $row = 2;
+            $sr = 1;
+
+            foreach ($students as $student) {
+                $sheet->setCellValue('A' . $row, $sr);
+
+                $sheet->setCellValue('C' . $row, $student->roll_no);
+
+                $sheet->setCellValue(
+                    'D' . $row,
+                    trim($student->class_name . '-' . $student->sec_name)
+                );
+
+                $fullName = trim(
+                    $student->first_name . ' '
+                    . $student->mid_name . ' '
+                    . $student->last_name
+                );
+
+                $sheet->setCellValue('E' . $row, $fullName);
+
+                if (!empty($student->dob)) {
+                    $sheet->setCellValue(
+                        'F' . $row,
+                        date('d-m-Y', strtotime($student->dob))
+                    );
+                }
+
+                $sheet->setCellValue('G' . $row, $student->f_mobile);
+                $sheet->setCellValue('H' . $row, $student->m_mobile);
+                $sheet->setCellValue('I' . $row, $student->permant_add);
+                $sheet->setCellValue('J' . $row, $student->blood_group);
+                $sheet->setCellValue('K' . $row, $student->reg_no);
+                $sheet->setCellValue('L' . $row, $student->house);
+                $sheet->setCellValue('M' . $row, $student->image_name);
+
+                $sheet
+                    ->getStyle("A{$row}:M{$row}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER)
+                    ->setWrapText(true);
+
+                $sheet->getRowDimension($row)->setRowHeight(65);
+
+                // Student Image
+                if (!empty($student->image_name)) {
+                    $configKey = strtoupper($shortName) . '_UPLOAD_PATH';
+
+                    $uploadPath = config('externalapis.' . $configKey);
+
+                    $imagePath = $uploadPath . '/student_image/' . $student->image_name;
+
+                    if (!empty($student->image_name) && file_exists($imagePath)) {
+                        list($originalWidth, $originalHeight) = getimagesize($imagePath);
+
+                        $drawing = new Drawing();
+                        $drawing->setName($fullName);
+                        $drawing->setDescription('Student Image');
+                        $drawing->setPath($imagePath);
+
+                        // Keep aspect ratio
+                        $drawing->setResizeProportional(true);
+
+                        // Desired image height
+                        $imageHeight = 60;
+                        $drawing->setHeight($imageHeight);
+
+                        // Calculate resized width
+                        $imageWidth = ($originalWidth / $originalHeight) * $imageHeight;
+
+                        // Approximate cell size in pixels
+                        $cellWidth = 110;  // Column B width ≈ 15
+                        $cellHeight = 65;  // Row height
+
+                        // Center image
+                        $offsetX = max(0, ($cellWidth - $imageWidth) / 2);
+                        $offsetY = max(0, ($cellHeight - $imageHeight) / 2);
+
+                        $drawing->setCoordinates('B' . $row);
+                        $drawing->setOffsetX((int) $offsetX);
+                        $drawing->setOffsetY((int) $offsetY);
+
+                        $drawing->setWorksheet($sheet);
+                    }
+                }
+
+                $row++;
+                $sr++;
+            }
+
+            // Apply Borders
+            $sheet->getStyle('A1:M' . ($row - 1))->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_MEDIUM
+                    ]
+                ]
+            ]);
+
+            // Column Widths
+            $sheet->getColumnDimension('A')->setWidth(8);
+            $sheet->getColumnDimension('B')->setWidth(15);
+            $sheet->getColumnDimension('C')->setWidth(10);
+            $sheet->getColumnDimension('D')->setWidth(15);
+            $sheet->getColumnDimension('E')->setWidth(35);
+            $sheet->getColumnDimension('F')->setWidth(15);
+            $sheet->getColumnDimension('G')->setWidth(20);
+            $sheet->getColumnDimension('H')->setWidth(20);
+            $sheet->getColumnDimension('I')->setWidth(55);
+            $sheet->getColumnDimension('J')->setWidth(15);
+            $sheet->getColumnDimension('K')->setWidth(15);
+            $sheet->getColumnDimension('L')->setWidth(15);
+            $sheet->getColumnDimension('M')->setWidth(25);
+
+            // Freeze Header
+            $sheet->freezePane('A2');
+
+            // Auto Filter
+            // $sheet->setAutoFilter('A1:M1');
+
+            $writer = new Xlsx($spreadsheet);
+
+            $fileName = storage_path('app/Student_ID_Card_List.xlsx');
+
+            $writer->save($fileName);
+
+            return response()->download($fileName)->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong.',
                 'error' => $e->getMessage()
             ], 500);
         }

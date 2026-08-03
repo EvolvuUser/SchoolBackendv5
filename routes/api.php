@@ -1738,6 +1738,9 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
 
+        Route::get('/teacher-id-card/excel', [AdminController::class, 'getTeacherIdCardExcel']);
+        Route::get('/student-id-card/excel', [AdminController::class, 'getStudentIdCardExcel']);
+
         // Communication limit API
         Route::get('get_communication_limit', [AdminController::class, 'getCommunicationLimit']);
 
@@ -1745,7 +1748,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('get_students_send_user_id', [AdminController::class, 'getStudentsListSendUserId']);
         // Parent App APIS
 
-        Route::get('get_childs', [ParentController::class, 'getChilds']);
+        Route::get('get_dashboard_data', [ParentController::class, 'getDashboardData']);
     });
 
     // Impersonate
@@ -1855,4 +1858,3 @@ Route::get('/test-log', function () {
 });
 Route::get('get_url', [ParentController::class, 'getUrl']);
 Route::post('validate_user', [ParentController::class, 'validateUser']);
-Route::get('/teacher-id-card/excel', [AdminController::class, 'getTeacherIdCardExcel']);
