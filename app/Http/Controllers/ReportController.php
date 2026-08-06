@@ -2425,181 +2425,192 @@ class ReportController extends Controller
         $academicYear = $academic_year;
 
         try {
-            // Parse month and year
-            [$month, $year] = explode('-', $monthYear);
-            $monthName = Carbon::createFromFormat('m', $month)->format('F');
+            if (empty($classId) || empty($sectionId) || empty($monthYear)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'class_id, section_id and month_year are required'
+                ], 422);
+            }
 
-            // Check if data exists for this month
-            $workingDays = DB::table('attendance')
-                ->where('class_id', $classId)
-                ->where('section_id', $sectionId)
-                ->whereRaw('MONTHNAME(only_date) = ?', [$monthName])
+            $monthDate = null;
+            foreach (['m-Y', 'Y-m'] as $format) {
+                try {
+                    $monthDate = Carbon::createFromFormat($format, $monthYear)->startOfMonth();
+                    break;
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+
+            if (!$monthDate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid month_year format. Use MM-YYYY or YYYY-MM'
+                ], 422);
+            }
+
+            $month = (int) $monthDate->format('m');
+            $year = (int) $monthDate->format('Y');
+            $monthName = $monthDate->format('F');
+            $startDate = $monthDate->copy()->startOfMonth();
+            $endDate = $monthDate->copy()->endOfMonth();
+            $startDateString = $startDate->format('Y-m-d');
+            $endDateString = $endDate->format('Y-m-d');
+
+            $className = DB::table('class')->where('class_id', $classId)->value('name') ?? 'Unknown Class';
+            $sectionName = DB::table('section')->where('section_id', $sectionId)->value('name') ?? 'Unknown Section';
+            $academicSettings = DB::table('settings')
                 ->where('academic_yr', $academicYear)
-                ->groupBy('student_id')
-                ->selectRaw('COUNT(*) as workingdays_count')
-                ->get()
-                ->max('workingdays_count') ?? 0;
+                ->first();
 
-            if ($workingDays === 0) {
+            $monthAttendanceRows = DB::table('attendance as a')
+                ->join('student as s', 'a.student_id', '=', 's.student_id')
+                ->where('a.class_id', $classId)
+                ->where('a.section_id', $sectionId)
+                ->whereBetween('a.only_date', [$startDateString, $endDateString])
+                ->where('a.academic_yr', $academicYear)
+                ->orderBy('s.roll_no')
+                ->orderBy('a.student_id')
+                ->orderBy('a.only_date')
+                ->select(
+                    'a.student_id',
+                    'a.only_date',
+                    'a.attendance_status',
+                    's.first_name',
+                    's.last_name',
+                    's.roll_no',
+                    's.isDelete'
+                )
+                ->get();
+
+            if ($monthAttendanceRows->isEmpty()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No data available'
                 ]);
             }
 
-            // Get class and section names
-            $className = DB::table('class')->where('class_id', $classId)->value('name') ?? 'Unknown Class';
-            $sectionName = DB::table('section')->where('section_id', $sectionId)->value('name') ?? 'Unknown Section';
-
-            // Get academic year settings
-            $academicSettings = DB::table('settings')
-                ->where('academic_yr', $academicYear)
-                ->first();
-
-            // Generate date range for the month
-            $startDate = Carbon::createFromFormat('F Y', $monthName . ' ' . $year)->startOfMonth();
-            $endDate = $startDate->copy()->endOfMonth();
-
             $dateRange = [];
+            $dateIndexMap = [];
             $currentDate = $startDate->copy();
 
             while ($currentDate <= $endDate) {
+                $dbDate = $currentDate->format('Y-m-d');
                 $dateRange[] = [
                     'date' => $currentDate->format('d-m-Y'),
                     'day' => $currentDate->format('D'),
                     'formatted_date' => $currentDate->format('d-m-y'),
-                    'db_date' => $currentDate->format('Y-m-d')
+                    'db_date' => $dbDate
                 ];
+                $dateIndexMap[$dbDate] = count($dateRange) - 1;
                 $currentDate->addDay();
             }
 
-            // Get all attendance data for the month
-            $dates = array_column($dateRange, 'db_date');
-            $attendanceData = DB::table('attendance as a')
-                ->join('student as s', 'a.student_id', '=', 's.student_id')
-                ->where('a.class_id', $classId)
-                ->where('a.section_id', $sectionId)
-                ->whereIn('a.only_date', $dates)
-                ->where('a.academic_yr', $academicYear)
-                ->select('a.student_id', 'a.only_date', 'a.attendance_status', 's.first_name', 's.last_name', 's.roll_no', 's.isDelete')
-                ->get()
-                ->groupBy('student_id');
-
-            // Get students with their monthly attendance summary
-            $students = DB::table('student as s')
-                ->join('attendance as a', 's.student_id', '=', 'a.student_id')
-                ->where('a.class_id', $classId)
-                ->where('a.section_id', $sectionId)
-                ->whereRaw('MONTHNAME(a.only_date) = ?', [$monthName])
-                ->where('a.academic_yr', $academicYear)
-                ->groupBy('s.student_id')
-                ->selectRaw('s.student_id, s.first_name, s.last_name, s.roll_no, s.isDelete, SUM(IF(a.attendance_status = 0, 1, 0)) as present_count')
-                ->orderBy('s.roll_no')
-                ->get();
-            // dd($students);
-
-            // Process student data
-            $processedStudents = [];
             $dailyTotals = [
                 'present' => array_fill(0, count($dateRange), 0),
                 'absent' => array_fill(0, count($dateRange), 0)
             ];
+            $studentsMap = [];
+            $duplicateAttendanceKeys = [];
 
-            foreach ($students as $student) {
-                $studentAttendance = $attendanceData->get($student->student_id) ?? collect();
-
-                $studentData = [
-                    'student_id' => $student->student_id,
-                    'name' => trim($student->first_name . ' ' . $student->last_name),
-                    'roll_no' => $student->isDelete === 'Y' ? 'Left' : $student->roll_no,
-                    'is_deleted' => $student->isDelete === 'Y',
-                    'daily_attendance' => [],
-                    'present_days' => 0,
-                    'absent_days' => 0,
-                    'working_days' => 0
-                ];
-
-                // Process daily attendance
-                foreach ($dateRange as $index => $dateInfo) {
-                    $dayAttendance = $studentAttendance->where('only_date', $dateInfo['db_date'])->first();
-                    $duplicateMarker = $this->hasDuplicateAttendance($student->student_id, $dateInfo['date']);  // 'd-m-Y'
-                    $entry = [
-                        'date' => $dateInfo['date'],
-                        'status' => '',
-                        'duplicate' => false
+            foreach ($monthAttendanceRows as $row) {
+                if (!isset($studentsMap[$row->student_id])) {
+                    $studentsMap[$row->student_id] = [
+                        'student_id' => $row->student_id,
+                        'name' => trim($row->first_name . ' ' . $row->last_name),
+                        'roll_no' => $row->isDelete === 'Y' ? 'Left' : $row->roll_no,
+                        'is_deleted' => $row->isDelete === 'Y',
+                        'daily_attendance' => array_map(function ($dateInfo) {
+                            return [
+                                'date' => $dateInfo['date'],
+                                'status' => '',
+                                'duplicate' => false
+                            ];
+                        }, $dateRange),
+                        'present_days' => 0,
+                        'absent_days' => 0,
+                        'working_days' => 0,
+                        'prev_attendance' => 0,
+                        'total_attendance' => 0,
+                        'cumulative_absent_days' => 0,
+                        'total_working_days_till_month' => 0,
                     ];
+                }
 
-                    if ($dayAttendance) {
-                        if ($dayAttendance->attendance_status == 0) {
-                            $entry['status'] = 'P';
-                            $studentData['present_days']++;
-                            $dailyTotals['present'][$index]++;
-                            $studentData['working_days']++;
-                        } else {
-                            $entry['status'] = 'A';
-                            $studentData['absent_days']++;
-                            $dailyTotals['absent'][$index]++;
-                            $studentData['working_days']++;
-                        }
-                        if ($duplicateMarker === '*') {
-                            $entry['duplicate'] = true;
-                        }
-                    } else {
-                        $entry['status'] = '';
+                $attendanceKey = $row->student_id . '_' . $row->only_date;
+                if (isset($duplicateAttendanceKeys[$attendanceKey])) {
+                    $index = $dateIndexMap[$row->only_date] ?? null;
+                    if ($index !== null) {
+                        $studentsMap[$row->student_id]['daily_attendance'][$index]['duplicate'] = true;
+                    }
+                } else {
+                    $duplicateAttendanceKeys[$attendanceKey] = true;
+
+                    $index = $dateIndexMap[$row->only_date] ?? null;
+                    if ($index === null) {
+                        continue;
                     }
 
-                    $studentData['daily_attendance'][] = $entry;
+                    if ((int) $row->attendance_status === 0) {
+                        $studentsMap[$row->student_id]['daily_attendance'][$index]['status'] = 'P';
+                        $studentsMap[$row->student_id]['present_days']++;
+                        $dailyTotals['present'][$index]++;
+                    } else {
+                        $studentsMap[$row->student_id]['daily_attendance'][$index]['status'] = 'A';
+                        $studentsMap[$row->student_id]['absent_days']++;
+                        $dailyTotals['absent'][$index]++;
+                    }
+
+                    $studentsMap[$row->student_id]['working_days']++;
                 }
-
-                // Calculate previous attendance and cumulative data
-                if ($academicSettings) {
-                    // dd(end($dateRange)['db_date']);
-                    $endOfMonth = Carbon::parse(end($dateRange)['db_date']);  // Convert string to Carbon object
-                    $endOfPrevMonth = $endOfMonth->copy()->subMonthNoOverflow()->endOfMonth()->format('Y-m-d');
-                    // dd($endOfPrevMonth);
-                    //  dd($endOfPrevMonth,$endOfMonth);
-                    $totalWorkingDataTillMonth = DB::table('attendance')
-                        ->where('student_id', $student->student_id)
-                        ->where('only_date', '>=', $academicSettings->academic_yr_from)
-                        ->where('only_date', '<=', $endOfMonth)
-                        ->selectRaw('
-                                    SUM(IF(attendance_status = 0, 1, 0)) as total_present_days,
-                                    SUM(IF(attendance_status = 1, 1, 0)) as total_absent_days,
-                                    SUM(IF(attendance_status IN (0, 1), 1, 0)) as total_present_absent_days_till_month
-                                ')
-                        ->first();
-
-                    // dd($totalWorkingDataTillMonth);
-
-                    $prevAttendance = DB::table('attendance')
-                        ->where('student_id', $student->student_id)
-                        ->where('only_date', '>=', $academicSettings->academic_yr_from)
-                        ->where('only_date', '<=', $endOfPrevMonth)
-                        ->selectRaw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days')
-                        ->first();
-                    // dd($prevAttendance);
-
-                    $studentData['prev_attendance'] = (int) $prevAttendance->total_present_days ?? 0;
-                    $studentData['total_attendance'] = $studentData['present_days'] + $studentData['prev_attendance'];
-                    $studentData['total_working_days_till_month'] = (int) $totalWorkingDataTillMonth->total_present_absent_days_till_month ?? 0;
-
-                    $cumulativeAbsent = DB::table('attendance')
-                        ->where('student_id', $student->student_id)
-                        ->where('only_date', '>=', $academicSettings->academic_yr_from)
-                        ->where('only_date', '<=', $endOfMonth)
-                        ->selectRaw('SUM(attendance_status) as total_absent_days')
-                        ->first();
-
-                    $studentData['cumulative_absent_days'] = $cumulativeAbsent->total_absent_days ?? 0;
-                } else {
-                    $studentData['prev_attendance'] = 0;
-                    $studentData['total_attendance'] = $studentData['present_days'];
-                    $studentData['cumulative_absent_days'] = 0;
-                }
-
-                $processedStudents[] = $studentData;
             }
 
+            $endOfPrevMonth = $startDate->copy()->subMonthNoOverflow()->endOfMonth()->format('Y-m-d');
+            if ($academicSettings) {
+                $studentIds = array_keys($studentsMap);
+                $cumulativeAttendance = DB::table('attendance')
+                    ->whereIn('student_id', $studentIds)
+                    ->where('academic_yr', $academicYear)
+                    ->where('only_date', '>=', $academicSettings->academic_yr_from)
+                    ->where('only_date', '<=', $endDateString)
+                    ->selectRaw(
+                        "student_id,
+                        SUM(CASE WHEN attendance_status = 0 AND only_date <= ? THEN 1 ELSE 0 END) as total_present_days_till_month,
+                        SUM(CASE WHEN attendance_status = 1 AND only_date <= ? THEN 1 ELSE 0 END) as total_absent_days_till_month,
+                        SUM(CASE WHEN attendance_status IN (0, 1) AND only_date <= ? THEN 1 ELSE 0 END) as total_working_days_till_month,
+                        SUM(CASE WHEN attendance_status = 0 AND only_date <= ? THEN 1 ELSE 0 END) as prev_present_days,
+                        SUM(CASE WHEN attendance_status = 1 AND only_date <= ? THEN 1 ELSE 0 END) as prev_absent_days",
+                        [$endDateString, $endDateString, $endDateString, $endOfPrevMonth, $endOfPrevMonth]
+                    )
+                    ->groupBy('student_id')
+                    ->get()
+                    ->keyBy('student_id');
+
+                foreach ($studentsMap as $studentId => &$studentData) {
+                    $summary = $cumulativeAttendance->get($studentId);
+                    if ($summary) {
+                        $studentData['prev_attendance'] = (int) $summary->prev_present_days;
+                        $studentData['total_attendance'] = $studentData['present_days'] + $studentData['prev_attendance'];
+                        $studentData['cumulative_absent_days'] = (int) $summary->total_absent_days_till_month;
+                        $studentData['total_working_days_till_month'] = (int) $summary->total_working_days_till_month;
+                        $studentData['prev_absent_days'] = (int) $summary->prev_absent_days;
+                    } else {
+                        $studentData['total_attendance'] = $studentData['present_days'];
+                        $studentData['total_working_days_till_month'] = $studentData['working_days'];
+                        $studentData['prev_absent_days'] = 0;
+                    }
+                }
+                unset($studentData);
+            } else {
+                foreach ($studentsMap as &$studentData) {
+                    $studentData['total_attendance'] = $studentData['present_days'];
+                    $studentData['total_working_days_till_month'] = $studentData['working_days'];
+                    $studentData['prev_absent_days'] = 0;
+                }
+                unset($studentData);
+            }
+
+            $processedStudents = array_values($studentsMap);
             $totalPresentDays = array_sum(array_column($processedStudents, 'present_days'));
             $totalAbsentDays = array_sum(array_column($processedStudents, 'absent_days'));
             $totalPrevAttendance = array_sum(array_column($processedStudents, 'prev_attendance'));
@@ -2607,19 +2618,11 @@ class ReportController extends Controller
             $totalCumulativeAbsentDays = array_sum(array_column($processedStudents, 'cumulative_absent_days'));
             $totalwokingdays = array_sum(array_column($processedStudents, 'working_days'));
             $totalwokingdaystillmonth = array_sum(array_column($processedStudents, 'total_working_days_till_month'));
-            $totalPrevAbsentDays = 0;
-            if ($academicSettings) {
-                $endOfMonth = end($dateRange)['db_date'];
-                $prevAbsent = DB::table('attendance')
-                    ->where('class_id', $classId)
-                    ->where('section_id', $sectionId)
-                    ->where('only_date', '>=', $academicSettings->academic_yr_from)
-                    ->where('only_date', '<=', $endOfPrevMonth)
-                    ->selectRaw('SUM(IF(attendance_status = 1, 1, 0)) as total_absent_days')
-                    ->first();
-
-                $totalPrevAbsentDays = $prevAbsent->total_absent_days ?? 0;
-            }
+            $totalPrevAbsentDays = array_sum(array_column($processedStudents, 'prev_absent_days'));
+            $processedStudents = array_map(function ($student) {
+                unset($student['prev_absent_days']);
+                return $student;
+            }, $processedStudents);
 
             // Calculate daily totals
             $dailyTotal = [];
@@ -2670,14 +2673,6 @@ class ReportController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-    }
-
-    private function hasDuplicateAttendance($studentId, $date)
-    {
-        return DB::table('attendance')
-            ->where('student_id', $studentId)
-            ->whereRaw("DATE_FORMAT(only_date, '%d-%m-%Y') = ?", [$date])
-            ->count() > 1 ? '*' : '';
     }
 
     public function getAttendanceMarkingStatus(Request $request)
