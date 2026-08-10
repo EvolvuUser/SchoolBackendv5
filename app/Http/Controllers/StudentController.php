@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
+use App\Jobs\SendAttendanceWhatsappJob;
 use App\Jobs\SendMessageStudentAttendanceShortage;
 use App\Jobs\SendMessageStudentDailyAttendanceShortage;
 use App\Models\Division;
@@ -1479,23 +1480,24 @@ class StudentController extends Controller
 
             DB::commit();
 
-            foreach ($checkedStudents as $student_id) {
-                $attendance_status =
-                    $request->input(
-                        "present_$student_id"
-                    ) == '1'
-                        ? 1
-                        : 0;
+            if ($dateatt === Carbon::today()->format('Y-m-d')) {
+                foreach ($checkedStudents as $student_id) {
+                    $attendance_status =
+                        $request->input(
+                            "present_$student_id"
+                        ) == '1'
+                            ? 1
+                            : 0;
 
-                // Only absent students
-                if ($attendance_status == 1) {
-                    SendAttendanceWhatsappJob::dispatch(
-                        $student_id,
-                        $dateatt
-                    );
+                    // Only absent students
+                    if ($attendance_status == 1) {
+                        SendAttendanceWhatsappJob::dispatch(
+                            $student_id,
+                            $dateatt
+                        );
+                    }
                 }
             }
-
             return response()->json([
                 'status' => 200,
                 'success' => true,

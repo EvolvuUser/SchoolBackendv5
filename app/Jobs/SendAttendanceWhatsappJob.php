@@ -126,10 +126,6 @@ class SendAttendanceWhatsappJob implements ShouldQueue
                     'message_type',
                     'attendance'
                 )
-                ->where(
-                    'status',
-                    'success'
-                )
                 ->whereDate(
                     'created_at',
                     $this->dateatt
@@ -235,12 +231,9 @@ class SendAttendanceWhatsappJob implements ShouldQueue
 
                 $wamid =
                     $result['messages'][0]['id']
-                        ?? $result['response']['id']
                         ?? null;
 
-                $phone_no =
-                    $result['contacts'][0]['input']
-                        ?? $parent->phone_no;
+                $phone_no = $parent->phone_no;
 
                 DB::table(
                     'redington_webhook_details'
@@ -253,8 +246,6 @@ class SendAttendanceWhatsappJob implements ShouldQueue
                         'stu_teacher_id' => $this->student_id,
                         'notice_id' => null,
                         'message_type' => 'attendance',
-                        'status' => 'success',
-                        'sms_sent' => 'Y',
                         'updated_at' => now(),
                         'created_at' => now()
                     ]
