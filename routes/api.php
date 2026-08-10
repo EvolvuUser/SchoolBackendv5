@@ -1741,6 +1741,8 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/teacher-id-card/excel', [AdminController::class, 'getTeacherIdCardExcel']);
         Route::get('/student-id-card/excel', [AdminController::class, 'getStudentIdCardExcel']);
 
+        Route::get('get_classwisemarksreportchangesstcs', [ReportController::class, 'getClasswiseMarksReportchangesstcs']);
+
         // Communication limit API
         Route::get('get_communication_limit', [AdminController::class, 'getCommunicationLimit']);
 
