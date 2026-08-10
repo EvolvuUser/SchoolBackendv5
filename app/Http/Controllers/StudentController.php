@@ -1479,6 +1479,23 @@ class StudentController extends Controller
 
             DB::commit();
 
+            foreach ($checkedStudents as $student_id) {
+                $attendance_status =
+                    $request->input(
+                        "present_$student_id"
+                    ) == '1'
+                        ? 1
+                        : 0;
+
+                // Only absent students
+                if ($attendance_status == 1) {
+                    SendAttendanceWhatsappJob::dispatch(
+                        $student_id,
+                        $dateatt
+                    );
+                }
+            }
+
             return response()->json([
                 'status' => 200,
                 'success' => true,
