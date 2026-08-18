@@ -1011,7 +1011,7 @@ class ReportController extends Controller
                     'stream.stream_name',
                     'shs_op.name as optional_sub_name'
                 )
-                ->orderBy('stud.student_id')
+                ->orderBy('stud.roll_no')
                 ->get()
                 ->groupBy('student_id');  // Grouping by student_id
             // dd($getsubjecthsc);
@@ -4511,7 +4511,6 @@ class ReportController extends Controller
         if (!empty($studentIds) && !empty($selectedSubjectIds) && !empty($selectedExamIds)) {
             $marksRows = DB::table('student_marks')
                 ->where('academic_yr', $academicYear)
-                ->where('publish', 'Y')
                 ->whereIn('student_id', $studentIds)
                 ->whereIn('subject_id', array_values($selectedSubjectIds))
                 ->whereIn('exam_id', array_values($selectedExamIds))
@@ -5619,6 +5618,7 @@ class ReportController extends Controller
 
         $subjects = $subjectsQuery->get();
         $structure = [];
+        $subjectMeta = [];
 
         $termIds = $terms->pluck('term_id')->all();
         $subjectIds = $subjects->pluck('sub_rc_master_id')->all();
@@ -5690,6 +5690,8 @@ class ReportController extends Controller
 
                 $exArr = [];
                 $totalMax = 0;
+                $headingIdsByExam = [];
+                $subjectMaxByExam = [];
 
                 foreach ($exams as $exam) {
                     $heads = $headingRowsByExamSubject
@@ -5698,6 +5700,8 @@ class ReportController extends Controller
 
                     $maxSub = $heads->sum('highest_marks');
                     $totalMax += $maxSub;
+                    $headingIdsByExam[$exam->exam_id] = $heads->pluck('marks_headings_id')->all();
+                    $subjectMaxByExam[$exam->exam_id] = $maxSub;
 
                     $exArr[] = [
                         'exam_id' => $exam->exam_id,
@@ -5713,6 +5717,13 @@ class ReportController extends Controller
                     'subject_name' => $subject->name,
                     'exams' => $exArr,
                     'total_max_all' => $totalMax,
+                ];
+
+                $subjectMeta[$term->term_id][$subject->sub_rc_master_id] = [
+                    'subject_name' => $subject->name,
+                    'total_max' => $totalMax,
+                    'heading_ids_by_exam' => $headingIdsByExam,
+                    'subject_max_by_exam' => $subjectMaxByExam,
                 ];
             }
         }
@@ -5751,49 +5762,253 @@ class ReportController extends Controller
         if (!empty($studentIds) && !empty($selectedSubjectIds) && !empty($selectedExamIds)) {
             $marksRows = DB::table('student_marks')
                 ->where('academic_yr', $academicYear)
-                ->where('publish', 'Y')
                 ->whereIn('student_id', $studentIds)
                 ->whereIn('subject_id', array_values($selectedSubjectIds))
                 ->whereIn('exam_id', array_values($selectedExamIds))
-                ->select('student_id', 'exam_id', 'subject_id', 'mark_obtained')
+                ->select('student_id', 'exam_id', 'subject_id', 'mark_obtained', 'present')
                 ->get();
 
             foreach ($marksRows as $row) {
-                $marksMap[$row->student_id . '_' . $row->subject_id . '_' . $row->exam_id] = $row;
+                $key = $row->student_id . '_' . $row->subject_id . '_' . $row->exam_id;
+
+                $marksMap[$key] = [
+                    'marks' => json_decode($row->mark_obtained, true) ?: [],
+                    'present' => json_decode($row->present, true) ?: [],
+                ];
             }
         }
 
+        $studentIndexMap = [];
+        $subjectStatistics = [];
+
         foreach ($students as &$student) {
+            $studentIndexMap[$student->student_id] = $student;
             $student->marks = [];
-            foreach ($structure as $termId => $subs) {
+            $student->total_obtained = 0;
+            $student->total_max = 0;
+
+            foreach ($subjectMeta as $termId => $subs) {
                 foreach ($subs as $subId => $info) {
-                    foreach ($info['exams'] as $exam) {
+                    $subjectObtained = 0;
+
+                    foreach ($structure[$termId][$subId]['exams'] as $exam) {
                         $rowKey = $student->student_id . '_' . $subId . '_' . $exam['exam_id'];
-                        $row = $marksMap[$rowKey] ?? null;
-                        $marksArr = $row ? json_decode($row->mark_obtained, true) : [];
+                        $marksData = $marksMap[$rowKey] ?? [];
+
+                        $marksArr = $marksData['marks'] ?? [];
+                        $presentArr = $marksData['present'] ?? [];
+
                         $cell = [];
 
-                        foreach ($exam['headings'] as $head) {
-                            $headingId = $head->marks_headings_id;
+                        foreach ($info['heading_ids_by_exam'][$exam['exam_id']] as $headingId) {
+                            // Check attendance
+                            $presentStatus = $presentArr[$headingId] ?? null;
 
-                            if (isset($marksArr[$headingId]) && is_numeric($marksArr[$headingId])) {
-                                $cell[$headingId] = ceil((float) $marksArr[$headingId]);
+                            // Student is absent
+                            if ($presentStatus === 'N') {
+                                $cell[$headingId] = 'A';
+
+                                // Do NOT add marks
+                                continue;
+                            }
+
+                            // Student is present
+                            if (
+                                isset($marksArr[$headingId]) &&
+                                is_numeric($marksArr[$headingId])
+                            ) {
+                                $marks = ceil((float) $marksArr[$headingId]);
+
+                                $cell[$headingId] = $marks;
+
+                                $subjectObtained += $marks;
+                                $student->total_obtained += $marks;
                             }
                         }
 
                         $student->marks[$termId][$subId][$exam['exam_id']] = $cell;
                     }
+
+                    $student->total_max += $info['total_max'];
+
+                    if (!isset($subjectStatistics[$subId])) {
+                        $subjectStatistics[$subId] = [
+                            'subject_id' => $subId,
+                            'subject_name' => $info['subject_name'],
+                            'fail' => 0,
+                            'pass' => 0,
+                            'total' => $students->count(),
+                            'pass_percentage' => 0,
+                        ];
+                    }
+
+                    $subjectPercentage = $info['total_max'] > 0
+                        ? ($subjectObtained / $info['total_max']) * 100
+                        : 0;
+
+                    if ($subjectPercentage >= 35) {
+                        $subjectStatistics[$subId]['pass']++;
+                    } else {
+                        $subjectStatistics[$subId]['fail']++;
+                    }
                 }
             }
+
+            if ($student->total_max > 0) {
+                $student->percentage = round(
+                    ($student->total_obtained / $student->total_max) * 100,
+                    2
+                );
+            } else {
+                $student->percentage = 0;
+            }
+
+            // ---------------------------------------
+            // Calculate Grade
+            // ---------------------------------------
+
+            if ($student->percentage >= 91) {
+                $student->grade = 'A1';
+            } elseif ($student->percentage >= 81) {
+                $student->grade = 'A2';
+            } elseif ($student->percentage >= 71) {
+                $student->grade = 'B1';
+            } elseif ($student->percentage >= 61) {
+                $student->grade = 'B2';
+            } elseif ($student->percentage >= 51) {
+                $student->grade = 'C1';
+            } elseif ($student->percentage >= 41) {
+                $student->grade = 'C2';
+            } elseif ($student->percentage >= 33) {
+                $student->grade = 'D';
+            } elseif ($student->percentage >= 21) {
+                $student->grade = 'E1';
+            } else {
+                $student->grade = 'E2';
+            }
+
+            if ($student->percentage >= 75) {
+                $student->class = 'Distinction';
+            } elseif ($student->percentage >= 60) {
+                $student->class = 'First Class';
+            } elseif ($student->percentage >= 45) {
+                $student->class = 'Second Class';
+            } elseif ($student->percentage >= 35) {
+                $student->class = 'Pass Class';
+            } else {
+                $student->class = 'Fail';
+            }
         }
+
         unset($student);
+
+        // --------------------------------------------------
+        // Calculate Rank
+        // --------------------------------------------------
+
+        $rankedStudents = $students->sortByDesc(function ($student) {
+            return $student->total_obtained;
+        })->values();
+
+        $rank = 0;
+        $previousMarks = null;
+
+        foreach ($rankedStudents as $index => $student) {
+            if ($previousMarks !== $student->total_obtained) {
+                $rank = $index + 1;
+            }
+
+            if (isset($studentIndexMap[$student->student_id])) {
+                $studentIndexMap[$student->student_id]->rank = $rank;
+            }
+
+            $previousMarks = $student->total_obtained;
+        }
+
+        foreach ($subjectStatistics as &$subject) {
+            $subject['pass_percentage'] = $subject['total'] > 0
+                ? round(($subject['pass'] / $subject['total']) * 100, 2)
+                : 0;
+        }
+
+        unset($subject);
+
+        $totalStudents = $students->count();
+
+        $totalPass = $students->filter(function ($student) {
+            return $student->percentage >= 35;
+        })->count();
+
+        $totalFail = $totalStudents - $totalPass;
+
+        $totalPassPercentage = $totalStudents > 0
+            ? round(($totalPass / $totalStudents) * 100, 2)
+            : 0;
+
+        // Add TOTAL row
+        $subjectStatistics['total'] = [
+            'subject_id' => null,
+            'subject_name' => 'TOTAL',
+            'fail' => $totalFail,
+            'pass' => $totalPass,
+            'total' => $totalStudents,
+            'pass_percentage' => $totalPassPercentage,
+        ];
+
+        // --------------------------------------------------
+        // Class-wise Statistics
+        // --------------------------------------------------
+
+        $classStatistics = [
+            'distinction' => 0,
+            'first_class' => 0,
+            'second_class' => 0,
+            'pass_class' => 0,
+            'total_pass' => 0,
+            'total_strength' => $students->count(),
+        ];
+
+        foreach ($students as $student) {
+            switch ($student->class) {
+                case 'Distinction':
+                    $classStatistics['distinction']++;
+
+                    break;
+
+                case 'First Class':
+                    $classStatistics['first_class']++;
+
+                    break;
+
+                case 'Second Class':
+                    $classStatistics['second_class']++;
+
+                    break;
+
+                case 'Pass Class':
+                    $classStatistics['pass_class']++;
+
+                    break;
+            }
+        }
+
+        // Total successful students
+        $classStatistics['total_pass'] =
+            $classStatistics['distinction']
+            + $classStatistics['first_class']
+            + $classStatistics['second_class']
+            + $classStatistics['pass_class'];
 
         return response()->json([
             'status' => 200,
             'message' => 'Report card marks report.',
             'success' => true,
             'headings' => $structure,
-            'data' => $students
+            'data' => $students,
+            'statistics' => [
+                'subject_wise' => array_values($subjectStatistics),
+                'class_wise' => $classStatistics,
+            ],
         ]);
     }
 }

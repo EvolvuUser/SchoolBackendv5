@@ -13005,6 +13005,74 @@ class AdminController extends Controller
         }
     }
 
+    public function webhookredingtonjps(Request $request)
+    {
+        $shortName = 'JPS';
+        if (array_key_exists($shortName, config('database.connections'))) {
+            config(['database.default' => $shortName]);
+        } else {
+            dd('No database configuration for the given short_name');
+        }
+        Log::info('Gupshup Webhook Received:', $request->all());
+
+        try {
+            $responseData = $request->input('response');
+
+            if (!$responseData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Response key missing'
+                ], 400);
+            }
+
+            $events = json_decode($responseData, true);
+
+            if (!is_array($events)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid JSON'
+                ], 400);
+            }
+
+            foreach ($events as $event) {
+                $waId = $event['externalId'] ?? null;
+                $status = strtolower($event['eventType'] ?? '');
+
+                if (!$waId) {
+                    continue;
+                }
+
+                $updateData = [
+                    'status' => $status,
+                    'updated_at' => now(),
+                ];
+
+                if (in_array($status, ['sent', 'delivered', 'read'])) {
+                    $updateData['sms_sent'] = 'Y';
+                }
+
+                DB::table('redington_webhook_details')
+                    ->where('wa_id', $waId)
+                    ->update($updateData);
+
+                Log::info("Updated WA ID {$waId} with status {$status}");
+            }
+
+            return response()->json([
+                'status' => 'success'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Error', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // API for the Absent Student  Dev Name- Manish Kumar Sharma 19-05-2025
     public function getAbsentStudentForToday(Request $request)
     {
@@ -21273,6 +21341,169 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
+                'message' => 'Something went wrong.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAllotMarkheadingsListPull(Request $request)
+    {
+        try {
+            $this->authenticateUser();
+            $payload = getTokenPayload($request);
+            $academicYear = $payload->get('academic_year');
+
+            $classId = $request->input('class_id');
+            $examId = $request->input('exam_id');
+
+            $allotmentSummary = DB::table('allot_mark_headings as amh')
+                ->leftJoin('marks_headings as mh', 'mh.marks_headings_id', '=', 'amh.marks_headings_id')
+                ->where('amh.academic_yr', $academicYear)
+                ->when($classId, function ($query) use ($classId) {
+                    $query->where('amh.class_id', $classId);
+                })
+                ->when($examId, function ($query) use ($examId) {
+                    $query->where('amh.exam_id', $examId);
+                })
+                ->groupBy('amh.class_id', 'amh.exam_id', 'amh.academic_yr')
+                ->select(
+                    'amh.class_id',
+                    'amh.exam_id',
+                    'amh.academic_yr',
+                    DB::raw("GROUP_CONCAT(DISTINCT mh.name ORDER BY mh.marks_headings_id SEPARATOR ', ') as mark_headings"),
+                    DB::raw('COUNT(DISTINCT amh.allot_markheadings_id) as mark_heading_count')
+                );
+
+            $studentMarksSummary = DB::table('student_marks as sm')
+                ->when($classId, function ($query) use ($classId) {
+                    $query->where('sm.class_id', $classId);
+                })
+                ->when($examId, function ($query) use ($examId) {
+                    $query->where('sm.exam_id', $examId);
+                })
+                ->groupBy('sm.class_id', 'sm.exam_id')
+                ->select(
+                    'sm.class_id',
+                    'sm.exam_id',
+                    DB::raw('1 as has_student_marks')
+                );
+
+            $data = DB::query()
+                ->fromSub($allotmentSummary, 'summary')
+                ->join('class as c', 'c.class_id', '=', 'summary.class_id')
+                ->join('exam as e', 'e.exam_id', '=', 'summary.exam_id')
+                ->leftJoinSub($studentMarksSummary, 'sms', function ($join) {
+                    $join
+                        ->on('sms.class_id', '=', 'summary.class_id')
+                        ->on('sms.exam_id', '=', 'summary.exam_id');
+                })
+                ->orderBy('summary.class_id')
+                ->orderBy('summary.exam_id')
+                ->select(
+                    'summary.class_id',
+                    'c.name as class_name',
+                    'summary.exam_id',
+                    'e.name as exam_name',
+                    'summary.academic_yr',
+                    'summary.mark_headings',
+                    'summary.mark_heading_count',
+                    DB::raw('CASE WHEN sms.has_student_marks IS NULL THEN 1 ELSE 0 END as can_delete')
+                )
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function bulkDeleteAllotMarkheadings(Request $request)
+    {
+        try {
+            $this->authenticateUser();
+
+            $payload = getTokenPayload($request);
+            $academicYear = $payload->get('academic_year');
+
+            $items = $request->input('items', []);
+
+            if (empty($items)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Please select at least one class and exam.'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $deleted = [];
+            $blocked = [];
+
+            foreach ($items as $item) {
+                $classId = $item['class_id'] ?? null;
+                $examId = $item['exam_id'] ?? null;
+
+                if (!$classId || !$examId) {
+                    continue;
+                }
+
+                /*
+                 * Check student marks
+                 */
+                $studentMarksExist = DB::table('student_marks')
+                    ->where('class_id', $classId)
+                    ->where('exam_id', $examId)
+                    ->exists();
+
+                if ($studentMarksExist) {
+                    $blocked[] = [
+                        'class_id' => $classId,
+                        'exam_id' => $examId,
+                        'reason' => 'Student marks already exist.'
+                    ];
+
+                    continue;
+                }
+
+                /*
+                 * Delete allotment
+                 */
+                $deletedRows = DB::table('allot_mark_headings')
+                    ->where('class_id', $classId)
+                    ->where('exam_id', $examId)
+                    ->where('academic_yr', $academicYear)
+                    ->delete();
+
+                if ($deletedRows > 0) {
+                    $deleted[] = [
+                        'class_id' => $classId,
+                        'exam_id' => $examId,
+                        'deleted_rows' => $deletedRows
+                    ];
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Bulk delete completed.',
+                'deleted' => $deleted,
+                'blocked' => $blocked
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
                 'message' => 'Something went wrong.',
                 'error' => $e->getMessage()
             ], 500);
