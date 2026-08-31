@@ -54,6 +54,7 @@ class HscController extends Controller
                 ->leftJoin('subjects_higher_secondary_studentwise', 'student.student_id', '=', 'subjects_higher_secondary_studentwise.student_id')
                 ->where('student.class_id', $class_id)
                 ->where('student.section_id', $section_id)
+                ->where('student.isDelete', '!=', 'Y')
                 ->select(
                     'student.student_id',
                     DB::raw('COALESCE(subjects_higher_secondary_studentwise.sub_group_id, "") as sub_group_id'),

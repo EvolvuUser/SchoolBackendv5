@@ -6084,7 +6084,7 @@ class AssessmentController extends Controller
 
         $student_marks = [];
 
-        if (in_array($class_name, [11, 12])) {
+        if (substr($class_name, 0, 2) == 11 || substr($class_name, 0, 2) == 12) {
             $student_marks = DB::table(DB::raw("(
                 SELECT b.student_id, b.first_name, b.mid_name, b.last_name, b.roll_no, b.reg_no, a.marks_id, a.present, a.mark_obtained, a.highest_marks, a.comment
                 FROM student_marks a
@@ -6338,7 +6338,7 @@ class AssessmentController extends Controller
         $marksHeadings = DB::select('SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = ' . $classId . ' AND allot_mark_headings.sm_id = ' . $subjectId . ' AND allot_mark_headings.exam_id = ' . $examId . " and allot_mark_headings.academic_yr = '" . $academicYr . "' order by marks_headings.sequence");
 
         // === Fetch students ===
-        if ($className == 11) {
+        if (in_array(substr($className, 0, 2), ['11', '12'], true)) {
             $students = DB::select("select a.*,b.father_name from student a, parent b, view_hsc_student_rc_subjects c where a.IsDelete='N' and a.academic_yr='" . $academicYr . "' and a.parent_id=b.parent_id and a.class_id='" . $classId . "' and a.section_id='" . $sectionId . "' and a.student_id=c.student_id and c.sub_rc_master_id=" . $subjectId . ' order by a.roll_no,a.reg_no,a.student_id');
         } else {
             $students = DB::select("select a.*,b.*,c.user_id,d.name as class_name,e.name as sec_name,f.house_name from student a left join parent b on a.parent_id=b.parent_id join user_master c on a.parent_id = c.reg_id join class d on a.class_id=d.class_id join section e on a.section_id=e.section_id left join house f on a.house=f.house_id where a.IsDelete='N' and a.academic_yr='" . $academicYr . "'  and a.class_id='" . $classId . "' and a.section_id='" . $sectionId . "' and c.role_id='P' order by a.roll_no,a.reg_no");
@@ -10190,29 +10190,42 @@ class AssessmentController extends Controller
             if ($fromRows->isEmpty()) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'No data found for exam_from_id.'
+                    'message' => 'No allot mark heading data found for this exam.'
                 ]);
             }
 
+            $inserted = 0;
+            $skipped = 0;
+            $unmatchedClasses = [];
+
             foreach ($fromRows as $row) {
-                // Get class name from previous year
+                // Get previous year's class name
                 $className = DB::table('class')
                     ->where('class_id', $row->class_id)
                     ->value('name');
 
-                if (!$className)
+                if (!$className) {
                     continue;
+                }
 
-                // Get class_id for the current academic year
+                // Find same class name in current academic year
                 $classIdNew = DB::table('class')
                     ->where('name', $className)
                     ->where('academic_yr', $academicYear)
                     ->value('class_id');
 
-                if (!$classIdNew)
-                    continue;
+                if (!$classIdNew) {
+                    // Get current academic year's class name
+                    $currentClassName = DB::table('class')
+                        ->where('academic_yr', $academicYear)
+                        ->where('name', $className)
+                        ->value('name');
 
-                // Check if data already exists
+                    $unmatchedClasses[] = $currentClassName ?? $className;
+
+                    continue;
+                }
+
                 $exists = DB::table('allot_mark_headings')
                     ->where('class_id', $classIdNew)
                     ->where('exam_id', $examToId)
@@ -10221,13 +10234,10 @@ class AssessmentController extends Controller
                     ->exists();
 
                 if ($exists) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Data is already pulled'
-                    ], 400);
+                    $skipped++;
+                    continue;
                 }
 
-                // Insert the data
                 DB::table('allot_mark_headings')->insert([
                     'class_id' => $classIdNew,
                     'exam_id' => $examToId,
@@ -10237,11 +10247,44 @@ class AssessmentController extends Controller
                     'highest_marks' => $row->highest_marks,
                     'reportcard_highest_marks' => $row->reportcard_highest_marks
                 ]);
+
+                $inserted++;
+            }
+
+            $total = $fromRows->count();
+
+            // Message
+            if (!empty($unmatchedClasses)) {
+                $unmatchedClasses = array_unique($unmatchedClasses);
+
+                $classNames = implode(', ', $unmatchedClasses);
+
+                if ($inserted > 0) {
+                    $message = "{$inserted} records pulled successfully. "
+                        . "No records were pulled for the class \"{$classNames}\" "
+                        . 'as the name does not match with current year class name.';
+                } else {
+                    $message = "No records were pulled for the class \"{$classNames}\" "
+                        . 'as the name does not match with current year class name.';
+                }
+            } elseif ($inserted > 0 && $skipped > 0) {
+                $message = "{$inserted} records pulled successfully and "
+                    . "{$skipped} records were already pulled.";
+            } elseif ($inserted > 0) {
+                $message = "{$inserted} records pulled successfully.";
+            } elseif ($skipped > 0) {
+                $message = "All {$skipped} records are already pulled. "
+                    . 'No new records were added.';
+            } else {
+                $message = 'No records were pulled.';
             }
 
             return response()->json([
                 'status' => true,
-                'message' => 'Marks Allotment Data pulled successfully!'
+                'message' => $message,
+                'total_records' => $total,
+                'inserted' => $inserted,
+                'skipped' => $skipped
             ]);
         } catch (\Throwable $e) {
             return response()->json([

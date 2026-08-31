@@ -1678,31 +1678,70 @@ class TeacherDashboardController extends Controller
     {
         $user = $this->authenticateUser();
         $teacher_id = JWTAuth::getPayload()->get('reg_id');
-        $latecount = DB::select(
+
+        $lateDates = DB::select(
             "
-                SELECT COUNT(*) AS late_days
-                FROM (
-                    SELECT DATE(ta.punch_time) AS attendance_date
-                    FROM teacher t
-                    JOIN teacher_category tc ON t.tc_id = tc.tc_id
-                    JOIN teacher_attendance ta ON t.employee_id = ta.employee_id
-                    JOIN late_time lt ON lt.tc_id = t.tc_id
-                    WHERE 
-                        t.isDelete = 'N'
-                        AND tc.teaching = 'Y'
-                        AND t.teacher_id = ?
-                        AND ta.punch_time >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-                        AND ta.punch_time <  DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)
-                    GROUP BY DATE(ta.punch_time), t.tc_id
-                    HAVING MIN(TIME(ta.punch_time)) > MAX(lt.late_time)
-                ) AS late_days_table
-                ",
+    SELECT 
+        attendance_date,
+        late_time,
+        punch_time,
+        FLOOR(
+            (
+                TIME_TO_SEC(punch_time) - 
+                TIME_TO_SEC(late_time)
+            ) / 60
+        ) AS late_by_minutes
+    FROM (
+        SELECT  
+            DATE(ta.punch_time) AS attendance_date,
+            MAX(lt.late_time) AS late_time,
+            MIN(TIME(ta.punch_time)) AS punch_time
+        FROM teacher t
+        JOIN teacher_category tc  
+            ON t.tc_id = tc.tc_id
+        JOIN teacher_attendance ta  
+            ON t.employee_id = ta.employee_id
+        JOIN late_time lt  
+            ON lt.tc_id = t.tc_id
+        WHERE  
+            t.isDelete = 'N'
+            AND tc.teaching = 'Y'
+            AND t.teacher_id = ?
+            
+            AND DATE(ta.punch_time) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+            AND DATE(ta.punch_time) < DATE_ADD(
+                DATE_FORMAT(CURDATE(), '%Y-%m-01'),
+                INTERVAL 1 MONTH
+            )
+
+        GROUP BY 
+            DATE(ta.punch_time),
+            t.tc_id
+
+        HAVING 
+            MIN(TIME(ta.punch_time)) > MAX(lt.late_time)
+    ) AS late_days_table
+    ORDER BY attendance_date ASC
+    ",
             [$teacher_id]
         );
+
+        $dates = collect($lateDates)->map(function ($item) {
+            return [
+                'date' => $item->attendance_date,
+                'late_time' => $item->late_time,
+                'punch_time' => $item->punch_time,
+                'late_by_minutes' => (int) $item->late_by_minutes,
+            ];
+        })->values()->toArray();
+
         return response()->json([
             'status' => 200,
             'message' => 'Late days in month.',
-            'data' => $latecount,
+            'data' => [
+                'late_days' => count($dates),
+                'dates' => $dates
+            ],
             'success' => true
         ]);
     }
