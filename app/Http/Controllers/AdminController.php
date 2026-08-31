@@ -2273,6 +2273,70 @@ class AdminController extends Controller
         }
     }
 
+    public function getStudentListBySectionDataMultipleClass(Request $request)
+    {
+        try {
+            $payload = getTokenPayload($request);
+            $academicYr = $payload->get('academic_year');
+            $sectionId = $request->query('section_id');
+            $classSection = $request->query('class_section');
+
+            $query = DB::table('student')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->where('student.academic_yr', $academicYr)
+                ->where('isDelete', 'N')
+                ->where('parent_id', '!=', 0)
+                ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname', 'reg_no', 'roll_no');
+
+            $classSectionPairs = collect(explode(',', (string) $classSection))
+                ->map(function ($pair) {
+                    $pair = trim($pair);
+                    if ($pair === '') {
+                        return null;
+                    }
+
+                    $parts = array_map('trim', explode('^', $pair));
+                    if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+                        return null;
+                    }
+
+                    return [
+                        'class_id' => $parts[0],
+                        'section_id' => $parts[1],
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            if ($classSectionPairs->isNotEmpty()) {
+                $query->where(function ($subQuery) use ($classSectionPairs) {
+                    foreach ($classSectionPairs as $pair) {
+                        $subQuery->orWhere(function ($pairQuery) use ($pair) {
+                            $pairQuery
+                                ->where('student.class_id', $pair['class_id'])
+                                ->where('student.section_id', $pair['section_id']);
+                        });
+                    }
+                });
+            } elseif ($sectionId) {
+                $query->where('student.section_id', $sectionId);
+            }
+
+            $student = $query->get();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Student Information',
+                'data' => $student,
+                'success' => true
+            ]);
+        } catch (Exception $e) {
+            \Log::error($e);  // Log the exception
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function getStudentListByClassSectionData(Request $request)
     {
         try {
@@ -2431,69 +2495,9 @@ class AdminController extends Controller
                 'message' => 'Please provide at least one search condition.',
             ], 400);
         }
+
         $query->orderBy('roll_no', 'asc');
         $students = $query->get();
-        $studentIds = $students->pluck('student_id')->filter()->values()->all();
-        $parentLoginWhatsappStatus = collect();
-
-        if (!empty($studentIds)) {
-            $latestWebhookIds = DB::table('redington_webhook_details')
-                ->select('stu_teacher_id', DB::raw('MAX(webhook_id) as webhook_id'))
-                ->whereIn('stu_teacher_id', $studentIds)
-                ->where('message_type', 'parent_login_details')
-                ->groupBy('stu_teacher_id')
-                ->pluck('webhook_id');
-
-            if ($latestWebhookIds->isNotEmpty()) {
-                $parentLoginWhatsappStatus = DB::table('redington_webhook_details')
-                    ->whereIn('webhook_id', $latestWebhookIds->all())
-                    ->get()
-                    ->keyBy('stu_teacher_id');
-            }
-        }
-
-        $globalVariables = App::make('global_variables');
-        $parent_app_url = $globalVariables['parent_app_url'];
-        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
-
-        // Append image URLs for each student
-        $students->each(function ($student) use ($parent_app_url, $codeigniter_app_url, $parentLoginWhatsappStatus) {
-            // Check if the image_name is present and not empty
-            $concatprojecturl = $codeigniter_app_url . '' . 'uploads/student_image/';
-            if (!empty($student->image_name)) {
-                $student->image_name = $concatprojecturl . '' . $student->image_name;
-            } else {
-                $student->image_name = '';
-            }
-
-            $contactDetails = ContactDetails::find($student->parent_id);
-            // echo $student->parent_id."<br/>";
-            if ($contactDetails === null) {
-                $student->SetToReceiveSMS = '';
-            } else {
-                $student->SetToReceiveSMS = $contactDetails->phone_no;
-            }
-
-            $userMaster = UserMaster::where('role_id', 'P')
-                ->where('reg_id', $student->parent_id)
-                ->first();
-            if ($userMaster === null) {
-                $student->SetEmailIDAsUsername = '';
-            } else {
-                $student->SetEmailIDAsUsername = $userMaster->user_id;
-            }
-
-            $lastAddressChange = DB::table('permanent_address_change_log')
-                ->where('student_id', $student->student_id)
-                ->orderBy('changed_at', 'desc')
-                ->first();
-
-            $whatsappStatus = $parentLoginWhatsappStatus->get($student->student_id);
-            $student->sms_sent = $whatsappStatus->sms_sent ?? '';
-            $student->whatsapp_status = $whatsappStatus->status ?? '';
-
-            $student->last_permanent_address_change = $lastAddressChange;
-        });
 
         if ($students->isEmpty()) {
             return response()->json([
@@ -2501,6 +2505,232 @@ class AdminController extends Controller
                 'message' => 'No student found.',
             ], 404);
         }
+
+        $studentIds = $students->pluck('student_id')->filter()->values()->all();
+        $parentIds = $students->pluck('parent_id')->filter()->unique()->values()->all();
+
+        $contactDetailsMap = ContactDetails::query()
+            ->whereIn('id', $parentIds)
+            ->get(['id', 'phone_no'])
+            ->keyBy('id');
+
+        $latestAddressChanges = DB::table('permanent_address_change_log')
+            ->select('student_id', DB::raw('MAX(changed_at) as changed_at'))
+            ->whereIn('student_id', $studentIds)
+            ->groupBy('student_id');
+
+        $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
+            ->joinSub($latestAddressChanges, 'latest_change', function ($join) {
+                $join
+                    ->on('pacl.student_id', '=', 'latest_change.student_id')
+                    ->on('pacl.changed_at', '=', 'latest_change.changed_at');
+            })
+            ->select('pacl.*')
+            ->get()
+            ->keyBy('student_id');
+
+        $globalVariables = App::make('global_variables');
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+
+        $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+        $students->each(function ($student) use ($concatprojecturl, $contactDetailsMap, $lastAddressChangeMap) {
+            $student->image_name = !empty($student->image_name)
+                ? $concatprojecturl . $student->image_name
+                : '';
+
+            $contactDetails = $contactDetailsMap->get($student->parent_id);
+            $student->SetToReceiveSMS = $contactDetails->phone_no ?? '';
+
+            $student->SetEmailIDAsUsername = $student->userMaster->user_id ?? '';
+            $student->last_permanent_address_change = $lastAddressChangeMap->get($student->student_id);
+        });
+
+        $students->transform(function ($student) {
+            if (isset($student->religion)) {
+                // Force proper camel case (first letter lowercase)
+                $student->religion = ucfirst(strtolower($student->religion));
+            }
+            return $student;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'students' => $students,
+        ]);
+    }
+
+    public function getStudentsListMultipleClass(Request $request)
+    {
+        set_time_limit(300);
+        $section_id = $request->section_id;
+        $class_id = $request->class_id;
+        $classSection = $request->class_section;
+        $student_id = $request->student_id;
+        $reg_no = $request->reg_no;
+        $user = $this->authenticateUser();
+        $payload = getTokenPayload($request);
+        $academicYr = $payload->get('academic_year');
+
+        $query = Student::query();
+
+        $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+        $classSectionPairs = collect(explode(',', (string) $classSection))
+            ->map(function ($pair) {
+                $pair = trim($pair);
+                if ($pair === '') {
+                    return null;
+                }
+
+                $parts = array_map('trim', explode('^', $pair));
+                if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+                    return null;
+                }
+
+                return [
+                    'class_id' => $parts[0],
+                    'section_id' => $parts[1],
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($classSectionPairs->isNotEmpty()) {
+            $query
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0')
+                ->where(function ($subQuery) use ($classSectionPairs) {
+                    foreach ($classSectionPairs as $pair) {
+                        $subQuery->orWhere(function ($pairQuery) use ($pair) {
+                            $pairQuery
+                                ->where('class_id', $pair['class_id'])
+                                ->where('section_id', $pair['section_id']);
+                        });
+                    }
+                });
+
+            if ($student_id) {
+                $query->where('student_id', $student_id);
+            }
+
+            if ($reg_no) {
+                $query->where('reg_no', $reg_no);
+            }
+        } elseif ($class_id && $section_id && $reg_no) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($student_id && $reg_no) {
+            $query
+                ->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id && $student_id && $reg_no) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('student_id', $student_id)
+                ->where('reg_no', $reg_no)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id && $student_id) {
+            $query
+                ->where('class_id', $class_id)
+                ->where('student_id', $student_id)
+                ->where('section_id', $section_id)
+                ->where('isDelete', 'N')
+                ->where('academic_yr', $academicYr)
+                ->where('parent_id', '!=', '0');
+        } elseif ($class_id && $section_id) {
+            $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($student_id) {
+            $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+        } elseif ($reg_no) {
+            $query->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+            if ($user->role_id == 'T') {
+                $teacherSubjects = DB::table('subject')
+                    ->select('class_id', 'section_id')
+                    ->where('teacher_id', $user->reg_id)
+                    ->where('academic_yr', $academicYr)
+                    ->get();
+
+                $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+                $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+
+                if (!empty($classIds) && !empty($sectionIds)) {
+                    $query
+                        ->whereIn('class_id', $classIds)
+                        ->whereIn('section_id', $sectionIds);
+                } else {
+                    return response()->json([
+                        'status' => 402,
+                        'message' => 'No assigned classes found',
+                        'success' => false
+                    ]);
+                }
+            }
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Please provide at least one search condition.',
+            ], 400);
+        }
+        $query->orderBy('roll_no', 'asc');
+        $students = $query->get();
+
+        if ($students->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No student found.',
+            ], 404);
+        }
+
+        $studentIds = $students->pluck('student_id')->filter()->values()->all();
+        $parentIds = $students->pluck('parent_id')->filter()->unique()->values()->all();
+
+        $contactDetailsMap = ContactDetails::query()
+            ->whereIn('id', $parentIds)
+            ->get(['id', 'phone_no'])
+            ->keyBy('id');
+
+        $latestAddressChanges = DB::table('permanent_address_change_log')
+            ->select('student_id', DB::raw('MAX(changed_at) as changed_at'))
+            ->whereIn('student_id', $studentIds)
+            ->groupBy('student_id');
+
+        $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
+            ->joinSub($latestAddressChanges, 'latest_change', function ($join) {
+                $join
+                    ->on('pacl.student_id', '=', 'latest_change.student_id')
+                    ->on('pacl.changed_at', '=', 'latest_change.changed_at');
+            })
+            ->select('pacl.*')
+            ->get()
+            ->keyBy('student_id');
+
+        $globalVariables = App::make('global_variables');
+        $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+        $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+        $students->each(function ($student) use ($concatprojecturl, $contactDetailsMap, $lastAddressChangeMap) {
+            $student->image_name = !empty($student->image_name)
+                ? $concatprojecturl . $student->image_name
+                : '';
+
+            $contactDetails = $contactDetailsMap->get($student->parent_id);
+            $student->SetToReceiveSMS = $contactDetails->phone_no ?? '';
+            $student->SetEmailIDAsUsername = $student->userMaster->user_id ?? '';
+            $student->last_permanent_address_change = $lastAddressChangeMap->get($student->student_id);
+        });
 
         $students->transform(function ($student) {
             if (isset($student->religion)) {
@@ -17900,7 +18130,14 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
         // dd($role_id);
         // Get next Monday (or accept from request if you want later)
-        $nextMonday = now()->next('Monday')->format('d-m-Y');
+        $nextMondayDate = now()->next('Monday');
+
+        $nextMonday = $nextMondayDate->format('d-m-Y');
+
+        $weekStart = $nextMondayDate->copy()->startOfWeek()->format('d-m-Y');
+        $weekEnd = $nextMondayDate->copy()->endOfWeek()->format('d-m-Y');
+
+        $weekRange = $weekStart . ' - ' . $weekEnd;
 
         if ($role_id == 'P' || $role_id == 'A' || $role_id == 'M') {
             $notCreatedList = DB::table('subject as s')
@@ -17977,6 +18214,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => true,
                 'notCreatedList' => $notCreatedList,
                 'createdList' => $createdList,
+                'week' => $weekRange,
             ], 200);
         } else if ($role_id == 'T') {
             $data = DB::table('subject as s')
@@ -18055,6 +18293,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 'status' => true,
                 'list' => $data,
                 'createdList' => $createdList,
+                'week' => $weekRange,
             ]);
         } else {
             return response()->json([
@@ -19397,25 +19636,42 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $date = $request->query('date', now()->toDateString());
 
             $result = DB::selectOne('
-                SELECT
-                    COUNT(cs.class_id) AS total,
-                    SUM(
-                        CASE
-                            WHEN a.class_id IS NULL THEN 1
-                            ELSE 0
-                        END
-                    ) AS not_marked
-                FROM class c
-                JOIN section cs ON cs.class_id = c.class_id
-                LEFT JOIN (
-                    SELECT DISTINCT class_id, section_id
-                    FROM attendance
-                    WHERE only_date = ?
-                ) a
-                    ON a.class_id = c.class_id
-                    AND a.section_id = cs.section_id
-                WHERE c.academic_yr = ?
-            ', [$date, $academicYr]);
+    SELECT
+        COUNT(*) AS total,
+        SUM(
+            CASE
+                WHEN a.class_id IS NULL THEN 1
+                ELSE 0
+            END
+        ) AS not_marked
+    FROM class c
+    JOIN section cs
+        ON cs.class_id = c.class_id
+
+    LEFT JOIN (
+        SELECT DISTINCT class_id, section_id
+        FROM attendance
+        WHERE only_date = ?
+          AND academic_yr = ?
+    ) a
+        ON a.class_id = c.class_id
+        AND a.section_id = cs.section_id
+
+    WHERE c.academic_yr = ?
+
+      AND EXISTS (
+          SELECT 1
+          FROM class_teachers ct
+          WHERE ct.class_id = c.class_id
+            AND ct.section_id = cs.section_id
+            AND ct.academic_yr = ?
+      )
+', [
+                $date,
+                $academicYr,
+                $academicYr,
+                $academicYr
+            ]);
 
             $response['student'] = [
                 'present' => $presentStudent,
@@ -20976,6 +21232,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->where('c.confirm', 'Y')
                 ->orderBy('t.teacher_id')
                 ->get();
+            // return response()->json([
+            //     'success' => true,
+            //     'message' => 'Something went wrong',
+            //     'data'=>$staffdata,
+            // ], 200);
 
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
@@ -20985,13 +21246,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $headers = [
                 'A1' => 'Sr No.',
                 'B1' => 'Photo',
-                'C1' => 'Employee Id',
-                'D1' => 'Name',
-                'E1' => 'Phone No',
-                'F1' => 'Address',
-                'G1' => 'Gender',
-                'H1' => 'Blood Group',
-                'I1' => 'Profile Image Name'
+                'C1' => 'Name',
+                'D1' => 'Designation',
+                'E1' => 'Employee Id',
+                'F1' => 'Date Of Joining',
+                'G1' => 'Blood Group',
+                'H1' => 'Address',
+                'I1' => 'Phone No',
+                'J1' => 'Gender',
+                'K1' => 'Profile Image Name'
             ];
 
             foreach ($headers as $cell => $value) {
@@ -20999,7 +21262,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             // Header Style
-            $sheet->getStyle('A1:I1')->applyFromArray([
+            $sheet->getStyle('A1:K1')->applyFromArray([
                 'font' => [
                     'bold' => true,
                     'size' => 12
@@ -21027,13 +21290,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             foreach ($staffdata as $teacher) {
                 $sheet->setCellValue('A' . $row, $sr);
-                $sheet->setCellValue('C' . $row, $teacher->employee_id);
-                $sheet->setCellValue('D' . $row, $teacher->name);
-                $sheet->setCellValue('E' . $row, $teacher->phone);
-                $sheet->setCellValue('F' . $row, $teacher->address);
-                $sheet->setCellValue('G' . $row, ucfirst($teacher->sex));
-                $sheet->setCellValue('H' . $row, $teacher->blood_group);
-                $sheet->setCellValue('I' . $row, $teacher->teacher_image_name);
+                $sheet->setCellValue('C' . $row, $teacher->name);
+                $sheet->setCellValue('D' . $row, $teacher->designation);
+                $sheet->setCellValue('E' . $row, $teacher->employee_id);
+                $sheet->setCellValue('F' . $row, $teacher->date_of_joining);
+                $sheet->setCellValue('G' . $row, $teacher->blood_group);
+                $sheet->setCellValue('H' . $row, $teacher->permanent_address);
+                $sheet->setCellValue('I' . $row, $teacher->phone);
+                $sheet->setCellValue('J' . $row, ucfirst($teacher->sex));
+                $sheet->setCellValue('K' . $row, $teacher->teacher_image_name);
 
                 // Wrap text
                 $sheet
@@ -21087,7 +21352,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             }
 
             // Borders
-            $sheet->getStyle('A1:I' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:K' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_MEDIUM
@@ -21098,13 +21363,15 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             // Column Widths
             $sheet->getColumnDimension('A')->setWidth(8);
             $sheet->getColumnDimension('B')->setWidth(15);
-            $sheet->getColumnDimension('C')->setWidth(15);
-            $sheet->getColumnDimension('D')->setWidth(35);
-            $sheet->getColumnDimension('E')->setWidth(18);
-            $sheet->getColumnDimension('F')->setWidth(45);
+            $sheet->getColumnDimension('C')->setWidth(35);
+            $sheet->getColumnDimension('D')->setWidth(15);
+            $sheet->getColumnDimension('E')->setWidth(10);
+            $sheet->getColumnDimension('F')->setWidth(15);
             $sheet->getColumnDimension('G')->setWidth(12);
-            $sheet->getColumnDimension('H')->setWidth(15);
+            $sheet->getColumnDimension('H')->setWidth(48);
             $sheet->getColumnDimension('I')->setWidth(20);
+            $sheet->getColumnDimension('J')->setWidth(20);
+            $sheet->getColumnDimension('K')->setWidth(20);
 
             $writer = new Xlsx($spreadsheet);
 
@@ -21358,7 +21625,18 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $examId = $request->input('exam_id');
 
             $allotmentSummary = DB::table('allot_mark_headings as amh')
-                ->leftJoin('marks_headings as mh', 'mh.marks_headings_id', '=', 'amh.marks_headings_id')
+                ->leftJoin(
+                    'marks_headings as mh',
+                    'mh.marks_headings_id',
+                    '=',
+                    'amh.marks_headings_id'
+                )
+                ->leftJoin(
+                    'subjects_on_report_card_master as sub',
+                    'sub.sub_rc_master_id',
+                    '=',
+                    'amh.sm_id'
+                )
                 ->where('amh.academic_yr', $academicYear)
                 ->when($classId, function ($query) use ($classId) {
                     $query->where('amh.class_id', $classId);
@@ -21366,13 +21644,33 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                 ->when($examId, function ($query) use ($examId) {
                     $query->where('amh.exam_id', $examId);
                 })
-                ->groupBy('amh.class_id', 'amh.exam_id', 'amh.academic_yr')
+                ->groupBy(
+                    'amh.class_id',
+                    'amh.exam_id',
+                    'amh.academic_yr'
+                )
                 ->select(
                     'amh.class_id',
                     'amh.exam_id',
                     'amh.academic_yr',
-                    DB::raw("GROUP_CONCAT(DISTINCT mh.name ORDER BY mh.marks_headings_id SEPARATOR ', ') as mark_headings"),
-                    DB::raw('COUNT(DISTINCT amh.allot_markheadings_id) as mark_heading_count')
+                    DB::raw("
+                    GROUP_CONCAT(
+                        DISTINCT sub.name
+                        ORDER BY sub.sub_rc_master_id ASC
+                        SEPARATOR ', '
+                    ) AS subject_name
+                "),
+                    DB::raw("
+                    GROUP_CONCAT(
+                        DISTINCT mh.name
+                        ORDER BY mh.marks_headings_id ASC
+                        SEPARATOR ', '
+                    ) AS mark_headings
+                "),
+                    DB::raw('
+                    COUNT(DISTINCT amh.allot_markheadings_id)
+                    AS mark_heading_count
+                ')
                 );
 
             $studentMarksSummary = DB::table('student_marks as sm')
@@ -21405,6 +21703,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     'c.name as class_name',
                     'summary.exam_id',
                     'e.name as exam_name',
+                    'summary.subject_name',
                     'summary.academic_yr',
                     'summary.mark_headings',
                     'summary.mark_heading_count',
@@ -21495,7 +21794,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
             return response()->json([
                 'status' => true,
-                'message' => 'Bulk delete completed.',
+                'message' => 'Deletion Successful.',
                 'deleted' => $deleted,
                 'blocked' => $blocked
             ]);
