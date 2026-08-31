@@ -1254,6 +1254,40 @@ class NoticeController extends Controller
                     'success' => false
                 ]);
             }
+
+            // --------------------------------------------------
+            // 2. Check subject allotment for report card
+            // --------------------------------------------------
+            $results = DB::table('subjects_on_report_card as a')
+                ->select(
+                    'a.sub_rc_master_id',
+                    'b.name',
+                    'a.subject_type'
+                )
+                ->distinct()
+                ->join(
+                    'subjects_on_report_card_master as b',
+                    'b.sub_rc_master_id',
+                    '=',
+                    'a.sub_rc_master_id'
+                )
+                ->where('a.class_id', $class_id)
+                ->where('a.academic_yr', $customClaims)
+                ->orderBy('a.class_id', 'asc')
+                ->orderBy('b.sequence', 'asc')
+                ->get();
+
+            // --------------------------------------------------
+            // 3. If subjects are not allotted
+            // --------------------------------------------------
+            if ($results->isEmpty()) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Subject allotment for report card is not done for this class. Please allot subjects for this class.',
+                    'success' => false
+                ], 400);
+            }
+
             $exams = Exams::find($exam_id);
             $startDate = Carbon::parse($exams->start_date);  // Parse the start date
             $endDate = Carbon::parse($exams->end_date);  // Parse the end date

@@ -283,6 +283,7 @@ Route::middleware(['school.db'])->group(function () {
 
         Route::get('/getStudentListBySection', [AdminController::class, 'getStudentListBySection']);  // Done for student dropdown.
         Route::get('/getStudentListBySectionData', [AdminController::class, 'getStudentListBySectionData']);
+        Route::get('/getStudentListBySectionDataMultipleClass', [AdminController::class, 'getStudentListBySectionDataMultipleClass']);
         Route::get('/getStudentListByClassSectionData', [AdminController::class, 'getStudentListByClassSectionData']);
         Route::get('/students/{studentId}', [AdminController::class, 'getStudentById']);  // Edit Student , for the view Student. and single student select for the list.
         Route::get('/student_by_reg_no/{reg_no}', [AdminController::class, 'getStudentByGRN']);  // Student By GRN .
@@ -450,6 +451,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // Manage Student
         Route::get('get_students', [AdminController::class, 'getStudentsList']);
+        Route::get('get_studentsmulitpleclass', [AdminController::class, 'getStudentsListMultipleClass']);
 
         // Leave Allocation for all staff
         Route::post('save_leaveallocationforallstaff', [AdminController::class, 'saveLeaveAllocationforallStaff']);
@@ -1738,11 +1740,22 @@ Route::middleware(['school.db'])->group(function () {
         Route::post('/sync_teacher_users_schoolwise', [UserController::class, 'syncTeacherUsersSchoolwise']);
         Route::post('/sync_parent_users_schoolwise', [UserController::class, 'syncParentUsersSchoolwise']);
 
+        Route::get('/teacher-id-card/excel', [AdminController::class, 'getTeacherIdCardExcel']);
+        Route::get('/student-id-card/excel', [AdminController::class, 'getStudentIdCardExcel']);
+
+        Route::get('get_classwisemarksreportchangesstcs', [ReportController::class, 'getClasswiseMarksReportchangesstcs']);
+
+        // Communication limit API
+        Route::get('get_communication_limit', [AdminController::class, 'getCommunicationLimit']);
+
         // Send UserId to Parents
         Route::get('get_students_send_user_id', [AdminController::class, 'getStudentsListSendUserId']);
         // Parent App APIS
 
-        Route::get('get_childs', [ParentController::class, 'getChilds']);
+        Route::get('get_dashboard_data', [ParentController::class, 'getDashboardData']);
+
+        Route::get('get_allot_markheadings_list', [AdminController::class, 'getAllotMarkheadingsListPull']);
+        Route::delete('bulkDeleteAllotMarkheadings', [AdminController::class, 'bulkDeleteAllotMarkheadings']);
     });
 
     // Impersonate
@@ -1817,6 +1830,7 @@ Route::post('sendwhatsappmessages', [AdminController::class, 'sendwhatsappmessag
 Route::post('webhook/redington', [AdminController::class, 'webhookredington']);
 Route::post('webhook/redingtonhscs', [AdminController::class, 'webhookredingtonhscs']);
 Route::post('webhook/redingtonstcs', [AdminController::class, 'webhookredingtonstcs']);
+Route::post('webhook/redingtonjps', [AdminController::class, 'webhookredingtonjps']);
 
 Route::get('whatsapp_messages_for_not_approving_lesson', [ReportController::class, 'whatsappmessagesfornotapprovinglessonplan']);
 Route::get('get_supportemailid', [NewController::class, 'getSupportEmailId']);

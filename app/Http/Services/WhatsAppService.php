@@ -23,9 +23,40 @@ class WhatsAppService
         $this->password = $settings->password ?? null;
     }
 
+    private function canSendWhatsapp()
+    {
+        $settings = DB::table('school_settings')
+            ->where('is_active', 'Y')
+            ->select('whatsapp_threshold', 'threshold_count')
+            ->first();
+
+        if (!$settings || $settings->whatsapp_threshold != 'Y') {
+            return true;
+        }
+
+        $sentThisMonth = DB::table('redington_webhook_details')
+            ->where('sms_sent', 'Y')
+            ->where('status', '!=', 'failed')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+
+        return $sentThisMonth < $settings->threshold_count;
+    }
+
     public function sendTextMessage($phoneNumber, $templateName = null, $parameters = [])
     {
         try {
+            if (!$this->canSendWhatsapp()) {
+                Log::channel('whatsapp')->warning('WhatsApp Monthly Threshold Reached', [
+                    'phone' => $phoneNumber
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'Monthly WhatsApp limit reached.'
+                ];
+            }
             $message = implode("\n", $parameters);
 
             $response = Http::get($this->apiUrl, [
