@@ -1753,6 +1753,8 @@ Route::middleware(['school.db'])->group(function () {
         // Parent App APIS
 
         Route::get('get_dashboard_data', [ParentController::class, 'getDashboardData']);
+        Route::get('/get_fees_structure', [ParentController::class, 'getFeesStructure']);
+        Route::get('/get_student_category_of_parent', [ParentController::class, 'getStudentCategoryOfParent']);
 
         Route::get('get_allot_markheadings_list', [AdminController::class, 'getAllotMarkheadingsListPull']);
         Route::delete('bulkDeleteAllotMarkheadings', [AdminController::class, 'bulkDeleteAllotMarkheadings']);

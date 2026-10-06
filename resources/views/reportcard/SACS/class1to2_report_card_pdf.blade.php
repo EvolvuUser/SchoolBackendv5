@@ -528,9 +528,9 @@ foreach ($student_info as $row1):
 	foreach ($term_list as $term) {
 		$remark = get_reportcard_remark_of_a_student($row1['student_id'], $term->term_id);
 		if ($remark_string == '' && $remark <> '') {
-			$remark_string = $remark_string . 'Term ' . $term['term_id'] . ' - ' . $remark;
+			$remark_string = $remark_string . 'Term ' . $term->term_id . ' - ' . $remark;
 		} elseif ($remark_string <> '' && $remark <> '') {
-			$remark_string = $remark_string . '<br/> Term ' . $term['term_id'] . ' - ' . $remark;
+			$remark_string = $remark_string . '<br/> Term ' . $term->term_id . ' - ' . $remark;
 		} else {
 			$remark_string = '<br>';
 			$width = '85%';

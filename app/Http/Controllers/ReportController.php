@@ -522,108 +522,131 @@ class ReportController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $class_section = $request->input('class_section');
             $section_id = $request->input('section_id');
+            $classSectionPairs = [];
+            if ($class_section !== null && $class_section !== '') {
+                if (!is_string($class_section) || !preg_match('/^\s*\d+\^\d+\s*(,\s*\d+\^\d+\s*)*$/D', $class_section)) {
+                    return response()->json([
+                        'error' => 'class_section must contain comma-separated class_id^section_id pairs, for example 148^560,148^561.'
+                    ], 422);
+                }
+
+                foreach (explode(',', $class_section) as $pair) {
+                    $classSectionPairs[] = explode('^', trim($pair));
+                }
+            }
+
             $studentdetails = DB::table('student as a')
                 ->join('parent as b', 'a.parent_id', '=', 'b.parent_id')
                 ->join('class as c', 'c.class_id', '=', 'a.class_id')
                 ->join('section as d', 'd.section_id', '=', 'a.section_id')
                 ->leftjoin('house', 'house.house_id', '=', 'a.house')
                 ->where('a.isDelete', 'N')  // Condition for 'isDelete'
-                ->where('a.section_id', $section_id)  // Condition for section_id
+                ->where(function ($query) use ($classSectionPairs, $section_id) {
+                    if (empty($classSectionPairs)) {
+                        $query->where('a.section_id', $section_id);
+                        return;
+                    }
+
+                    foreach ($classSectionPairs as [$classId, $sectionId]) {
+                        $query->orWhere(function ($pairQuery) use ($classId, $sectionId) {
+                            $pairQuery->where('a.class_id', $classId)
+                                ->where('a.section_id', $sectionId);
+                        });
+                    }
+                })
                 ->where('a.academic_yr', $customClaims)  // Condition for academic_yr
-                ->orderByRaw('roll_no, CAST(a.reg_no AS UNSIGNED)')  // Order by roll_no and cast reg_no as unsigned
+                ->orderBy('a.class_id')
+                ->orderBy('a.section_id')
+                ->orderBy('a.roll_no')
                 ->select('a.*', 'b.*', 'c.name as classname', 'd.name as sectionname', 'house.house_name as housename')  // Select all columns from both student (a) and parent (b)
                 ->get();
+            $acd_yr_from = substr($customClaims, 0, 4) - 1;
+            $acd_yr_to = substr($customClaims, 5, 4) - 1;
+            $prev_acd_yr = $acd_yr_from . '-' . $acd_yr_to;
+            $previousStudents = collect();
+            $percentages = collect();
+            $attendance = collect();
+
+            if ($studentdetails->isNotEmpty()) {
+                // Match names in SQL to preserve the database's collation rules.
+                $previousIds = DB::table('student as current_student')
+                    ->join('student as previous_student', function ($join) use ($prev_acd_yr) {
+                        $join->on('previous_student.parent_id', '=', 'current_student.parent_id')
+                            ->on('previous_student.first_name', '=', 'current_student.first_name')
+                            ->where('previous_student.academic_yr', $prev_acd_yr);
+                    })
+                    ->whereIn('current_student.student_id', $studentdetails->pluck('student_id'))
+                    ->select('current_student.student_id as current_student_id')
+                    ->selectRaw('MIN(previous_student.student_id) as previous_student_id')
+                    ->groupBy('current_student.student_id');
+
+                $previousStudents = DB::query()
+                    ->fromSub($previousIds, 'matched_students')
+                    ->join('student as s', 's.student_id', '=', 'matched_students.previous_student_id')
+                    ->leftJoin('class as c', 'c.class_id', '=', 's.class_id')
+                    ->select('matched_students.current_student_id', 's.student_id', 'c.name as classname')
+                    ->get()
+                    ->keyBy('current_student_id');
+
+                // At most four marks queries, regardless of the number of students.
+                $marksGroups = $previousStudents->groupBy(function ($student) {
+                    return in_array($student->classname, ['9', '11', '12'])
+                        ? (string) $student->classname
+                        : 'other';
+                });
+
+                foreach ($marksGroups as $className => $students) {
+                    $marksQuery = DB::table('student_marks as sm')
+                        ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
+                        ->whereColumn('sm.class_id', 'sb.class_id')
+                        ->where('sm.publish', 'Y')
+                        ->whereIn('sm.student_id', $students->pluck('student_id')->unique())
+                        ->select('sm.student_id')
+                        ->selectRaw('ROUND(SUM(sm.total_marks) / NULLIF(SUM(sm.highest_total_marks), 0) * 100, 2) as total_percent')
+                        ->groupBy('sm.student_id');
+
+                    if (in_array((string) $className, ['9', '11'], true)) {
+                        $marksQuery->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                            ->where('e.name', 'like', 'Final%');
+                    }
+
+                    if (in_array((string) $className, ['11', '12'], true)) {
+                        $marksQuery->where('sb.subject_type', '<>', 'Co-Scholastic_hsc');
+                    } else {
+                        $marksQuery->where('sb.subject_type', 'Scholastic');
+                    }
+
+                    foreach ($marksQuery->get() as $result) {
+                        $percentages->put($result->student_id, $result->total_percent);
+                    }
+                }
+
+                if ($previousStudents->isNotEmpty()) {
+                    $attendance = DB::table('attendance')
+                        ->whereIn('student_id', $previousStudents->pluck('student_id')->unique())
+                        ->where('academic_yr', $prev_acd_yr)
+                        ->select('student_id')
+                        ->selectRaw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days, COUNT(*) as total_working_days')
+                        ->groupBy('student_id')
+                        ->get()
+                        ->keyBy('student_id');
+                }
+            }
+
             $mappedStudentDetails = [];
             foreach ($studentdetails as $studentdetail) {
-                // dd($studentdetail);
-                $acd_yr_from = substr($customClaims, 0, 4) - 1;
-                $acd_yr_to = substr($customClaims, 5, 4) - 1;
-                $prev_acd_yr = $acd_yr_from . '-' . $acd_yr_to;
-                $prev_yr_student_id = DB::table('student')
-                    ->select('student_id')
-                    ->where('academic_yr', $prev_acd_yr)
-                    ->where('parent_id', $studentdetail->parent_id)
-                    ->where('first_name', $studentdetail->first_name)
-                    ->first();
-                //  dd($prev_yr_student_id);
-                if (!empty($prev_yr_student_id)) {
-                    $class = DB::table('student as s')
-                        ->join('class as c', 's.class_id', '=', 'c.class_id')
-                        ->where('s.student_id', $prev_yr_student_id->student_id)
-                        ->first();
-                    //   dd($class);
+                $previousStudent = $previousStudents->get($studentdetail->student_id);
+                $studentdetail->total_percent = null;
+                $studentdetail->total_attendance = null;
 
-                    // Based on the class, create the respective query
-                    if ($class->name == '9') {
-                        $result = DB::table('student_marks as sm')
-                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                            ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                            ->where('sb.subject_type', '=', 'Scholastic')
-                            ->where('e.name', 'like', 'Final%')
-                            ->where('sm.publish', '=', 'Y')
-                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                            ->groupBy('sm.student_id')
-                            ->first();  // Using first() to get the single result
-                    } elseif ($class->name == '11') {
-                        $result = DB::table('student_marks as sm')
-                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                            ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
-                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                            ->where('e.name', 'like', 'Final%')
-                            ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
-                            ->where('sm.publish', '=', 'Y')
-                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                            ->groupBy('sm.student_id')
-                            ->first();
-                    } elseif ($class->name == '12') {
-                        $result = DB::table('student_marks as sm')
-                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                            ->where('sb.subject_type', '<>', 'Co-Scholastic_hsc')
-                            ->where('sm.publish', '=', 'Y')
-                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                            ->groupBy('sm.student_id')
-                            ->first();
-                    } else {
-                        $result = DB::table('student_marks as sm')
-                            ->join('subjects_on_report_card as sb', 'sm.subject_id', '=', 'sb.sub_rc_master_id')
-                            ->selectRaw('round(sum(sm.total_marks) / sum(sm.highest_total_marks) * 100, 2) as total_percent')
-                            ->where('sb.subject_type', '=', 'Scholastic')
-                            ->where('sm.class_id', '=', DB::raw('sb.class_id'))
-                            ->where('sm.publish', '=', 'Y')
-                            ->where('sm.student_id', '=', $prev_yr_student_id->student_id)
-                            ->groupBy('sm.student_id')
-                            ->first();
-                    }
-                    $studentdetail->total_percent = $result ? $result->total_percent : null;
-                    $attendanceresult = DB::table('attendance')
-                        ->select(
-                            DB::raw('SUM(IF(attendance_status = 0, 1, 0)) as total_present_days'),
-                            DB::raw('COUNT(*) as total_working_days')
-                        )
-                        ->where('student_id', $prev_yr_student_id->student_id)
-                        ->where('academic_yr', $prev_acd_yr)
-                        ->first();
-
-                    $total_attendance = '';
-
-                    if ($attendanceresult) {
-                        $total_present_days = $attendanceresult->total_present_days;
-                        $total_working_days = $attendanceresult->total_working_days;
-
-                        if (!is_null($total_present_days) && $total_present_days !== '') {
-                            $total_attendance = $total_present_days . '/' . $total_working_days;
-                        }
-                    }
-                    $studentdetail->total_attendance = $total_attendance;
-                } else {
-                    $studentdetail->total_attendance = null;
-                    $studentdetail->total_percent = null;
+                if ($previousStudent) {
+                    $studentdetail->total_percent = $percentages->get($previousStudent->student_id);
+                    $attendanceResult = $attendance->get($previousStudent->student_id);
+                    $studentdetail->total_attendance = $attendanceResult
+                        ? $attendanceResult->total_present_days . '/' . $attendanceResult->total_working_days
+                        : '';
                 }
 
                 $mappedStudentDetails[] = $studentdetail;

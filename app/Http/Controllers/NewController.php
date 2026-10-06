@@ -4563,6 +4563,14 @@ ORDER BY Z.t_remark_id DESC;");
         }
 
         $lessonPlans = $query->get();
+        if ($lessonPlans->isEmpty()) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Lesson plan not found.',
+                'data' => [],
+                'success' => false
+            ]);
+        }
 
         foreach ($lessonPlans as $plan) {
             $plan->class_names = DB::table('lesson_plan as a')
@@ -4628,7 +4636,7 @@ ORDER BY Z.t_remark_id DESC;");
 
         return response()->json([
             'status' => 200,
-            'message' => 'Lesson plan to approve data!',
+            'message' => 'Lesson plan fetched successfully.',
             'data' => $lessonPlans,
             'success' => true
         ]);

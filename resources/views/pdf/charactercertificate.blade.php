@@ -199,4 +199,8 @@ $pageType = $bgImage['page_type'] ?? 'A4 landscape';
 	</div>   
     </div>
     <!--Ends Here -->
+<<<<<<< ours
 </html>
+=======
+</html>
+>>>>>>> theirs
