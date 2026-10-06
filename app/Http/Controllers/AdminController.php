@@ -534,41 +534,344 @@ class AdminController extends Controller
 
     public function getClassDivisionTotalStudents(Request $request)
     {
-        $payload = getTokenPayload($request);
-        if (!$payload) {
-            return response()->json(['error' => 'Invalid or missing token'], 401);
+        try {
+            $payload = getTokenPayload($request);
+
+            if (!$payload) {
+                return response()->json([
+                    'error' => 'Invalid or missing token'
+                ], 401);
+            }
+
+            $academicYr = $payload->get('academic_year');
+
+            if (!$academicYr) {
+                return response()->json([
+                    'error' => 'Academic year is missing'
+                ], 400);
+            }
+
+            $onlyDate = Carbon::today()->toDateString();
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Section wise total strength
+             * |--------------------------------------------------------------------------
+             */
+            $sectionStrength = DB::table('student')
+                ->select(
+                    'class_id',
+                    'section_id',
+                    DB::raw('COUNT(student_id) as students_count')
+                )
+                ->where('academic_yr', $academicYr)
+                ->where('isDelete', 'N')
+                ->where('parent_id', '!=', '0')
+                ->groupBy(
+                    'class_id',
+                    'section_id'
+                );
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Section wise attendance
+             * |
+             * | attendance_status = 0 => Present
+             * | attendance_status = 1 => Absent
+             * |--------------------------------------------------------------------------
+             */
+            $sectionAttendance = DB::table('attendance as a')
+                ->join(
+                    'student as stu',
+                    'stu.student_id',
+                    '=',
+                    'a.student_id'
+                )
+                ->select(
+                    'a.class_id',
+                    'a.section_id',
+                    DB::raw("
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN a.attendance_status = '0'
+                            THEN a.student_id
+                        END
+                    ) as present_count
+                "),
+                    DB::raw("
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN a.attendance_status = '1'
+                            THEN a.student_id
+                        END
+                    ) as absent_count
+                ")
+                )
+                ->whereDate('a.only_date', $onlyDate)
+                ->where('stu.academic_yr', $academicYr)
+                ->where('stu.isDelete', 'N')
+                ->where('stu.parent_id', '!=', '0')
+                ->groupBy(
+                    'a.class_id',
+                    'a.section_id'
+                );
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Overall class strength
+             * |--------------------------------------------------------------------------
+             */
+            $classStrength = DB::table('student')
+                ->select(
+                    'class_id',
+                    DB::raw('COUNT(student_id) as class_total_students')
+                )
+                ->where('academic_yr', $academicYr)
+                ->where('isDelete', 'N')
+                ->where('parent_id', '!=', '0')
+                ->groupBy('class_id');
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Overall class attendance
+             * |--------------------------------------------------------------------------
+             */
+            $classAttendance = DB::table('attendance as a')
+                ->join(
+                    'student as stu',
+                    'stu.student_id',
+                    '=',
+                    'a.student_id'
+                )
+                ->select(
+                    'a.class_id',
+                    DB::raw("
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN a.attendance_status = '0'
+                            THEN a.student_id
+                        END
+                    ) as class_present_count
+                "),
+                    DB::raw("
+                    COUNT(
+                        DISTINCT CASE
+                            WHEN a.attendance_status = '1'
+                            THEN a.student_id
+                        END
+                    ) as class_absent_count
+                ")
+                )
+                ->whereDate('a.only_date', $onlyDate)
+                ->where('stu.academic_yr', $academicYr)
+                ->where('stu.isDelete', 'N')
+                ->where('stu.parent_id', '!=', '0')
+                ->groupBy('a.class_id');
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Division wise data
+             * |--------------------------------------------------------------------------
+             */
+            $results = DB::table('class as c')
+                ->leftJoin('section as s', function ($join) use ($academicYr) {
+                    $join
+                        ->on(
+                            'c.class_id',
+                            '=',
+                            's.class_id'
+                        )
+                        ->where(
+                            's.academic_yr',
+                            '=',
+                            $academicYr
+                        );
+                })
+                ->leftJoinSub(
+                    $sectionStrength,
+                    'ss',
+                    function ($join) {
+                        $join
+                            ->on(
+                                'ss.class_id',
+                                '=',
+                                'c.class_id'
+                            )
+                            ->on(
+                                'ss.section_id',
+                                '=',
+                                's.section_id'
+                            );
+                    }
+                )
+                ->leftJoinSub(
+                    $sectionAttendance,
+                    'sa',
+                    function ($join) {
+                        $join
+                            ->on(
+                                'sa.class_id',
+                                '=',
+                                'c.class_id'
+                            )
+                            ->on(
+                                'sa.section_id',
+                                '=',
+                                's.section_id'
+                            );
+                    }
+                )
+                ->select(
+                    'c.class_id',
+                    's.section_id',
+                    DB::raw("
+                    CONCAT(
+                        c.name,
+                        ' ',
+                        COALESCE(
+                            s.name,
+                            'No division assigned'
+                        )
+                    ) as class_division
+                "),
+                    'c.name as class_name',
+                    's.name as section_name',
+                    DB::raw('
+                    COALESCE(
+                        ss.students_count,
+                        0
+                    ) as total_students
+                '),
+                    DB::raw('
+                    COALESCE(
+                        sa.present_count,
+                        0
+                    ) as present_students
+                '),
+                    DB::raw('
+                    COALESCE(
+                        sa.absent_count,
+                        0
+                    ) as absent_students
+                '),
+                    DB::raw('
+                    GREATEST(
+                        COALESCE(ss.students_count, 0)
+                        -
+                        (
+                            COALESCE(sa.present_count, 0)
+                            +
+                            COALESCE(sa.absent_count, 0)
+                        ),
+                        0
+                    ) as attendance_not_marked
+                ')
+                )
+                ->where(
+                    'c.academic_yr',
+                    $academicYr
+                )
+                ->orderBy(
+                    'c.class_id'
+                )
+                ->orderBy(
+                    's.name'
+                )
+                ->get();
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Class wise summary
+             * |--------------------------------------------------------------------------
+             */
+            $classSummary = DB::table('class as c')
+                ->leftJoinSub(
+                    $classStrength,
+                    'cs',
+                    function ($join) {
+                        $join->on(
+                            'cs.class_id',
+                            '=',
+                            'c.class_id'
+                        );
+                    }
+                )
+                ->leftJoinSub(
+                    $classAttendance,
+                    'ca',
+                    function ($join) {
+                        $join->on(
+                            'ca.class_id',
+                            '=',
+                            'c.class_id'
+                        );
+                    }
+                )
+                ->select(
+                    'c.class_id',
+                    'c.name as class_name',
+                    DB::raw('
+                    COALESCE(
+                        cs.class_total_students,
+                        0
+                    ) as class_total_students
+                '),
+                    DB::raw('
+                    COALESCE(
+                        ca.class_present_count,
+                        0
+                    ) as class_present_students
+                '),
+                    DB::raw('
+                    COALESCE(
+                        ca.class_absent_count,
+                        0
+                    ) as class_absent_students
+                '),
+                    DB::raw('
+                    GREATEST(
+                        COALESCE(cs.class_total_students, 0)
+                        -
+                        (
+                            COALESCE(ca.class_present_count, 0)
+                            +
+                            COALESCE(ca.class_absent_count, 0)
+                        ),
+                        0
+                    ) as class_attendance_not_marked
+                ')
+                )
+                ->where(
+                    'c.academic_yr',
+                    $academicYr
+                )
+                ->orderBy(
+                    'c.class_id'
+                )
+                ->get();
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Final response
+             * |--------------------------------------------------------------------------
+             */
+            return response()->json([
+                'status' => 200,
+                'date' => $onlyDate,
+                'class_summary' => $classSummary,
+                'data' => $results,
+                'message' => 'Class and division attendance summary.',
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+
+            return response()->json([
+                'status' => 500,
+                'error' => 'An error occurred: ' . $e->getMessage(),
+                'success' => false
+            ], 500);
         }
-        $academicYr = $payload->get('academic_year');
-
-        if (!$academicYr) {
-            return response()->json(['error' => 'Academic year is missing'], 400);
-        }
-
-        $results = DB::table('class as c')
-            ->leftJoin('section as s', 'c.class_id', '=', 's.class_id')
-            ->leftJoin(DB::raw("
-            (SELECT section_id, COUNT(student_id) AS students_count
-             FROM student
-             WHERE academic_yr = '{$academicYr}'  -- Filter by academic year
-             AND isDelete = 'N'
-             AND parent_id != '0'
-             GROUP BY section_id) as st
-        "), 's.section_id', '=', 'st.section_id')
-            ->select(
-                'c.class_id',
-                DB::raw("CONCAT(c.name, ' ', COALESCE(s.name, 'No division assigned')) AS class_division"),
-                DB::raw('SUM(st.students_count) AS total_students'),
-                'c.name as class_name',
-                's.name as section_name'
-            )
-            ->where('s.academic_yr', $academicYr)
-            ->where('c.academic_yr', $academicYr)
-            ->groupBy('c.name', 's.name')
-            ->orderBy('c.class_id')
-            ->orderBy('s.name')
-            ->get();
-
-        return response()->json($results);
     }
 
     public function ticketCount(Request $request)
@@ -696,41 +999,170 @@ class AdminController extends Controller
 
     public function getHouseViseStudent(Request $request)
     {
-        $className = $request->input('class_name');
+        try {
+            $className = $request->input('class_name');
 
-        $payload = getTokenPayload($request);
-        if (!$payload) {
-            return response()->json(['error' => 'Invalid or missing token'], 401);
+            $payload = getTokenPayload($request);
+
+            if (!$payload) {
+                return response()->json([
+                    'error' => 'Invalid or missing token'
+                ], 401);
+            }
+
+            $academicYr = $payload->get('academic_year');
+
+            if (!$academicYr) {
+                return response()->json([
+                    'error' => 'Academic year is missing'
+                ], 400);
+            }
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | CASE 1: class_name is provided
+             * |--------------------------------------------------------------------------
+             */
+            if (!empty($className)) {
+                $query = "
+                SELECT 
+                    CONCAT(class.name, ' ', section.name) AS class_section,
+                    house.house_name AS house_name,
+                    house.color_code AS color_code,
+                    COUNT(student.student_id) AS student_counts
+                FROM student
+                JOIN class 
+                    ON student.class_id = class.class_id
+                JOIN section 
+                    ON student.section_id = section.section_id
+                JOIN house 
+                    ON student.house = house.house_id
+                WHERE student.isDelete = 'N'
+                  AND student.academic_yr = ?
+                  AND class.name = ?
+                GROUP BY 
+                    class_section,
+                    house.house_name,
+                    house.color_code
+                ORDER BY 
+                    class_section,
+                    house.house_name
+            ";
+
+                $results = DB::select($query, [
+                    $academicYr,
+                    $className
+                ]);
+
+                /*
+                 * |--------------------------------------------------------------------------
+                 * | Total students in selected class having house
+                 * |--------------------------------------------------------------------------
+                 */
+                $totalStudents = DB::table('student as stu')
+                    ->join('class as c', 'stu.class_id', '=', 'c.class_id')
+                    ->where('stu.isDelete', 'N')
+                    ->where('stu.academic_yr', $academicYr)
+                    ->where('c.name', $className)
+                    ->whereNotNull('stu.house')
+                    ->where('stu.house', '!=', 0)
+                    ->count('stu.student_id');
+
+                /*
+                 * |--------------------------------------------------------------------------
+                 * | Add percentage
+                 * |--------------------------------------------------------------------------
+                 */
+                $totalPercentage = 0;
+                $lastIndex = count($results) - 1;
+
+                foreach ($results as $index => $row) {
+                    if ($index === $lastIndex) {
+                        $row->house_percent = $totalStudents > 0
+                            ? round(100 - $totalPercentage, 2)
+                            : 0;
+                    } else {
+                        $percentage = $totalStudents > 0
+                            ? round(($row->student_counts / $totalStudents) * 100, 2)
+                            : 0;
+
+                        $row->house_percent = $percentage;
+
+                        $totalPercentage += $percentage;
+                    }
+                }
+
+                return response()->json($results);
+            }
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | CASE 2: class_name is NOT provided
+             * | Entire school house-wise data
+             * |--------------------------------------------------------------------------
+             */
+
+            $totalStudents = DB::table('student')
+                ->where('academic_yr', $academicYr)
+                ->where('isDelete', 'N')
+                ->whereNotNull('house')
+                ->where('house', '!=', 0)
+                ->count('student_id');
+
+            $results = DB::table('house as h')
+                ->leftJoin('student as stu', function ($join) use ($academicYr) {
+                    $join->on(
+                        'stu.house',
+                        '=',
+                        'h.house_id'
+                    );
+
+                    $join->where(
+                        'stu.academic_yr',
+                        '=',
+                        $academicYr
+                    );
+
+                    $join->where(
+                        'stu.isDelete',
+                        '=',
+                        'N'
+                    );
+                })
+                ->select(
+                    'h.house_id',
+                    'h.house_name',
+                    'h.color_code',
+                    DB::raw('
+                    COUNT(stu.student_id) as student_counts
+                '),
+                    DB::raw("
+                    ROUND(
+                        (
+                            COUNT(stu.student_id)
+                            /
+                            NULLIF($totalStudents, 0)
+                        ) * 100,
+                        2
+                    ) as house_percent
+                ")
+                )
+                ->groupBy(
+                    'h.house_id',
+                    'h.house_name',
+                    'h.color_code'
+                )
+                ->orderBy('h.house_name')
+                ->get();
+
+            return response()->json($results);
+        } catch (\Exception $e) {
+            \Log::error($e);
+
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
-        $academicYr = $payload->get('academic_year');
-        $query = "
-        SELECT CONCAT(class.name, ' ', section.name) AS class_section,
-               house.house_name AS house_name,
-               house.color_code AS color_code,
-               COUNT(student.student_id) AS student_counts
-        FROM student
-        JOIN class ON student.class_id = class.class_id
-        JOIN section ON student.section_id = section.section_id
-        JOIN house ON student.house = house.house_id
-        WHERE student.IsDelete = 'N'
-          AND student.academic_yr = ?
-        ";
-
-        $params = [$academicYr];
-
-        if ($className) {
-            $query .= ' AND class.name = ?';
-            $params[] = $className;
-        }
-
-        $query .= '
-        GROUP BY class_section, house_name, house.color_code
-        ORDER BY class_section, house_name
-        ';
-
-        $results = DB::select($query, $params);
-
-        return response()->json($results);
     }
 
     public function getAcademicYears(Request $request)
@@ -1521,7 +1953,14 @@ class AdminController extends Controller
             ];
 
             $validatedData = $request->validate([
-                'employee_id' => 'required|unique:teacher,employee_id',
+                'employee_id' => [
+                    'required',
+                    Rule::unique('teacher', 'employee_id')
+                        ->where(function ($query) {
+                            return $query->where('IsDelete', '!=', 'Y');
+                        }),
+                ],
+                // 'employee_id' => 'required|unique:teacher,employee_id',
                 'name' => 'required|string|max:255',
                 'birthday' => 'required|date',
                 'date_of_joining' => 'required|date',
@@ -2240,26 +2679,37 @@ class AdminController extends Controller
             $payload = getTokenPayload($request);
             $academicYr = $payload->get('academic_year');
             $sectionId = $request->query('section_id');
-            if (!$sectionId) {
-                $student = DB::table('student')
-                    ->join('class', 'class.class_id', '=', 'student.class_id')
-                    ->join('section', 'section.section_id', '=', 'student.section_id')
-                    ->where('student.academic_yr', $academicYr)
-                    ->where('isDelete', 'N')
-                    ->where('parent_id', '!=', 0)
-                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
-                    ->get();
-            } else {
-                $student = DB::table('student')
-                    ->join('class', 'class.class_id', '=', 'student.class_id')
-                    ->join('section', 'section.section_id', '=', 'student.section_id')
-                    ->where('student.academic_yr', $academicYr)
-                    ->where('isDelete', 'N')
-                    ->where('student.section_id', $sectionId)
-                    ->where('parent_id', '!=', 0)
-                    ->select('student.student_id', 'student.first_name', 'student.mid_name', 'student.last_name', 'student.class_id', 'student.section_id', 'class.name as classname', 'section.name as sectionname')
-                    ->get();
+
+            $query = DB::table('student')
+                ->join('class', 'class.class_id', '=', 'student.class_id')
+                ->join('section', 'section.section_id', '=', 'student.section_id')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.isDelete', 'N')
+                ->where('student.parent_id', '!=', 0)
+                ->select(
+                    'student.student_id',
+                    'student.first_name',
+                    'student.mid_name',
+                    'student.last_name',
+                    'student.class_id',
+                    'student.section_id',
+                    'student.roll_no',
+                    'class.name as classname',
+                    'section.name as sectionname'
+                );
+
+            // Filter by section if section_id is provided
+            if ($sectionId) {
+                $query->where('student.section_id', $sectionId);
             }
+
+            // Student sorting
+            $query
+                ->orderBy('student.class_id', 'asc')
+                ->orderBy('student.section_id', 'asc')
+                ->orderBy('student.roll_no', 'asc');
+
+            $student = $query->get();
 
             return response()->json([
                 'status' => 200,
@@ -2268,8 +2718,11 @@ class AdminController extends Controller
                 'success' => true
             ]);
         } catch (Exception $e) {
-            \Log::error($e);  // Log the exception
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+            \Log::error($e);
+
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -2322,6 +2775,10 @@ class AdminController extends Controller
             } elseif ($sectionId) {
                 $query->where('student.section_id', $sectionId);
             }
+            $query
+                ->orderBy('class_id', 'asc')
+                ->orderBy('section_id', 'asc')
+                ->orderBy('roll_no', 'asc');
 
             $student = $query->get();
 
@@ -2495,7 +2952,8 @@ class AdminController extends Controller
                 'message' => 'Please provide at least one search condition.',
             ], 400);
         }
-
+        $query->orderBy('class_id', 'asc');
+        $query->orderBy('section_id', 'asc');
         $query->orderBy('roll_no', 'asc');
         $students = $query->get();
 
@@ -2560,6 +3018,431 @@ class AdminController extends Controller
         ]);
     }
 
+    // public function getStudentsListMultipleClass(Request $request)
+    // {
+    //     set_time_limit(300);
+    //     $section_id = $request->section_id;
+    //     $class_id = $request->class_id;
+    //     $classSection = $request->class_section;
+    //     $student_id = $request->student_id;
+    //     $reg_no = $request->reg_no;
+    //     $house_id = $request->house_id;
+    //     $user = $this->authenticateUser();
+    //     $payload = getTokenPayload($request);
+    //     $academicYr = $payload->get('academic_year');
+
+    //     $query = Student::query();
+    //     $query->select(
+    //             'student.*',
+    //             DB::raw("(SELECT h.house_name
+    //                       FROM house h
+    //                       WHERE h.house_id = student.house
+    //                       LIMIT 1) AS house_name")
+    //         );
+
+    //     $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+    //     $classSectionPairs = collect(explode(',', (string) $classSection))
+    //         ->map(function ($pair) {
+    //             $pair = trim($pair);
+    //             if ($pair === '') {
+    //                 return null;
+    //             }
+
+    //             $parts = array_map('trim', explode('^', $pair));
+    //             if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+    //                 return null;
+    //             }
+
+    //             return [
+    //                 'class_id' => $parts[0],
+    //                 'section_id' => $parts[1],
+    //             ];
+    //         })
+    //         ->filter()
+    //         ->values();
+
+    //     if ($classSectionPairs->isNotEmpty()) {
+    //         $query
+    //             ->where('isDelete', 'N')
+    //             ->where('academic_yr', $academicYr)
+    //             ->where('parent_id', '!=', '0')
+    //             ->where(function ($subQuery) use ($classSectionPairs) {
+    //                 foreach ($classSectionPairs as $pair) {
+    //                     $subQuery->orWhere(function ($pairQuery) use ($pair) {
+    //                         $pairQuery
+    //                             ->where('class_id', $pair['class_id'])
+    //                             ->where('section_id', $pair['section_id']);
+    //                     });
+    //                 }
+    //             });
+
+    //         if ($student_id) {
+    //             $query->where('student_id', $student_id);
+    //         }
+
+    //         if ($reg_no) {
+    //             $query->where('reg_no', $reg_no);
+    //         }
+    //     } elseif ($class_id && $section_id && $reg_no) {
+    //         $query
+    //             ->where('class_id', $class_id)
+    //             ->where('section_id', $section_id)
+    //             ->where('reg_no', $reg_no)
+    //             ->where('isDelete', 'N')
+    //             ->where('academic_yr', $academicYr)
+    //             ->where('parent_id', '!=', '0');
+    //     } elseif ($student_id && $reg_no) {
+    //         $query
+    //             ->where('student_id', $student_id)
+    //             ->where('reg_no', $reg_no)
+    //             ->where('isDelete', 'N')
+    //             ->where('academic_yr', $academicYr)
+    //             ->where('parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id && $student_id && $reg_no) {
+    //         $query
+    //             ->where('class_id', $class_id)
+    //             ->where('section_id', $section_id)
+    //             ->where('student_id', $student_id)
+    //             ->where('reg_no', $reg_no)
+    //             ->where('isDelete', 'N')
+    //             ->where('academic_yr', $academicYr)
+    //             ->where('parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id && $student_id) {
+    //         $query
+    //             ->where('class_id', $class_id)
+    //             ->where('student_id', $student_id)
+    //             ->where('section_id', $section_id)
+    //             ->where('isDelete', 'N')
+    //             ->where('academic_yr', $academicYr)
+    //             ->where('parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id) {
+    //         $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+    //     } elseif ($student_id) {
+    //         $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+    //     } elseif ($reg_no) {
+    //         $query->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+    //         if ($user->role_id == 'T') {
+    //             $teacherSubjects = DB::table('subject')
+    //                 ->select('class_id', 'section_id')
+    //                 ->where('teacher_id', $user->reg_id)
+    //                 ->where('academic_yr', $academicYr)
+    //                 ->get();
+
+    //             $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+    //             $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+
+    //             if (!empty($classIds) && !empty($sectionIds)) {
+    //                 $query
+    //                     ->whereIn('class_id', $classIds)
+    //                     ->whereIn('section_id', $sectionIds);
+    //             } else {
+    //                 return response()->json([
+    //                     'status' => 402,
+    //                     'message' => 'No assigned classes found',
+    //                     'success' => false
+    //                 ]);
+    //             }
+    //         }
+    //     } else {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Please provide at least one search condition.',
+    //         ], 400);
+    //     }
+    //     $query->orderBy('class_id', 'asc')
+    //           ->orderBy('section_id', 'asc')
+    //           ->orderBy('roll_no', 'asc');
+    //     $students = $query->get();
+
+    //     if ($students->isEmpty()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'No student found.',
+    //         ], 404);
+    //     }
+
+    //     $studentIds = $students->pluck('student_id')->filter()->values()->all();
+    //     $parentIds = $students->pluck('parent_id')->filter()->unique()->values()->all();
+
+    //     $contactDetailsMap = ContactDetails::query()
+    //         ->whereIn('id', $parentIds)
+    //         ->get(['id', 'phone_no'])
+    //         ->keyBy('id');
+
+    //     $latestAddressChanges = DB::table('permanent_address_change_log')
+    //         ->select('student_id', DB::raw('MAX(changed_at) as changed_at'))
+    //         ->whereIn('student_id', $studentIds)
+    //         ->groupBy('student_id');
+
+    //     $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
+    //         ->joinSub($latestAddressChanges, 'latest_change', function ($join) {
+    //             $join
+    //                 ->on('pacl.student_id', '=', 'latest_change.student_id')
+    //                 ->on('pacl.changed_at', '=', 'latest_change.changed_at');
+    //         })
+    //         ->select('pacl.*')
+    //         ->get()
+    //         ->keyBy('student_id');
+
+    //     $globalVariables = App::make('global_variables');
+    //     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //     $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+    //     $students->each(function ($student) use ($concatprojecturl, $contactDetailsMap, $lastAddressChangeMap) {
+    //         $student->image_name = !empty($student->image_name)
+    //             ? $concatprojecturl . $student->image_name
+    //             : '';
+
+    //         $contactDetails = $contactDetailsMap->get($student->parent_id);
+    //         $student->SetToReceiveSMS = $contactDetails->phone_no ?? '';
+    //         $student->SetEmailIDAsUsername = $student->userMaster->user_id ?? '';
+    //         $student->last_permanent_address_change = $lastAddressChangeMap->get($student->student_id);
+    //     });
+
+    //     $students->transform(function ($student) {
+    //         if (isset($student->religion)) {
+    //             // Force proper camel case (first letter lowercase)
+    //             $student->religion = ucfirst(strtolower($student->religion));
+    //         }
+    //         return $student;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'students' => $students,
+    //     ]);
+    // }
+    // public function getStudentsListMultipleClass(Request $request)
+    // {
+    //     set_time_limit(300);
+    //     $section_id = $request->section_id;
+    //     $class_id = $request->class_id;
+    //     $classSection = $request->class_section;
+    //     $student_id = $request->student_id;
+    //     $reg_no = $request->reg_no;
+    //     $phone_no = $request->phone_no;
+    //     $udisePenNo = $request->udise_pen_no;
+    //     $apaarId = $request->apaar_id;
+    //     $house = $request->house;
+    //     $search = trim((string) ($request->search ?? $request->search_text ?? ''));
+    //     $user = $this->authenticateUser();
+    //     $payload = getTokenPayload($request);
+    //     $academicYr = $payload->get('academic_year');
+
+    //     $query = Student::query()
+    //         ->leftJoin('house as h', 'h.house_id', '=', 'student.house')
+    //         ->leftJoin('contact_details as cd', 'cd.id', '=', 'student.parent_id')
+    //         ->select('student.*', 'h.house_name as house_name');
+
+    //     $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
+
+    //     $classSectionPairs = collect(explode(',', (string) $classSection))
+    //         ->map(function ($pair) {
+    //             $pair = trim($pair);
+    //             if ($pair === '') {
+    //                 return null;
+    //             }
+
+    //             $parts = array_map('trim', explode('^', $pair));
+    //             if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+    //                 return null;
+    //             }
+
+    //             return [
+    //                 'class_id' => $parts[0],
+    //                 'section_id' => $parts[1],
+    //             ];
+    //         })
+    //         ->filter()
+    //         ->values();
+
+    //     if ($classSectionPairs->isNotEmpty()) {
+    //         $query
+    //             ->where('student.isDelete', 'N')
+    //             ->where('student.academic_yr', $academicYr)
+    //             ->where('student.parent_id', '!=', '0')
+    //             ->where(function ($subQuery) use ($classSectionPairs) {
+    //                 foreach ($classSectionPairs as $pair) {
+    //                     $subQuery->orWhere(function ($pairQuery) use ($pair) {
+    //                         $pairQuery
+    //                             ->where('student.class_id', $pair['class_id'])
+    //                             ->where('student.section_id', $pair['section_id']);
+    //                     });
+    //                 }
+    //             });
+
+    //         if ($student_id) {
+    //             $query->where('student.student_id', $student_id);
+    //         }
+
+    //         if ($reg_no) {
+    //             $query->where('student.reg_no', $reg_no);
+    //         }
+    //     } elseif ($class_id && $section_id && $reg_no) {
+    //         $query
+    //             ->where('student.class_id', $class_id)
+    //             ->where('student.section_id', $section_id)
+    //             ->where('student.reg_no', $reg_no)
+    //             ->where('student.isDelete', 'N')
+    //             ->where('student.academic_yr', $academicYr)
+    //             ->where('student.parent_id', '!=', '0');
+    //     } elseif ($student_id && $reg_no) {
+    //         $query
+    //             ->where('student.student_id', $student_id)
+    //             ->where('student.reg_no', $reg_no)
+    //             ->where('student.isDelete', 'N')
+    //             ->where('student.academic_yr', $academicYr)
+    //             ->where('student.parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id && $student_id && $reg_no) {
+    //         $query
+    //             ->where('student.class_id', $class_id)
+    //             ->where('student.section_id', $section_id)
+    //             ->where('student.student_id', $student_id)
+    //             ->where('student.reg_no', $reg_no)
+    //             ->where('student.isDelete', 'N')
+    //             ->where('student.academic_yr', $academicYr)
+    //             ->where('student.parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id && $student_id) {
+    //         $query
+    //             ->where('student.class_id', $class_id)
+    //             ->where('student.student_id', $student_id)
+    //             ->where('student.section_id', $section_id)
+    //             ->where('student.isDelete', 'N')
+    //             ->where('student.academic_yr', $academicYr)
+    //             ->where('student.parent_id', '!=', '0');
+    //     } elseif ($class_id && $section_id) {
+    //         $query->where('student.section_id', $section_id)->where('student.class_id', $class_id)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
+    //     } elseif ($student_id) {
+    //         $query->where('student.student_id', $student_id)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
+    //     } elseif ($reg_no) {
+    //         $query->where('student.reg_no', $reg_no)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
+    //         if ($user->role_id == 'T') {
+    //             $teacherSubjects = DB::table('subject')
+    //                 ->select('class_id', 'section_id')
+    //                 ->where('teacher_id', $user->reg_id)
+    //                 ->where('academic_yr', $academicYr)
+    //                 ->get();
+
+    //             $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+    //             $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+
+    //             if (!empty($classIds) && !empty($sectionIds)) {
+    //                 $query
+    //                     ->whereIn('student.class_id', $classIds)
+    //                     ->whereIn('student.section_id', $sectionIds);
+    //             } else {
+    //                 return response()->json([
+    //                     'status' => 402,
+    //                     'message' => 'No assigned classes found',
+    //                     'success' => false
+    //                 ]);
+    //             }
+    //         }
+    //     } else {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Please provide at least one search condition.',
+    //         ], 400);
+    //     }
+
+    //     if ($phone_no) {
+    //         $query->where('cd.phone_no', 'like', '%' . $phone_no . '%');
+    //     }
+
+    //     if ($udisePenNo) {
+    //         $query->where('student.udise_pen_no', 'like', '%' . $udisePenNo . '%');
+    //     }
+
+    //     if ($apaarId) {
+    //         $query->where('student.apaar_id', 'like', '%' . $apaarId . '%');
+    //     }
+
+    //     if ($house !== null && $house !== '') {
+    //         $query->where(function ($houseQuery) use ($house) {
+    //             $houseQuery->where('h.house_name', 'like', '%' . $house . '%');
+
+    //             if (is_numeric($house)) {
+    //                 $houseQuery->orWhere('student.house', $house);
+    //             }
+    //         });
+    //     }
+
+    //     if ($search !== '') {
+    //         $query->where(function ($searchQuery) use ($search) {
+    //             $searchQuery
+    //                 ->where('cd.phone_no', 'like', '%' . $search . '%')
+    //                 ->orWhere('student.udise_pen_no', 'like', '%' . $search . '%')
+    //                 ->orWhere('student.apaar_id', 'like', '%' . $search . '%')
+    //                 ->orWhere('h.house_name', 'like', '%' . $search . '%');
+    //         });
+    //     }
+
+    //     $query
+    //         ->orderBy('student.class_id', 'asc')
+    //         ->orderBy('student.section_id', 'asc')
+    //         ->orderBy('student.roll_no', 'asc');
+    //     $students = $query->get();
+
+    //     if ($students->isEmpty()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'No student found.',
+    //         ], 404);
+    //     }
+
+    //     $studentIds = $students->pluck('student_id')->filter()->values()->all();
+    //     $parentIds = $students->pluck('parent_id')->filter()->unique()->values()->all();
+
+    //     $contactDetailsMap = ContactDetails::query()
+    //         ->whereIn('id', $parentIds)
+    //         ->get(['id', 'phone_no'])
+    //         ->keyBy('id');
+
+    //     $latestAddressChanges = DB::table('permanent_address_change_log')
+    //         ->select('student_id', DB::raw('MAX(changed_at) as changed_at'))
+    //         ->whereIn('student_id', $studentIds)
+    //         ->groupBy('student_id');
+
+    //     $lastAddressChangeMap = DB::table('permanent_address_change_log as pacl')
+    //         ->joinSub($latestAddressChanges, 'latest_change', function ($join) {
+    //             $join
+    //                 ->on('pacl.student_id', '=', 'latest_change.student_id')
+    //                 ->on('pacl.changed_at', '=', 'latest_change.changed_at');
+    //         })
+    //         ->select('pacl.*')
+    //         ->get()
+    //         ->keyBy('student_id');
+
+    //     $globalVariables = App::make('global_variables');
+    //     $codeigniter_app_url = $globalVariables['codeigniter_app_url'];
+    //     $concatprojecturl = $codeigniter_app_url . 'uploads/student_image/';
+
+    //     $students->each(function ($student) use ($concatprojecturl, $contactDetailsMap, $lastAddressChangeMap) {
+    //         $student->image_name = !empty($student->image_name)
+    //             ? $concatprojecturl . $student->image_name
+    //             : '';
+
+    //         $contactDetails = $contactDetailsMap->get($student->parent_id);
+    //         $student->SetToReceiveSMS = $contactDetails->phone_no ?? '';
+    //         $student->SetEmailIDAsUsername = $student->userMaster->user_id ?? '';
+    //         $student->last_permanent_address_change = $lastAddressChangeMap->get($student->student_id);
+    //     });
+
+    //     $students->transform(function ($student) {
+    //         if (isset($student->religion)) {
+    //             // Force proper camel case (first letter lowercase)
+    //             $student->religion = ucfirst(strtolower($student->religion));
+    //         }
+    //         return $student;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'students' => $students,
+    //     ]);
+    // }
+
     public function getStudentsListMultipleClass(Request $request)
     {
         set_time_limit(300);
@@ -2568,11 +3451,19 @@ class AdminController extends Controller
         $classSection = $request->class_section;
         $student_id = $request->student_id;
         $reg_no = $request->reg_no;
+        $phone_no = $request->phone_no ?? $request->phone_number;
+        $udisePenNo = $request->udise_pen_no;
+        $apaarId = $request->apaar_id;
+        $house = $request->house;
+        $search = trim((string) ($request->search ?? $request->search_text ?? ''));
         $user = $this->authenticateUser();
         $payload = getTokenPayload($request);
         $academicYr = $payload->get('academic_year');
 
-        $query = Student::query();
+        $query = Student::query()
+            ->leftJoin('house as h', 'h.house_id', '=', 'student.house')
+            ->leftJoin('contact_details as cd', 'cd.id', '=', 'student.parent_id')
+            ->select('student.*', 'h.house_name as house_name');
 
         $query->with(['parents', 'userMaster', 'getClass', 'getDivision']);
 
@@ -2598,64 +3489,64 @@ class AdminController extends Controller
 
         if ($classSectionPairs->isNotEmpty()) {
             $query
-                ->where('isDelete', 'N')
-                ->where('academic_yr', $academicYr)
-                ->where('parent_id', '!=', '0')
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0')
                 ->where(function ($subQuery) use ($classSectionPairs) {
                     foreach ($classSectionPairs as $pair) {
                         $subQuery->orWhere(function ($pairQuery) use ($pair) {
                             $pairQuery
-                                ->where('class_id', $pair['class_id'])
-                                ->where('section_id', $pair['section_id']);
+                                ->where('student.class_id', $pair['class_id'])
+                                ->where('student.section_id', $pair['section_id']);
                         });
                     }
                 });
 
             if ($student_id) {
-                $query->where('student_id', $student_id);
+                $query->where('student.student_id', $student_id);
             }
 
             if ($reg_no) {
-                $query->where('reg_no', $reg_no);
+                $query->where('student.reg_no', $reg_no);
             }
         } elseif ($class_id && $section_id && $reg_no) {
             $query
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('reg_no', $reg_no)
-                ->where('isDelete', 'N')
-                ->where('academic_yr', $academicYr)
-                ->where('parent_id', '!=', '0');
+                ->where('student.class_id', $class_id)
+                ->where('student.section_id', $section_id)
+                ->where('student.reg_no', $reg_no)
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0');
         } elseif ($student_id && $reg_no) {
             $query
-                ->where('student_id', $student_id)
-                ->where('reg_no', $reg_no)
-                ->where('isDelete', 'N')
-                ->where('academic_yr', $academicYr)
-                ->where('parent_id', '!=', '0');
+                ->where('student.student_id', $student_id)
+                ->where('student.reg_no', $reg_no)
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0');
         } elseif ($class_id && $section_id && $student_id && $reg_no) {
             $query
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('student_id', $student_id)
-                ->where('reg_no', $reg_no)
-                ->where('isDelete', 'N')
-                ->where('academic_yr', $academicYr)
-                ->where('parent_id', '!=', '0');
+                ->where('student.class_id', $class_id)
+                ->where('student.section_id', $section_id)
+                ->where('student.student_id', $student_id)
+                ->where('student.reg_no', $reg_no)
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0');
         } elseif ($class_id && $section_id && $student_id) {
             $query
-                ->where('class_id', $class_id)
-                ->where('student_id', $student_id)
-                ->where('section_id', $section_id)
-                ->where('isDelete', 'N')
-                ->where('academic_yr', $academicYr)
-                ->where('parent_id', '!=', '0');
+                ->where('student.class_id', $class_id)
+                ->where('student.student_id', $student_id)
+                ->where('student.section_id', $section_id)
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0');
         } elseif ($class_id && $section_id) {
-            $query->where('section_id', $section_id)->where('class_id', $class_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+            $query->where('student.section_id', $section_id)->where('student.class_id', $class_id)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
         } elseif ($student_id) {
-            $query->where('student_id', $student_id)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+            $query->where('student.student_id', $student_id)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
         } elseif ($reg_no) {
-            $query->where('reg_no', $reg_no)->where('isDelete', 'N')->where('academic_yr', $academicYr)->where('parent_id', '!=', '0');
+            $query->where('student.reg_no', $reg_no)->where('student.isDelete', 'N')->where('student.academic_yr', $academicYr)->where('student.parent_id', '!=', '0');
             if ($user->role_id == 'T') {
                 $teacherSubjects = DB::table('subject')
                     ->select('class_id', 'section_id')
@@ -2668,8 +3559,42 @@ class AdminController extends Controller
 
                 if (!empty($classIds) && !empty($sectionIds)) {
                     $query
-                        ->whereIn('class_id', $classIds)
-                        ->whereIn('section_id', $sectionIds);
+                        ->whereIn('student.class_id', $classIds)
+                        ->whereIn('student.section_id', $sectionIds);
+                } else {
+                    return response()->json([
+                        'status' => 402,
+                        'message' => 'No assigned classes found',
+                        'success' => false
+                    ]);
+                }
+            }
+        } elseif (
+            $phone_no ||
+            $udisePenNo ||
+            $apaarId ||
+            ($house !== null && $house !== '') ||
+            $search !== ''
+        ) {
+            $query
+                ->where('student.isDelete', 'N')
+                ->where('student.academic_yr', $academicYr)
+                ->where('student.parent_id', '!=', '0');
+
+            if ($user->role_id == 'T') {
+                $teacherSubjects = DB::table('subject')
+                    ->select('class_id', 'section_id')
+                    ->where('teacher_id', $user->reg_id)
+                    ->where('academic_yr', $academicYr)
+                    ->get();
+
+                $classIds = $teacherSubjects->pluck('class_id')->unique()->toArray();
+                $sectionIds = $teacherSubjects->pluck('section_id')->unique()->toArray();
+
+                if (!empty($classIds) && !empty($sectionIds)) {
+                    $query
+                        ->whereIn('student.class_id', $classIds)
+                        ->whereIn('student.section_id', $sectionIds);
                 } else {
                     return response()->json([
                         'status' => 402,
@@ -2684,7 +3609,43 @@ class AdminController extends Controller
                 'message' => 'Please provide at least one search condition.',
             ], 400);
         }
-        $query->orderBy('roll_no', 'asc');
+
+        if ($phone_no) {
+            $query->where('cd.phone_no', 'like', '%' . $phone_no . '%');
+        }
+
+        if ($udisePenNo) {
+            $query->where('student.udise_pen_no', 'like', '%' . $udisePenNo . '%');
+        }
+
+        if ($apaarId) {
+            $query->where('student.apaar_id', 'like', '%' . $apaarId . '%');
+        }
+
+        if ($house !== null && $house !== '') {
+            $query->where(function ($houseQuery) use ($house) {
+                $houseQuery->where('h.house_name', 'like', '%' . $house . '%');
+
+                if (is_numeric($house)) {
+                    $houseQuery->orWhere('student.house', $house);
+                }
+            });
+        }
+
+        if ($search !== '') {
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('cd.phone_no', 'like', '%' . $search . '%')
+                    ->orWhere('student.udise_pen_no', 'like', '%' . $search . '%')
+                    ->orWhere('student.apaar_id', 'like', '%' . $search . '%')
+                    ->orWhere('h.house_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        $query
+            ->orderBy('student.class_id', 'asc')
+            ->orderBy('student.section_id', 'asc')
+            ->orderBy('student.roll_no', 'asc');
         $students = $query->get();
 
         if ($students->isEmpty()) {
@@ -4901,7 +5862,7 @@ class AdminController extends Controller
         // return response()->json($sequence);
         // $exists = SubjectForReportCard::where(DB::raw('LOWER(sequence)'), strtolower($sequence))->exists();
         $exists = SubjectForReportCard::where('sequence', $sequence)->exists();
-        return response()->json(['exists' => $exists]);
+        return response()->json(['exists' => false]);
     }
 
     public function storeSubjectForReportCard(Request $request)
@@ -4910,7 +5871,6 @@ class AdminController extends Controller
             'name.required' => 'The name field is required.',
             'sequence.required' => 'The sequence field is required.',
             'name.unique' => 'The name should be unique.',
-            'sequence.unique' => 'The sequence should be unique',
         ];
 
         try {
@@ -4924,7 +5884,6 @@ class AdminController extends Controller
                 'sequence' => [
                     'required',
                     'Integer',
-                    'unique:subjects_on_report_card_master,sequence'
                 ],
             ], $messages);
         } catch (ValidationException $e) {
@@ -4998,7 +5957,6 @@ class AdminController extends Controller
         $messages = [
             'name.required' => 'The name field is required.',
             'sequence.required' => 'The sequence field is required.',
-            'sequence.unique' => 'The sequence has already been taken.',
             'name.unique' => 'The name has already been taken.'
         ];
 
@@ -5013,8 +5971,6 @@ class AdminController extends Controller
                 'sequence' => [
                     'required',
                     'integer',
-                    // Ensures the sequence is unique, but ignores the current record's sequence
-                    Rule::unique('subjects_on_report_card_master', 'sequence')->ignore($sub_rc_master_id, 'sub_rc_master_id')
                 ],
             ], $messages);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -18734,43 +19690,119 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function lessonPlanSubmitted(Request $request)
     {
         try {
-            // 🔐 Authenticate user
+            // Authenticate user
             $user = $this->authenticateUser();
 
-            // 🔑 JWT payload
+            // JWT payload
             $role_id = JWTAuth::getPayload()->get('role_id');
             $reg_id = JWTAuth::getPayload()->get('reg_id');
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            // 📅 Next Monday
-            $nextMonday = now()->next('Monday')->format('d-m-Y');
+            // Query parameter
+            // current / upcoming
+            $weekType = $request->query('week', 'current');
 
-            // ✅ Lesson plan submitted
+            // Validate week parameter
+            if (!in_array($weekType, ['current', 'upcoming'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                ], 422);
+            }
+
+            $today = now();
+
+            $currentWeekStart = $today
+                ->copy()
+                ->startOfWeek(\Carbon\Carbon::MONDAY);
+
+            // =====================================================
+            // Week selection
+            // =====================================================
+            if ($weekType === 'current') {
+                // Current week
+                $weekStart = $currentWeekStart->copy();
+            } else {
+                // Upcoming week visible only from Friday
+                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
+                    $nextWeekStart = $currentWeekStart
+                        ->copy()
+                        ->addWeek();
+
+                    $nextWeekEnd = $nextWeekStart
+                        ->copy()
+                        ->addDays(6);
+
+                    return response()->json([
+                        'status' => true,
+                        'week_type' => 'upcoming',
+                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
+                        'week' => [
+                            'start_date' => $nextWeekStart->format('d-m-Y'),
+                            'end_date' => $nextWeekEnd->format('d-m-Y'),
+                            'display' =>
+                                $nextWeekStart->format('d-m-Y')
+                                . ' / '
+                                . $nextWeekEnd->format('d-m-Y'),
+                        ],
+                        'data' => []
+                    ], 200);
+                }
+
+                // Friday onwards -> next week
+                $weekStart = $currentWeekStart
+                    ->copy()
+                    ->addWeek();
+            }
+
+            // Monday-Friday
+            $weekEnd = $weekStart->copy()->addDays(6);
+
+            // Monday used in lesson_plan.week_date
+            $mondayDate = $weekStart->format('d-m-Y');
+
+            // =====================================================
+            // Submitted lesson plans
+            // =====================================================
             $createdList = DB::table('subject as s')
                 ->selectRaw("
-                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
-                    s.teacher_id,
-                    t.name,
-                    t.phone
-                ")
+                GROUP_CONCAT(
+                    CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)
+                ) AS submitted_classes,
+                s.teacher_id,
+                t.name,
+                t.phone
+            ")
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereIn(
-                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                    function ($query) use ($nextMonday) {
+                    DB::raw(
+                        'CONCAT(
+                        s.class_id,
+                        s.section_id,
+                        s.sm_id,
+                        s.teacher_id
+                    )'
+                    ),
+                    function ($query) use ($mondayDate) {
                         $query
-                            ->select(
-                                DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
+                            ->selectRaw(
+                                'CONCAT(
+                                class_id,
+                                section_id,
+                                subject_id,
+                                reg_id
+                            )'
                             )
                             ->from('lesson_plan')
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                                [$nextMonday]
+                                [$mondayDate]
                             );
                     }
                 )
@@ -18779,31 +19811,43 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->select('sm_id')
                         ->from('subjects_excluded_from_curriculum');
                 })
-                ->groupBy('s.teacher_id')
+                ->groupBy(
+                    's.teacher_id',
+                    't.name',
+                    't.phone'
+                )
+                ->orderBy('t.name', 'asc')
                 ->get();
 
-            // ✅ Success response
+            // =====================================================
+            // Response
+            // =====================================================
             return response()->json([
                 'status' => true,
+                'week_type' => $weekType,
+                'week' => [
+                    'start_date' => $weekStart->format('d-m-Y'),
+                    'end_date' => $weekEnd->format('d-m-Y'),
+                    'display' =>
+                        $weekStart->format('d-m-Y')
+                        . ' / '
+                        . $weekEnd->format('d-m-Y'),
+                ],
                 'data' => $createdList,
-                'nextMonday' => $nextMonday
             ], 200);
         } catch (\Illuminate\Database\QueryException $e) {
-            // 🛑 Database errors
             return response()->json([
                 'status' => false,
                 'message' => 'Database error while fetching lesson plan summary',
                 'error' => $e->getMessage()
             ], 500);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            // 🔐 JWT errors
             return response()->json([
                 'status' => false,
                 'message' => 'Authentication token error',
                 'error' => $e->getMessage()
             ], 401);
         } catch (\Exception $e) {
-            // ❗ Any other error
             return response()->json([
                 'status' => false,
                 'message' => 'Something went wrong',
@@ -18815,43 +19859,111 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function lessonPlanNotSubmitted(Request $request)
     {
         try {
-            // 🔐 Authenticate user
+            // Authenticate user
             $user = $this->authenticateUser();
 
-            // 🔑 JWT payload
+            // JWT payload
             $role_id = JWTAuth::getPayload()->get('role_id');
             $reg_id = JWTAuth::getPayload()->get('reg_id');
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            // 📅 Next Monday
-            $nextMonday = now()->next('Monday')->format('d-m-Y');
+            // Query parameter
+            // current / upcoming
+            $weekType = $request->query('week', 'current');
 
-            // ✅ Lesson plan submitted
+            $today = now();
+
+            // =====================================================
+            // Week selection
+            // =====================================================
+
+            $currentWeekStart = $today
+                ->copy()
+                ->startOfWeek(\Carbon\Carbon::MONDAY);
+
+            if ($weekType === 'current') {
+                // Current Monday
+                $weekStart = $currentWeekStart->copy();
+            } else {
+                // Before Friday don't show upcoming week
+                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
+                    $nextWeekStart = $currentWeekStart
+                        ->copy()
+                        ->addWeek();
+
+                    $nextWeekEnd = $nextWeekStart
+                        ->copy()
+                        ->addDays(6);
+
+                    return response()->json([
+                        'status' => true,
+                        'week_type' => 'upcoming',
+                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
+                        'week' => [
+                            'start_date' => $nextWeekStart->format('d-m-Y'),
+                            'end_date' => $nextWeekEnd->format('d-m-Y'),
+                            'display' =>
+                                $nextWeekStart->format('d-m-Y')
+                                . ' / '
+                                . $nextWeekEnd->format('d-m-Y'),
+                        ],
+                        'data' => []
+                    ], 200);
+                }
+
+                // Friday onwards show next week
+                $weekStart = $currentWeekStart
+                    ->copy()
+                    ->addWeek();
+            }
+
+            $weekEnd = $weekStart->copy()->addDays(6);
+
+            // Monday used in lesson_plan.week_date
+            $mondayDate = $weekStart->format('d-m-Y');
+
+            // =====================================================
+            // Query
+            // =====================================================
             $notCreatedList = DB::table('subject as s')
                 ->selectRaw("
-                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
-                    s.teacher_id,
-                    t.name,
-                    t.phone
-                ")
+                GROUP_CONCAT(
+                    CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)
+                ) AS pending_classes,
+                s.teacher_id,
+                t.name,
+                t.phone
+            ")
                 ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
                 ->join('class as c', 's.class_id', '=', 'c.class_id')
                 ->join('section as sc', 's.section_id', '=', 'sc.section_id')
                 ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
                 ->whereNotIn(
-                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                    function ($query) use ($nextMonday) {
+                    DB::raw(
+                        'CONCAT(
+                        s.class_id,
+                        s.section_id,
+                        s.sm_id,
+                        s.teacher_id
+                    )'
+                    ),
+                    function ($query) use ($mondayDate) {
                         $query
-                            ->select(
-                                DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
+                            ->selectRaw(
+                                'CONCAT(
+                                class_id,
+                                section_id,
+                                subject_id,
+                                reg_id
+                            )'
                             )
                             ->from('lesson_plan')
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                                [$nextMonday]
+                                [$mondayDate]
                             );
                     }
                 )
@@ -18860,30 +19972,46 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ->select('sm_id')
                         ->from('subjects_excluded_from_curriculum');
                 })
-                ->groupBy('s.teacher_id')
+                ->groupBy(
+                    's.teacher_id',
+                    't.name',
+                    't.phone'
+                )
+                ->orderBy('t.name', 'asc')
                 ->get();
 
-            // ✅ Success response
+            // =====================================================
+            // Response
+            // =====================================================
             return response()->json([
                 'status' => true,
+                'week_type' => $weekType,
+                'week' => [
+                    'start_date' =>
+                        $weekStart->format('d-m-Y'),
+                    'end_date' =>
+                        $weekEnd->format('d-m-Y'),
+                    'display' =>
+                        $weekStart->format('d-m-Y')
+                        . ' / '
+                        . $weekEnd->format('d-m-Y'),
+                ],
                 'data' => $notCreatedList,
             ], 200);
         } catch (\Illuminate\Database\QueryException $e) {
-            // 🛑 Database errors
             return response()->json([
                 'status' => false,
-                'message' => 'Database error while fetching lesson plan summary',
+                'message' =>
+                    'Database error while fetching lesson plan summary',
                 'error' => $e->getMessage()
             ], 500);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            // 🔐 JWT errors
             return response()->json([
                 'status' => false,
                 'message' => 'Authentication token error',
                 'error' => $e->getMessage()
             ], 401);
         } catch (\Exception $e) {
-            // ❗ Any other error
             return response()->json([
                 'status' => false,
                 'message' => 'Something went wrong',
@@ -18895,76 +20023,349 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function lessonPlanPending(Request $request)
     {
         try {
-            // 🔐 Authenticate user
+            // =====================================================
+            // Authenticate user
+            // =====================================================
             $user = $this->authenticateUser();
 
-            // 🔑 JWT payload
+            // =====================================================
+            // JWT payload
+            // =====================================================
             $role_id = JWTAuth::getPayload()->get('role_id');
             $reg_id = JWTAuth::getPayload()->get('reg_id');
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            // 📅 Next Monday
-            $nextMonday = now()->next('Monday')->format('d-m-Y');
+            // =====================================================
+            // Query parameter: current / upcoming
+            // =====================================================
+            $weekType = $request->query('week', 'current');
 
-            // ✅ Lesson plan submitted
+            if (!in_array($weekType, ['current', 'upcoming'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                ], 422);
+            }
+
+            $today = now();
+
+            $currentWeekStart = $today
+                ->copy()
+                ->startOfWeek(\Carbon\Carbon::MONDAY);
+
+            // =====================================================
+            // Week selection
+            // =====================================================
+            if ($weekType === 'current') {
+                $weekStart = $currentWeekStart->copy();
+            } else {
+                // Upcoming week visible only from Friday
+                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
+                    $nextWeekStart = $currentWeekStart
+                        ->copy()
+                        ->addWeek();
+
+                    $nextWeekEnd = $nextWeekStart
+                        ->copy()
+                        ->addDays(6);
+
+                    return response()->json([
+                        'status' => true,
+                        'week_type' => 'upcoming',
+                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
+                        'week' => [
+                            'start_date' => $nextWeekStart->format('d-m-Y'),
+                            'end_date' => $nextWeekEnd->format('d-m-Y'),
+                            'display' =>
+                                $nextWeekStart->format('d-m-Y')
+                                . ' / '
+                                . $nextWeekEnd->format('d-m-Y'),
+                        ],
+                        'data' => []
+                    ], 200);
+                }
+
+                // Friday onwards -> next week
+                $weekStart = $currentWeekStart
+                    ->copy()
+                    ->addWeek();
+            }
+
+            // =====================================================
+            // Week dates
+            // =====================================================
+            $weekEnd = $weekStart->copy()->addDays(6);
+
+            // Used in lesson_plan.week_date
+            $mondayDate = $weekStart->format('d-m-Y');
+
+            // Used for webhook created_at
+            $weekStartSql = $weekStart->copy()->startOfDay()->format('Y-m-d H:i:s');
+            $weekEndSql = $weekEnd->copy()->endOfDay()->format('Y-m-d H:i:s');
+
+            // =====================================================
+            // Pending lesson plans teacher-wise
+            // =====================================================
             $data = DB::table('subject as s')
                 ->selectRaw("
-                    GROUP_CONCAT(CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)) AS pending_classes,
-                    s.teacher_id,
-                    t.name,
-                    t.phone
-                ")
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('class as c', 's.class_id', '=', 'c.class_id')
-                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                GROUP_CONCAT(
+                    DISTINCT CONCAT(
+                        ' ',
+                        c.name,
+                        ' ',
+                        sc.name,
+                        ' ',
+                        sm.name
+                    )
+                ) AS pending_classes,
+
+                s.teacher_id,
+                t.name,
+                t.phone,
+
+                t.tc_id AS teacher_category_id,
+                tc.name AS category,
+
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            lp.class_id,
+                            '-',
+                            lp.section_id,
+                            '-',
+                            lp.subject_id
+                        )
+                    )
+                    FROM lesson_plan lp
+                    WHERE lp.reg_id = s.teacher_id
+                      AND lp.academic_yr = ?
+                      AND SUBSTRING_INDEX(lp.week_date, ' /', 1) = ?
+                ) AS submitted_count,
+
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            s2.class_id,
+                            '-',
+                            s2.section_id,
+                            '-',
+                            s2.sm_id
+                        )
+                    )
+                    FROM subject s2
+                    WHERE s2.teacher_id = s.teacher_id
+                      AND s2.academic_yr = ?
+                      AND s2.sm_id NOT IN (
+                          SELECT sm_id
+                          FROM subjects_excluded_from_curriculum
+                      )
+                ) AS total_lesson_plan,
+
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            lp2.class_id,
+                            '-',
+                            lp2.section_id,
+                            '-',
+                            lp2.subject_id
+                        )
+                    )
+                    FROM lesson_plan lp2
+                    WHERE lp2.reg_id = s.teacher_id
+                      AND lp2.academic_yr = ?
+                      AND SUBSTRING_INDEX(lp2.week_date, ' /', 1) = ?
+                      AND lp2.approve != 'Y'
+                ) AS pending_for_approval,
+
+                (
+                    SELECT rwd.status
+                    FROM redington_webhook_details rwd
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+                      AND rwd.message_type = 'pending_for_approval'
+                      AND rwd.created_at BETWEEN ? AND ?
+                    ORDER BY rwd.created_at DESC
+                    LIMIT 1
+                ) AS webhook_status,
+
+                (
+                    SELECT rwd.sms_sent
+                    FROM redington_webhook_details rwd
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+                      AND rwd.message_type = 'pending_for_approval'
+                      AND rwd.created_at BETWEEN ? AND ?
+                    ORDER BY rwd.created_at DESC
+                    LIMIT 1
+                ) AS whatsapp_sent,
+
+                (
+                    SELECT rwd.created_at
+                    FROM redington_webhook_details rwd
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+                      AND rwd.message_type = 'pending_for_approval'
+                      AND rwd.created_at BETWEEN ? AND ?
+                    ORDER BY rwd.created_at DESC
+                    LIMIT 1
+                ) AS whatsapp_created_at
+
+            ", [
+                    // submitted_count
+                    $academic_year,
+                    $mondayDate,
+                    // total_lesson_plan
+                    $academic_year,
+                    // pending_for_approval
+                    $academic_year,
+                    $mondayDate,
+                    // webhook_status
+                    $weekStartSql,
+                    $weekEndSql,
+                    // whatsapp_sent
+                    $weekStartSql,
+                    $weekEndSql,
+                    // whatsapp_created_at
+                    $weekStartSql,
+                    $weekEndSql,
+                ])
+                ->join(
+                    'teacher as t',
+                    's.teacher_id',
+                    '=',
+                    't.teacher_id'
+                )
+                ->join(
+                    'class as c',
+                    's.class_id',
+                    '=',
+                    'c.class_id'
+                )
+                ->join(
+                    'section as sc',
+                    's.section_id',
+                    '=',
+                    'sc.section_id'
+                )
+                ->join(
+                    'subject_master as sm',
+                    's.sm_id',
+                    '=',
+                    'sm.sm_id'
+                )
+                ->leftJoin(
+                    'teacher_category as tc',
+                    'tc.tc_id',
+                    '=',
+                    't.tc_id'
+                )
                 ->where('t.isDelete', 'N')
                 ->where('s.academic_yr', $academic_year)
+                // =====================================================
+                // Only pending-for-approval lesson plans
+                // =====================================================
                 ->whereIn(
-                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                    function ($query) use ($nextMonday) {
+                    DB::raw('
+                    CONCAT(
+                        s.class_id,
+                        s.section_id,
+                        s.sm_id,
+                        s.teacher_id
+                    )
+                '),
+                    function ($query) use ($mondayDate, $academic_year) {
                         $query
-                            ->select(
-                                DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
+                            ->selectRaw('
+                            CONCAT(
+                                class_id,
+                                section_id,
+                                subject_id,
+                                reg_id
                             )
+                        ')
                             ->from('lesson_plan')
+                            ->where('academic_yr', $academic_year)
                             ->where('approve', '!=', 'Y')
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                                [$nextMonday]
+                                [$mondayDate]
                             );
                     }
                 )
+                // =====================================================
+                // Excluded subjects
+                // =====================================================
                 ->whereNotIn('s.sm_id', function ($query) {
                     $query
                         ->select('sm_id')
                         ->from('subjects_excluded_from_curriculum');
                 })
-                ->groupBy('s.teacher_id')
+                ->groupBy(
+                    's.teacher_id',
+                    't.name',
+                    't.phone',
+                    't.tc_id',
+                    'tc.name'
+                )
+                ->orderBy('t.name', 'asc')
                 ->get();
 
-            // ✅ Success response
+            // =====================================================
+            // Format response data
+            // =====================================================
+            $data->transform(function ($row) {
+                $submitted = (int) $row->submitted_count;
+                $total = (int) $row->total_lesson_plan;
+
+                $row->total_lesson_plan = $total;
+                $row->pending_for_approval =
+                    (int) $row->pending_for_approval;
+
+                // Example: 3/5
+                $row->submitted_count =
+                    $submitted . '/' . $total;
+
+                // =================================================
+                // WhatsApp notification status
+                // =================================================
+                $row->whatsapp_status = $row->webhook_status ?? '';
+
+                // Optional: remove raw webhook status
+                unset($row->webhook_status);
+
+                return $row;
+            });
+
+            // =====================================================
+            // Final response
+            // =====================================================
             return response()->json([
                 'status' => true,
+                'week_type' => $weekType,
+                'week' => [
+                    'start_date' =>
+                        $weekStart->format('d-m-Y'),
+                    'end_date' =>
+                        $weekEnd->format('d-m-Y'),
+                    'display' =>
+                        $weekStart->format('d-m-Y')
+                        . ' / '
+                        . $weekEnd->format('d-m-Y'),
+                ],
                 'data' => $data,
             ], 200);
         } catch (\Illuminate\Database\QueryException $e) {
-            // 🛑 Database errors
             return response()->json([
                 'status' => false,
-                'message' => 'Database error while fetching lesson plan summary',
+                'message' =>
+                    'Database error while fetching lesson plan summary',
                 'error' => $e->getMessage()
             ], 500);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            // 🔐 JWT errors
             return response()->json([
                 'status' => false,
                 'message' => 'Authentication token error',
                 'error' => $e->getMessage()
             ], 401);
         } catch (\Exception $e) {
-            // ❗ Any other error
             return response()->json([
                 'status' => false,
                 'message' => 'Something went wrong',
@@ -19375,10 +20776,27 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
     private function lessonPlanCard($academicYr)
     {
-        $nextMonday = now()->next('Monday')->format('d-m-Y');
+        $today = now();
+
+        // Current week Monday
+        $currentMonday = $today
+            ->copy()
+            ->startOfWeek(\Carbon\Carbon::MONDAY)
+            ->format('d-m-Y');
+
+        // Upcoming week Monday
+        $nextMonday = $today
+            ->copy()
+            ->startOfWeek(\Carbon\Carbon::MONDAY)
+            ->addWeek()
+            ->format('d-m-Y');
+
+        // =========================================================
+        // Total teachers
+        // =========================================================
         $totalNumberOfTeachers = DB::table('subject as s')
             ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+            ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
             ->where('t.isDelete', 'N')
             ->where('s.academic_yr', $academicYr)
             ->whereNotIn('s.sm_id', function ($query) {
@@ -19386,109 +20804,154 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     ->select('sm_id')
                     ->from('subjects_excluded_from_curriculum');
             })
-            ->distinct('s.teacher_id')
+            ->distinct()
             ->count('s.teacher_id');
 
-        $lessonPlanSubmitted = DB::table('subject as s')
-            ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->join('class as c', 's.class_id', '=', 'c.class_id')
-            ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('t.isDelete', 'N')
-            ->where('s.academic_yr', $academicYr)
-            ->whereIn(
-                DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                function ($query) use ($nextMonday) {
+        // =========================================================
+        // Common function for week-wise counts
+        // =========================================================
+        $getWeekCounts = function ($mondayDate) use ($academicYr) {
+            // Submitted
+            $submitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereIn(
+                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
+                    function ($query) use ($mondayDate) {
+                        $query
+                            ->selectRaw(
+                                'CONCAT(class_id, section_id, subject_id, reg_id)'
+                            )
+                            ->from('lesson_plan')
+                            ->whereRaw(
+                                "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                                [$mondayDate]
+                            );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
                     $query
-                        ->select(
-                            DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
-                        )
-                        ->from('lesson_plan')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                }
-            )
-            ->whereNotIn('s.sm_id', function ($query) {
-                $query
-                    ->select('sm_id')
-                    ->from('subjects_excluded_from_curriculum');
-            })
-            ->groupBy('s.teacher_id')
-            ->get()
-            ->count();
+                        ->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
-        $lessonPlanNotSubmitted = DB::table('subject as s')
-            ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->join('class as c', 's.class_id', '=', 'c.class_id')
-            ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->where('t.isDelete', 'N')
-            ->where('s.academic_yr', $academicYr)
-            ->whereNotIn(
-                DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                function ($query) use ($nextMonday) {
+            // Not submitted
+            $notSubmitted = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereNotIn(
+                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
+                    function ($query) use ($mondayDate) {
+                        $query
+                            ->selectRaw(
+                                'CONCAT(class_id, section_id, subject_id, reg_id)'
+                            )
+                            ->from('lesson_plan')
+                            ->whereRaw(
+                                "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                                [$mondayDate]
+                            );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
                     $query
-                        ->select(
-                            DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
-                        )
-                        ->from('lesson_plan')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                }
-            )
-            ->whereNotIn('s.sm_id', function ($query) {
-                $query
-                    ->select('sm_id')
-                    ->from('subjects_excluded_from_curriculum');
-            })
-            ->groupBy('s.teacher_id')
-            ->get()
-            ->count();
+                        ->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
-        $pendingForApproval = DB::table('subject as s')
-            ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-            ->join('class as c', 's.class_id', '=', 'c.class_id')
-            ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-            ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-            ->where('t.isDelete', 'N')
-            ->where('s.academic_yr', $academicYr)
-            ->leftjoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
-            ->whereIn(
-                DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
-                function ($query) use ($nextMonday) {
+            // Pending approval
+            $pending = DB::table('subject as s')
+                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
+                ->join('class as c', 's.class_id', '=', 'c.class_id')
+                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
+                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
+                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                ->where('t.isDelete', 'N')
+                ->where('s.academic_yr', $academicYr)
+                ->whereIn(
+                    DB::raw('CONCAT(s.class_id, s.section_id, s.sm_id, s.teacher_id)'),
+                    function ($query) use ($mondayDate) {
+                        $query
+                            ->selectRaw(
+                                'CONCAT(class_id, section_id, subject_id, reg_id)'
+                            )
+                            ->from('lesson_plan')
+                            ->where(function ($q) {
+                                $q
+                                    ->where('approve', '!=', 'Y')
+                                    ->orWhereNull('approve');
+                            })
+                            ->whereRaw(
+                                "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                                [$mondayDate]
+                            );
+                    }
+                )
+                ->whereNotIn('s.sm_id', function ($query) {
                     $query
-                        ->select(
-                            DB::raw('CONCAT(class_id, section_id, subject_id, reg_id)')
-                        )
-                        ->from('lesson_plan')
-                        ->where('approve', '!=', 'Y')
-                        ->whereRaw(
-                            "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
-                            [$nextMonday]
-                        );
-                }
-            )
-            ->whereNotIn('s.sm_id', function ($query) {
-                $query
-                    ->select('sm_id')
-                    ->from('subjects_excluded_from_curriculum');
-            })
-            ->groupBy('s.teacher_id')
-            ->get()
-            ->count();
+                        ->select('sm_id')
+                        ->from('subjects_excluded_from_curriculum');
+                })
+                ->groupBy('s.teacher_id')
+                ->get()
+                ->count();
 
+            return [
+                'lessonPlanSubmitted' => $submitted,
+                'lessonPlanNotSubmitted' => $notSubmitted,
+                'pendingForApproval' => $pending,
+            ];
+        };
+
+        // =========================================================
+        // Current week counts
+        // =========================================================
+        $currentWeek = $getWeekCounts($currentMonday);
+
+        // =========================================================
+        // Upcoming week counts
+        // =========================================================
+        $upcomingWeek = $getWeekCounts($nextMonday);
+
+        // =========================================================
+        // Response
+        // =========================================================
         return [
             'totalNumberOfTeachers' => $totalNumberOfTeachers,
-            'lessonPlanSubmitted' => $lessonPlanSubmitted,
-            'lessonPlanNotSubmitted' => $lessonPlanNotSubmitted,
-            'pendingForApproval' => $pendingForApproval,
-            'nextMonday' => $nextMonday
+            'current_week' => [
+                'monday' => $currentMonday,
+                'lessonPlanSubmitted' =>
+                    $currentWeek['lessonPlanSubmitted'],
+                'lessonPlanNotSubmitted' =>
+                    $currentWeek['lessonPlanNotSubmitted'],
+                'pendingForApproval' =>
+                    $currentWeek['pendingForApproval'],
+            ],
+            'upcoming_week' => [
+                'monday' => $nextMonday,
+                'lessonPlanSubmitted' =>
+                    $upcomingWeek['lessonPlanSubmitted'],
+                'lessonPlanNotSubmitted' =>
+                    $upcomingWeek['lessonPlanNotSubmitted'],
+                'pendingForApproval' =>
+                    $upcomingWeek['pendingForApproval'],
+            ],
         ];
     }
 
@@ -19520,7 +20983,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
         foreach ($totalByCategory as $category => $total) {
             $present = $presentByCategory[$category] ?? 0;
 
-            if (in_array($category, ['Nursery teachers', 'KG teachers', 'SACS teachers', 'Caretakers'])) {
+            if (in_array($category, ['Nursery teachers', 'KG teachers', 'SACS teachers', 'Caretakers', 'Shift 2 Teachers'])) {
                 $response[$category] = [
                     'total' => $total,
                     'present' => $present,

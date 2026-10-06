@@ -263,6 +263,29 @@ class CertificateController extends Controller
             $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
             // Load a view and pass the data to it
             $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
+        } elseif ($shortname == 'JPS') {
+            $data = [
+                'stud_name' => $request->stud_name,
+                'father_name' => $request->father_name,
+                'class_division' => $request->class_division,
+                'dob' => $request->dob,
+                'dob_words' => $request->dob_words,
+                'purpose' => $request->purpose,
+                'stud_id' => $request->stud_id,
+                'issue_date_bonafide' => $request->date,
+                'nationality' => $request->nationality,
+                'academic_yr' => $customClaims,
+                'IsGenerated' => 'Y',
+                'IsDeleted' => 'N',
+                'IsIssued' => 'N',
+                'generated_by' => $user->reg_id,
+            ];
+
+            BonafideCertificate::create($data);
+
+            $data = DB::table('bonafide_certificate')->orderBy('sr_no', 'desc')->first();
+            $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+            $pdf = PDF::loadView('pdf.jpsbonafidecertificate', compact('data'));
         } else {
             $data = [
                 'stud_name' => $request->stud_name,
@@ -306,6 +329,7 @@ class CertificateController extends Controller
 
         $results = BonafideCertificate::where('class_division', 'LIKE', "%{$searchTerm}%")
             ->where('academic_yr', 'LIKE', "%{$customClaims}%")
+            ->orderBy('sr_no', 'desc')
             ->get();
 
         if ($results->isEmpty()) {
@@ -400,6 +424,8 @@ class CertificateController extends Controller
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
             } elseif ($shortname == 'DEMONEW') {
                 $pdf = PDF::loadView('pdf.demotemplate', compact('data'));
+            } elseif ($shortname == 'JPS') {
+                $pdf = PDF::loadView('pdf.jpsbonafidecertificate', compact('data'));
             }
 
             return response()->stream(
@@ -490,6 +516,27 @@ class CertificateController extends Controller
                 $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
 
                 $pdf = PDF::loadView('pdf.hscsbonafidecertificate', compact('data'));
+            } elseif ($shortname == 'JPS') {
+                $bonafidecertificate = BonafideCertificate::find($sr_no);
+                $bonafidecertificate->stud_name = $request->stud_name;
+                $bonafidecertificate->father_name = $request->father_name;
+                $bonafidecertificate->class_division = $request->class_division;
+                $bonafidecertificate->dob = $request->dob;
+                $bonafidecertificate->dob_words = $request->dob_words;
+                $bonafidecertificate->purpose = $request->purpose;
+                $bonafidecertificate->nationality = $request->nationality;
+                $bonafidecertificate->stud_id = $request->stud_id;
+                $bonafidecertificate->issue_date_bonafide = $request->date;
+                $bonafidecertificate->update();
+
+                $data = DB::table('bonafide_certificate')
+                    ->where('sr_no', $sr_no)
+                    ->orderBy('sr_no', 'desc')
+                    ->first();
+
+                $dynamicFilename = "Bonafide_Certificate_$data->stud_name.pdf";
+
+                $pdf = PDF::loadView('pdf.jpsbonafidecertificate', compact('data'));
             } else {
                 $bonafidecertificate = BonafideCertificate::find($sr_no);
                 $bonafidecertificate->stud_name = $request->stud_name;
@@ -4488,7 +4535,6 @@ class CertificateController extends Controller
         }
     }
 
-
     // Co-Curriculum Certificate Dev Name - Mahima Chaudhari 12-05-2026
     // public function getEventsForCertificate(Request $request)
     // {
@@ -4553,7 +4599,6 @@ class CertificateController extends Controller
     public function getEventsForCertificate(Request $request)
     {
         try {
-
             // Authenticate User
             $user = $this->authenticateUser();
 
@@ -4580,25 +4625,19 @@ class CertificateController extends Controller
                     '=',
                     'class_teachers.section_id'
                 )
-
                 ->select(
                     'class_teachers.class_id',
                     'class_teachers.section_id',
-
                     // Separate Class & Section
                     DB::raw('class.name as classname'),
                     DB::raw('section.name as sectionname'),
-
                     'events.*',
-
                     // React Select
                     DB::raw('events.title as label'),
                     DB::raw('events.event_id as value'),
-
                     // Custom Response
                     DB::raw('events.title as event'),
                     DB::raw('events.event_id as event_id_manage'),
-
                     // Combined Class + Section
                     DB::raw("
             CONCAT(
@@ -4607,7 +4646,6 @@ class CertificateController extends Controller
             section.name
                 ) as class_section
                 "),
-
                     // Combined Payload Format
                     DB::raw("
               CONCAT(
@@ -4617,20 +4655,16 @@ class CertificateController extends Controller
               ) as class_id_manage
             ")
                 )
-
-
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('events.academic_yr', $academicYear)
-
                 // Activity OR Competition
                 ->where(function ($query) {
-                    $query->where('events.activity', 'Y')
+                    $query
+                        ->where('events.activity', 'Y')
                         ->orWhere('events.competition', 'Y');
                 })
-
                 ->where('events.isDelete', 'N')
                 ->where('events.publish', 'Y')
-
                 ->get();
 
             return response()->json([
@@ -4639,7 +4673,6 @@ class CertificateController extends Controller
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch events',
@@ -4647,7 +4680,6 @@ class CertificateController extends Controller
             ], 500);
         }
     }
-
 
     public function createCertificates(Request $request)
     {
@@ -4661,16 +4693,16 @@ class CertificateController extends Controller
             $classData = explode('^', $request->class_id);
 
             $data = [
-                'event'        => $request->event,
-                'description'  => $request->description,
-                'student_id'   => $request->student_id,
-                'class_id'     => $classData[0] ?? null,
-                'section_id'   => $classData[1] ?? null,
-                'position'     => $request->position,
-                'achievement'  => $request->achievement,
-                'date'         => date('Y-m-d', strtotime($request->date)),
-                'academic_yr'  => $academicYear,
-                'publish'      => 'N'
+                'event' => $request->event,
+                'description' => $request->description,
+                'student_id' => $request->student_id,
+                'class_id' => $classData[0] ?? null,
+                'section_id' => $classData[1] ?? null,
+                'position' => $request->position,
+                'achievement' => $request->achievement,
+                'date' => date('Y-m-d', strtotime($request->date)),
+                'academic_yr' => $academicYear,
+                'publish' => 'N'
             ];
 
             DB::table('achievements')->insert($data);
@@ -4680,7 +4712,6 @@ class CertificateController extends Controller
                 'message' => 'Certificate created successfully'
             ], 201);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to create certificate',
@@ -4688,8 +4719,6 @@ class CertificateController extends Controller
             ], 500);
         }
     }
-
-
 
     // public function getCertificates(Request $request)
     // {
@@ -4752,7 +4781,6 @@ class CertificateController extends Controller
     public function getCertificates(Request $request)
     {
         try {
-
             // Authenticate User
             $user = $this->authenticateUser();
 
@@ -4761,35 +4789,28 @@ class CertificateController extends Controller
             $teacherId = $user->reg_id;
 
             $data = DB::table('achievements')
-
                 ->join('class_teachers', function ($join) {
-                    $join->on('class_teachers.class_id', '=', 'achievements.class_id')
+                    $join
+                        ->on('class_teachers.class_id', '=', 'achievements.class_id')
                         ->on('class_teachers.section_id', '=', 'achievements.section_id');
                 })
-
                 // Student table join
                 ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
-
                 // Class table join
                 ->leftJoin('class', 'class.class_id', '=', 'achievements.class_id')
-
                 // Section table join
                 ->leftJoin('section', 'section.section_id', '=', 'achievements.section_id')
-
                 ->select(
                     'class_teachers.class_id',
                     'achievements.*',
-
                     // Student details
                     'student.student_id',
                     'student.first_name',
                     'student.mid_name',
                     'student.last_name',
-
                     // Class & Section
                     'class.name',
                     'section.name',
-
                     // Combined Class Section Name
                     DB::raw("
                     CONCAT(
@@ -4797,7 +4818,6 @@ class CertificateController extends Controller
                         section.name
                     ) as class_section
                 "),
-
                     // Full student name
                     DB::raw("
                     CONCAT(
@@ -4807,7 +4827,6 @@ class CertificateController extends Controller
                     ) as student_name
                 ")
                 )
-
                 ->where('class_teachers.teacher_id', $teacherId)
                 ->where('achievements.academic_yr', $academicYear)
                 ->get();
@@ -4818,7 +4837,6 @@ class CertificateController extends Controller
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch certificates',
@@ -4827,11 +4845,9 @@ class CertificateController extends Controller
         }
     }
 
-
     public function getCertificateId($id)
     {
         try {
-
             // Authenticate User
             $user = $this->authenticateUser();
 
@@ -4847,19 +4863,15 @@ class CertificateController extends Controller
 
             // Fetch certificate record with student details
             $certificate = DB::table('achievements')
-
                 // Student table join
                 ->leftJoin('student', 'student.student_id', '=', 'achievements.student_id')
-
                 ->select(
                     'achievements.*',
-
                     // Student details
                     'student.student_id',
                     'student.first_name',
                     'student.mid_name',
                     'student.last_name',
-
                     // Full name
                     DB::raw("
                     CONCAT(
@@ -4869,7 +4881,6 @@ class CertificateController extends Controller
                     ) as student_name
                 ")
                 )
-
                 ->where('achievements.achievement_id', $id)
                 ->where('achievements.academic_yr', $academicYear)
                 ->first();
@@ -4888,7 +4899,6 @@ class CertificateController extends Controller
                 'data' => $certificate
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch certificate',
@@ -4897,11 +4907,9 @@ class CertificateController extends Controller
         }
     }
 
-
     public function updateCertificates(Request $request, $id)
     {
         try {
-
             // Authenticate User
             $user = $this->authenticateUser();
             $academicYear = JWTAuth::getPayload()->get('academic_year');
@@ -4927,20 +4935,19 @@ class CertificateController extends Controller
                 ], 404);
             }
 
-
             $classData = explode('^', $request->class_id);
 
             // Update Data
             $data = [
-                'event'        => $request->event,
-                'description'  => $request->description,
-                'student_id'   => $request->student_id,
-                'class_id'     => $classData[0],
-                'section_id'   => $classData[1] ?? null,
-                'position'     => $request->position,
-                'achievement'  => $request->achievement,
-                'date'         => date('Y-m-d', strtotime($request->date)),
-                'academic_yr'  => $academicYear,
+                'event' => $request->event,
+                'description' => $request->description,
+                'student_id' => $request->student_id,
+                'class_id' => $classData[0],
+                'section_id' => $classData[1] ?? null,
+                'position' => $request->position,
+                'achievement' => $request->achievement,
+                'date' => date('Y-m-d', strtotime($request->date)),
+                'academic_yr' => $academicYear,
             ];
 
             DB::table('achievements')
@@ -4952,14 +4959,12 @@ class CertificateController extends Controller
                 'message' => 'Certificate updated successfully'
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to update certificate',
@@ -4968,11 +4973,9 @@ class CertificateController extends Controller
         }
     }
 
-
     public function deleteCertificates($id)
     {
         try {
-
             // Authenticate User
             $user = $this->authenticateUser();
 
@@ -4998,7 +5001,6 @@ class CertificateController extends Controller
                 'message' => 'Certificate deleted successfully'
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to delete certificate',
@@ -5006,7 +5008,6 @@ class CertificateController extends Controller
             ], 500);
         }
     }
-
 
     // public function publishCertificates(Request $request)
     // {
@@ -5034,7 +5035,6 @@ class CertificateController extends Controller
     //             ], 404);
     //         }
 
-
     //         foreach ($certificates as $certificate) {
     //             // Publish certificate
     //             DB::table('achievements')
@@ -5053,7 +5053,6 @@ class CertificateController extends Controller
     //                 )
     //                 ->where('s.student_id', $certificate->student_id)
     //                 ->get();
-
 
     //             foreach ($achieveData as $item) {
     //                 $smsData = DB::table('daily_sms')
@@ -5113,7 +5112,6 @@ class CertificateController extends Controller
     public function publishCertificates(Request $request)
     {
         try {
-
             $user = $this->authenticateUser();
 
             // Validate Request
@@ -5137,7 +5135,6 @@ class CertificateController extends Controller
             }
 
             foreach ($certificates as $certificate) {
-
                 // Publish certificate
                 DB::table('achievements')
                     ->where('achievement_id', $certificate->achievement_id)
@@ -5158,7 +5155,6 @@ class CertificateController extends Controller
                     ->get();
 
                 foreach ($achieveData as $item) {
-
                     // =========================
                     // GET TOKENS USING HELPER
                     // =========================
@@ -5169,9 +5165,7 @@ class CertificateController extends Controller
                     // SEND PUSH NOTIFICATION
                     // =========================
                     if (!empty($tokens)) {
-
                         foreach ($tokens as $tokenItem) {
-
                             if (!empty($tokenItem->token)) {
                                 sendnotificationusinghttpv1([
                                     'token' => $tokenItem->token,
@@ -5193,7 +5187,6 @@ class CertificateController extends Controller
                         ->first();
 
                     if (!$smsData) {
-
                         DB::table('daily_sms')->insert([
                             'student_id' => $item->student_id,
                             'parent_id' => $item->parent_id,
@@ -5206,7 +5199,6 @@ class CertificateController extends Controller
                             'sms_date' => now(),
                         ]);
                     } else {
-
                         DB::table('daily_sms')
                             ->where('parent_id', $smsData->parent_id)
                             ->where('student_id', $smsData->student_id)
@@ -5223,14 +5215,12 @@ class CertificateController extends Controller
                 'message' => 'Certificates published successfully'
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to publish certificates',
@@ -5238,7 +5228,6 @@ class CertificateController extends Controller
             ], 500);
         }
     }
-
 
     public function generateCertificateCsv(Request $request)
     {
@@ -5267,7 +5256,6 @@ class CertificateController extends Controller
         }
 
         if ($event != '') {
-
             $fileName = $event . '.csv';
 
             $headers = [
@@ -5276,21 +5264,20 @@ class CertificateController extends Controller
             ];
 
             $callback = function () use ($event, $date, $className) {
-
                 $file = fopen('php://output', 'w');
 
                 // First Row
                 fputcsv($file, [
-                    $event . "/" . $date . "/" . $className
+                    $event . '/' . $date . '/' . $className
                 ]);
 
                 // Empty Row
                 fputcsv($file, ['']);
 
                 // Heading Row
-                $headingString = "Student Name(FirstName LastName),Position(First/Second/Third/Consolation Prize/Paricipation), Certificate Description, Event Description";
+                $headingString = 'Student Name(FirstName LastName),Position(First/Second/Third/Consolation Prize/Paricipation), Certificate Description, Event Description';
 
-                fputcsv($file, explode(",", $headingString));
+                fputcsv($file, explode(',', $headingString));
 
                 fclose($file);
             };
@@ -5304,7 +5291,6 @@ class CertificateController extends Controller
         ], 400);
     }
 
-
     public function uploadCertificatesFromCsv(Request $request)
     {
         // ================= VALIDATION =================
@@ -5315,9 +5301,7 @@ class CertificateController extends Controller
 
         $academic_yr = JWTAuth::getPayload()->get('academic_year');
 
-
         if (!$request->hasFile('file')) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'File not found'
@@ -5328,7 +5312,7 @@ class CertificateController extends Controller
 
         // ================= VALIDATION LOOP =================
 
-        $handle = fopen($file->getRealPath(), "r");
+        $handle = fopen($file->getRealPath(), 'r');
 
         $c = 1;
 
@@ -5347,9 +5331,7 @@ class CertificateController extends Controller
         $class_id = null;
         $section_id = null;
 
-        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
-
-
+        while (($filesop = fgetcsv($handle, 1000, ',')) !== false) {
             // Skip fully empty rows
             if (empty(array_filter($filesop))) {
                 $c++;
@@ -5359,11 +5341,9 @@ class CertificateController extends Controller
             // ================= FIRST ROW =================
 
             if ($c == 1) {
-
                 $all_ids = trim($filesop[0] ?? '');
 
                 if ($all_ids == '') {
-
                     fclose($handle);
 
                     return response()->json([
@@ -5401,7 +5381,6 @@ class CertificateController extends Controller
                 $section_id = $section->section_id ?? null;
 
                 if (!$class_id || !$section_id) {
-
                     fclose($handle);
 
                     return response()->json([
@@ -5415,7 +5394,6 @@ class CertificateController extends Controller
                     $event_date == '' ||
                     $class_section == ''
                 ) {
-
                     fclose($handle);
 
                     return response()->json([
@@ -5437,7 +5415,6 @@ class CertificateController extends Controller
                     'Student Name'
                 )
             ) {
-
                 $c++;
                 continue;
             }
@@ -5484,12 +5461,11 @@ class CertificateController extends Controller
             //     }
             // }
 
-
             // Check whether student exists anywhere
             $nameParts = preg_split('/\s+/', trim($student_name));
 
             $first_name = $nameParts[0] ?? '';
-            $last_name  = $nameParts[1] ?? '';
+            $last_name = $nameParts[1] ?? '';
 
             $studentExists = DB::table('student')
                 ->select('student_id')
@@ -5501,7 +5477,6 @@ class CertificateController extends Controller
                 ->first();
 
             if (!$studentExists) {
-
                 $studentSameClass = DB::table('student')
                     ->select('student_id')
                     ->where('academic_yr', $academic_yr)
@@ -5511,14 +5486,11 @@ class CertificateController extends Controller
                     ->first();
 
                 if ($studentSameClass) {
-
-                    $rowErrors[] = "Invalid student name format. Please enter First Name and Last Name.";
+                    $rowErrors[] = 'Invalid student name format. Please enter First Name and Last Name.';
                 } else {
-
-                    $rowErrors[] = "Invalid Student Name.";
+                    $rowErrors[] = 'Invalid Student Name.';
                 }
             } else {
-
                 $student = DB::table('student')
                     ->select('student_id')
                     ->where('academic_yr', $academic_yr)
@@ -5531,7 +5503,6 @@ class CertificateController extends Controller
                     ->first();
 
                 if (!$student) {
-
                     $rowErrors[] = "This sheet is for class {$class_section}. Please upload details only for students of this class.";
                 }
             }
@@ -5542,18 +5513,16 @@ class CertificateController extends Controller
                 $position == '' ||
                 !in_array($position, ['First', 'Second', 'Third', 'Consolation Prize', 'Paricipation'])
             ) {
-
-                $rowErrors[] = "Invalid Position";
+                $rowErrors[] = 'Invalid Position';
             }
 
             // ================= STORE ERRORS =================
 
             if (!empty($rowErrors)) {
-
                 $flag = true;
 
                 $errorMessages[] =
-                    implode(", ", $rowErrors) . " at row no. " . $c;
+                    implode(', ', $rowErrors) . ' at row no. ' . $c;
             }
 
             $c++;
@@ -5564,23 +5533,21 @@ class CertificateController extends Controller
         // ================= RETURN VALIDATION ERRORS =================
 
         if ($flag == true) {
-
             return response()->json([
                 'status' => false,
-                'message' => implode(" | ", $errorMessages)
+                'message' => implode(' | ', $errorMessages)
             ], 400);
         }
 
         // ================= INSERT LOOP =================
 
-        $handle = fopen($file->getRealPath(), "r");
+        $handle = fopen($file->getRealPath(), 'r');
 
         $d = 1;
 
         $insertCount = 0;
 
-        while (($filesop = fgetcsv($handle, 1000, ",")) !== false) {
-
+        while (($filesop = fgetcsv($handle, 1000, ',')) !== false) {
             // Skip fully empty rows
             if (empty(array_filter($filesop))) {
                 $d++;
@@ -5601,7 +5568,6 @@ class CertificateController extends Controller
                     'Student Name'
                 )
             ) {
-
                 $d++;
                 continue;
             }
@@ -5621,7 +5587,6 @@ class CertificateController extends Controller
 
             $first_name = $first_last_name_array[0] ?? '';
             $last_name = $first_last_name_array[1] ?? '';
-
 
             $student = DB::table('student')
                 ->select('student_id')
@@ -5655,17 +5620,14 @@ class CertificateController extends Controller
                 $position = 5;
             }
 
-
             // ================= OTHER DATA =================
 
             $achievement = trim($filesop[2] ?? '');
             $description = trim($filesop[3] ?? '');
 
-
             // ================= INSERT =================
 
             $inserted = DB::table('achievements')->insert([
-
                 'event' => $event_name,
                 'date' => $event_date,
                 'class_id' => $class_id,
@@ -5690,7 +5652,6 @@ class CertificateController extends Controller
         // ================= FINAL RESPONSE =================
 
         if ($insertCount == 0) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'No certificate data was inserted.'
@@ -5703,11 +5664,9 @@ class CertificateController extends Controller
         ]);
     }
 
-
     public function downloadCertificatePdf(Request $request)
     {
         try {
-
             $user = $this->authenticateUser();
             $academic_yr = JWTAuth::getPayload()->get('academic_year');
             $shortname = JWTAuth::getPayload()->get('short_name');
@@ -5725,19 +5684,15 @@ class CertificateController extends Controller
                 ->join('class', 'class.class_id', '=', 'achievements.class_id')
                 ->join('section', 'section.section_id', '=', 'achievements.section_id')
                 ->select(
-
                     // Achievement Data
                     'achievements.*',
-
                     // Student Data
                     'student.first_name',
                     'student.mid_name',
                     'student.last_name',
                     'student.reg_no',
-
                     // Class Data
                     'class.name as class_name',
-
                     // Section Data
                     'section.name as section_name',
                 )
@@ -5748,7 +5703,6 @@ class CertificateController extends Controller
             // ================= CHECK DATA =================
 
             if (!$data) {
-
                 return response()->json([
                     'status' => false,
                     'message' => 'Certificate data not found'
@@ -5758,9 +5712,9 @@ class CertificateController extends Controller
             // ================= FULL STUDENT NAME =================
 
             $student_name = trim(
-                $data->first_name . ' ' .
-                    $data->mid_name . ' ' .
-                    $data->last_name
+                $data->first_name . ' '
+                . $data->mid_name . ' '
+                . $data->last_name
             );
 
             // ================= CLASS SECTION =================
@@ -5778,38 +5732,29 @@ class CertificateController extends Controller
             } elseif ($data->position == 3) {
                 $position_name = 'Third';
             } elseif ($data->position == 4) {
-                $position_name = "Consolation Prize";
+                $position_name = 'Consolation Prize';
             } elseif ($data->position == 5) {
-                $position_name = "Paricipation";
+                $position_name = 'Paricipation';
             }
 
             // ================= DYNAMIC FILE NAME =================
 
             $dynamicFilename =
-                'Certificate_' .
-                str_replace(' ', '_', $student_name) .
-                '.pdf';
+                'Certificate_'
+                . str_replace(' ', '_', $student_name)
+                . '.pdf';
 
             // ================= PDF DATA =================
 
             $pdfData = [
-
                 'student_name' => $student_name,
-
                 'reg_no' => $data->reg_no,
-
                 'event' => $data->event,
-
                 'event_date' => $data->date,
-
                 'class_section' => $class_section,
-
                 'position' => $position_name,
-
                 'achievement' => $data->achievement,
-
                 'description' => $data->description,
-
                 'publish' => $data->publish,
             ];
 
@@ -5823,33 +5768,23 @@ class CertificateController extends Controller
             // ================= RETURN PDF =================
 
             return response()->stream(
-
                 function () use ($pdf) {
-
                     echo $pdf->output();
                 },
-
                 200,
-
                 [
                     'Content-Type' => 'application/pdf',
-
                     'Content-Disposition' =>
-                    'inline; filename="' . $dynamicFilename . '"',
+                        'inline; filename="' . $dynamicFilename . '"',
                 ]
             );
         } catch (Exception $e) {
-
             \Log::error($e);
 
             return response()->json([
-
                 'status' => false,
-
                 'message' => 'An error occurred',
-
                 'error' => $e->getMessage()
-
             ], 500);
         }
     }
