@@ -165,13 +165,13 @@ foreach ($student_info as $row1):
 				<td style="width:30%;text-align: left;font-size:14px;" >
 					UDISE No. - 27251501213
 				</td>
-				<td style="width:40%;text-align: center;">
+				<td style="width:50%;text-align: center;">
 					<h4 >ACADEMIC SESSION <?php echo $row1['academic_yr']; ?></h4>
 					<h3><font color="#000000">REPORT CARD</font></h3>
 				</td>
-				<td style="width:30%;text-align: left;font-size:14px;margin-left: 30px;" >
-					Student ID - <?php echo $row1['stud_id_no']; ?>
-				</td>
+				<td style="width:30%; text-align:left; font-size:14px; white-space:nowrap;">
+        Student ID - <?php echo $row1['stud_id_no']; ?>
+    </td>
 			</tr>
 		</table>
 		<br/>
@@ -218,7 +218,7 @@ foreach ($student_info as $row1):
 		$scholastic_table_width = '86%';
 		$term_list = get_published_terms($row1['class_id'], $row1['section_id']);
 		if (count($term_list) == 1)
-			$scholastic_table_width = '83%';
+			$scholastic_table_width = '86%';
 
 		?>
 		<table class="table-responsive" style="width:<?php echo $scholastic_table_width; ?>;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;border: 0px solid black !important;" cellpadding="0" cellspacing="0">
@@ -517,7 +517,7 @@ foreach ($student_info as $row1):
 											} else {
 												// When count of mark headings dont match
 												?>
-										<td class="col-md-1 col-sm-1 col-xs-1 td"  style="text-align:center;cellpadding:0;cellspacing:0" colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id}; ?>">
+										<td class="col-md-1 col-sm-1 col-xs-1 td"  style="text-align:center;cellpadding:0;cellspacing:0" colspan="<?php echo ${'count_of_mark_headings_' . $exam->exam_id}; ?>">
 											<table class="col-md-12 col-sm-12 col-xs-12" border="0" style="border: 0px solid black;" width="100%">
 												<tr>
 								<?php
@@ -555,10 +555,19 @@ foreach ($student_info as $row1):
 							<?php
 										}
 									} else {
-										if (($sub_row->name == 'Computer Applications' || $sub_row->name == 'Artificial Intelligence') && (strtolower($exam->name) == 'periodic test 2' || strtolower($exam->name) == 'periodic test 1') && ${'term' . $term->term_id . '_computer'} <> '') {  // Lija 10-09-21
-											// Do nothing
+										if (
+											($sub_row->name == 'Computer Applications' || $sub_row->name == 'Artificial Intelligence') &&
+											(strtolower($exam->name) == 'periodic test 2' || strtolower($exam->name) == 'periodic test 1') &&
+											${'term' . $term->term_id . '_computer'} <> ''
+										) {
+											for ($i = 0; $i < ${'count_of_mark_headings_' . $exam->exam_id}; $i++) {
+												?>
+        <td class="col-md-1 col-sm-1 col-xs-1 td"
+            style="vertical-align:middle;text-align:center;"></td>
+        <?php
+											}
 										} elseif (($sub_row->name == 'Computer Applications' || $sub_row->name == 'Artificial Intelligence') && (strtolower($exam->name) == 'periodic test 2' || strtolower($exam->name) == 'periodic test 1') && ${'term' . $term->term_id . '_computer'} == '') {  // Lija 10-09-21
-							?>
+											?>
 								<td class="col-md-1 col-sm-1 col-xs-1 td" style="vertical-align:center;text-align:center;"></td>
 								<?php
 										} elseif (($sub_row->name == 'Marathi') && (strtolower($exam->name) == 'periodic test 2' || strtolower($exam->name) == 'periodic test 1')) {  // Lija 10-09-21
@@ -582,7 +591,7 @@ foreach ($student_info as $row1):
 										} elseif (($sub_row->name == 'Marathi') && (strtolower($exam->name) <> 'periodic test 2' || strtolower($exam->name) <> 'periodic test 1')) {  // Lija 21-03-23
 
 											?>
-								<td class="col-md-1 col-sm-1 col-xs-1 td" colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id}; ?>" style="vertical-align:center;text-align:center;"></td>
+								<td class="col-md-1 col-sm-1 col-xs-1 td" colspan="<?php echo ${'count_of_mark_headings_' . $exam->exam_id}; ?>" style="vertical-align:center;text-align:center;"></td>
 							<?php
 										} else {
 											for ($i = 0; $i < ${'count_of_mark_headings_' . $exam->exam_id}; $i++) {
@@ -708,13 +717,29 @@ foreach ($student_info as $row1):
 				if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
 					${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
 					${'mark_obtained_array_' . $term->term_id} = array_merge(${'mark_obtained_array_' . $term->term_id}, json_decode(${'marks_obtained_json_' . $term->term_id}, true));
+					// Lija 29-09-26
+					${'highest_marks_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_highest_marks'];
+					${'highest_marks_array_' . $term->term_id} = array_merge(${'highest_marks_array_' . $term->term_id}, json_decode(${'highest_marks_json_' . $term->term_id}, true));
 
 					if (isset(${'mark_obtained_array_' . $term->term_id}) && ${'mark_obtained_array_' . $term->term_id} <> null) {
 						foreach (${'mark_obtained_array_' . $term->term_id} as $key => $value) {
 							if ($value == 'Ab')
 								$coscholastic_grade = 'Ab';
 							else {
-								$coscholastic_grade = get_grade_based_on_marks(round($value), 'Co-Scholastic', $row1['class_id']);  // Lija 28-09-20
+								// $coscholastic_grade = get_grade_based_on_marks(round($value), 'Co-Scholastic', $row1['class_id']);  // Lija 28-09-20
+								// Lija 29-09-26 Changed the logic of grade calculation
+								$max_grade_marks = 0;
+
+								$max_grade_marks = DB::table('grade')
+									->where('academic_yr', $row1['academic_yr'])
+									->where('subject_type', 'Co-Scholastic')
+									->where('class_id', $row1['class_id'])
+									->max('mark_upto');
+
+								$highest_marks = ${'highest_marks_array_' . $term->term_id}[$key];
+
+								// dd($value);
+								$coscholastic_grade = get_grade_based_on_marks(round(($value / $highest_marks) * $max_grade_marks), 'Co-Scholastic', $row1['class_id']);
 							}
 						}
 					}
@@ -734,7 +759,7 @@ foreach ($student_info as $row1):
                  </td>
                  <td></td>
                  <td>
-			<table class="table-responsive" style="width:auto;margin-left: 0%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 0%;border: 1px solid grey" cellpadding="0" cellspacing="0">
+			<table class="table-responsive" style="width:auto;margin-left: 0%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 5%;border: 1px solid grey" cellpadding="0" cellspacing="0">
                          <tr>
                             <th colspan="2" style="text-align:center;"> <div style="font-size:15px"> GRADING SCALE FOR SCHOLASTIC AREAS</div><div style="font-size:12px"> Grades are awarded on a 8 Point grading scale as follows</div></th>
                         </tr>

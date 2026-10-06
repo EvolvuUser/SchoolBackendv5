@@ -846,4 +846,158 @@ class ParentController extends Controller
             ], 500);
         }
     }
+
+    public function getFeesStructure(Request $request)
+    {
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $regId = JWTAuth::getPayload()->get('reg_id');
+        $isNew = $request->input('isNew');
+        $feeCategoryId = $request->input('fees_category_id');
+        $installment = $request->input('installment');
+
+        if (!$feeCategoryId) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Fee structure is not alloted to student.',
+            ], 422);
+        }
+
+        if (!$installment) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Installment is not selected.',
+            ], 422);
+        }
+
+        // ---------- Get Fee Allotment ID ----------
+        $feeAllotmentId = DB::table('fees_allotment')
+            ->where('fees_category_id', $feeCategoryId)
+            ->value('fee_allotment_id');
+
+        // CI behavior: allow empty allotment (form still opens)
+        if (!$feeAllotmentId) {
+            $feeAllotmentId = 0;
+        }
+
+        // ---------- Get Due Date ----------
+        $dueDateRaw = DB::table('fees_allotment_detail')
+            ->where('fee_allotment_id', $feeAllotmentId)
+            ->where('installment', $installment)
+            ->where('academic_yr', $academicYear)
+            ->value('due_date');
+
+        $dueDate = $dueDateRaw
+            ? \Carbon\Carbon::parse($dueDateRaw)->format('d-m-Y')
+            : \Carbon\Carbon::today()->format('d-m-Y');
+
+        // ---------- Readonly check ----------
+        $readonly = DB::table('fees_payment_record')
+            ->where('fee_allotment_id', $feeAllotmentId)
+            ->where('academic_yr', $academicYear)
+            ->where('isCancel', '<>', 'Y')
+            ->exists();
+
+        // ---------- Fee Types ----------
+        $baseInstallment = 1;
+
+        $hasBaseDetails = DB::table('fees_allotment_detail')
+            ->where('fee_allotment_id', $feeAllotmentId)
+            ->where('installment', $baseInstallment)
+            ->where('academic_yr', $academicYear)
+            ->exists();
+
+        if ($hasBaseDetails && $installment > 1) {
+            $feeTypes = DB::table('fee_type_master as ft')
+                ->join('fees_allotment_detail as fad', 'fad.fee_type_id', '=', 'ft.fee_type_id')
+                ->where('fad.fee_allotment_id', $feeAllotmentId)
+                ->where('fad.installment', 1)
+                ->where('fad.academic_yr', $academicYear)
+                ->select(
+                    'ft.fee_type_id',
+                    'ft.name',
+                    'ft.only_once',
+                    'ft.mandatory',
+                    'ft.special_fee_type',
+                    'ft.sequence',
+                    'ft.applicable_to'  // Lija 14-08-26
+                )
+                ->distinct()
+                ->orderBy('ft.sequence')
+                ->get();
+        } else {
+            $feeTypes = DB::table('fee_type_master')
+                ->select('fee_type_id', 'name', 'only_once', 'mandatory', 'special_fee_type', 'sequence', 'applicable_to')  // Lija 14-08-26
+                ->orderBy('sequence')
+                ->get();
+        }
+
+        // ---------- Amounts ----------
+        if ($isNew == 'Y') {
+            $amountRows = DB::table('fees_allotment_detail')
+                ->join('fee_type_master', 'fee_type_master.fee_type_id', '=', 'fees_allotment_detail.fee_type_id')
+                ->where('fee_allotment_id', $feeAllotmentId)
+                ->where('installment', $installment)
+                ->where('academic_yr', $academicYear)
+                ->whereIn('applicable_to', ['New', 'All'])
+                ->select('fee_type_master.fee_type_id', 'fee_type_master.name', 'amount')
+                ->orderBy('fee_type_master.sequence')
+                ->get();
+        } else {
+            $amountRows = DB::table('fees_allotment_detail')
+                ->join('fee_type_master', 'fee_type_master.fee_type_id', '=', 'fees_allotment_detail.fee_type_id')
+                ->where('fee_allotment_id', $feeAllotmentId)
+                ->where('installment', $installment)
+                ->where('academic_yr', $academicYear)
+                ->whereIn('applicable_to', ['Existing', 'All'])
+                ->select('fee_type_master.fee_type_id', 'fee_type_master.name', 'amount')
+                ->orderBy('fee_type_master.sequence')
+                ->get();
+        }
+        $total = 0.0;
+        foreach ($amountRows as $amountrow) {
+            $total = $total + $amountrow->amount;
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'fee_allotment_id' => (int) $feeAllotmentId,
+                'installment' => $installment,
+                'academic_yr' => $academicYear,
+                'due_date' => $dueDate,
+                'total_installment_amount' => $total,
+                'fee_types' => $amountRows,
+            ],
+        ]);
+    }
+
+    public function getStudentCategoryOfParent(Request $request)
+    {
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        $regId = JWTAuth::getPayload()->get('reg_id');
+
+        $students = DB::table('student')
+            ->join('class', 'class.class_id', '=', 'student.class_id')
+            ->join('section', 'section.section_id', '=', 'student.section_id')
+            ->leftjoin('fees_student_category', 'fees_student_category.student_id', '=', 'student.student_id')
+            ->leftjoin('fees_category', 'fees_student_category.fees_category_id', '=', 'fees_category.fees_category_id')
+            ->where('parent_id', $regId)
+            ->where('student.academic_yr', $academicYear)
+            ->where('isDelete', '!=', 'Y')
+            ->select('first_name', 'class.name as classname', 'section.name as sectionname', 'fees_student_category.fees_category_id', 'student.isNew', 'fees_category.no_of_installments')
+            ->get();
+
+        $students = $students->map(function ($student) {
+            if (is_null($student->fees_category_id)) {
+                $student->message = 'Fee structure is not allotted to the student. Please contact school.';
+            }
+
+            return $student;
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $students
+        ], 200);
+    }
 }

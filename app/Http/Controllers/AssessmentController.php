@@ -204,13 +204,16 @@ class AssessmentController extends Controller
 
     public function getGradesList(Request $request)
     {
-        // $grades = Grades::orderBy('grade_id')->get();
         $user = $this->authenticateUser();
-        $customClaims = JWTAuth::getPayload()->get('academic_year');
-        $query = Grades::with('Class');
-        $grades = $query
-            ->where('academic_yr', $customClaims)
-            ->orderBy('grade_id', 'DESC')
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+        $grades = Grades::with('Class')
+            ->join('class as c', 'grade.class_id', '=', 'c.class_id')
+            ->where('grade.academic_yr', $academicYear)
+            ->select('grade.*')
+            ->orderBy('c.class_id', 'ASC')
+            ->orderBy('grade.subject_type', 'ASC')  // Subject type
+            ->orderBy('grade.name', 'ASC')  // Grade name
             ->get();
 
         return response()->json($grades);
@@ -6185,129 +6188,805 @@ class AssessmentController extends Controller
         ]);
     }
 
+    //     public function saveStudentMarks(Request $request)
+    // {
+    //     try {
+
+    //         $user = $this->authenticateUser();
+    //         $userId = $user->reg_id;
+    //         $shortName = JWTAuth::getPayload()->get('short_name');
+    //         $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+    //         $examId = $request->input('exam_id');
+    //         $classId = $request->input('class_id');
+    //         $sectionId = $request->input('section_id');
+    //         $subjectId = $request->input('subject_id');
+    //         $studentIds = $request->input('student_id', []);
+    //         $comments = $request->input('comment', []);
+    //         $className = get_class_name($classId);
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Get Marks Headings
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         $marksHeadings = DB::select("
+    //             SELECT
+    //                 allot_mark_headings.*,
+
+    //                 allot_mark_headings.highest_marks
+    //                     AS allotted_highest_marks,
+
+    //                 allot_mark_headings.reportcard_highest_marks
+    //                     AS allotted_reportcard_highest_marks,
+
+    //                 marks_headings.marks_headings_id,
+
+    //                 marks_headings.name
+    //                     AS marks_headings_name,
+
+    //                 subjects_on_report_card_master.*
+
+    //             FROM allot_mark_headings
+
+    //             JOIN subjects_on_report_card_master
+    //                 ON allot_mark_headings.sm_id =
+    //                   subjects_on_report_card_master.sub_rc_master_id
+
+    //             JOIN marks_headings
+    //                 ON allot_mark_headings.marks_headings_id =
+    //                   marks_headings.marks_headings_id
+
+    //             WHERE allot_mark_headings.class_id = ?
+    //               AND allot_mark_headings.sm_id = ?
+    //               AND allot_mark_headings.exam_id = ?
+    //               AND allot_mark_headings.academic_yr = ?
+
+    //             ORDER BY marks_headings.sequence
+    //         ", [
+    //             $classId,
+    //             $subjectId,
+    //             $examId,
+    //             $academicYr
+    //         ]);
+
+    //         /*
+    //         |--------------------------------------------------------------------------
+    //         | Save Student Marks
+    //         |--------------------------------------------------------------------------
+    //         */
+
+    //         foreach ($studentIds as $i => $studentId) {
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Check Existing Student Marks
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             $verifyMasterData = [
+    //                 'exam_id' => $examId,
+    //                 'class_id' => $classId,
+    //                 'section_id' => $sectionId,
+    //                 'academic_yr' => $academicYr,
+    //                 'subject_id' => $subjectId,
+    //                 'student_id' => $studentId,
+    //             ];
+
+    //             $existingMarks = DB::table('student_marks')
+    //                 ->where($verifyMasterData)
+    //                 ->first();
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Initialize Data
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             $presentData = [];
+    //             $marksObtainedData = [];
+    //             $highestMarksData = [];
+
+    //             $marksBeforeChangeData = [];
+    //             $marksAfterChangeData = [];
+
+    //             $reportcardMarksData = [];
+    //             $reportcardHighestMarksData = [];
+
+    //             $totalReportcardMarksObtained = 0;
+    //             $totalReportcardHighestMarks = 0;
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Process Each Marks Heading
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             foreach ($marksHeadings as $heading) {
+
+    //                 $id = $heading->marks_headings_id;
+
+    //                 $markBeforeChange =
+    //                     $request->input("mark_before_change_$id")[$i] ?? null;
+
+    //                 $markObtained =
+    //                     $request->input("mark_obtained_$id")[$i] ?? null;
+
+    //                 $highestMarks =
+    //                     $request->input("highest_marks_$id")[$i] ?? null;
+
+    //                 $present =
+    //                     $request->input("present_{$id}_{$studentId}") === 'Y'
+    //                         ? 'Y'
+    //                         : 'N';
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Store Actual Marks Data
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 $presentData[$id] = $present;
+
+    //                 $marksObtainedData[$id] =
+    //                     is_numeric($markObtained)
+    //                         ? (float) $markObtained
+    //                         : $markObtained;
+
+    //                 $highestMarksData[$id] =
+    //                     is_numeric($highestMarks)
+    //                         ? (float) $highestMarks
+    //                         : $highestMarks;
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Marks Change Log Data
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 if ($markObtained != $markBeforeChange) {
+
+    //                     $marksBeforeChangeData[$id] = $markBeforeChange;
+    //                     $marksAfterChangeData[$id] = $markObtained;
+    //                 }
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Report Card Highest Marks
+    //                 |--------------------------------------------------------------------------
+    //                 |
+    //                 | Example:
+    //                 |
+    //                 | actual highest marks     = 15
+    //                 | reportcard highest marks = 3
+    //                 |
+    //                 */
+
+    //                 $actualHighestMarks = (float) (
+    //                     $highestMarks
+    //                     ?? $heading->allotted_highest_marks
+    //                     ?? 0
+    //                 );
+
+    //                 $reportcardHighestMarks = (float) (
+    //                     $heading->allotted_reportcard_highest_marks
+    //                     ?? $actualHighestMarks
+    //                 );
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Convert Marks for Report Card
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 if ($present === 'N') {
+
+    //                     $reportcardMarks = 'Ab';
+
+    //                 } else {
+
+    //                     $obtained = is_numeric($markObtained)
+    //                         ? (float) $markObtained
+    //                         : 0;
+
+    //                     if (
+    //                         $actualHighestMarks > 0
+    //                         && $reportcardHighestMarks >= 0
+    //                     ) {
+
+    //                         $reportcardMarks =
+    //                             ($obtained / $actualHighestMarks)
+    //                             * $reportcardHighestMarks;
+
+    //                         $reportcardMarks = round(
+    //                             $reportcardMarks,
+    //                             2
+    //                         );
+
+    //                     } else {
+
+    //                         $reportcardMarks = 0;
+    //                     }
+
+    //                     $totalReportcardMarksObtained +=
+    //                         $reportcardMarks;
+    //                 }
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Total Report Card Highest Marks
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 $totalReportcardHighestMarks +=
+    //                     $reportcardHighestMarks;
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Store Report Card Data
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 $reportcardMarksData[
+    //                     $heading->marks_headings_name
+    //                 ] = $reportcardMarks;
+
+    //                 $reportcardHighestMarksData[
+    //                     $heading->marks_headings_name
+    //                 ] = $reportcardHighestMarks;
+    //             }
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Calculate Percentage
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             $percent =
+    //                 $totalReportcardHighestMarks > 0
+    //                     ? (
+    //                         $totalReportcardMarksObtained
+    //                         * 100
+    //                     ) / $totalReportcardHighestMarks
+    //                     : 0;
+
+    //             $percent = round($percent, 2);
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Final Marks Data
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             $marksData = [
+
+    //                 'exam_id' => $examId,
+
+    //                 'class_id' => $classId,
+
+    //                 'section_id' => $sectionId,
+
+    //                 'academic_yr' => $academicYr,
+
+    //                 'subject_id' => $subjectId,
+
+    //                 'student_id' => $studentId,
+
+    //                 'present' =>
+    //                     json_encode($presentData),
+
+    //                 'mark_obtained' =>
+    //                     json_encode($marksObtainedData),
+
+    //                 'highest_marks' =>
+    //                     json_encode($highestMarksData),
+
+    //                 'reportcard_marks' =>
+    //                     json_encode($reportcardMarksData),
+
+    //                 'reportcard_highest_marks' =>
+    //                     json_encode($reportcardHighestMarksData),
+
+    //                 'total_marks' =>
+    //                     round($totalReportcardMarksObtained, 2),
+
+    //                 'highest_total_marks' =>
+    //                     round($totalReportcardHighestMarks, 2),
+
+    //                 'percent' => $percent,
+
+    //                 'comment' =>
+    //                     $comments[$i] ?? '',
+
+    //                 'data_entry_by' =>
+    //                     $userId,
+
+    //                 'date' =>
+    //                     Carbon::now()->toDateString(),
+
+    //                 'publish' => 'N',
+    //             ];
+
+    //             /*
+    //             |--------------------------------------------------------------------------
+    //             | Update Existing / Insert New
+    //             |--------------------------------------------------------------------------
+    //             */
+
+    //             if ($existingMarks) {
+
+    //                 DB::table('student_marks')
+    //                     ->where(
+    //                         'marks_id',
+    //                         $existingMarks->marks_id
+    //                     )
+    //                     ->update($marksData);
+
+    //                 /*
+    //                 |--------------------------------------------------------------------------
+    //                 | Marks Changed Log
+    //                 |--------------------------------------------------------------------------
+    //                 */
+
+    //                 if (
+    //                     !empty($marksBeforeChangeData)
+    //                     && $existingMarks->publish === 'Y'
+    //                 ) {
+
+    //                     DB::table('marks_changed_log')
+    //                         ->insert([
+
+    //                             'exam_id' =>
+    //                                 $examId,
+
+    //                             'subject_id' =>
+    //                                 $subjectId,
+
+    //                             'student_id' =>
+    //                                 $studentId,
+
+    //                             'mark_obtained_before' =>
+    //                                 json_encode(
+    //                                     $marksBeforeChangeData
+    //                                 ),
+
+    //                             'mark_obtained_after' =>
+    //                                 json_encode(
+    //                                     $marksAfterChangeData
+    //                                 ),
+
+    //                             'date_of_change' =>
+    //                                 Carbon::now()
+    //                                     ->toDateString(),
+
+    //                             'changed_by' =>
+    //                                 $userId,
+
+    //                             'academic_yr' =>
+    //                                 $academicYr,
+    //                         ]);
+    //                 }
+
+    //             } else {
+
+    //                 DB::table('student_marks')
+    //                     ->insert($marksData);
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'message' => 'Marks saved successfully.',
+    //             'success' => true
+    //         ], 200);
+
+    //     } catch (\Illuminate\Database\QueryException $e) {
+
+    //         return response()->json([
+    //             'status' => 500,
+    //             'message' => 'Database error while saving marks.',
+    //             'error' => $e->getMessage(),
+    //             'success' => false
+    //         ], 500);
+
+    //     } catch (\Exception $e) {
+
+    //         return response()->json([
+    //             'status' => 500,
+    //             'message' => 'Something went wrong while saving marks.',
+    //             'error' => $e->getMessage(),
+    //             'success' => false
+    //         ], 500);
+    //     }
+    // }
+
     public function saveStudentMarks(Request $request)
     {
-        $user = $this->authenticateUser();
-        $userId = $user->reg_id;
-        $academicYr = JWTAuth::getPayload()->get('academic_year');
-        $examId = $request->input('exam_id');
-        $classId = $request->input('class_id');
-        $sectionId = $request->input('section_id');
-        $subjectId = $request->input('subject_id');
-        $studentIds = $request->input('student_id');
-        $marksIds = $request->input('marks_id', []);
+        try {
+            $user = $this->authenticateUser();
+            $userId = $user->reg_id;
 
-        $marksHeadings = DB::select('SELECT allot_mark_headings.*,marks_headings.marks_headings_id,marks_headings.name as marks_headings_name,subjects_on_report_card_master.* FROM allot_mark_headings JOIN subjects_on_report_card_master ON allot_mark_headings.sm_id= subjects_on_report_card_master.sub_rc_master_id JOIN marks_headings on allot_mark_headings.marks_headings_id= marks_headings.marks_headings_id WHERE allot_mark_headings.class_id = ' . $classId . ' AND allot_mark_headings.sm_id = ' . $subjectId . ' AND allot_mark_headings.exam_id = ' . $examId . " and allot_mark_headings.academic_yr = '" . $academicYr . "' order by marks_headings.sequence");
-        // dd($marksHeadings);
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
 
-        foreach ($studentIds as $i => $studentId) {
-            $verifyMasterData = [
-                'exam_id' => $examId,
-                'class_id' => $classId,
-                'academic_yr' => $academicYr,
-                'subject_id' => $subjectId,
-                'student_id' => $studentId,
-            ];
+            $examId = $request->input('exam_id');
+            $classId = $request->input('class_id');
+            $sectionId = $request->input('section_id');
+            $subjectId = $request->input('subject_id');
+            $studentIds = $request->input('student_id', []);
+            $comments = $request->input('comment', []);
 
-            $existingMarks = DB::table('student_marks')->where($verifyMasterData)->first();
+            // Use your existing short_name source if already available
+            $shortName = JWTAuth::getPayload()->get('short_name');
 
-            $presentData = [];
-            $marksObtainedData = [];
-            $highestMarksData = [];
-            $marksBeforeChangeData = [];
-            $marksAfterChangeData = [];
-            $reportcardMarksData = [];
-            $reportcardHighestMarksData = [];
+            $className = get_class_name($classId);
 
-            $totalReportcardMarksObtained = 0;
-            $totalReportcardHighestMarks = 0;
+            $marksHeadings = DB::select('
+            SELECT
+                allot_mark_headings.*,
+                allot_mark_headings.highest_marks AS allotted_highest_marks,
+                allot_mark_headings.reportcard_highest_marks AS allotted_reportcard_highest_marks,
+                marks_headings.marks_headings_id,
+                marks_headings.name AS marks_headings_name,
+                subjects_on_report_card_master.*
+            FROM allot_mark_headings
+            JOIN subjects_on_report_card_master
+                ON allot_mark_headings.sm_id =
+                   subjects_on_report_card_master.sub_rc_master_id
+            JOIN marks_headings
+                ON allot_mark_headings.marks_headings_id =
+                   marks_headings.marks_headings_id
+            WHERE allot_mark_headings.class_id = ?
+              AND allot_mark_headings.sm_id = ?
+              AND allot_mark_headings.exam_id = ?
+              AND allot_mark_headings.academic_yr = ?
+            ORDER BY marks_headings.sequence
+        ', [
+                $classId,
+                $subjectId,
+                $examId,
+                $academicYr
+            ]);
 
-            foreach ($marksHeadings as $heading) {
-                $id = $heading->marks_headings_id;
+            /*
+             * |--------------------------------------------------------------------------
+             * | Nursery SACS Conversion
+             * |--------------------------------------------------------------------------
+             */
+            $convertNurseryMarks = function ($obtained, $highestMarks) {
+                $obtained = (float) $obtained;
+                $highestMarks = (float) $highestMarks;
 
-                $markBeforeChange = $request->input("mark_before_change_$id")[$i] ?? null;
-                $markObtained = $request->input("mark_obtained_$id")[$i] ?? null;
-                $highestMarks = $request->input("highest_marks_$id")[$i] ?? null;
-                $present = $request->input("present_{$id}_$studentId") === 'Y' ? 'Y' : 'N';
+                // Highest Marks = 25
+                if ($highestMarks == 25) {
+                    if ($obtained >= 24) {
+                        return 3;
+                    }
 
-                $presentData[$id] = $present;
-                $marksObtainedData[$id] = $markObtained;
-                $highestMarksData[$id] = $highestMarks;
+                    if ($obtained >= 15) {
+                        return 2;
+                    }
 
-                if ($markObtained != $markBeforeChange) {
-                    $marksBeforeChangeData[$id] = $markBeforeChange;
-                    $marksAfterChangeData[$id] = $markObtained;
+                    return 1;
                 }
-                // dd($markBeforeChange,$markObtained,$highestMarks,$present);
-                // Calculate reportcard marks (simplified: adapt rules for each class)
-                if ($present == 'N') {
-                    $reportcardMarks = 'Ab';
+
+                // Highest Marks = 15
+                if ($highestMarks == 15) {
+                    if ($obtained >= 14) {
+                        return 3;
+                    }
+
+                    if ($obtained >= 10) {
+                        return 2;
+                    }
+
+                    return 1;
+                }
+
+                // Highest Marks = 10
+                if ($highestMarks == 10) {
+                    if ($obtained >= 9) {
+                        return 3;
+                    }
+
+                    if ($obtained >= 6) {
+                        return 2;
+                    }
+
+                    return 1;
+                }
+
+                // Highest Marks = 5
+                if ($highestMarks == 5) {
+                    if ($obtained >= 4) {
+                        return 3;
+                    }
+
+                    if ($obtained >= 2) {
+                        return 2;
+                    }
+
+                    return 1;
+                }
+
+                return null;
+            };
+
+            foreach ($studentIds as $i => $studentId) {
+                $verifyMasterData = [
+                    'exam_id' => $examId,
+                    'class_id' => $classId,
+                    'section_id' => $sectionId,
+                    'academic_yr' => $academicYr,
+                    'subject_id' => $subjectId,
+                    'student_id' => $studentId,
+                ];
+
+                $existingMarks = DB::table('student_marks')
+                    ->where($verifyMasterData)
+                    ->first();
+
+                $presentData = [];
+                $marksObtainedData = [];
+                $highestMarksData = [];
+
+                $marksBeforeChangeData = [];
+                $marksAfterChangeData = [];
+
+                $reportcardMarksData = [];
+                $reportcardHighestMarksData = [];
+
+                $totalReportcardMarksObtained = 0;
+                $totalReportcardHighestMarks = 0;
+
+                foreach ($marksHeadings as $heading) {
+                    $id = $heading->marks_headings_id;
+
+                    $markBeforeChange =
+                        $request->input("mark_before_change_$id")[$i] ?? null;
+
+                    $markObtained =
+                        $request->input("mark_obtained_$id")[$i] ?? null;
+
+                    $highestMarks =
+                        $request->input("highest_marks_$id")[$i]
+                            ?? $heading->allotted_highest_marks
+                            ?? 0;
+
+                    $present =
+                        $request->input("present_{$id}_{$studentId}") === 'Y'
+                            ? 'Y'
+                            : 'N';
+
+                    $presentData[$id] = $present;
+
+                    $marksObtainedData[$id] =
+                        is_numeric($markObtained)
+                            ? (float) $markObtained
+                            : $markObtained;
+
+                    $highestMarksData[$id] =
+                        is_numeric($highestMarks)
+                            ? (float) $highestMarks
+                            : $highestMarks;
+
+                    if ($markObtained != $markBeforeChange) {
+                        $marksBeforeChangeData[$id] = $markBeforeChange;
+                        $marksAfterChangeData[$id] = $markObtained;
+                    }
+
+                    $actualHighestMarks = (float) $highestMarks;
+
+                    /*
+                     * |--------------------------------------------------------------------------
+                     * | Nursery + SACS
+                     * |--------------------------------------------------------------------------
+                     */
+                    if (
+                        strtoupper($shortName) === 'SACS' &&
+                        strtolower(trim($className)) === 'nursery'
+                    ) {
+                        // Nursery reportcard highest mark always 3
+                        $reportcardHighestMarks = $heading->allotted_reportcard_highest_marks;
+                        //             return response()->json([
+                        //     'status' => 200,
+                        //     'data'=>$reportcardHighestMarks,
+                        //     'message' => 'Marks saved successfully.',
+                        //     'success' => true
+                        // ], 200);
+
+                        if ($present === 'N') {
+                            $reportcardMarks = 'Ab';
+                        } else {
+                            $obtained = is_numeric($markObtained)
+                                ? (float) $markObtained
+                                : 0;
+
+                            $convertedMarks = $convertNurseryMarks(
+                                $obtained,
+                                $actualHighestMarks
+                            );
+
+                            /*
+                             * | If highest marks are 25 / 15 / 10 / 5,
+                             * | use Nursery slab conversion.
+                             */
+                            if ($convertedMarks !== null) {
+                                $reportcardMarks = $convertedMarks;
+                            } else {
+                                /*
+                                 * | Fallback in case some other highest marks
+                                 * | configuration exists.
+                                 */
+                                if ($actualHighestMarks > 0) {
+                                    $reportcardMarks = round(
+                                        ($obtained / $actualHighestMarks) * 3,
+                                        2
+                                    );
+                                } else {
+                                    $reportcardMarks = 0;
+                                }
+                            }
+
+                            $totalReportcardMarksObtained += $reportcardMarks;
+                        }
+                    } else {
+                        /*
+                         * |--------------------------------------------------------------------------
+                         * | Other Schools / Other Classes
+                         * |--------------------------------------------------------------------------
+                         */
+
+                        $reportcardHighestMarks = $heading
+                            ->allotted_reportcard_highest_marks;
+
+                        if (
+                            $reportcardHighestMarks === null ||
+                            $reportcardHighestMarks === ''
+                        ) {
+                            $reportcardHighestMarks = $actualHighestMarks;
+                        }
+
+                        $reportcardHighestMarks =
+                            (float) $reportcardHighestMarks;
+
+                        if ($present === 'N') {
+                            $reportcardMarks = 'Ab';
+                        } else {
+                            $obtained = is_numeric($markObtained)
+                                ? (float) $markObtained
+                                : 0;
+
+                            if ($actualHighestMarks > 0) {
+                                $reportcardMarks =
+                                    ($obtained / $actualHighestMarks)
+                                    * $reportcardHighestMarks;
+
+                                $reportcardMarks =
+                                    round($reportcardMarks, 2);
+                            } else {
+                                $reportcardMarks = 0;
+                            }
+
+                            $totalReportcardMarksObtained +=
+                                $reportcardMarks;
+                        }
+                    }
+
+                    $totalReportcardHighestMarks +=
+                        $reportcardHighestMarks;
+
+                    $reportcardMarksData[
+                        $heading->marks_headings_name
+                    ] = $reportcardMarks;
+
+                    $reportcardHighestMarksData[
+                        $heading->marks_headings_name
+                    ] = $reportcardHighestMarks;
+                }
+
+                $percent =
+                    $totalReportcardHighestMarks > 0
+                        ? (
+                            $totalReportcardMarksObtained * 100
+                        ) / $totalReportcardHighestMarks
+                        : 0;
+
+                $percent = round($percent, 2);
+
+                $marksData = [
+                    'exam_id' => $examId,
+                    'class_id' => $classId,
+                    'section_id' => $sectionId,
+                    'academic_yr' => $academicYr,
+                    'subject_id' => $subjectId,
+                    'student_id' => $studentId,
+                    'present' =>
+                        json_encode($presentData),
+                    'mark_obtained' =>
+                        json_encode($marksObtainedData),
+                    'highest_marks' =>
+                        json_encode($highestMarksData),
+                    'reportcard_marks' =>
+                        json_encode($reportcardMarksData),
+                    'reportcard_highest_marks' =>
+                        json_encode($reportcardHighestMarksData),
+                    'total_marks' =>
+                        round($totalReportcardMarksObtained, 2),
+                    'highest_total_marks' =>
+                        round($totalReportcardHighestMarks, 2),
+                    'percent' =>
+                        $percent,
+                    'comment' =>
+                        $comments[$i] ?? '',
+                    'data_entry_by' =>
+                        $userId,
+                    'date' =>
+                        Carbon::now()->toDateString(),
+                ];
+
+                if ($existingMarks) {
+                    DB::table('student_marks')
+                        ->where(
+                            'marks_id',
+                            $existingMarks->marks_id
+                        )
+                        ->update($marksData);
+
+                    if (
+                        !empty($marksBeforeChangeData) &&
+                        $existingMarks->publish === 'Y'
+                    ) {
+                        DB::table('marks_changed_log')
+                            ->insert([
+                                'exam_id' =>
+                                    $examId,
+                                'subject_id' =>
+                                    $subjectId,
+                                'student_id' =>
+                                    $studentId,
+                                'mark_obtained_before' =>
+                                    json_encode(
+                                        $marksBeforeChangeData
+                                    ),
+                                'mark_obtained_after' =>
+                                    json_encode(
+                                        $marksAfterChangeData
+                                    ),
+                                'date_of_change' =>
+                                    Carbon::now()->toDateString(),
+                                'changed_by' =>
+                                    $userId,
+                                'academic_yr' =>
+                                    $academicYr,
+                            ]);
+                    }
                 } else {
-                    $reportcardMarks = $markObtained;
-                    $totalReportcardMarksObtained += $reportcardMarks;
+                    DB::table('student_marks')
+                        ->insert($marksData);
                 }
-                $reportcardHighestMarks = $highestMarks;
-                $totalReportcardHighestMarks += $reportcardHighestMarks;
-
-                $reportcardMarksData[$heading->marks_headings_name] = $reportcardMarks;
-                $reportcardHighestMarksData[$heading->marks_headings_name] = $reportcardHighestMarks;
             }
 
-            $percent = $totalReportcardHighestMarks > 0
-                ? ($totalReportcardMarksObtained * 100) / $totalReportcardHighestMarks
-                : 0;
-
-            // Replace with your own grade logic
-            // $grade = $this->getGrade($percent, $classId, $subjectId);
-
-            $marksData = [
-                'exam_id' => $examId,
-                'class_id' => $classId,
-                'section_id' => $sectionId,
-                'academic_yr' => $academicYr,
-                'subject_id' => $subjectId,
-                'student_id' => $studentId,
-                'present' => json_encode($presentData),
-                'mark_obtained' => json_encode($marksObtainedData),
-                'highest_marks' => json_encode($highestMarksData),
-                'reportcard_marks' => json_encode($reportcardMarksData),
-                'reportcard_highest_marks' => json_encode($reportcardHighestMarksData),
-                'total_marks' => $totalReportcardMarksObtained,
-                'highest_total_marks' => $totalReportcardHighestMarks,
-                'percent' => $percent,
-                // 'grade' => $grade,
-                'comment' => $comments[$i] ?? '',
-                'data_entry_by' => $userId,
-                'date' => Carbon::now()->toDateString(),
-                'publish' => 'N',
-            ];
-
-            if ($existingMarks) {
-                DB::table('student_marks')->where('marks_id', $marksIds[$i])->update($marksData);
-
-                // Log changes if marks changed and already published
-                if (!empty($marksBeforeChangeData) && $existingMarks->publish == 'Y') {
-                    DB::table('marks_changed_log')->insert([
-                        'exam_id' => $examId,
-                        'subject_id' => $subjectId,
-                        'student_id' => $studentId,
-                        'mark_obtained_before' => json_encode($marksBeforeChangeData),
-                        'mark_obtained_after' => json_encode($marksAfterChangeData),
-                        'date_of_change' => Carbon::now()->toDateString(),
-                        'changed_by' => $userId,
-                        'academic_yr' => $academicYr,
-                    ]);
-                }
-            } else {
-                DB::table('student_marks')->insert($marksData);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Marks saved successfully.',
+                'success' => true
+            ], 200);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Database error while saving marks.',
+                'error' => $e->getMessage(),
+                'success' => false
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong while saving marks.',
+                'error' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 200,
-            'message' => 'Marks saved successfully.',
-            'success' => true
-        ]);
     }
 
     public function getMarksGenerateCsv(Request $request)
@@ -7583,7 +8262,7 @@ class AssessmentController extends Controller
         $validated = $request->validate([
             'class_id' => 'required|integer',
             'subject_id' => 'required|integer',
-            'chapter_no' => 'required|integer',
+            'chapter_no' => 'required|numeric|min:0',
             'name' => 'required|string|max:255',
             'sub_subject' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -7645,7 +8324,7 @@ class AssessmentController extends Controller
         $validated = $request->validate([
             'class_id' => 'required|integer',
             'subject_id' => 'required|integer',
-            'chapter_no' => 'required|integer',
+            'chapter_no' => 'required|numeric|min:0',
             'name' => 'required|string|max:255',
             'sub_subject' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -7949,7 +8628,7 @@ class AssessmentController extends Controller
         $validated = $request->validate([
             'class_id' => 'required|integer',
             'subject_id' => 'required|integer',
-            'chapter_no' => 'required|integer',
+            'chapter_no' => 'required|numeric|min:0',
             'name' => 'required|string|max:255',
             'sub_subject' => 'nullable|string|max:255',
             'description' => 'nullable|string',

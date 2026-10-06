@@ -872,6 +872,7 @@ class TeacherDashboardController extends Controller
             ->where('s.academic_yr', $customClaims)
             ->where('s.class_id', $class_id)
             ->where('st.section_id', $section_id)
+            ->whereDate('s.due_date', '<', now()->toDateString())
             ->when($installmentId, function ($q) use ($installmentId) {
                 // user-selected installment
                 $q->where('s.installment', 'like', $installmentId . '%');
@@ -1426,6 +1427,7 @@ class TeacherDashboardController extends Controller
             ->where('s.academic_yr', $customClaims)
             ->where('s.class_id', $class_id)
             ->where('st.section_id', $section_id)
+            ->whereDate('s.due_date', '<', now()->toDateString())
             ->where(function ($q) {
                 $q
                     ->where('s.installment', 'like', '1%')
