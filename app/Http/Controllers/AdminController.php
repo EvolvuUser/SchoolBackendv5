@@ -431,53 +431,214 @@ class AdminController extends Controller
 
     public function getEvents(Request $request): JsonResponse
     {
-        $payload = getTokenPayload($request);
-        if (!$payload) {
-            return response()->json(['error' => 'Invalid or missing token'], 401);
+        try {
+            // =====================================================
+            // Token payload
+            // =====================================================
+            $payload = getTokenPayload($request);
+
+            if (!$payload) {
+                return response()->json([
+                    'error' => 'Invalid or missing token'
+                ], 401);
+            }
+
+            $academicYr = $payload->get('academic_year');
+
+            if (!$academicYr) {
+                return response()->json([
+                    'message' => 'Academic year not found in request headers',
+                    'success' => false
+                ], 404);
+            }
+
+            // =====================================================
+            // Month / Year
+            // =====================================================
+            $currentDate = Carbon::now();
+
+            $month = $request->input(
+                'month',
+                $currentDate->month
+            );
+
+            $year = $request->input(
+                'year',
+                $currentDate->year
+            );
+
+            // =====================================================
+            // EVENTS QUERY
+            // =====================================================
+            $events = DB::table('events')
+                ->join(
+                    'class',
+                    'events.class_id',
+                    '=',
+                    'class.class_id'
+                )
+                ->selectRaw("
+                events.unq_id AS unq_id,
+
+                events.title AS title,
+
+                events.event_desc AS event_desc,
+
+                events.start_date AS start_date,
+
+                events.end_date AS end_date,
+
+                events.start_time AS start_time,
+
+                events.end_time AS end_time,
+
+                GROUP_CONCAT(
+                    DISTINCT class.name
+                    ORDER BY class.name
+                    SEPARATOR ', '
+                ) AS class_name,
+
+                'event' AS type
+            ")
+                ->where(
+                    'events.isDelete',
+                    'N'
+                )
+                ->where(
+                    'events.publish',
+                    'Y'
+                )
+                ->where(
+                    'events.academic_yr',
+                    $academicYr
+                )
+                ->whereMonth(
+                    'events.start_date',
+                    $month
+                )
+                ->whereYear(
+                    'events.start_date',
+                    $year
+                )
+                ->groupBy(
+                    'events.unq_id',
+                    'events.title',
+                    'events.event_desc',
+                    'events.start_date',
+                    'events.end_date',
+                    'events.start_time',
+                    'events.end_time'
+                );
+
+            // =====================================================
+            // HOLIDAY QUERY
+            // Return same columns as events
+            // =====================================================
+            $holidays = DB::table('holidaylist')
+                ->selectRaw("
+                CONCAT(
+                    'HOLIDAY_',
+                    holiday_id
+                ) AS unq_id,
+
+                title AS title,
+
+                title AS event_desc,
+
+                holiday_date AS start_date,
+
+                COALESCE(
+                    to_date,
+                    holiday_date
+                ) AS end_date,
+
+                NULL AS start_time,
+
+                NULL AS end_time,
+
+                'All' AS class_name,
+
+                'holiday' AS type
+            ")
+                ->where(
+                    'isDelete',
+                    'N'
+                )
+                ->where(
+                    'publish',
+                    'Y'
+                )
+                ->where(
+                    'academic_yr',
+                    $academicYr
+                )
+                ->whereMonth(
+                    'holiday_date',
+                    $month
+                )
+                ->whereYear(
+                    'holiday_date',
+                    $year
+                );
+
+            // =====================================================
+            // Combine Events + Holidays
+            // =====================================================
+            $combinedQuery = $events
+                ->unionAll($holidays);
+
+            // =====================================================
+            // Final query with sorting
+            // =====================================================
+            $data = DB::query()
+                ->fromSub(
+                    $combinedQuery,
+                    'calendar_data'
+                )
+                ->select([
+                    'unq_id',
+                    'title',
+                    'event_desc',
+                    'start_date',
+                    'end_date',
+                    'start_time',
+                    'end_time',
+                    'class_name',
+                    'type'
+                ])
+                ->orderBy(
+                    'start_date',
+                    'asc'
+                )
+                ->orderByDesc(
+                    'start_time'
+                )
+                ->get();
+
+            // =====================================================
+            // Response
+            // =====================================================
+            return response()->json(
+                $data,
+                200
+            );
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Database error while fetching events',
+                'error' =>
+                    $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Something went wrong',
+                'error' =>
+                    $e->getMessage()
+            ], 500);
         }
-        $academicYr = $payload->get('academic_year');
-        if (!$academicYr) {
-            return response()->json(['message' => 'Academic year not found in request headers', 'success' => false], 404);
-        }
-
-        $currentDate = Carbon::now();
-        $month = $request->input('month', $currentDate->month);
-        $year = $request->input('year', $currentDate->year);
-
-        $events = Event::select([
-            'events.unq_id',
-            'events.title',
-            'events.event_desc',
-            'events.start_date',
-            'events.end_date',
-            'events.start_time',
-            'events.end_time',
-            DB::raw('GROUP_CONCAT(class.name) as class_name')
-        ])
-            ->join('class', 'events.class_id', '=', 'class.class_id')
-            ->where('events.isDelete', 'N')
-            ->where('events.publish', 'Y')
-            ->where('events.academic_yr', $academicYr)
-            ->whereMonth('events.start_date', $month)
-            ->whereYear('events.start_date', $year)
-            ->groupBy(
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.start_date',
-                'events.end_date',
-                'events.start_time',
-                'events.end_time'
-            )
-            ->orderBy('events.start_date')
-            ->orderByDesc('events.start_time')
-            ->get()
-            ->map(function ($event) {
-                $event->event_desc = $event->event_desc;
-                return $event;
-            });
-
-        return response()->json($events);
     }
 
     public function getParentNotices(Request $request): JsonResponse
@@ -1011,6 +1172,7 @@ class AdminController extends Controller
             }
 
             $academicYr = $payload->get('academic_year');
+            $shortName = $payload->get('short_name');
 
             if (!$academicYr) {
                 return response()->json([
@@ -1023,8 +1185,10 @@ class AdminController extends Controller
              * | CASE 1: class_name is provided
              * |--------------------------------------------------------------------------
              */
-            if (!empty($className)) {
-                $query = "
+
+            if ($shortName == 'SACS') {
+                if (!empty($className)) {
+                    $query = "
                 SELECT 
                     CONCAT(class.name, ' ', section.name) AS class_section,
                     house.house_name AS house_name,
@@ -1037,7 +1201,7 @@ class AdminController extends Controller
                     ON student.section_id = section.section_id
                 JOIN house 
                     ON student.house = house.house_id
-                WHERE student.isDelete = 'N'
+                WHERE student.isDelete != 'Y'
                   AND student.academic_yr = ?
                   AND class.name = ?
                 GROUP BY 
@@ -1049,94 +1213,218 @@ class AdminController extends Controller
                     house.house_name
             ";
 
-                $results = DB::select($query, [
-                    $academicYr,
-                    $className
-                ]);
+                    $results = DB::select($query, [
+                        $academicYr,
+                        $className
+                    ]);
+
+                    /*
+                     * |--------------------------------------------------------------------------
+                     * | Total students in selected class having house
+                     * |--------------------------------------------------------------------------
+                     */
+                    $totalStudents = DB::table('student as stu')
+                        ->join('class as c', 'stu.class_id', '=', 'c.class_id')
+                        ->where('stu.isDelete', '!=', 'Y')
+                        ->where('stu.academic_yr', $academicYr)
+                        ->where('c.name', $className)
+                        ->whereNotNull('stu.house')
+                        ->where('stu.house', '!=', 0)
+                        ->count('stu.student_id');
+
+                    /*
+                     * |--------------------------------------------------------------------------
+                     * | Add percentage
+                     * |--------------------------------------------------------------------------
+                     */
+                    $totalPercentage = 0;
+                    $lastIndex = count($results) - 1;
+
+                    foreach ($results as $index => $row) {
+                        if ($index === $lastIndex) {
+                            $row->house_percent = $totalStudents > 0
+                                ? round(100 - $totalPercentage, 2)
+                                : 0;
+                        } else {
+                            $percentage = $totalStudents > 0
+                                ? round(($row->student_counts / $totalStudents) * 100, 2)
+                                : 0;
+
+                            $row->house_percent = $percentage;
+
+                            $totalPercentage += $percentage;
+                        }
+                    }
+
+                    return response()->json($results);
+                }
 
                 /*
                  * |--------------------------------------------------------------------------
-                 * | Total students in selected class having house
+                 * | CASE 2: class_name is NOT provided
+                 * | Entire school house-wise data
                  * |--------------------------------------------------------------------------
                  */
+
                 $totalStudents = DB::table('student as stu')
                     ->join('class as c', 'stu.class_id', '=', 'c.class_id')
-                    ->where('stu.isDelete', 'N')
                     ->where('stu.academic_yr', $academicYr)
-                    ->where('c.name', $className)
-                    ->whereNotNull('stu.house')
-                    ->where('stu.house', '!=', 0)
+                    ->where('stu.isDelete', '!=', 'Y')
+                    ->whereNotIn('c.name', ['Nursery', 'LKG', 'UKG'])
                     ->count('stu.student_id');
 
-                /*
-                 * |--------------------------------------------------------------------------
-                 * | Add percentage
-                 * |--------------------------------------------------------------------------
-                 */
-                $totalPercentage = 0;
-                $lastIndex = count($results) - 1;
+                $results = DB::table('house as h')
+                    ->leftJoin('student as stu', function ($join) use ($academicYr) {
+                        $join
+                            ->on('stu.house', '=', 'h.house_id')
+                            ->where('stu.academic_yr', '=', $academicYr)
+                            ->where('stu.isDelete', '!=', 'Y')
+                            ->whereNotIn('stu.class_id', function ($query) {
+                                $query
+                                    ->select('class_id')
+                                    ->from('class')
+                                    ->whereIn('name', ['Nursery', 'LKG', 'UKG']);
+                            });
+                    })
+                    ->select(
+                        'h.house_id',
+                        'h.house_name',
+                        'h.color_code',
+                        DB::raw('COUNT(stu.student_id) AS student_counts')
+                    )
+                    ->groupBy(
+                        'h.house_id',
+                        'h.house_name',
+                        'h.color_code'
+                    )
+                    ->orderBy('h.house_name')
+                    ->get();
 
-                foreach ($results as $index => $row) {
-                    if ($index === $lastIndex) {
-                        $row->house_percent = $totalStudents > 0
-                            ? round(100 - $totalPercentage, 2)
-                            : 0;
-                    } else {
-                        $percentage = $totalStudents > 0
-                            ? round(($row->student_counts / $totalStudents) * 100, 2)
-                            : 0;
+                // Calculate percentage
+                foreach ($results as $row) {
+                    $row->student_counts = (int) $row->student_counts;
 
-                        $row->house_percent = $percentage;
-
-                        $totalPercentage += $percentage;
-                    }
+                    $row->house_percent = $totalStudents > 0
+                        ? round(($row->student_counts / $totalStudents) * 100, 2)
+                        : 0;
                 }
 
                 return response()->json($results);
-            }
+            } else {
+                if (!empty($className)) {
+                    $query = "
+                SELECT 
+                    CONCAT(class.name, ' ', section.name) AS class_section,
+                    house.house_name AS house_name,
+                    house.color_code AS color_code,
+                    COUNT(student.student_id) AS student_counts
+                FROM student
+                JOIN class 
+                    ON student.class_id = class.class_id
+                JOIN section 
+                    ON student.section_id = section.section_id
+                JOIN house 
+                    ON student.house = house.house_id
+                WHERE student.isDelete != 'Y'
+                  AND student.academic_yr = ?
+                  AND class.name = ?
+                GROUP BY 
+                    class_section,
+                    house.house_name,
+                    house.color_code
+                ORDER BY 
+                    class_section,
+                    house.house_name
+            ";
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | CASE 2: class_name is NOT provided
-             * | Entire school house-wise data
-             * |--------------------------------------------------------------------------
-             */
+                    $results = DB::select($query, [
+                        $academicYr,
+                        $className
+                    ]);
 
-            $totalStudents = DB::table('student')
-                ->where('academic_yr', $academicYr)
-                ->where('isDelete', 'N')
-                ->whereNotNull('house')
-                ->where('house', '!=', 0)
-                ->count('student_id');
+                    /*
+                     * |--------------------------------------------------------------------------
+                     * | Total students in selected class having house
+                     * |--------------------------------------------------------------------------
+                     */
+                    $totalStudents = DB::table('student as stu')
+                        ->join('class as c', 'stu.class_id', '=', 'c.class_id')
+                        ->where('stu.isDelete', '!=', 'Y')
+                        ->where('stu.academic_yr', $academicYr)
+                        ->where('c.name', $className)
+                        ->whereNotNull('stu.house')
+                        ->where('stu.house', '!=', 0)
+                        ->count('stu.student_id');
 
-            $results = DB::table('house as h')
-                ->leftJoin('student as stu', function ($join) use ($academicYr) {
-                    $join->on(
-                        'stu.house',
-                        '=',
-                        'h.house_id'
-                    );
+                    /*
+                     * |--------------------------------------------------------------------------
+                     * | Add percentage
+                     * |--------------------------------------------------------------------------
+                     */
+                    $totalPercentage = 0;
+                    $lastIndex = count($results) - 1;
 
-                    $join->where(
-                        'stu.academic_yr',
-                        '=',
-                        $academicYr
-                    );
+                    foreach ($results as $index => $row) {
+                        if ($index === $lastIndex) {
+                            $row->house_percent = $totalStudents > 0
+                                ? round(100 - $totalPercentage, 2)
+                                : 0;
+                        } else {
+                            $percentage = $totalStudents > 0
+                                ? round(($row->student_counts / $totalStudents) * 100, 2)
+                                : 0;
 
-                    $join->where(
-                        'stu.isDelete',
-                        '=',
-                        'N'
-                    );
-                })
-                ->select(
-                    'h.house_id',
-                    'h.house_name',
-                    'h.color_code',
-                    DB::raw('
+                            $row->house_percent = $percentage;
+
+                            $totalPercentage += $percentage;
+                        }
+                    }
+
+                    return response()->json($results);
+                }
+
+                /*
+                 * |--------------------------------------------------------------------------
+                 * | CASE 2: class_name is NOT provided
+                 * | Entire school house-wise data
+                 * |--------------------------------------------------------------------------
+                 */
+
+                $totalStudents = DB::table('student')
+                    ->where('academic_yr', $academicYr)
+                    ->where('isDelete', '!=', 'Y')
+                    ->whereNotNull('house')
+                    ->where('house', '!=', 0)
+                    ->count('student_id');
+
+                $results = DB::table('house as h')
+                    ->leftJoin('student as stu', function ($join) use ($academicYr) {
+                        $join->on(
+                            'stu.house',
+                            '=',
+                            'h.house_id'
+                        );
+
+                        $join->where(
+                            'stu.academic_yr',
+                            '=',
+                            $academicYr
+                        );
+
+                        $join->where(
+                            'stu.isDelete',
+                            '!=',
+                            'Y'
+                        );
+                    })
+                    ->select(
+                        'h.house_id',
+                        'h.house_name',
+                        'h.color_code',
+                        DB::raw('
                     COUNT(stu.student_id) as student_counts
                 '),
-                    DB::raw("
+                        DB::raw("
                     ROUND(
                         (
                             COUNT(stu.student_id)
@@ -1146,16 +1434,17 @@ class AdminController extends Controller
                         2
                     ) as house_percent
                 ")
-                )
-                ->groupBy(
-                    'h.house_id',
-                    'h.house_name',
-                    'h.color_code'
-                )
-                ->orderBy('h.house_name')
-                ->get();
+                    )
+                    ->groupBy(
+                        'h.house_id',
+                        'h.house_name',
+                        'h.color_code'
+                    )
+                    ->orderBy('h.house_name')
+                    ->get();
 
-            return response()->json($results);
+                return response()->json($results);
+            }
         } catch (\Exception $e) {
             \Log::error($e);
 
@@ -19859,33 +20148,43 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
     public function lessonPlanNotSubmitted(Request $request)
     {
         try {
+            // =====================================================
             // Authenticate user
+            // =====================================================
             $user = $this->authenticateUser();
 
+            // =====================================================
             // JWT payload
+            // =====================================================
             $role_id = JWTAuth::getPayload()->get('role_id');
             $reg_id = JWTAuth::getPayload()->get('reg_id');
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
-            // Query parameter
-            // current / upcoming
+            // =====================================================
+            // Query parameter: current / upcoming
+            // =====================================================
             $weekType = $request->query('week', 'current');
 
-            $today = now();
+            if (!in_array($weekType, ['current', 'upcoming'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                ], 422);
+            }
 
-            // =====================================================
-            // Week selection
-            // =====================================================
+            $today = now();
 
             $currentWeekStart = $today
                 ->copy()
                 ->startOfWeek(\Carbon\Carbon::MONDAY);
 
+            // =====================================================
+            // Week selection
+            // =====================================================
             if ($weekType === 'current') {
-                // Current Monday
                 $weekStart = $currentWeekStart->copy();
             } else {
-                // Before Friday don't show upcoming week
+                // Upcoming week visible only from Friday
                 if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
                     $nextWeekStart = $currentWeekStart
                         ->copy()
@@ -19898,10 +20197,13 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     return response()->json([
                         'status' => true,
                         'week_type' => 'upcoming',
-                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
+                        'message' =>
+                            'Upcoming week lesson plan list will be available from Friday.',
                         'week' => [
-                            'start_date' => $nextWeekStart->format('d-m-Y'),
-                            'end_date' => $nextWeekEnd->format('d-m-Y'),
+                            'start_date' =>
+                                $nextWeekStart->format('d-m-Y'),
+                            'end_date' =>
+                                $nextWeekEnd->format('d-m-Y'),
                             'display' =>
                                 $nextWeekStart->format('d-m-Y')
                                 . ' / '
@@ -19917,71 +20219,401 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     ->addWeek();
             }
 
-            $weekEnd = $weekStart->copy()->addDays(6);
+            // =====================================================
+            // Week dates
+            // =====================================================
+            $weekEnd = $weekStart
+                ->copy()
+                ->addDays(6);
 
             // Monday used in lesson_plan.week_date
             $mondayDate = $weekStart->format('d-m-Y');
 
+            // Used for webhook created_at
+            $weekStartSql = $weekStart
+                ->copy()
+                ->startOfDay()
+                ->format('Y-m-d H:i:s');
+
+            $weekEndSql = $weekEnd
+                ->copy()
+                ->endOfDay()
+                ->format('Y-m-d H:i:s');
+
             // =====================================================
-            // Query
+            // Not Submitted teacher-wise
             // =====================================================
-            $notCreatedList = DB::table('subject as s')
+            $data = DB::table('subject as s')
                 ->selectRaw("
                 GROUP_CONCAT(
-                    CONCAT(' ', c.name, ' ', sc.name, ' ', sm.name)
+                    DISTINCT CONCAT(
+                        ' ',
+                        c.name,
+                        ' ',
+                        sc.name,
+                        ' ',
+                        sm.name
+                    )
                 ) AS pending_classes,
+
                 s.teacher_id,
                 t.name,
-                t.phone
-            ")
-                ->join('teacher as t', 's.teacher_id', '=', 't.teacher_id')
-                ->join('class as c', 's.class_id', '=', 'c.class_id')
-                ->join('section as sc', 's.section_id', '=', 'sc.section_id')
-                ->join('subject_master as sm', 's.sm_id', '=', 'sm.sm_id')
-                ->leftJoin('teacher_category as tc', 'tc.tc_id', '=', 't.tc_id')
+                t.phone,
+
+                t.tc_id AS teacher_category_id,
+                tc.name AS category,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Submitted lesson plan count
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            lp.class_id,
+                            '-',
+                            lp.section_id,
+                            '-',
+                            lp.subject_id
+                        )
+                    )
+
+                    FROM lesson_plan lp
+
+                    WHERE lp.reg_id = s.teacher_id
+
+                    AND lp.academic_yr = ?
+
+                    AND SUBSTRING_INDEX(
+                        lp.week_date,
+                        ' /',
+                        1
+                    ) = ?
+
+                ) AS submitted_count,
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Total lesson plans allotted
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            s2.class_id,
+                            '-',
+                            s2.section_id,
+                            '-',
+                            s2.sm_id
+                        )
+                    )
+
+                    FROM subject s2
+
+                    WHERE s2.teacher_id = s.teacher_id
+
+                    AND s2.academic_yr = ?
+
+                    AND s2.sm_id NOT IN (
+                        SELECT sm_id
+                        FROM subjects_excluded_from_curriculum
+                    )
+
+                ) AS total_lesson_plan,
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Total not submitted
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT COUNT(
+                        DISTINCT CONCAT(
+                            s3.class_id,
+                            '-',
+                            s3.section_id,
+                            '-',
+                            s3.sm_id
+                        )
+                    )
+
+                    FROM subject s3
+
+                    WHERE s3.teacher_id = s.teacher_id
+
+                    AND s3.academic_yr = ?
+
+                    AND s3.sm_id NOT IN (
+                        SELECT sm_id
+                        FROM subjects_excluded_from_curriculum
+                    )
+
+                    AND CONCAT(
+                        s3.class_id,
+                        s3.section_id,
+                        s3.sm_id,
+                        s3.teacher_id
+                    ) NOT IN (
+
+                        SELECT CONCAT(
+                            lp3.class_id,
+                            lp3.section_id,
+                            lp3.subject_id,
+                            lp3.reg_id
+                        )
+
+                        FROM lesson_plan lp3
+
+                        WHERE lp3.academic_yr = ?
+
+                        AND SUBSTRING_INDEX(
+                            lp3.week_date,
+                            ' /',
+                            1
+                        ) = ?
+                    )
+
+                ) AS not_submitted_count,
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Latest webhook status
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT rwd.status
+
+                    FROM redington_webhook_details rwd
+
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+
+                    AND rwd.message_type = 'lesson_plan_not_submitted'
+
+                    AND rwd.created_at BETWEEN ? AND ?
+
+                    ORDER BY rwd.created_at DESC
+
+                    LIMIT 1
+
+                ) AS webhook_status,
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | WhatsApp/SMS sent
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT rwd.sms_sent
+
+                    FROM redington_webhook_details rwd
+
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+
+                    AND rwd.message_type = 'lesson_plan_not_submitted'
+
+                    AND rwd.created_at BETWEEN ? AND ?
+
+                    ORDER BY rwd.created_at DESC
+
+                    LIMIT 1
+
+                ) AS whatsapp_sent,
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | WhatsApp Created Date
+                |--------------------------------------------------------------------------
+                */
+                (
+                    SELECT rwd.created_at
+
+                    FROM redington_webhook_details rwd
+
+                    WHERE rwd.stu_teacher_id = s.teacher_id
+
+                    AND rwd.message_type = 'lesson_plan_not_submitted'
+
+                    AND rwd.created_at BETWEEN ? AND ?
+
+                    ORDER BY rwd.created_at DESC
+
+                    LIMIT 1
+
+                ) AS whatsapp_created_at
+
+            ", [
+                    // submitted_count
+                    $academic_year,
+                    $mondayDate,
+                    // total_lesson_plan
+                    $academic_year,
+                    // not_submitted_count
+                    $academic_year,
+                    $academic_year,
+                    $mondayDate,
+                    // webhook_status
+                    $weekStartSql,
+                    $weekEndSql,
+                    // whatsapp_sent
+                    $weekStartSql,
+                    $weekEndSql,
+                    // whatsapp_created_at
+                    $weekStartSql,
+                    $weekEndSql,
+                ])
+                // =====================================================
+                // Joins
+                // =====================================================
+                ->join(
+                    'teacher as t',
+                    's.teacher_id',
+                    '=',
+                    't.teacher_id'
+                )
+                ->join(
+                    'class as c',
+                    's.class_id',
+                    '=',
+                    'c.class_id'
+                )
+                ->join(
+                    'section as sc',
+                    's.section_id',
+                    '=',
+                    'sc.section_id'
+                )
+                ->join(
+                    'subject_master as sm',
+                    's.sm_id',
+                    '=',
+                    'sm.sm_id'
+                )
+                ->leftJoin(
+                    'teacher_category as tc',
+                    'tc.tc_id',
+                    '=',
+                    't.tc_id'
+                )
+                // =====================================================
+                // Basic conditions
+                // =====================================================
                 ->where('t.isDelete', 'N')
-                ->where('s.academic_yr', $academic_year)
+                ->where(
+                    's.academic_yr',
+                    $academic_year
+                )
+                // =====================================================
+                // Only NOT submitted lesson plans
+                // =====================================================
                 ->whereNotIn(
-                    DB::raw(
-                        'CONCAT(
+                    DB::raw('
+                    CONCAT(
                         s.class_id,
                         s.section_id,
                         s.sm_id,
                         s.teacher_id
-                    )'
-                    ),
-                    function ($query) use ($mondayDate) {
+                    )
+                '),
+                    function ($query) use (
+                        $mondayDate,
+                        $academic_year
+                    ) {
                         $query
-                            ->selectRaw(
-                                'CONCAT(
+                            ->selectRaw('
+                            CONCAT(
                                 class_id,
                                 section_id,
                                 subject_id,
                                 reg_id
-                            )'
                             )
+                        ')
                             ->from('lesson_plan')
+                            ->where(
+                                'academic_yr',
+                                $academic_year
+                            )
                             ->whereRaw(
-                                "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
+                                "SUBSTRING_INDEX(
+                                week_date,
+                                ' /',
+                                1
+                            ) = ?",
                                 [$mondayDate]
                             );
                     }
                 )
-                ->whereNotIn('s.sm_id', function ($query) {
-                    $query
-                        ->select('sm_id')
-                        ->from('subjects_excluded_from_curriculum');
-                })
+                // =====================================================
+                // Excluded subjects
+                // =====================================================
+                ->whereNotIn(
+                    's.sm_id',
+                    function ($query) {
+                        $query
+                            ->select('sm_id')
+                            ->from(
+                                'subjects_excluded_from_curriculum'
+                            );
+                    }
+                )
+                // =====================================================
+                // Group teacher-wise
+                // =====================================================
                 ->groupBy(
                     's.teacher_id',
                     't.name',
-                    't.phone'
+                    't.phone',
+                    't.tc_id',
+                    'tc.name'
                 )
-                ->orderBy('t.name', 'asc')
+                ->orderBy(
+                    't.name',
+                    'asc'
+                )
                 ->get();
 
             // =====================================================
-            // Response
+            // Format response
+            // =====================================================
+            $data->transform(function ($row) {
+                $submitted =
+                    (int) $row->submitted_count;
+
+                $total =
+                    (int) $row->total_lesson_plan;
+
+                $notSubmitted =
+                    (int) $row->not_submitted_count;
+
+                $row->total_lesson_plan =
+                    $total;
+
+                $row->not_submitted_count =
+                    $notSubmitted;
+
+                // Example:
+                // submitted_count = "3/5"
+                $row->submitted_count =
+                    $notSubmitted . '/' . $total;
+
+                // =================================================
+                // WhatsApp notification status
+                // =================================================
+                $row->whatsapp_status =
+                    $row->webhook_status ?? '';
+
+                unset($row->webhook_status);
+
+                return $row;
+            });
+
+            // =====================================================
+            // Final response
             // =====================================================
             return response()->json([
                 'status' => true,
@@ -19996,26 +20628,31 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         . ' / '
                         . $weekEnd->format('d-m-Y'),
                 ],
-                'data' => $notCreatedList,
+                'data' => $data,
             ], 200);
         } catch (\Illuminate\Database\QueryException $e) {
             return response()->json([
                 'status' => false,
                 'message' =>
                     'Database error while fetching lesson plan summary',
-                'error' => $e->getMessage()
+                'error' =>
+                    $e->getMessage()
             ], 500);
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Authentication token error',
-                'error' => $e->getMessage()
+                'message' =>
+                    'Authentication token error',
+                'error' =>
+                    $e->getMessage()
             ], 401);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
+                'message' =>
+                    'Something went wrong',
+                'error' =>
+                    $e->getMessage()
             ], 500);
         }
     }
