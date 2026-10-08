@@ -35,11 +35,7 @@ class SendTeacherMessageJob implements ShouldQueue
         $teacherphones = DB::select("select phone,teacher_id from teacher where teacher_id IN ($teacherids)");
         $webhookIds = [];
         if (
-            $whatsappintegration == 'Y' &&
-            (
-                isWhatsappMessageEnabled('attendance_not_marked') ||
-                isWhatsappMessageEnabled('pending_for_approval')
-            )
+            $whatsappintegration == 'Y'
         ) {
             foreach ($teacherphones as $teacherphone) {
                 if ($teacherphone->phone) {
