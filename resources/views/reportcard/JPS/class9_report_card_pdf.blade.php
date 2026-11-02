@@ -208,67 +208,91 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
 
             </tr>
 		</table>
-		        @forelse ($reportCardData['groups'] as $group)
-        <?php $grandTotals = array_fill(0, count($reportCardData['blocks']), ['total' => 0, 'maximum' => 0]); ?>
-        <table class="table-responsive" style="width:85%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; " cellpadding="0" cellspacing="0" >
+		                <?php
+        $grandTotals = array_fill(0, count($reportCardData['blocks']), ['total' => 0, 'maximum' => 0]);
+        $assessmentColumnCounts = array_fill(0, count($reportCardData['blocks']), 0);
+        foreach ($reportCardData['groups'] as $group) {
+            foreach ($group['schema'] as $index => $schema) {
+                $assessmentColumnCounts[$index] = max(
+                    $assessmentColumnCounts[$index],
+                    count($schema) + count($group['periodic_schema'][$index])
+                );
+            }
+        }
+        ?>
+        <table class="table-responsive" style="width:85%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; " cellpadding="0" cellspacing="0">
             <tr>
                 <td style="vertical-align:middle;" cellpadding="0" cellspacing="0">
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;border: 1px solid grey !important;" cellpadding="0" cellspacing="0">
                         <tr>
                             <th class="col-md-3 col-sm-3 col-xs-3 th" style="word-wrap: break-word; font-size:10px"><b>Scholastic Areas</b></th>
                             @foreach ($reportCardData['blocks'] as $index => $block)
-                                <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="{{ count($group['schema'][$index]) + 3 }}">{{ $block['exam']->name }}</th>
+                                <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="{{ $assessmentColumnCounts[$index] + 2 }}">{{ $block['exam']->name }}</th>
                             @endforeach
                         </tr>
-                        <tr>
-                            <td class="col-md-3 td" style="text-align:center;height:30px;">SUBJECT</td>
-                            @foreach ($reportCardData['blocks'] as $index => $block)
-                                <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $block['source_label'] }}<br/>({{ $group['rows'][0]['terms'][$index]['raw']['maximum'] }})</td>
-                                @foreach ($group['schema'][$index] as [$name, $maximum])
-                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $name }}<br/>({{ $maximum + 0 }})</td>
-                                @endforeach
-                                <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">Total<br/>({{ array_sum(array_column($group['schema'][$index], 1)) }})</td>
-                                <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">Grade</td>
-                            @endforeach
-                        </tr>
-                        @foreach ($group['rows'] as $row)
+                        @forelse ($reportCardData['groups'] as $group)
+                            {{-- Repeat only the assessment headings when a subject uses a different scheme. --}}
                             <tr>
-                                <td class="col-md-1 td" style="text-align:center;height:30px;">{{ $row['name'] }}</td>
-                                @foreach ($row['terms'] as $index => $term)
-                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $term['raw']['value'] }}</td>
-                                    @foreach ($term['components'] as $component)
-                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $component['value'] }}</td>
+                                <td class="col-md-3 td" style="text-align:center;height:30px;">SUBJECT</td>
+                                @foreach ($reportCardData['blocks'] as $index => $block)
+                                    @foreach ($group['periodic_schema'][$index] as [$name, $maximum])
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">@if ($block['term_number'] === 1){{ $block['source_label'] }}<br/>@endif{{ $name }}<br/>({{ $maximum + 0 }})</td>
                                     @endforeach
-                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $term['total'] }}</td>
-                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $gradeFor($term['total'], $term['maximum']) }}</td>
-                                    @php
+                                    @foreach ($group['schema'][$index] as [$name, $maximum])
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $name }}<br/>({{ $maximum + 0 }})</td>
+                                    @endforeach
+                                    @php($padding = $assessmentColumnCounts[$index] - count($group['schema'][$index]) - count($group['periodic_schema'][$index]))
+                                    @if ($padding > 0)
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;" colspan="{{ $padding }}">&nbsp;</td>
+                                    @endif
+                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">Total<br/>({{ $group['rows'][0]['terms'][$index]['maximum'] }})</td>
+                                    <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">Grade</td>
+                                @endforeach
+                            </tr>
+                            @foreach ($group['rows'] as $row)
+                                <tr>
+                                    <td class="col-md-1 td" style="text-align:center;height:30px;">{{ $row['name'] }}</td>
+                                    @foreach ($row['terms'] as $index => $term)
+                                        @foreach ($term['periodic'] as $heading)
+                                            <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $heading['value'] }}</td>
+                                        @endforeach
+                                        @foreach ($term['components'] as $component)
+                                            <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $component['value'] }}</td>
+                                        @endforeach
+                                        <?php $padding = $assessmentColumnCounts[$index] - count($term['components']) - count($term['periodic']); ?>
+                                        @if ($padding > 0)
+                                            <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;" colspan="{{ $padding }}">&nbsp;</td>
+                                        @endif
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $term['total'] }}</td>
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $gradeFor($term['total'], $term['maximum']) }}</td>
+                                        <?php
                                         if (is_numeric($term['total'])) {
                                             $grandTotals[$index]['total'] += $term['total'];
                                             $grandTotals[$index]['maximum'] += $term['maximum'];
                                         }
-                                    @endphp
+                                        ?>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        @empty
+                            <tr><td class="td" style="text-align:center;height:30px;" colspan="{{ 1 + array_sum($assessmentColumnCounts) + count($reportCardData['blocks']) * 2 }}">No published Term I or Term II assessments are available.</td></tr>
+                        @endforelse
+                        @if ($reportCardData['groups'])
+                            <tr>
+                                <td class="td" style="text-align:center;height:45px;">TOTAL</td>
+                                @foreach ($reportCardData['blocks'] as $index => $block)
+                                    @for ($column = 0; $column < $assessmentColumnCounts[$index]; $column++)
+                                        <td class="td" style="border:1px solid grey;text-align:center;height:45px;">&nbsp;</td>
+                                    @endfor
+                                    <td class="td" style="text-align:center;height:45px;">{{ $grandTotals[$index]['total'] }}/{{ $grandTotals[$index]['maximum'] }}</td>
+                                    <td class="td" style="text-align:center;height:45px;">{{ $gradeFor($grandTotals[$index]['total'], $grandTotals[$index]['maximum']) }}</td>
                                 @endforeach
                             </tr>
-                        @endforeach
-                        <tr>
-                            <td class="td" style="text-align:center;height:45px;">TOTAL</td>
-                            @foreach ($reportCardData['blocks'] as $index => $block)
-                                @for ($column = 0; $column < count($group['schema'][$index]) + 1; $column++)
-                                    <td class="td" style="border:1px solid grey;text-align:center;height:45px;">&nbsp;</td>
-                                @endfor
-                                <td class="td" style="text-align:center;height:45px;">{{ $grandTotals[$index]['total'] }}/{{ $grandTotals[$index]['maximum'] }}</td>
-                                <td class="td" style="text-align:center;height:45px;">{{ $gradeFor($grandTotals[$index]['total'], $grandTotals[$index]['maximum']) }}</td>
-                            @endforeach
-                        </tr>
+                        @endif
                     </table>
                 </td>
             </tr>
         </table>
-        @empty
-            <table class="table-responsive" style="width:85%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; " cellpadding="0" cellspacing="0">
-                <tr><td class="td" style="text-align:center;height:30px;">No published Term I or Term II assessments are available.</td></tr>
-            </table>
-        @endforelse
 
 <table class="table-responsive" style="width:90%;margin-left: 4%;margin-right: auto;border-spacing: 0px;background-color:white;">
 			 <tr>
@@ -323,7 +347,7 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
                  </td>
              </tr>
         </table>
-			<table class="table-responsive" style="width:90%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="10" cellspacing="10" border="0">
+			<table class="table-responsive" style="width:90%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="4" cellspacing="0" border="0">
 			<tr>
 			   <!--td-->
 				<?php
@@ -394,8 +418,7 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
 
         </tr>
 		</table>
-        <br>
-	    <table class="table-responsive" style="width:86%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
+	    <table class="table-responsive" style="width:86%;margin-left:5%;margin-right: auto;margin-top:8px;margin-bottom:18px;border-spacing: 0px;background-color:white;overflow: visible !important;page-break-inside:avoid;" cellpadding="1" cellspacing="0">
 			<tr>
 				<td style="width:33%;">
 					<table class="table-responsive" width="90%" cellspacing="0">

@@ -86,28 +86,43 @@ class JpsClass9ReportCardDataBuilder
                 $configuration = $configs[$examId][$subject->sub_rc_master_id] ?? [];
                 $termMark = $byExam[$examId][$subject->sub_rc_master_id] ?? null;
                 $raw = $this->bestPeriodic($block['periodics'], $subject->sub_rc_master_id, $byExam, $configs);
+                $periodicCells = $block['term_number'] === 1
+                    ? $this->periodicReportCells($block['periodics'][0] ?? null, $subject->sub_rc_master_id, $byExam, $configs)
+                    : [['label' => $block['source_label'], 'value' => $raw['value'], 'maximum' => $raw['maximum']]];
+                $conversionSource = $block['term_number'] === 1
+                    ? ['value' => $this->total(array_column($periodicCells, 'value')), 'maximum' => array_sum(array_column($periodicCells, 'maximum'))]
+                    : $raw;
                 $components = [];
                 foreach ($configuration as $heading) {
                     $maximum = $this->maximum($heading);
                     $periodic = $this->isPeriodicHeading($heading->heading_name);
                     $value = $periodic
-                        ? $this->scale($raw['value'], $raw['maximum'], $maximum)
+                        ? $this->scale($conversionSource['value'], $conversionSource['maximum'], $maximum)
                         : $this->component($termMark, $heading);
+                    $value = $this->roundReportMark($value);
                     $components[] = [
                         'label' => $periodic ? 'On report card convert to' : $heading->heading_name,
                         'maximum' => $maximum,
                         'value' => $value,
                     ];
                 }
+                // PT-I contains report-card marks and contributes alongside every term component.
+                // The Term II best-PT column is a raw source score; only its converted component contributes.
+                $totalCells = $block['term_number'] === 1 ? array_merge($periodicCells, $components) : $components;
                 $schema[] = array_map(fn ($cell) => [$cell['label'], $cell['maximum']], $components);
                 $cells[] = [
-                    'raw' => $raw, 'components' => $components,
-                    'total' => $this->total(array_column($components, 'value')),
-                    'maximum' => array_sum(array_column($components, 'maximum')),
+                    'raw' => $raw, 'periodic' => $periodicCells, 'components' => $components,
+                    'total' => $this->total(array_column($totalCells, 'value')),
+                    'maximum' => array_sum(array_column($totalCells, 'maximum')),
                 ];
             }
-            $key = json_encode([$schema, array_map(fn ($cell) => $cell['raw']['maximum'], $cells)]);
+            $periodicSchema = array_map(
+                fn ($cell) => array_map(fn ($heading) => [$heading['label'], $heading['maximum']], $cell['periodic']),
+                $cells
+            );
+            $key = json_encode([$schema, $periodicSchema]);
             $groups[$key]['schema'] = $schema;
+            $groups[$key]['periodic_schema'] = $periodicSchema;
             $groups[$key]['rows'][] = ['name' => $subject->name, 'terms' => $cells];
         }
 
@@ -212,6 +227,11 @@ class JpsClass9ReportCardDataBuilder
         return $from > 0 ? round((float) $value / $from * $to, 2, PHP_ROUND_HALF_UP) : '';
     }
 
+    private function roundReportMark($value)
+    {
+        return is_numeric($value) ? round((float) $value, 0, PHP_ROUND_HALF_UP) : $value;
+    }
+
     private function total(array $values)
     {
         $numeric = array_filter($values, 'is_numeric');
@@ -226,7 +246,7 @@ class JpsClass9ReportCardDataBuilder
         $saved = $this->decode($mark->reportcard_marks);
         if (array_key_exists($heading->heading_name, $saved) && $saved[$heading->heading_name] !== null) {
             $value = $saved[$heading->heading_name];
-            return is_numeric($value) ? round((float) $value, 2) : $value;
+            return $this->roundReportMark($value);
         }
         $raw = $this->decode($mark->mark_obtained);
         $highest = $this->decode($mark->highest_marks);
@@ -235,7 +255,42 @@ class JpsClass9ReportCardDataBuilder
         if (($present[$id] ?? null) === 'N') {
             return 'Ab';
         }
-        return $this->scale($raw[$id] ?? '', (float) ($highest[$id] ?? $heading->highest_marks), $this->maximum($heading));
+        return $this->roundReportMark($this->scale($raw[$id] ?? '', (float) ($highest[$id] ?? $heading->highest_marks), $this->maximum($heading)));
+    }
+
+    private function periodicReportCells($exam, $subjectId, array $marks, array $configs): array
+    {
+        if (!$exam) {
+            return [];
+        }
+        $configuration = $configs[$exam->exam_id][$subjectId] ?? [];
+        $mark = $marks[$exam->exam_id][$subjectId] ?? null;
+        $saved = $this->decode($mark->reportcard_marks ?? null);
+        $highest = $this->decode($mark->reportcard_highest_marks ?? null);
+        $present = $this->decode($mark->present ?? null);
+        $byName = [];
+        foreach ($configuration as $heading) {
+            $byName[$heading->heading_name] = $heading;
+        }
+        // Keep configured heading order; include saved headings from older configurations too.
+        $names = array_unique(array_merge(array_keys($byName), array_keys($saved), array_keys($highest)));
+        $cells = [];
+        foreach ($names as $name) {
+            $heading = $byName[$name] ?? null;
+            $value = array_key_exists($name, $saved)
+                ? ($saved[$name] ?? '') : ($heading ? $this->component($mark, $heading) : '');
+            if ($heading && ($present[$heading->marks_headings_id] ?? null) === 'N') {
+                $value = 'Ab';
+            }
+            $maximum = isset($highest[$name]) && is_numeric($highest[$name])
+                ? (float) $highest[$name] : ($heading ? $this->maximum($heading) : 0.0);
+            $cells[] = [
+                'label' => $name,
+                'value' => $this->roundReportMark($value),
+                'maximum' => $maximum,
+            ];
+        }
+        return $cells;
     }
 
     private function bestPeriodic(array $exams, $subjectId, array $marks, array $configs): array
