@@ -35,7 +35,8 @@ return [
     ],
     'allowed_origins_patterns' => ['*'],
     'allowed_headers' => ['*'],
-    'exposed_headers' => ['*'],
+    // Explicitly expose download filenames for credentialed browser requests.
+    'exposed_headers' => ['*', 'Content-Disposition'],
     'max_age' => 0,
     'supports_credentials' => true,
 ];
