@@ -126,14 +126,15 @@
 </style>
 </head>
 <body>
+@foreach ($reports ?? [$reportCardData] as $reportCardData)
 <?php
 $row1 = (array) $reportCardData['student'];
 $class_name = $row1['class_name'];
 $section_name = $row1['section_name'];
 $settings = $reportCardData['settings'];
 $term_list = array_map(
-    fn ($block) => (object) ['term_id' => $block['term_number'], 'name' => $block['exam']->name],
-    array_values(array_filter($reportCardData['blocks'], fn ($block) => $block['show_summary']))
+    fn($block) => (object) ['term_id' => $block['term_number'], 'name' => $block['exam']->name],
+    array_values(array_filter($reportCardData['blocks'], fn($block) => $block['show_summary']))
 );
 $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($reportCardData) {
     if ($value === 'Ab') {
@@ -209,17 +210,17 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
             </tr>
 		</table>
 		                <?php
-        $grandTotals = array_fill(0, count($reportCardData['blocks']), ['total' => 0, 'maximum' => 0]);
-        $assessmentColumnCounts = array_fill(0, count($reportCardData['blocks']), 0);
-        foreach ($reportCardData['groups'] as $group) {
-            foreach ($group['schema'] as $index => $schema) {
-                $assessmentColumnCounts[$index] = max(
-                    $assessmentColumnCounts[$index],
-                    count($schema) + count($group['periodic_schema'][$index])
-                );
-            }
-        }
-        ?>
+                        $grandTotals = array_fill(0, count($reportCardData['blocks']), ['total' => 0, 'maximum' => 0]);
+                        $assessmentColumnCounts = array_fill(0, count($reportCardData['blocks']), 0);
+                        foreach ($reportCardData['groups'] as $group) {
+                            foreach ($group['schema'] as $index => $schema) {
+                                $assessmentColumnCounts[$index] = max(
+                                    $assessmentColumnCounts[$index],
+                                    count($schema) + count($group['periodic_schema'][$index])
+                                );
+                            }
+                        }
+                        ?>
         <table class="table-responsive" style="width:85%; margin-left: 5%; margin-right: auto; border-spacing: 0px; background-color:white; " cellpadding="0" cellspacing="0">
             <tr>
                 <td style="vertical-align:middle;" cellpadding="0" cellspacing="0">
@@ -306,27 +307,6 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
                     <table class="table-responsive" style="width:auto;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 						<tr>
 
-                            <td class="" style="vertical-align:middle;" cellpadding="0" cellspacing="0">
-                                                        <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white; font-size:15px;" cellpadding="2" cellspacing="0">
-                                <tr>
-                                    <th class="td" cellpadding="0" colspan="{{ count($term_list) + 1 }}">CO- SCHOLASTICS AREA (Graded on 5 point Scale)</th>
-                                </tr>
-                                <tr>
-                                    <th class="col-md-3 th" style="height:25px;">Subjects</th>
-                                    @foreach ($term_list as $term)
-                                        <th class="col-md-1 th1" style="height:25px;" width="">{{ $term->name }}</th>
-                                    @endforeach
-                                </tr>
-                                @foreach ($reportCardData['co_scholastic'] as $row)
-                                    <tr>
-                                        <td class="col-md-1 td" style="text-align:center;height:20px;">{{ $row['name'] }}</td>
-                                        @foreach ($row['terms'] as $term)
-                                            <td class="td" style="text-align:center;height:20px;">{{ $term['grade'] }}</td>
-                                        @endforeach
-                                    </tr>
-                                @endforeach
-                            </table>
-                          </td>
 				</tr>
 			</table>
                  </td>
@@ -371,8 +351,8 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
 				<td style="font-size:12px;width: 70%;">
 				<div class="statistics_line">
 				<?php
-                    echo $remark_string;
-                    ?>
+                echo $remark_string;
+                ?>
 				</div>
 				</td>
         </tr>
@@ -476,5 +456,6 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
 		</table>
     </div>
 </div>
+@endforeach
 </body>
 </html>

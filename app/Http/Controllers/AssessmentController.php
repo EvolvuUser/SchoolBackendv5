@@ -23,6 +23,7 @@ use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
+use App\Services\ReportCard\JpsSecondaryBulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass10ReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
@@ -11046,15 +11047,16 @@ class AssessmentController extends Controller
         $stud_count = $request->input('stud_count');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
 
-        if ($short_name == 'JPS' && in_array($class_name, ['1', '2', '3', '4', '5', '6', '7', '8'], true)) {
+        if ($short_name == 'JPS' && in_array($class_name, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], true)) {
             $request->validate([
                 'class_id' => 'required|integer|min:1',
                 'section_id' => 'required|integer|min:1',
                 'academic_yr' => 'required|string|max:11',
                 'stud_count' => 'nullable|integer|min:1',
             ]);
-            $reportCardData = app(JpsBulkReportCardDataBuilder::class)
-                ->build($class_id, $section_id, $academic_yr, $stud_count);
+            $builder = in_array($class_name, ['9', '10'], true)
+                ? JpsSecondaryBulkReportCardDataBuilder::class : JpsBulkReportCardDataBuilder::class;
+            $reportCardData = app($builder)->build($class_id, $section_id, $academic_yr, $stud_count);
             if ($reportCardData['students'] === []) {
                 return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
             }
@@ -11063,6 +11065,8 @@ class AssessmentController extends Controller
             $view = match ($class_name) {
                 '1', '2' => 'reportcard.JPS.class1to2_report_card_pdf_all',
                 '3', '4', '5' => 'reportcard.JPS.class3to5_report_card_pdf_all',
+                '9' => 'reportcard.JPS.class9_report_card_pdf_all',
+                '10' => 'reportcard.JPS.class10_report_card_pdf_all',
                 default => 'reportcard.JPS.class6to8_report_card_pdf_all',
             };
 

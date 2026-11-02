@@ -6,10 +6,13 @@ use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
 use Illuminate\Support\Facades\DB;
 use PDF;
 use Tests\TestCase;
+use Tests\Concerns\TestsJpsSecondaryBulkReportCards;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class JpsClass9ReportCardTest extends TestCase
 {
+    use TestsJpsSecondaryBulkReportCards;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -18,7 +21,7 @@ class JpsClass9ReportCardTest extends TestCase
             'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '',
         ]]);
         foreach ([
-            'CREATE TABLE student (student_id INTEGER, class_id INTEGER, section_id INTEGER, academic_yr TEXT, parent_id INTEGER, first_name TEXT, mid_name TEXT, last_name TEXT, roll_no INTEGER, reg_no INTEGER, dob TEXT)',
+            'CREATE TABLE student (student_id INTEGER, class_id INTEGER, section_id INTEGER, academic_yr TEXT, parent_id INTEGER, first_name TEXT, mid_name TEXT, last_name TEXT, roll_no INTEGER, reg_no INTEGER, dob TEXT, IsDelete TEXT DEFAULT "N")',
             'CREATE TABLE parent (parent_id INTEGER, father_name TEXT)',
             'CREATE TABLE class (class_id INTEGER, name TEXT)',
             'CREATE TABLE section (section_id INTEGER, name TEXT)',

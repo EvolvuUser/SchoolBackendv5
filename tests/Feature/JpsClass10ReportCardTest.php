@@ -6,10 +6,13 @@ use App\Services\ReportCard\JpsClass10ReportCardDataBuilder;
 use Illuminate\Support\Facades\DB;
 use PDF;
 use Tests\TestCase;
+use Tests\Concerns\TestsJpsSecondaryBulkReportCards;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class JpsClass10ReportCardTest extends TestCase
 {
+    use TestsJpsSecondaryBulkReportCards;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -18,7 +21,7 @@ class JpsClass10ReportCardTest extends TestCase
             'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '',
         ]]);
         foreach ([
-            'CREATE TABLE student (student_id INTEGER, class_id INTEGER, section_id INTEGER, academic_yr TEXT, parent_id INTEGER, first_name TEXT, mid_name TEXT, last_name TEXT, roll_no INTEGER, reg_no INTEGER, dob TEXT)',
+            'CREATE TABLE student (student_id INTEGER, class_id INTEGER, section_id INTEGER, academic_yr TEXT, parent_id INTEGER, first_name TEXT, mid_name TEXT, last_name TEXT, roll_no INTEGER, reg_no INTEGER, dob TEXT, IsDelete TEXT DEFAULT "N")',
             'CREATE TABLE parent (parent_id INTEGER, father_name TEXT)',
             'CREATE TABLE class (class_id INTEGER, name TEXT)',
             'CREATE TABLE section (section_id INTEGER, name TEXT)',
@@ -123,11 +126,15 @@ class JpsClass10ReportCardTest extends TestCase
         $english = $data['groups'][0]['rows'][0]['terms'];
         $it = $data['groups'][1]['rows'][0]['terms'];
         $this->assertSame(32.0, $english[0]['raw']['value']);
-        $this->assertSame(4.0, $english[0]['components'][0]['value']);
+        $this->assertSame(4.0, $english[0]['periodic'][0]['value']);
         $this->assertSame(87.0, $english[0]['total']);
         $this->assertSame(100.0, $english[0]['maximum']);
         $this->assertSame(89.0, $it[0]['total']);
         $this->assertSame(100.0, $it[0]['maximum']);
+        $this->assertSame(8.0, $it[0]['periodic'][0]['value']);
+        $this->assertSame(10.0, $it[0]['periodic'][0]['maximum']);
+        $this->assertCount(4, $english[0]['components']);
+        $this->assertCount(4, $it[0]['components']);
         $this->assertSame([36.0, 70.0, 75.0], array_map(fn ($term) => $term['periodic'][0]['value'], array_slice($english, 1)));
         $this->assertSame([40.0, 80.0, 80.0], array_map(fn ($term) => $term['periodic'][0]['maximum'], array_slice($english, 1)));
         $this->assertSame([18.0, 40.0, 47.0], array_map(fn ($term) => $term['periodic'][0]['value'], array_slice($it, 1)));
@@ -142,7 +149,7 @@ class JpsClass10ReportCardTest extends TestCase
             ->update(['mark_obtained' => '{"101":40}']);
         $term = $this->build()['groups'][0]['rows'][0]['terms'][0];
         $this->assertSame(38.0, $term['raw']['value']);
-        $this->assertSame(5.0, $term['components'][0]['value']);
+        $this->assertSame(5.0, $term['periodic'][0]['value']);
         $this->assertSame(88.0, $term['total']);
         $this->assertSame(100.0, $term['maximum']);
     }
@@ -153,12 +160,12 @@ class JpsClass10ReportCardTest extends TestCase
         $data = $this->build();
         $english = $data['groups'][0]['rows'][0]['terms'][0];
         $it = $data['groups'][1]['rows'][0]['terms'][0];
-        $this->assertSame('On report card convert to', $english['components'][0]['label']);
-        $this->assertSame(5.0, $english['components'][0]['maximum']);
-        $this->assertSame(4.0, $english['components'][0]['value']);
+        $this->assertSame('Periodic test', $english['periodic'][0]['label']);
+        $this->assertSame(5.0, $english['periodic'][0]['maximum']);
+        $this->assertSame(4.0, $english['periodic'][0]['value']);
         $this->assertSame(100.0, $english['maximum']);
         $this->assertSame(87.0, $english['total']);
-        $this->assertSame(10.0, $it['components'][0]['maximum']);
+        $this->assertSame(10.0, $it['periodic'][0]['maximum']);
         $this->assertSame(100.0, $it['maximum']);
         $this->assertSame(89.0, $it['total']);
     }
@@ -196,10 +203,12 @@ class JpsClass10ReportCardTest extends TestCase
         $html = view('reportcard.JPS.class10_report_card_pdf', ['reportCardData' => $data])->render();
         $this->assertCount(0, DB::getQueryLog());
         DB::disableQueryLog();
-        foreach (['Best of PT - I / PT - II', 'PT - III', 'Preboard 1', 'Preboard 2', 'Practical', 'Oral/Viva', '176/200'] as $label) {
+        foreach (['PT - I', 'PT - III', 'Preboard 1', 'Preboard 2', 'Practical', 'Oral/Viva', '176/200'] as $label) {
             $this->assertStringContainsString($label, $html);
         }
         $this->assertStringNotContainsString('TERM II', $html);
+        $this->assertStringNotContainsString('On report card convert to', $html);
+        $this->assertStringNotContainsString('Best of', $html);
         $this->assertSame(1, substr_count($html, '<b>Scholastic Areas</b>'));
         $document = new \DOMDocument;
         @$document->loadHTML($html);
@@ -208,7 +217,7 @@ class JpsClass10ReportCardTest extends TestCase
         $it = $xpath->query('//tr[td[1][normalize-space(.)="IT"]]')->item(0);
         $this->assertTrue($xpath->query('ancestor::table[1]', $english)->item(0)->isSameNode($xpath->query('ancestor::table[1]', $it)->item(0)));
         $this->assertSame(
-            ['English', '32', '4', '4', '4', '5', '70', '87', 'A1', '36', '70', '75'],
+            ['English', '4', '4', '4', '5', '70', '87', 'A1', '36', '70', '75'],
             array_map(fn ($cell) => trim($cell->textContent), iterator_to_array($xpath->query('./td', $english)))
         );
         $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'portrait');
