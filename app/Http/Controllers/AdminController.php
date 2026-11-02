@@ -470,6 +470,11 @@ class AdminController extends Controller
             // =====================================================
             // EVENTS QUERY
             // =====================================================
+            $totalClasses = DB::table('class')
+                ->where('academic_yr', $academicYr)
+                ->distinct()
+                ->count('class_id');
+
             $events = DB::table('events')
                 ->join(
                     'class',
@@ -492,14 +497,19 @@ class AdminController extends Controller
 
                 events.end_time AS end_time,
 
-                GROUP_CONCAT(
-                    DISTINCT class.name
-                    ORDER BY class.name
-                    SEPARATOR ', '
-                ) AS class_name,
+                CASE
+                    WHEN ? > 0 AND COUNT(DISTINCT CASE
+                        WHEN class.academic_yr = ? THEN class.class_id
+                    END) = ? THEN 'All'
+                    ELSE GROUP_CONCAT(
+                        DISTINCT class.name
+                        ORDER BY class.name
+                        SEPARATOR ', '
+                    )
+                END AS class_name,
 
                 'event' AS type
-            ")
+            ", [$totalClasses, $academicYr, $totalClasses])
                 ->where(
                     'events.isDelete',
                     'N'
@@ -512,14 +522,20 @@ class AdminController extends Controller
                     'events.academic_yr',
                     $academicYr
                 )
-                ->whereMonth(
-                    'events.start_date',
-                    $month
-                )
-                ->whereYear(
-                    'events.start_date',
-                    $year
-                )
+                ->whereRaw("
+                    CASE
+                        WHEN events.end_date IS NULL
+                             OR events.end_date = '0000-00-00'
+                        THEN events.start_date
+                        ELSE events.end_date
+                    END >= ?
+                ", [Carbon::today()->toDateString()])
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('events.start_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('events.start_date', $year);
+                })
                 ->groupBy(
                     'events.unq_id',
                     'events.title',
@@ -572,14 +588,18 @@ class AdminController extends Controller
                     'academic_yr',
                     $academicYr
                 )
-                ->whereMonth(
-                    'holiday_date',
-                    $month
-                )
-                ->whereYear(
-                    'holiday_date',
-                    $year
-                );
+                ->whereRaw("
+                COALESCE(
+                    NULLIF(to_date, '0000-00-00'),
+                    holiday_date
+                ) >= ?
+            ", [Carbon::today()->toDateString()])
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('holiday_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('holiday_date', $year);
+                });
 
             // =====================================================
             // Combine Events + Holidays
@@ -614,6 +634,50 @@ class AdminController extends Controller
                     'start_time'
                 )
                 ->get();
+
+            $data->transform(function ($item) {
+                if ($item->type !== 'event' || $item->class_name === 'All') {
+                    return $item;
+                }
+
+                $classNames = array_unique(array_map('trim', explode(',', $item->class_name ?? '')));
+                natsort($classNames);
+                $labels = [];
+                $rangeStart = null;
+                $rangeEnd = null;
+
+                $appendRange = function () use (&$labels, &$rangeStart, &$rangeEnd) {
+                    if ($rangeStart !== null) {
+                        $labels[] = $rangeStart === $rangeEnd
+                            ? (string) $rangeStart
+                            : $rangeStart . '-' . $rangeEnd;
+                        $rangeStart = null;
+                        $rangeEnd = null;
+                    }
+                };
+
+                foreach ($classNames as $className) {
+                    if (ctype_digit($className)) {
+                        $number = (int) $className;
+                        if ($rangeEnd !== null && $number === $rangeEnd + 1) {
+                            $rangeEnd = $number;
+                        } else {
+                            $appendRange();
+                            $rangeStart = $rangeEnd = $number;
+                        }
+                    } else {
+                        $appendRange();
+                        if ($className !== '') {
+                            $labels[] = $className;
+                        }
+                    }
+                }
+
+                $appendRange();
+                $item->class_name = implode(', ', $labels);
+
+                return $item;
+            });
 
             // =====================================================
             // Response
@@ -726,7 +790,7 @@ class AdminController extends Controller
                     DB::raw('COUNT(student_id) as students_count')
                 )
                 ->where('academic_yr', $academicYr)
-                ->where('isDelete', 'N')
+                ->where('isDelete', '!=', 'Y')
                 ->where('parent_id', '!=', '0')
                 ->groupBy(
                     'class_id',
@@ -1812,7 +1876,14 @@ class AdminController extends Controller
         $academicYr = $payload->get('academic_year');
 
         $classes = Classes::with('getDepartment')
-            ->withCount('students')
+            ->withCount([
+                'students' => function ($query) use ($academicYr) {
+                    $query
+                        ->where('academic_yr', $academicYr)
+                        ->where('isDelete', '!=', 'Y')
+                        ->where('parent_id', '!=', '0');
+                }
+            ])
             ->where('academic_yr', $academicYr)
             ->orderBy('class_id')
             ->get();
@@ -20161,63 +20232,62 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             // =====================================================
-            // Query parameter: current / upcoming
-            // =====================================================
-            $weekType = $request->query('week', 'current');
+            // Select the week supplied by the frontend.
+            // Accept d-m-Y, Y-m-d, or a Monday / Sunday range in either format.
+            $weekDate = $request->input('week_date');
 
-            if (!in_array($weekType, ['current', 'upcoming'])) {
+            if (!is_string($weekDate) || trim($weekDate) === '') {
+                $weekDate = now()
+                    ->startOfWeek(Carbon::MONDAY)
+                    ->format('d-m-Y');
+            }
+
+            $dateParts = array_map('trim', explode('/', trim($weekDate)));
+            $selectedDates = [];
+
+            foreach ($dateParts as $datePart) {
+                $parsedDate = null;
+                foreach (['d-m-Y', 'Y-m-d'] as $format) {
+                    $date = \DateTimeImmutable::createFromFormat('!' . $format, $datePart);
+                    if ($date !== false && $date->format($format) === $datePart) {
+                        $parsedDate = Carbon::instance($date);
+                        break;
+                    }
+                }
+
+                if ($parsedDate === null) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid week_date. Use valid dates in d-m-Y or Y-m-d format.'
+                    ], 422);
+                }
+
+                $selectedDates[] = $parsedDate;
+            }
+
+            if (count($selectedDates) > 2) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                    'message' => 'week_date must be a single date or a Monday / Sunday date range.'
                 ], 422);
             }
 
-            $today = now();
+            $weekStart = $selectedDates[0]->copy()->startOfWeek(Carbon::MONDAY);
 
-            $currentWeekStart = $today
-                ->copy()
-                ->startOfWeek(\Carbon\Carbon::MONDAY);
-
-            // =====================================================
-            // Week selection
-            // =====================================================
-            if ($weekType === 'current') {
-                $weekStart = $currentWeekStart->copy();
-            } else {
-                // Upcoming week visible only from Friday
-                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
-                    $nextWeekStart = $currentWeekStart
-                        ->copy()
-                        ->addWeek();
-
-                    $nextWeekEnd = $nextWeekStart
-                        ->copy()
-                        ->addDays(6);
-
-                    return response()->json([
-                        'status' => true,
-                        'week_type' => 'upcoming',
-                        'message' =>
-                            'Upcoming week lesson plan list will be available from Friday.',
-                        'week' => [
-                            'start_date' =>
-                                $nextWeekStart->format('d-m-Y'),
-                            'end_date' =>
-                                $nextWeekEnd->format('d-m-Y'),
-                            'display' =>
-                                $nextWeekStart->format('d-m-Y')
-                                . ' / '
-                                . $nextWeekEnd->format('d-m-Y'),
-                        ],
-                        'data' => []
-                    ], 200);
-                }
-
-                // Friday onwards show next week
-                $weekStart = $currentWeekStart
-                    ->copy()
-                    ->addWeek();
+            if (count($selectedDates) === 2 && (
+                !$selectedDates[0]->equalTo($weekStart) ||
+                !$selectedDates[1]->equalTo($weekStart->copy()->addDays(6))
+            )) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The week_date range must run from Monday to Sunday of the same week.'
+                ], 422);
             }
+
+            $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+            $weekType = $weekStart->equalTo($currentWeekStart)
+                ? 'current'
+                : ($weekStart->equalTo($currentWeekStart->copy()->addWeek()) ? 'upcoming' : 'custom');
 
             // =====================================================
             // Week dates
@@ -20673,60 +20743,66 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             // =====================================================
-            // Query parameter: current / upcoming
-            // =====================================================
-            $weekType = $request->query('week', 'current');
+            // Select the week supplied by the frontend.
+            // Accept d-m-Y, Y-m-d, or a Monday / Sunday range in either format.
+            $weekDate = $request->input('week_date');
 
-            if (!in_array($weekType, ['current', 'upcoming'])) {
+            $weekDate = $request->input('week_date');
+
+            // If week_date is missing, null, or empty,
+            // automatically select current week's Monday.
+            if (!is_string($weekDate) || trim($weekDate) === '') {
+                $weekDate = now()
+                    ->startOfWeek(Carbon::MONDAY)
+                    ->format('d-m-Y');
+            }
+
+            $dateParts = array_map('trim', explode('/', trim($weekDate)));
+            $selectedDates = [];
+
+            foreach ($dateParts as $datePart) {
+                $parsedDate = null;
+                foreach (['d-m-Y', 'Y-m-d'] as $format) {
+                    $date = \DateTimeImmutable::createFromFormat('!' . $format, $datePart);
+                    if ($date !== false && $date->format($format) === $datePart) {
+                        $parsedDate = Carbon::instance($date);
+                        break;
+                    }
+                }
+
+                if ($parsedDate === null) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid week_date. Use valid dates in d-m-Y or Y-m-d format.'
+                    ], 422);
+                }
+
+                $selectedDates[] = $parsedDate;
+            }
+
+            if (count($selectedDates) > 2) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                    'message' => 'week_date must be a single date or a Monday / Sunday date range.'
                 ], 422);
             }
 
-            $today = now();
+            $weekStart = $selectedDates[0]->copy()->startOfWeek(Carbon::MONDAY);
 
-            $currentWeekStart = $today
-                ->copy()
-                ->startOfWeek(\Carbon\Carbon::MONDAY);
-
-            // =====================================================
-            // Week selection
-            // =====================================================
-            if ($weekType === 'current') {
-                $weekStart = $currentWeekStart->copy();
-            } else {
-                // Upcoming week visible only from Friday
-                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
-                    $nextWeekStart = $currentWeekStart
-                        ->copy()
-                        ->addWeek();
-
-                    $nextWeekEnd = $nextWeekStart
-                        ->copy()
-                        ->addDays(6);
-
-                    return response()->json([
-                        'status' => true,
-                        'week_type' => 'upcoming',
-                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
-                        'week' => [
-                            'start_date' => $nextWeekStart->format('d-m-Y'),
-                            'end_date' => $nextWeekEnd->format('d-m-Y'),
-                            'display' =>
-                                $nextWeekStart->format('d-m-Y')
-                                . ' / '
-                                . $nextWeekEnd->format('d-m-Y'),
-                        ],
-                        'data' => []
-                    ], 200);
-                }
-
-                // Friday onwards -> next week
-                $weekStart = $currentWeekStart
-                    ->copy()
-                    ->addWeek();
+            if (count($selectedDates) === 2 && (
+                !$selectedDates[0]->equalTo($weekStart) ||
+                !$selectedDates[1]->equalTo($weekStart->copy()->addDays(6))
+            )) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The week_date range must run from Monday to Sunday of the same week.'
+                ], 422);
             }
+
+            $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+            $weekType = $weekStart->equalTo($currentWeekStart)
+                ? 'current'
+                : ($weekStart->equalTo($currentWeekStart->copy()->addWeek()) ? 'upcoming' : 'custom');
 
             // =====================================================
             // Week dates
@@ -20812,7 +20888,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     WHERE lp2.reg_id = s.teacher_id
                       AND lp2.academic_yr = ?
                       AND SUBSTRING_INDEX(lp2.week_date, ' /', 1) = ?
-                      AND lp2.approve != 'Y'
+                      AND (lp2.approve != 'Y' OR lp2.approve IS NULL)
                 ) AS pending_for_approval,
 
                 (
@@ -20920,7 +20996,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ')
                             ->from('lesson_plan')
                             ->where('academic_yr', $academic_year)
-                            ->where('approve', '!=', 'Y')
+                            ->where(function ($q) {
+                                $q
+                                    ->where('approve', '!=', 'Y')
+                                    ->orWhereNull('approve');
+                            })
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
                                 [$mondayDate]

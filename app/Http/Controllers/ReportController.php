@@ -8,6 +8,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ReportController extends Controller
@@ -551,7 +552,8 @@ class ReportController extends Controller
 
                     foreach ($classSectionPairs as [$classId, $sectionId]) {
                         $query->orWhere(function ($pairQuery) use ($classId, $sectionId) {
-                            $pairQuery->where('a.class_id', $classId)
+                            $pairQuery
+                                ->where('a.class_id', $classId)
                                 ->where('a.section_id', $sectionId);
                         });
                     }
@@ -573,7 +575,8 @@ class ReportController extends Controller
                 // Match names in SQL to preserve the database's collation rules.
                 $previousIds = DB::table('student as current_student')
                     ->join('student as previous_student', function ($join) use ($prev_acd_yr) {
-                        $join->on('previous_student.parent_id', '=', 'current_student.parent_id')
+                        $join
+                            ->on('previous_student.parent_id', '=', 'current_student.parent_id')
                             ->on('previous_student.first_name', '=', 'current_student.first_name')
                             ->where('previous_student.academic_yr', $prev_acd_yr);
                     })
@@ -608,7 +611,8 @@ class ReportController extends Controller
                         ->groupBy('sm.student_id');
 
                     if (in_array((string) $className, ['9', '11'], true)) {
-                        $marksQuery->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
+                        $marksQuery
+                            ->join('exam as e', 'sm.exam_id', '=', 'e.exam_id')
                             ->where('e.name', 'like', 'Final%');
                     }
 
@@ -6033,5 +6037,164 @@ class ReportController extends Controller
                 'class_wise' => $classStatistics,
             ],
         ]);
+    }
+
+    public function getDailyAttendanceReport(Request $request)
+    {
+        try {
+            // Authenticate user
+            $user = $this->authenticateUser();
+
+            // Get academic year from JWT
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+            // Validate request
+            $validator = Validator::make($request->query(), [
+                'class_id' => 'required|integer',
+                'section_id' => 'required|integer',
+                'daily_date' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $classId = $request->query('class_id');
+            $sectionId = $request->query('section_id');
+            $dailyDate = $request->query('daily_date');
+
+            $onlyDate = $dailyDate;
+
+            // Get class details
+            $class = DB::table('class')
+                ->where('class_id', $request->class_id)
+                ->first();
+
+            // Get section details
+            $section = DB::table('section')
+                ->where('section_id', $request->section_id)
+                ->first();
+
+            if (!$class || !$section) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid class or section'
+                ], 404);
+            }
+
+            // Get daily attendance
+            $attendance = DB::table('attendance as a')
+                ->join('student as b', 'a.student_id', '=', 'b.student_id')
+                ->where('b.isDelete', '!=', 'Y')
+                ->where('b.class_id', $request->class_id)
+                ->where('b.section_id', $request->section_id)
+                ->where('a.only_date', $onlyDate)
+                ->where('a.academic_yr', $academicYr)
+                ->select(
+                    'a.student_id',
+                    'a.attendance_status',
+                    'b.first_name',
+                    'b.last_name',
+                    'b.roll_no',
+                    'b.reg_no'
+                )
+                ->orderBy('b.roll_no')
+                ->orderBy('b.reg_no')
+                ->get();
+
+            if ($attendance->isEmpty()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'No attendance data available',
+                    'data' => [
+                        'class_id' => $request->class_id,
+                        'class_name' => $class->name,
+                        'section_id' => $request->section_id,
+                        'section_name' => $section->name,
+                        'date' => $request->daily_date,
+                        'academic_year' => $academicYr,
+                        'total_students' => 0,
+                        'total_present' => 0,
+                        'total_absent' => 0,
+                        'present_students' => [],
+                        'absent_students' => []
+                    ]
+                ], 200);
+            }
+
+            // Present students: attendance_status = 0
+            $presentStudents = $attendance
+                ->where('attendance_status', 0)
+                ->map(function ($student) {
+                    return [
+                        'student_id' => $student->student_id,
+                        'roll_no' => $student->roll_no,
+                        'reg_no' => $student->reg_no,
+                        'student_name' => trim(
+                            $student->first_name . ' '
+                            . $student->last_name
+                        ),
+                        'attendance_status' => 0,
+                        'status' => 'Present'
+                    ];
+                })
+                ->values();
+
+            // Absent students: attendance_status = 1
+            $absentStudents = $attendance
+                ->where('attendance_status', 1)
+                ->map(function ($student) {
+                    return [
+                        'student_id' => $student->student_id,
+                        'roll_no' => $student->roll_no,
+                        'reg_no' => $student->reg_no,
+                        'student_name' => trim(
+                            $student->first_name . ' '
+                            . $student->last_name
+                        ),
+                        'attendance_status' => 1,
+                        'status' => 'Absent'
+                    ];
+                })
+                ->values();
+
+            // Attendance counts
+            $totalPresent = $presentStudents->count();
+            $totalAbsent = $absentStudents->count();
+            $totalStudents = DB::table('student')
+                ->where('class_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('isDelete', '!=', 'Y')
+                ->where('parent_id', '!=', 0)
+                ->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Daily attendance report fetched successfully',
+                'data' => [
+                    'class_id' => (int) $request->class_id,
+                    'class_name' => $class->name,
+                    'section_id' => (int) $request->section_id,
+                    'section_name' => $section->name,
+                    'date' => $request->daily_date,
+                    'academic_year' => $academicYr,
+                    'total_students' => $totalStudents,
+                    'total_present' => $totalPresent,
+                    'total_absent' => $totalAbsent,
+                    'present_students' => $presentStudents,
+                    'absent_students' => $absentStudents
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
