@@ -1,13 +1,15 @@
 <?php
-$term_list = get_published_terms($row1['class_id'], $row1['section_id']);
-$sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+$isBulk = isset($reportCardData);
+$scholasticGradeFor = $gradeFor ?? static fn ($mark, $type, $class) => get_grade_based_on_marks($mark, $type, $class);
+$term_list = $isBulk ? $reportCardData['terms'] : get_published_terms($row1['class_id'], $row1['section_id']);
+$sub_list = $isBulk ? $reportCardData['scholastic_subjects'] : get_scholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
 $scholastic = [];
 
 foreach ($term_list as $term) {
     $headings = [];
     $subjects = [];
 
-    $exam_list = get_exams_by_class_per_term(
+    $exam_list = $isBulk ? ($reportCardData['exams'][$term->term_id] ?? []) : get_exams_by_class_per_term(
         $row1['class_id'],
         $term->term_id,
         $row1['academic_yr']
@@ -21,23 +23,16 @@ foreach ($term_list as $term) {
         foreach ($exam_list as $exam) {
             $configured = [];
 
-            foreach (get_marks_heading_class(
-                $row1['class_id'],
-                $subject->sub_rc_master_id,
-                $exam->exam_id,
-                $row1['academic_yr']
-            ) as $heading) {
+            $configuredHeadings = $isBulk
+                ? ($reportCardData['subject_headings'][$exam->exam_id][$subject->sub_rc_master_id] ?? [])
+                : get_marks_heading_class($row1['class_id'], $subject->sub_rc_master_id, $exam->exam_id, $row1['academic_yr']);
+            foreach ($configuredHeadings as $heading) {
                 $configured[$heading->marks_headings_name] = (float) $heading->highest_marks;
             }
 
-            $result = get_marks(
-                $exam->exam_id,
-                $row1['class_id'],
-                $row1['section_id'],
-                $subject->sub_rc_master_id,
-                $row1['student_id'],
-                $row1['academic_yr']
-            );
+            $result = $isBulk
+                ? ($reportCardData['marks'][$row1['student_id']][$exam->exam_id][$subject->sub_rc_master_id] ?? [])
+                : get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $subject->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
 
             $savedMarks = json_decode($result[0]['reportcard_marks'] ?? '{}', true) ?: [];
             $savedMaximums = json_decode($result[0]['reportcard_highest_marks'] ?? '{}', true) ?: [];
@@ -85,7 +80,7 @@ foreach ($term_list as $term) {
         $maximum = array_sum($maximums);
 
         $grade = !empty($marks)
-            ? get_grade_based_on_marks(
+            ? $scholasticGradeFor(
                 round($total),
                 'Scholastic',
                 $row1['class_id']
@@ -118,7 +113,7 @@ foreach ($term_list as $term) {
     }
 
     $grandGrade = $grandMaximum > 0
-        ? get_grade_based_on_marks(
+        ? $scholasticGradeFor(
             round($grandTotal * 100 / $grandMaximum),
             'Scholastic',
             $row1['class_id']
