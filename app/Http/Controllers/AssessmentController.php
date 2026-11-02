@@ -11022,6 +11022,48 @@ class AssessmentController extends Controller
         $stud_count = $request->input('stud_count');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
 
+        if ($short_name == 'JPS' && in_array($class_name, ['1', '2'], true)) {
+            $request->validate([
+                'class_id' => 'required|integer|min:1',
+                'section_id' => 'required|integer|min:1',
+                'academic_yr' => 'required|string|max:11',
+                'stud_count' => 'nullable|integer|min:1',
+            ]);
+
+            $student_info = DB::table('student')
+                ->where('class_id', $class_id)
+                ->where('section_id', $section_id)
+                ->where('academic_yr', $academic_yr)
+                ->where('IsDelete', 'N')
+                ->orderBy('roll_no')
+                ->orderBy('reg_no')
+                ->orderBy('student_id')
+                ->get()
+                ->map(fn ($student) => (array) $student);
+
+            if ($stud_count !== null) {
+                // Existing bulk clients use 10, 20, ... and the remainder for the final batch.
+                $remainder = $student_info->count() % 10;
+                $offset = $remainder === (int) $stud_count
+                    ? $student_info->count() - $remainder
+                    : max((int) $stud_count - 10, 0);
+                $student_info = $student_info->slice($offset, 10);
+            }
+
+            $student_info = $student_info->values()->all();
+            if ($student_info === []) {
+                return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
+            }
+
+            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+
+            return PDF::loadView(
+                'reportcard.JPS.class1to2_report_card_pdf_all',
+                compact('student_info', 'class_id', 'section_id', 'academic_yr')
+            )->download($fileName);
+        }
+
         if ($short_name == 'SACS' && $class_name == 'Nursery') {
             $reportCardData = app(NurseryBulkReportCardDataBuilder::class)
                 ->build($class_id, $section_id, $academic_yr, $stud_count);

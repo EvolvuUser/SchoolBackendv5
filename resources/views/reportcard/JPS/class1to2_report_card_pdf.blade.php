@@ -14,7 +14,7 @@
   }
     
   body {
-    background-image:url('https://sms.evolvu.in/public/reportcard/JPS/reportcard.png');
+    background-image:url('{{ str_replace('\\', '/', public_path('reportcard/JPS/reportcard.png')) }}');
    -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
@@ -84,6 +84,9 @@
 		page-break-inside: avoid;
 		margin-bottom: 0px;
 	} 
+    .pdfdiv + .pdfdiv {
+        page-break-before: always;
+    }
     .scholastic-table {
         width: 88%;
         margin-left: 6%;
@@ -105,38 +108,16 @@
     .scholastic-table .th, .scholastic-table .th1 {
         font-weight: bold;
     }
-</style>  
+</style>
+</head>
+<body>
 <?php
-$student_info1 = array();
-if (isset($class_id) && isset($section_id)) {
-    $student_info1 = get_students($class_id, $section_id, $this->session->userdata['acd_yr']);
-} else {
+// Bulk reports supply the students; single reports resolve only the requested student.
+if (!isset($student_info)) {
     $student_info = get_student_info($student_id, $academic_yr);
-}
-
-$slot = count($student_info1) / 10;
-$slot_no = intval($slot);  // 12
-$last_slot = explode('.', number_format($slot, 1))[1];
-$c = count($student_info1) - $last_slot;
-
-// print_r($student_info1[0]);
-if (isset($stud_count)) {
-    if ($last_slot != $stud_count) {
-        for ($i = $stud_count - 10; $i < $stud_count; $i++) {
-            $student_info[$i] = $student_info1[$i];
-        }
-    } else {
-        for ($i = $c; $i < count($student_info1); $i++) {
-            $student_info[$i] = $student_info1[$i];
-        }
-    }
 }
 foreach ($student_info as $row1):
     ?>
-    <head>
-        <meta charset="utf-16" />
-    </head>
-    <body>
     <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8 table-responsive bgimg" style="text-align:center;">
@@ -494,6 +475,6 @@ foreach ($student_info as $row1):
 		</table>
     </div>
 </div>
-</body>
-</html> 
 <?php endforeach; ?>
+</body>
+</html>
