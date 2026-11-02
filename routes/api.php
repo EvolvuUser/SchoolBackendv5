@@ -1699,6 +1699,7 @@ Route::middleware(['school.db'])->group(function () {
          */
         // --------------------------------- Routes
         Route::prefix('student/achievements')->group(function () {
+            Route::get('erp', [StudentAchievementController::class, 'erpIndex']);
             Route::get('childrens', [StudentAchievementController::class, 'childrens']);
             Route::get('/', [StudentAchievementController::class, 'index']);  // list (filterable)
             Route::post('/', [StudentAchievementController::class, 'store']);  // create
@@ -1758,6 +1759,22 @@ Route::middleware(['school.db'])->group(function () {
 
         Route::get('get_allot_markheadings_list', [AdminController::class, 'getAllotMarkheadingsListPull']);
         Route::delete('bulkDeleteAllotMarkheadings', [AdminController::class, 'bulkDeleteAllotMarkheadings']);
+
+        // Daiy Attendance Report
+        Route::get('get_daily_attendance_report', [ReportController::class, 'getDailyAttendanceReport']);
+
+        Route::get(
+            'marks-upload-status/filters',
+            [AssessmentController::class, 'getMarksUploadStatusFilters']
+        );
+
+        Route::get(
+            'marks-upload-status/report',
+            [AssessmentController::class, 'getMarksUploadStatusReport']
+        );
+
+        // Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
+        Route::get('/get_hpcreportcard', [AssessmentController::class, 'gethpcreportcard']);
     });
 
     // Impersonate
@@ -1817,9 +1834,6 @@ Route::get('/test-mail', function () {
         return 'Error: ' . $e->getMessage();
     }
 });
-
-// Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
-Route::get('/get_hpcreportcard', [AssessmentController::class, 'gethpcreportcard']);
 
 // API for the School Name Dev Name- Manish Kumar Sharma 06-05-2025
 Route::get('get_schoolname', [AdminController::class, 'getSchoolName']);

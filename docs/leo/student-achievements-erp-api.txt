@@ -1,0 +1,76 @@
+ERP student achievement listing
+
+GET /api/student/achievements/erp
+Headers: Authorization: Bearer <ERP token>, Accept: application/json
+Uses the existing JWT and school database middleware. Parent (P) and student (S)
+tokens receive HTTP 403.
+
+Query parameters:
+  class_id       Required positive integer.
+  section_id     Required positive integer.
+  student_id     Optional positive integer; limits results to this student
+                 within the selected class and section.
+  academic_year  Optional string, max 11 characters; defaults to the token's
+                 academic_year. If neither is available, returns HTTP 422.
+
+All matching records are returned. Pagination is handled by the frontend;
+page and per_page parameters are ignored.
+
+Example:
+GET /api/student/achievements/erp?class_id=1&section_id=2&student_id=10
+
+Both the student enrollment and achievement must match the selected academic
+year. Class/section refer to that student enrollment. The response includes
+internal and parent-submitted achievements, verified and unverified.
+Order: class_id ASC, section_id ASC, student_id ASC, achievement_date DESC,
+achievement id DESC (stable ordering for equal dates).
+
+Response HTTP 200:
+{
+  "data": [
+    {
+      "id": 2,
+      "student_id": 10,
+      "academic_year": "2026-2027",
+      "title": "Won first prize",
+      "achievement_date": "2026-10-01",
+      "is_verified": false,
+      "is_external": true,
+      "first_name": "Aarav",
+      "mid_name": null,
+      "last_name": "Sharma",
+      "student_name": "Aarav Sharma",
+      "roll_no": 10,
+      "class_id": 1,
+      "section_id": 2,
+      "class_name": "Class 1",
+      "section_name": "A",
+      "files": [
+        {
+          "id": 1,
+          "achievement_id": 2,
+          "file_url": "https://your-school-host/storage/school/achievements/certificate.pdf",
+          "file_type": "pdf",
+          "uploaded_at": "2026-10-01 10:00:00"
+        }
+      ],
+      "files_count": 1
+    }
+  ],
+  "filters": {
+    "class_id": 1,
+    "section_id": 2,
+    "student_id": 10,
+    "academic_year": "2026-2027"
+  },
+  "meta": {
+    "total": 1
+  }
+}
+
+Each data entry also contains all remaining student_achievements fields
+(reg_no, description, type, level, organization_name, event_name, score,
+position, created_at). Files are an empty array when none are attached.
+No matching records returns HTTP 200 with data: [] and meta.total: 0.
+Invalid or missing required query parameters return HTTP 422 with errors.
+The existing parent app endpoints are unchanged.

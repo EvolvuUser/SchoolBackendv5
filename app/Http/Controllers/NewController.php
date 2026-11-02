@@ -201,6 +201,7 @@ class NewController extends Controller
         try {
             $user = $this->authenticateUser();
             $customClaims = JWTAuth::getPayload()->get('academic_year');
+            $shortName = JWTAuth::getPayload()->get('short_name');
             $leavetype = DB::table('leave_type_master')
                 ->join('leave_allocation', 'leave_type_master.leave_type_id', '=', 'leave_allocation.leave_type_id')
                 ->where('leave_allocation.staff_id', $request->staff_id)
@@ -208,12 +209,14 @@ class NewController extends Controller
                 ->where('leave_allocation.leave_type_id', $request->leave_type_id)
                 ->first();
             $balanceleave = $leavetype->leaves_allocated - $leavetype->leaves_availed;
-            if ($balanceleave < $request->no_of_days) {
-                return response()->json([
-                    'status' => 400,
-                    'message' => 'You have applied for leave more than the balance leaves',
-                    'success' => false
-                ]);
+            if ($shortName != 'SACS') {
+                if ($balanceleave < $request->no_of_days) {
+                    return response()->json([
+                        'status' => 400,
+                        'message' => 'You have applied for leave more than the balance leaves',
+                        'success' => false
+                    ]);
+                }
             }
             $leaveapplication = DB::table('leave_application')->insert([
                 'staff_id' => $request->staff_id,
