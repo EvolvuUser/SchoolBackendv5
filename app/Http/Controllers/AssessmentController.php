@@ -23,6 +23,7 @@ use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
+use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use App\Services\ReportCard\UkgBulkReportCardDataBuilder;
@@ -10858,6 +10859,18 @@ class AssessmentController extends Controller
                     break;
 
                 case '9':
+                    $request->validate([
+                        'class_id' => 'required|integer|min:1',
+                        'student_id' => 'required|integer|min:1',
+                        'acd_yr' => 'required|string|max:11',
+                    ]);
+                    $reportCardData = app(JpsClass9ReportCardDataBuilder::class)
+                        ->build($class_id, $student_id, $academic_yr);
+
+                    return PDF::loadView('reportcard.JPS.class9_report_card_pdf', compact('reportCardData'))
+                        ->setPaper('a4', 'landscape')
+                        ->stream('Class9_Report_Card_' . $student_id . '.pdf');
+
                 case '10':
                     return PDF::loadView('reportcard.JPS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     break;
@@ -11035,7 +11048,7 @@ class AssessmentController extends Controller
             if ($reportCardData['students'] === []) {
                 return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
             }
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $reportCardData['section_name']) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $reportCardData['section_name']) . '_All_Report_Cards.pdf';
 
             $view = match ($class_name) {
                 '1', '2' => 'reportcard.JPS.class1to2_report_card_pdf_all',
@@ -11052,7 +11065,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.nursery_report_card_pdf_all',
@@ -11067,7 +11080,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.lkg_report_card_pdf_all',
@@ -11082,7 +11095,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.ukg_report_card_pdf_all',
@@ -11097,7 +11110,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class1to2_report_card_pdf_all',
@@ -11112,7 +11125,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class3to5_report_card_pdf_all',
@@ -11127,7 +11140,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr, $stud_count);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class6to8_report_card_pdf_all',
@@ -11142,7 +11155,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class9to10_report_card_pdf_all',
@@ -11157,7 +11170,7 @@ class AssessmentController extends Controller
                 ->build($class_id, $section_id, $academic_yr);
 
             $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Cards.pdf';
 
             return PDF::loadView(
                 'reportcard.SACS.class11to12_report_card_pdf_all',

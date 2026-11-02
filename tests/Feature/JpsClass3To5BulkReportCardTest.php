@@ -107,7 +107,7 @@ class JpsClass3To5BulkReportCardTest extends TestCase
                     $this->assertSame($ids, array_column($data['reportCardData']['students'], 'student_id'));
                     return true;
                 }))->andReturnSelf();
-            PDF::shouldReceive('download')->once()->with(($class - 100) . 'A_All_Report_Card.pdf')
+            PDF::shouldReceive('download')->once()->with(($class - 100) . 'A_All_Report_Cards.pdf')
                 ->andReturn(response('PDF download', 200, ['Content-Type' => 'application/pdf']));
             $this->getJson('/api/pdf_download_all?class_id=' . $class . '&section_id=201&academic_yr=2026-2027')
                 ->assertOk()->assertHeader('Content-Type', 'application/pdf');
