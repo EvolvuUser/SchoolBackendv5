@@ -54,8 +54,9 @@ class JpsClass9ReportCardDataBuilder
         foreach ($marks as $mark) {
             $byExam[$mark->exam_id][$mark->subject_id] ??= $mark;
         }
-        $gradeScale = DB::table('grade')->where('class_id', $classId)
-            ->where('subject_type', 'Co-Scholastic')->orderByDesc('mark_from')->get();
+        $gradeScales = DB::table('grade')->where('class_id', $classId)
+            ->whereIn('subject_type', ['Scholastic', 'Co-Scholastic'])->orderByDesc('mark_from')->get()->groupBy('subject_type');
+        $gradeScale = $gradeScales->get('Co-Scholastic', collect());
         $blocks = [];
         foreach ([1, 2] as $term) {
             if (!isset($roles['term' . $term])) {
@@ -67,6 +68,7 @@ class JpsClass9ReportCardDataBuilder
             )));
             $blocks[] = [
                 'exam' => $roles['term' . $term],
+                'term_number' => $term,
                 'periodics' => $periodics,
                 'source_label' => $term === 1
                     ? ($periodics[0]->name ?? 'PT-I')
@@ -104,7 +106,7 @@ class JpsClass9ReportCardDataBuilder
                     'maximum' => array_sum(array_column($components, 'maximum')),
                 ];
             }
-            $key = json_encode($schema);
+            $key = json_encode([$schema, array_map(fn ($cell) => $cell['raw']['maximum'], $cells)]);
             $groups[$key]['schema'] = $schema;
             $groups[$key]['rows'][] = ['name' => $subject->name, 'terms' => $cells];
         }
@@ -137,9 +139,34 @@ class JpsClass9ReportCardDataBuilder
             }
             $coScholastic[] = ['name' => $subject->name, 'terms' => $cells];
         }
+        $settings = DB::table('settings')->where('academic_yr', $academicYear)->first();
+        $dateFrom = $settings->academic_yr_from ?? null;
+        $dateTo = count($blocks) === 1 && $dateFrom
+            ? substr($dateFrom, 0, 4) . '-09-30' : ($settings->academic_yr_to ?? null);
+        $attendance = null;
+        if ($blocks && $dateFrom && $dateTo) {
+            $attendance = DB::table('attendance')->where('student_id', $studentId)
+                ->where('academic_yr', $academicYear)->whereBetween('only_date', [$dateFrom, $dateTo])
+                ->selectRaw('SUM(CASE WHEN attendance_status = 0 THEN 1 ELSE 0 END) as present, COUNT(*) as working')
+                ->first();
+        }
+        $remarkRecords = DB::table('report_card_remarks')->where('student_id', $studentId)->get()->keyBy('term_id');
+        $remarks = [];
+        foreach ($blocks as $block) {
+            $remarks[$block['term_number']] = $remarkRecords->get($block['exam']->exam_id)
+                ?? $remarkRecords->get($block['term_number']);
+        }
+        $publication = DB::table('report_card_publish')->where('class_id', $classId)
+            ->where('section_id', $student->section_id)->where('publish', 'Y')
+            ->whereIn('term_id', array_map(fn ($block) => $block['exam']->exam_id, $blocks))
+            ->orderByDesc('term_id')->first();
+
         return [
             'student' => $student, 'academic_year' => $academicYear,
             'blocks' => $blocks, 'groups' => array_values($groups), 'co_scholastic' => $coScholastic,
+            'grades' => $gradeScales->all(), 'settings' => $settings, 'attendance' => $attendance,
+            'remarks' => $remarks, 'reopen_date' => $publication->reopen_date ?? null,
+            'date_from' => $dateFrom, 'date_to' => $dateTo,
         ];
     }
 

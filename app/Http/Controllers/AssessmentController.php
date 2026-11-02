@@ -10868,7 +10868,7 @@ class AssessmentController extends Controller
                         ->build($class_id, $student_id, $academic_yr);
 
                     return PDF::loadView('reportcard.JPS.class9_report_card_pdf', compact('reportCardData'))
-                        ->setPaper('a4', 'landscape')
+                        ->setPaper('a4', 'portrait')
                         ->stream('Class9_Report_Card_' . $student_id . '.pdf');
 
                 case '10':
