@@ -126,6 +126,7 @@
 </style>
 </head>
 <body>
+@foreach ($reports ?? [$reportCardData] as $reportCardData)
 <?php
 $row1 = (array) $reportCardData['student'];
 $class_name = $row1['class_name'];
@@ -470,5 +471,6 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
 		</table>
     </div>
 </div>
+@endforeach
 </body>
 </html>

@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 
 class JpsClass9ReportCardDataBuilder
 {
-    public function build($classId, $studentId, string $academicYear): array
+    public function build($classId, $studentId, string $academicYear, ?array $context = null): array
     {
-        $student = DB::table('student as s')
+        $student = $context !== null ? $context['students']->get($studentId) : DB::table('student as s')
             ->leftJoin('parent as p', 's.parent_id', '=', 'p.parent_id')
             ->leftJoin('class as c', 's.class_id', '=', 'c.class_id')
             ->leftJoin('section as sec', 's.section_id', '=', 'sec.section_id')
@@ -18,7 +18,7 @@ class JpsClass9ReportCardDataBuilder
         abort_unless($student, 404, 'Student not found for the selected class and academic year.');
 
         // Class 9 publication records refer to exam IDs, as in get_published_exams_class9n10.
-        $exams = DB::table('exam as e')
+        $exams = $context !== null ? $context['exams'] : DB::table('exam as e')
             ->where('e.academic_yr', $academicYear)
             ->whereExists(function ($query) use ($classId, $student) {
                 $query->selectRaw('1')->from('report_card_publish as p')
@@ -32,7 +32,7 @@ class JpsClass9ReportCardDataBuilder
                 $roles[$role] = $exam;
             }
         }
-        $headings = DB::table('allot_mark_headings as a')
+        $headings = $context !== null ? $context['headings'] : DB::table('allot_mark_headings as a')
             ->join('marks_headings as h', 'a.marks_headings_id', '=', 'h.marks_headings_id')
             ->where('a.class_id', $classId)->where('a.academic_yr', $academicYear)
             ->whereIn('a.exam_id', $exams->pluck('exam_id'))->orderBy('h.sequence')
@@ -41,12 +41,12 @@ class JpsClass9ReportCardDataBuilder
         foreach ($headings as $heading) {
             $configs[$heading->exam_id][$heading->sm_id][] = $heading;
         }
-        $subjects = DB::table('subjects_on_report_card as a')
+        $subjects = $context !== null ? $context['subjects'] : DB::table('subjects_on_report_card as a')
             ->join('subjects_on_report_card_master as s', 'a.sub_rc_master_id', '=', 's.sub_rc_master_id')
             ->where('a.class_id', $classId)->where('a.academic_yr', $academicYear)
             ->whereIn('a.subject_type', ['Scholastic', 'Co-Scholastic'])
             ->orderBy('s.sequence')->select('s.*', 'a.subject_type')->distinct()->get();
-        $marks = DB::table('student_marks')->where('student_id', $studentId)
+        $marks = $context !== null ? $context['marks']->get($studentId, collect()) : DB::table('student_marks')->where('student_id', $studentId)
             ->where('class_id', $classId)->where('section_id', $student->section_id)
             ->where('academic_yr', $academicYear)->where('publish', 'Y')
             ->whereIn('exam_id', $exams->pluck('exam_id'))->get();
@@ -54,7 +54,7 @@ class JpsClass9ReportCardDataBuilder
         foreach ($marks as $mark) {
             $byExam[$mark->exam_id][$mark->subject_id] ??= $mark;
         }
-        $gradeScales = DB::table('grade')->where('class_id', $classId)
+        $gradeScales = $context !== null ? $context['grades'] : DB::table('grade')->where('class_id', $classId)
             ->whereIn('subject_type', ['Scholastic', 'Co-Scholastic'])->orderByDesc('mark_from')->get()->groupBy('subject_type');
         $gradeScale = $gradeScales->get('Co-Scholastic', collect());
         $blocks = [];
@@ -154,24 +154,31 @@ class JpsClass9ReportCardDataBuilder
             }
             $coScholastic[] = ['name' => $subject->name, 'terms' => $cells];
         }
-        $settings = DB::table('settings')->where('academic_yr', $academicYear)->first();
+        $settings = $context !== null ? $context['settings'] : DB::table('settings')->where('academic_yr', $academicYear)->first();
         $dateFrom = $settings->academic_yr_from ?? null;
         $dateTo = count($blocks) === 1 && $dateFrom
             ? substr($dateFrom, 0, 4) . '-09-30' : ($settings->academic_yr_to ?? null);
         $attendance = null;
         if ($blocks && $dateFrom && $dateTo) {
-            $attendance = DB::table('attendance')->where('student_id', $studentId)
+            $attendance = $context !== null
+                ? ($context['attendance'][$dateTo]->get($studentId) ?? (object) ['present' => null, 'working' => 0])
+                : DB::table('attendance')->where('student_id', $studentId)
                 ->where('academic_yr', $academicYear)->whereBetween('only_date', [$dateFrom, $dateTo])
                 ->selectRaw('SUM(CASE WHEN attendance_status = 0 THEN 1 ELSE 0 END) as present, COUNT(*) as working')
                 ->first();
         }
-        $remarkRecords = DB::table('report_card_remarks')->where('student_id', $studentId)->get()->keyBy('term_id');
+        $remarkRecords = ($context !== null
+            ? $context['remarks']->get($studentId, collect())
+            : DB::table('report_card_remarks')->where('student_id', $studentId)->get())->keyBy('term_id');
         $remarks = [];
         foreach ($blocks as $block) {
             $remarks[$block['term_number']] = $remarkRecords->get($block['exam']->exam_id)
                 ?? $remarkRecords->get($block['term_number']);
         }
-        $publication = DB::table('report_card_publish')->where('class_id', $classId)
+        $publication = $context !== null
+            ? $context['publications']->whereIn('term_id', array_map(fn ($block) => $block['exam']->exam_id, $blocks))
+                ->sortByDesc('term_id')->first()
+            : DB::table('report_card_publish')->where('class_id', $classId)
             ->where('section_id', $student->section_id)->where('publish', 'Y')
             ->whereIn('term_id', array_map(fn ($block) => $block['exam']->exam_id, $blocks))
             ->orderByDesc('term_id')->first();
