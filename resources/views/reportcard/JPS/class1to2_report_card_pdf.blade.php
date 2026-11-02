@@ -112,13 +112,26 @@
 </head>
 <body>
 <?php
-// Bulk reports supply the students; single reports resolve only the requested student.
-if (!isset($student_info)) {
-    $student_info = get_student_info($student_id, $academic_yr);
-}
+$isBulk = isset($reportCardData);
+$reportCardData ??= null;
+$student_info = $isBulk ? $reportCardData['students'] : ($student_info ?? get_student_info($student_id, $academic_yr));
+$gradeFor = static function ($mark, $subjectType, $classId) use ($isBulk, $reportCardData) {
+    if (!$isBulk) {
+        return get_grade_based_on_marks($mark, $subjectType, $classId);
+    }
+    foreach ($reportCardData['grades'][$subjectType] ?? [] as $range) {
+        if (is_numeric($mark) && $mark >= $range->mark_from && $mark <= $range->mark_upto) {
+            return $range->name;
+        }
+    }
+    return '';
+};
 foreach ($student_info as $row1):
+    $class_name = $isBulk ? $reportCardData['class_name'] : get_class_name($row1['class_id']);
+    $section_name = $isBulk ? $reportCardData['section_name'] : get_section_name($row1['section_id']);
+    $settings = $isBulk ? $reportCardData['settings'] : getSettingsDataForAcademicYr($row1['academic_yr']);
     ?>
-    <div class="col-md-12 pdfdiv">
+<div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8 table-responsive bgimg" style="text-align:center;">
 		<table border="0" style="width:85%;margin-left:5%;margin-right: auto;border-spacing: 0px;background-color:white;margin-top: 21%;">
@@ -151,7 +164,7 @@ foreach ($student_info as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 44%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Guardian's Name : </td>
-                        <td style="font-size:15px;padding:5px;width: 37%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
+                        <td style="font-size:15px;padding:5px;width: 37%;text-align: center;"><div class="statistics_line"><?php echo ($isBulk ? ($row1['father_name'] ?? '') : get_parent_name($row1['parent_id'])); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:12%">GR No. : </td>
 						<td style="font-size:15px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1['reg_no']; ?></div></td>
@@ -167,7 +180,7 @@ foreach ($student_info as $row1):
                         <td style="font-size:15px;width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="font-size:15px;width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']) . ' ' . get_section_name($row1['section_id']); ?></div></td>
+						<td style="font-size:15px;width: auto;text-align: center;"><div class="statistics_line"><?php echo $class_name . ' ' . $section_name; ?></div></td>
                     </table>
                     
                 </td>
@@ -184,7 +197,7 @@ foreach ($student_info as $row1):
                             <td class="" style="vertical-align:middle;" cellpadding="0" cellspacing="0">
                             <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white; font-size:15px;border: 1px solid grey !important;" cellpadding="0" cellspacing="0">
                                 <?php
-                                $term_list = get_published_terms($row1['class_id'], $row1['section_id']);
+                                $term_list = ($isBulk ? $reportCardData['terms'] : get_published_terms($row1['class_id'], $row1['section_id']));
                                 $colspan = count($term_list) + 1;
                                 ?>
                                 <tr>
@@ -201,7 +214,7 @@ foreach ($student_info as $row1):
                                     ?>
                                 </tr>
                                  <?php
-    $sub_list = get_coscholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+    $sub_list = ($isBulk ? $reportCardData['co_scholastic_subjects'] : get_coscholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']));
 
     foreach ($sub_list as $sub_row):
         $acd_yr_frm = substr($row1['academic_yr'], 0, 4);
@@ -226,10 +239,10 @@ foreach ($student_info as $row1):
                              <?php
         foreach ($term_list as $term) {
             ${'mark_obtained_array_' . $term->term_id} = array();
-            $exam_list = get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']);
+            $exam_list = ($isBulk ? ($reportCardData['exams'][$term->term_id] ?? []) : get_exams_by_class_per_term($row1['class_id'], $term->term_id, $row1['academic_yr']));
             $coscholastic_grade = '';
             foreach ($exam_list as $exam) {
-                ${'marks_resultarray_' . $term->term_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
+                ${'marks_resultarray_' . $term->term_id} = ($isBulk ? ($reportCardData['marks'][$row1['student_id']][$exam->exam_id][$sub_row->sub_rc_master_id] ?? []) : get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']));
 
                 if (isset(${'marks_resultarray_' . $term->term_id}[0])) {
                     ${'marks_obtained_json_' . $term->term_id} = ${'marks_resultarray_' . $term->term_id}[0]['reportcard_marks'];
@@ -254,7 +267,7 @@ foreach ($student_info as $row1):
                                 // Lija 13-03-21 Art/craft if marks is less than 30 give C grade.
                                 $coscholastic_grade = 'C';
                             } else {
-                                $coscholastic_grade = get_grade_based_on_marks(round($marks_per_50), 'Co-Scholastic', $row1['class_id']);
+                                $coscholastic_grade = $gradeFor(round($marks_per_50), 'Co-Scholastic', $row1['class_id']);
                             }
                         }
                     }
@@ -275,11 +288,13 @@ foreach ($student_info as $row1):
                  <td></td>
                  <td>
                      @php
-    $scholasticGradeScale = \Illuminate\Support\Facades\DB::table('grade')
-        ->where('class_id', $row1['class_id'])
-        ->where('subject_type', 'Scholastic')
-        ->orderByDesc('mark_from')
-        ->get();
+    $scholasticGradeScale = $isBulk
+        ? collect($reportCardData['grades']['Scholastic'] ?? [])->sortByDesc('mark_from')->values()
+        : \Illuminate\Support\Facades\DB::table('grade')
+            ->where('class_id', $row1['class_id'])
+            ->where('subject_type', 'Scholastic')
+            ->orderByDesc('mark_from')
+            ->get();
 @endphp
                     <table
     border="1"
@@ -337,7 +352,7 @@ foreach ($student_info as $row1):
     $remark_string = '';
     $width = '90%';
     foreach ($term_list as $term) {
-        $remark = get_reportcard_remark_of_a_student($row1['student_id'], $term->term_id);
+        $remark = ($isBulk ? ($reportCardData['remarks'][$row1['student_id']][$term->term_id]['remark'] ?? '') : get_reportcard_remark_of_a_student($row1['student_id'], $term->term_id));
         if ($remark_string == '' && $remark <> '') {
             $remark_string = $remark_string . 'Term ' . $term->term_id . ' - ' . $remark;
         } elseif ($remark_string <> '' && $remark <> '') {
@@ -369,12 +384,12 @@ foreach ($student_info as $row1):
         $date_from = null;
         $date_to = null;
         if (count($term_list) == 1) {
-            $date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;
+            $date_from = ($settings->academic_yr_from ?? null);
             $date_to = date_format(date_create(substr($date_from, 0, 4) . '-09-30'), 'Y-m-d');  // Creating date to as last day of sep;
         } elseif (count($term_list) == 2) {
             // $date_from=date_format(date_create(substr($date_from,0,4)."-10-01") , 'Y-m-d') ; // Creating date from as first day of Oct;
-            $date_from = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_from;  // Creating date from as first day of acd yr;
-            $date_to = getSettingsDataForAcademicYr($row1['academic_yr'])->academic_yr_to;
+            $date_from = ($settings->academic_yr_from ?? null);  // Creating date from as first day of acd yr;
+            $date_to = ($settings->academic_yr_to ?? null);
         }
 
         // $date_from=$this->crud_model->get_academic_yr_from_of_particular_yr($acd_yr);
@@ -387,8 +402,8 @@ foreach ($student_info as $row1):
 						<td style="font-size:14px;text-align:left;white-space:nowrap;width: 10%" ><b> Attendance : </b></td>
     					<td style="font-size:14px;white-space:nowrap;width:20%!important;margin-right:2%;text-align:center;" ><div class="statistics_line">
 						<?php
-                        if (get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) <> '') {
-                            echo get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']) . '/' . get_total_stu_workingday_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']);
+                        if (($isBulk ? ($reportCardData['attendance'][$row1['student_id']]->present ?? '') : get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr'])) <> '') {
+                            echo ($isBulk ? ($reportCardData['attendance'][$row1['student_id']]->present ?? '') : get_total_stu_attendance_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr'])) . '/' . ($isBulk ? ($reportCardData['attendance'][$row1['student_id']]->working ?? '') : get_total_stu_workingday_till_a_month($row1['student_id'], $date_from, $date_to, $row1['academic_yr']));
                         }
                         ?>&nbsp;</div> 
 						</td>
@@ -399,7 +414,7 @@ foreach ($student_info as $row1):
 						<?php
                         $promote_to = '';
                         if (isset($term_list[1]->term_id))
-                            $promote_to = get_promote_to_of_a_student($row1['student_id'], $term_list[1]->term_id);
+                            $promote_to = ($isBulk ? ($reportCardData['remarks'][$row1['student_id']][$term_list[1]->term_id]['promot'] ?? '') : get_promote_to_of_a_student($row1['student_id'], $term_list[1]->term_id));
 
                         ?>
                         <td style="text-align:center;font-size:14px;width:7%!important;">
@@ -407,7 +422,7 @@ foreach ($student_info as $row1):
                         <td style="text-align:center;font-size:14px;width:15%;"><b> Date Of Reopening :</b></td>
                         <td style="width:auto;text-align:center;font-size:14px" ><div class="statistics_line">
 							<?php
-                            $reopen_date = get_school_reopen_date($row1['class_id'], $row1['section_id']);
+                            $reopen_date = ($isBulk ? $reportCardData['reopen_date'] : get_school_reopen_date($row1['class_id'], $row1['section_id']));
                             if ($reopen_date <> NULL && $reopen_date <> '0000-00-00')
                                 echo date_format(date_create($reopen_date), 'd-m-Y');
                             ?>

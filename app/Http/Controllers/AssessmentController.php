@@ -22,6 +22,7 @@ use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
+use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use App\Services\ReportCard\UkgBulkReportCardDataBuilder;
@@ -11022,46 +11023,28 @@ class AssessmentController extends Controller
         $stud_count = $request->input('stud_count');
         $class_name = DB::table('class')->where('class_id', $class_id)->value('name');
 
-        if ($short_name == 'JPS' && in_array($class_name, ['1', '2'], true)) {
+        if ($short_name == 'JPS' && in_array($class_name, ['1', '2', '3', '4', '5', '6', '7', '8'], true)) {
             $request->validate([
                 'class_id' => 'required|integer|min:1',
                 'section_id' => 'required|integer|min:1',
                 'academic_yr' => 'required|string|max:11',
                 'stud_count' => 'nullable|integer|min:1',
             ]);
-
-            $student_info = DB::table('student')
-                ->where('class_id', $class_id)
-                ->where('section_id', $section_id)
-                ->where('academic_yr', $academic_yr)
-                ->where('IsDelete', 'N')
-                ->orderBy('roll_no')
-                ->orderBy('reg_no')
-                ->orderBy('student_id')
-                ->get()
-                ->map(fn ($student) => (array) $student);
-
-            if ($stud_count !== null) {
-                // Existing bulk clients use 10, 20, ... and the remainder for the final batch.
-                $remainder = $student_info->count() % 10;
-                $offset = $remainder === (int) $stud_count
-                    ? $student_info->count() - $remainder
-                    : max((int) $stud_count - 10, 0);
-                $student_info = $student_info->slice($offset, 10);
-            }
-
-            $student_info = $student_info->values()->all();
-            if ($student_info === []) {
+            $reportCardData = app(JpsBulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr, $stud_count);
+            if ($reportCardData['students'] === []) {
                 return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
             }
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $reportCardData['section_name']) . '_All_Report_Card.pdf';
 
-            $sectionName = DB::table('section')->where('section_id', $section_id)->value('name');
-            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $sectionName) . '_All_Report_Card.pdf';
+            $view = match ($class_name) {
+                '1', '2' => 'reportcard.JPS.class1to2_report_card_pdf_all',
+                '3', '4', '5' => 'reportcard.JPS.class3to5_report_card_pdf_all',
+                default => 'reportcard.JPS.class6to8_report_card_pdf_all',
+            };
 
-            return PDF::loadView(
-                'reportcard.JPS.class1to2_report_card_pdf_all',
-                compact('student_info', 'class_id', 'section_id', 'academic_yr')
-            )->download($fileName);
+            return PDF::loadView($view, compact('reportCardData'))
+                ->download($fileName);
         }
 
         if ($short_name == 'SACS' && $class_name == 'Nursery') {
