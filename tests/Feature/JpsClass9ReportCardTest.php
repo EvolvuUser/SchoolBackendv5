@@ -23,13 +23,16 @@ class JpsClass9ReportCardTest extends TestCase
             'CREATE TABLE class (class_id INTEGER, name TEXT)',
             'CREATE TABLE section (section_id INTEGER, name TEXT)',
             'CREATE TABLE exam (exam_id INTEGER, name TEXT, academic_yr TEXT, start_date TEXT)',
-            'CREATE TABLE report_card_publish (term_id INTEGER, class_id INTEGER, section_id INTEGER, publish TEXT)',
+            'CREATE TABLE report_card_publish (term_id INTEGER, class_id INTEGER, section_id INTEGER, publish TEXT, reopen_date TEXT)',
             'CREATE TABLE marks_headings (marks_headings_id INTEGER, name TEXT, sequence INTEGER)',
             'CREATE TABLE allot_mark_headings (exam_id INTEGER, class_id INTEGER, academic_yr TEXT, sm_id INTEGER, marks_headings_id INTEGER, highest_marks INTEGER, reportcard_highest_marks INTEGER)',
             'CREATE TABLE subjects_on_report_card (class_id INTEGER, academic_yr TEXT, sub_rc_master_id INTEGER, subject_type TEXT)',
             'CREATE TABLE subjects_on_report_card_master (sub_rc_master_id INTEGER, name TEXT, sequence INTEGER)',
             'CREATE TABLE student_marks (student_id INTEGER, class_id INTEGER, section_id INTEGER, academic_yr TEXT, exam_id INTEGER, subject_id INTEGER, publish TEXT, present TEXT, mark_obtained TEXT, highest_marks TEXT, reportcard_marks TEXT, reportcard_highest_marks TEXT)',
             'CREATE TABLE grade (class_id INTEGER, subject_type TEXT, mark_from INTEGER, mark_upto INTEGER, name TEXT)',
+            'CREATE TABLE settings (academic_yr TEXT, academic_yr_from TEXT, academic_yr_to TEXT)',
+            'CREATE TABLE attendance (student_id INTEGER, academic_yr TEXT, only_date TEXT, attendance_status INTEGER)',
+            'CREATE TABLE report_card_remarks (student_id INTEGER, term_id INTEGER, remark TEXT, promot TEXT)',
         ] as $sql) {
             DB::statement($sql);
         }
@@ -71,7 +74,15 @@ class JpsClass9ReportCardTest extends TestCase
         DB::table('grade')->insert([
             ['class_id' => 109, 'subject_type' => 'Co-Scholastic', 'mark_from' => 41, 'mark_upto' => 50, 'name' => 'A'],
             ['class_id' => 109, 'subject_type' => 'Co-Scholastic', 'mark_from' => 0, 'mark_upto' => 40, 'name' => 'B'],
+            ['class_id' => 109, 'subject_type' => 'Scholastic', 'mark_from' => 0, 'mark_upto' => 100, 'name' => 'A1'],
         ]);
+        DB::table('settings')->insert(['academic_yr' => '2026-2027', 'academic_yr_from' => '2026-04-01', 'academic_yr_to' => '2027-03-31']);
+        DB::table('attendance')->insert(['student_id' => 9001, 'academic_yr' => '2026-2027', 'only_date' => '2026-05-01', 'attendance_status' => 0]);
+        DB::table('report_card_remarks')->insert([
+            ['student_id' => 9001, 'term_id' => 21, 'remark' => 'Good progress', 'promot' => ''],
+            ['student_id' => 9001, 'term_id' => 22, 'remark' => 'Keep it up', 'promot' => '10'],
+        ]);
+        DB::table('report_card_publish')->update(['reopen_date' => '2027-04-01']);
         JWTAuth::shouldReceive('getPayload')->andReturn(collect(['short_name' => 'JPS']));
         $this->app->instance('global_variables', ['parent_app_url' => '', 'codeigniter_app_url' => '']);
     }
@@ -146,21 +157,21 @@ class JpsClass9ReportCardTest extends TestCase
         $html = view('reportcard.JPS.class9_report_card_pdf', ['reportCardData' => $data])->render();
         $this->assertCount(0, DB::getQueryLog());
         DB::disableQueryLog();
-        foreach (['TERM I', 'TERM II', 'PT - II / PT - III', 'English', 'IT', 'Practical', 'Oral/Viva', 'Art Education', '87.5', 'CO-SCHOLASTIC SUBJECTS'] as $label) {
+        foreach (['TERM I', 'TERM II', 'PT - II / PT - III', 'English', 'IT', 'Practical', 'Oral/Viva', 'Art Education', '87.5', 'CO- SCHOLASTICS AREA'] as $label) {
             $this->assertStringContainsString($label, $html);
         }
         $this->assertStringNotContainsString('Hindi', $html);
-        $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'landscape');
+        $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'portrait');
         $output = $pdf->output();
         $this->assertStringStartsWith('%PDF-', $output);
         $this->assertStringContainsString('/Subtype /Image', $output);
-        $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count());
+        $this->assertGreaterThan($pdf->getDomPDF()->getCanvas()->get_width(), $pdf->getDomPDF()->getCanvas()->get_height());
     }
 
     public function test_class9_route_uses_new_format_and_class10_keeps_existing_format(): void
     {
         PDF::shouldReceive('loadView')->once()->with('reportcard.JPS.class9_report_card_pdf', \Mockery::type('array'))->andReturnSelf();
-        PDF::shouldReceive('setPaper')->once()->with('a4', 'landscape')->andReturnSelf();
+        PDF::shouldReceive('setPaper')->once()->with('a4', 'portrait')->andReturnSelf();
         PDF::shouldReceive('stream')->once()->with('Class9_Report_Card_9001.pdf')->andReturn(response('PDF', 200));
         $this->getJson('/api/show_report_card?class_id=109&student_id=9001&acd_yr=2026-2027')->assertOk();
         PDF::shouldReceive('loadView')->once()->with('reportcard.JPS.class9to10_report_card_pdf', \Mockery::type('array'))->andReturnSelf();
@@ -168,7 +179,7 @@ class JpsClass9ReportCardTest extends TestCase
         $this->getJson('/api/show_report_card?class_id=110&student_id=9001&acd_yr=2026-2027')->assertOk();
     }
 
-    public function test_full_subject_list_and_exam_suffixes_render_on_one_page(): void
+    public function test_full_subject_list_and_exam_suffixes_use_the_copied_portrait_layout(): void
     {
         DB::table('exam')->where('exam_id', 21)->update(['name' => 'TERM I (Half Yearly)']);
         foreach ([4 => 'Hindi', 5 => 'Marathi', 6 => 'Maths', 7 => 'Science', 8 => 'Social Science', 9 => 'Individuals in Society', 10 => 'Skill Education', 11 => 'Physical Education'] as $id => $name) {
@@ -187,9 +198,33 @@ class JpsClass9ReportCardTest extends TestCase
         $this->assertCount(4, $data['co_scholastic']);
         $this->assertSame('TERM I (Half Yearly)', $data['blocks'][0]['exam']->name);
         $html = view('reportcard.JPS.class9_report_card_pdf', ['reportCardData' => $data])->render();
-        $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'landscape');
+        $pdf = app('dompdf.wrapper')->loadHTML($html)->setPaper('a4', 'portrait');
         $this->assertStringStartsWith('%PDF-', $pdf->output());
-        $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count());
+        $this->assertGreaterThan($pdf->getDomPDF()->getCanvas()->get_width(), $pdf->getDomPDF()->getCanvas()->get_height());
+    }
+
+    public function test_copied_styles_footer_data_and_class9_displayed_totals_are_preserved(): void
+    {
+        preg_match('/<style[^>]*>(.*?)<\/style>/s', file_get_contents(resource_path('views/reportcard/JPS/class6to8_report_card_pdf.blade.php')), $reference);
+        preg_match('/<style[^>]*>(.*?)<\/style>/s', file_get_contents(resource_path('views/reportcard/JPS/class9_report_card_pdf.blade.php')), $actual);
+        $normalizeCss = static fn ($css) => preg_replace('/[ \t]+$/m', '', str_replace("\r\n", "\n", $css));
+        $this->assertSame($normalizeCss($reference[1]), $normalizeCss($actual[1]));
+
+        $data = $this->build();
+        $html = view('reportcard.JPS.class9_report_card_pdf', ['reportCardData' => $data])->render();
+        foreach (['Good progress', 'Keep it up', '1/1', '01-04-2027', "Class Teacher's Sign.", "Parent's Sign.", "Principal's Sign."] as $value) {
+            $this->assertStringContainsString($value, $html);
+        }
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+        $cells = $xpath->query('//tr[td[1][normalize-space(.)="English"]]/td');
+        $this->assertSame(
+            ['English', '32', '4', '4', '4', '5', '70', '87', 'A1', '36', '4.5', '4', '4', '5', '70', '87.5', 'A1'],
+            array_map(fn ($cell) => trim($cell->textContent), iterator_to_array($cells))
+        );
+        $this->assertStringContainsString('0-100', $html);
+        $this->assertStringContainsString('1 Point grading scale', $html);
     }
 
     public function test_invalid_student_scope_and_missing_parameters_are_rejected(): void
