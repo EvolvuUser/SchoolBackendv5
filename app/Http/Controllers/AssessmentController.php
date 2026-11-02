@@ -24,6 +24,7 @@ use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
+use App\Services\ReportCard\JpsClass10ReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use App\Services\ReportCard\UkgBulkReportCardDataBuilder;
@@ -10872,8 +10873,17 @@ class AssessmentController extends Controller
                         ->stream('Class9_Report_Card_' . $student_id . '.pdf');
 
                 case '10':
-                    return PDF::loadView('reportcard.JPS.class9to10_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
-                    break;
+                    $request->validate([
+                        'class_id' => 'required|integer|min:1',
+                        'student_id' => 'required|integer|min:1',
+                        'acd_yr' => 'required|string|max:11',
+                    ]);
+                    $reportCardData = app(JpsClass10ReportCardDataBuilder::class)
+                        ->build($class_id, $student_id, $academic_yr);
+
+                    return PDF::loadView('reportcard.JPS.class10_report_card_pdf', compact('reportCardData'))
+                        ->setPaper('a4', 'portrait')
+                        ->stream('Class10_Report_Card_' . $student_id . '.pdf');
                     // case '11':
                     //     return PDF::loadView('reportcard.SACS.class11to12_report_card_pdf', compact('student_id', 'class_id', 'academic_yr'))->stream();
                     //     break;
