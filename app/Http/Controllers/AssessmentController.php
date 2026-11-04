@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\ReportCard\Class11To12BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
+use App\Services\ReportCard\HscsClass3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
@@ -11072,6 +11073,24 @@ class AssessmentController extends Controller
             };
 
             return PDF::loadView($view, compact('reportCardData'))
+                ->download($fileName);
+        }
+
+        if ($short_name == 'HSCS' && in_array($class_name, ['3', '4', '5'], true)) {
+            $request->validate([
+                'class_id' => 'required|integer|min:1',
+                'section_id' => 'required|integer|min:1',
+                'academic_yr' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
+                'stud_count' => 'nullable|integer|min:1',
+            ]);
+            $reportCardData = app(HscsClass3To5BulkReportCardDataBuilder::class)
+                ->build($class_id, $section_id, $academic_yr, $stud_count);
+            if ($reportCardData['students'] === []) {
+                return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
+            }
+            $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $reportCardData['section_name']) . '_All_Report_Cards.pdf';
+
+            return PDF::loadView('reportcard.HSCS.class3to5_report_card_pdf_all', compact('reportCardData'))
                 ->download($fileName);
         }
 
