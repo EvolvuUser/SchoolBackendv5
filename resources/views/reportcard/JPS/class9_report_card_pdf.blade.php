@@ -240,7 +240,7 @@ $gradeFor = static function ($value, $maximum, $type = 'Scholastic') use ($repor
                                         <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">@if ($block['term_number'] === 1){{ $block['source_label'] }}<br/>@endif{{ $name }}<br/>({{ $maximum + 0 }})</td>
                                     @endforeach
                                     @foreach ($group['schema'][$index] as [$name, $maximum])
-                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $name }}<br/>({{ $maximum + 0 }})</td>
+                                        <td class="col-md-1 td" style="vertical-align:middle;text-align:center;height:30px;">{{ $block['exam']->name }}<br/>{{ $name }}<br/>({{ $maximum + 0 }})</td>
                                     @endforeach
                                     @php($padding = $assessmentColumnCounts[$index] - count($group['schema'][$index]) - count($group['periodic_schema'][$index]))
                                     @if ($padding > 0)
