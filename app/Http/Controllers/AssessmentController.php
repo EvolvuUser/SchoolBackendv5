@@ -23,9 +23,9 @@ use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
-use App\Services\ReportCard\JpsSecondaryBulkReportCardDataBuilder;
-use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass10ReportCardDataBuilder;
+use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
+use App\Services\ReportCard\JpsSecondaryBulkReportCardDataBuilder;
 use App\Services\ReportCard\LkgBulkReportCardDataBuilder;
 use App\Services\ReportCard\NurseryBulkReportCardDataBuilder;
 use App\Services\ReportCard\UkgBulkReportCardDataBuilder;
@@ -11055,7 +11055,8 @@ class AssessmentController extends Controller
                 'stud_count' => 'nullable|integer|min:1',
             ]);
             $builder = in_array($class_name, ['9', '10'], true)
-                ? JpsSecondaryBulkReportCardDataBuilder::class : JpsBulkReportCardDataBuilder::class;
+                ? JpsSecondaryBulkReportCardDataBuilder::class
+                : JpsBulkReportCardDataBuilder::class;
             $reportCardData = app($builder)->build($class_id, $section_id, $academic_yr, $stud_count);
             if ($reportCardData['students'] === []) {
                 return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
@@ -11193,25 +11194,6 @@ class AssessmentController extends Controller
                 ]
             )->download($fileName);
         }
-
-        $report = DB::table('report_card_generate_classwise')->updateOrInsert(
-            [
-                'class_id' => $class_id,
-                'section_id' => $section_id,
-                'academic_yr' => $academic_yr,
-            ],
-            [
-                'status' => 'pending',
-            ]
-        );
-
-        // Dispatch job
-        GenerateReportCardJob::dispatch([
-            'class_name' => $class_name,
-            'class_id' => $class_id,
-            'section_id' => $section_id,
-            'academic_yr' => $academic_yr
-        ]);
 
         return response()->json([
             'status' => 200,
