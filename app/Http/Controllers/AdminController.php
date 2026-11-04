@@ -778,11 +778,7 @@ class AdminController extends Controller
 
             $onlyDate = Carbon::today()->toDateString();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Section wise total strength
-             * |--------------------------------------------------------------------------
-             */
+            // Section-wise total strength.
             $sectionStrength = DB::table('student')
                 ->select(
                     'class_id',
@@ -792,60 +788,35 @@ class AdminController extends Controller
                 ->where('academic_yr', $academicYr)
                 ->where('isDelete', '!=', 'Y')
                 ->where('parent_id', '!=', '0')
-                ->groupBy(
-                    'class_id',
-                    'section_id'
-                );
+                ->groupBy('class_id', 'section_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Section wise attendance
-             * |
-             * | attendance_status = 0 => Present
-             * | attendance_status = 1 => Absent
-             * |--------------------------------------------------------------------------
-             */
+            // Section-wise attendance:
+            // 0 = Present, 1 = Absent.
             $sectionAttendance = DB::table('attendance as a')
-                ->join(
-                    'student as stu',
-                    'stu.student_id',
-                    '=',
-                    'a.student_id'
-                )
+                ->join('student as stu', 'stu.student_id', '=', 'a.student_id')
                 ->select(
                     'a.class_id',
                     'a.section_id',
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '0'
-                            THEN a.student_id
-                        END
-                    ) as present_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '0'
+                        THEN a.student_id
+                    END) as present_count
                 "),
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '1'
-                            THEN a.student_id
-                        END
-                    ) as absent_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '1'
+                        THEN a.student_id
+                    END) as absent_count
                 ")
                 )
                 ->whereDate('a.only_date', $onlyDate)
                 ->where('stu.academic_yr', $academicYr)
                 ->where('stu.isDelete', 'N')
                 ->where('stu.parent_id', '!=', '0')
-                ->groupBy(
-                    'a.class_id',
-                    'a.section_id'
-                );
+                ->groupBy('a.class_id', 'a.section_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Overall class strength
-             * |--------------------------------------------------------------------------
-             */
+            // Overall class strength.
             $classStrength = DB::table('student')
                 ->select(
                     'class_id',
@@ -856,35 +827,22 @@ class AdminController extends Controller
                 ->where('parent_id', '!=', '0')
                 ->groupBy('class_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Overall class attendance
-             * |--------------------------------------------------------------------------
-             */
+            // Overall class attendance.
             $classAttendance = DB::table('attendance as a')
-                ->join(
-                    'student as stu',
-                    'stu.student_id',
-                    '=',
-                    'a.student_id'
-                )
+                ->join('student as stu', 'stu.student_id', '=', 'a.student_id')
                 ->select(
                     'a.class_id',
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '0'
-                            THEN a.student_id
-                        END
-                    ) as class_present_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '0'
+                        THEN a.student_id
+                    END) as class_present_count
                 "),
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '1'
-                            THEN a.student_id
-                        END
-                    ) as class_absent_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '1'
+                        THEN a.student_id
+                    END) as class_absent_count
                 ")
                 )
                 ->whereDate('a.only_date', $onlyDate)
@@ -893,59 +851,46 @@ class AdminController extends Controller
                 ->where('stu.parent_id', '!=', '0')
                 ->groupBy('a.class_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Division wise data
-             * |--------------------------------------------------------------------------
-             */
+            // Class teacher names for the academic year.
+            // Grouping prevents duplicate class/division rows.
+            $classTeachers = DB::table('class_teachers as ct')
+                ->join('teacher as t', 't.teacher_id', '=', 'ct.teacher_id')
+                ->where('ct.academic_yr', $academicYr)
+                ->select(
+                    'ct.class_id',
+                    'ct.section_id',
+                    DB::raw("
+                    GROUP_CONCAT(
+                        DISTINCT t.name
+                        ORDER BY t.name
+                        SEPARATOR ', '
+                    ) as classteachername
+                ")
+                )
+                ->groupBy('ct.class_id', 'ct.section_id');
+
+            // Division-wise data.
             $results = DB::table('class as c')
                 ->leftJoin('section as s', function ($join) use ($academicYr) {
                     $join
-                        ->on(
-                            'c.class_id',
-                            '=',
-                            's.class_id'
-                        )
-                        ->where(
-                            's.academic_yr',
-                            '=',
-                            $academicYr
-                        );
+                        ->on('c.class_id', '=', 's.class_id')
+                        ->where('s.academic_yr', '=', $academicYr);
                 })
-                ->leftJoinSub(
-                    $sectionStrength,
-                    'ss',
-                    function ($join) {
-                        $join
-                            ->on(
-                                'ss.class_id',
-                                '=',
-                                'c.class_id'
-                            )
-                            ->on(
-                                'ss.section_id',
-                                '=',
-                                's.section_id'
-                            );
-                    }
-                )
-                ->leftJoinSub(
-                    $sectionAttendance,
-                    'sa',
-                    function ($join) {
-                        $join
-                            ->on(
-                                'sa.class_id',
-                                '=',
-                                'c.class_id'
-                            )
-                            ->on(
-                                'sa.section_id',
-                                '=',
-                                's.section_id'
-                            );
-                    }
-                )
+                ->leftJoinSub($sectionStrength, 'ss', function ($join) {
+                    $join
+                        ->on('ss.class_id', '=', 'c.class_id')
+                        ->on('ss.section_id', '=', 's.section_id');
+                })
+                ->leftJoinSub($sectionAttendance, 'sa', function ($join) {
+                    $join
+                        ->on('sa.class_id', '=', 'c.class_id')
+                        ->on('sa.section_id', '=', 's.section_id');
+                })
+                ->leftJoinSub($classTeachers, 'ctn', function ($join) {
+                    $join
+                        ->on('ctn.class_id', '=', 'c.class_id')
+                        ->on('ctn.section_id', '=', 's.section_id');
+                })
                 ->select(
                     'c.class_id',
                     's.section_id',
@@ -953,133 +898,77 @@ class AdminController extends Controller
                     CONCAT(
                         c.name,
                         ' ',
-                        COALESCE(
-                            s.name,
-                            'No division assigned'
-                        )
+                        COALESCE(s.name, 'No division assigned')
                     ) as class_division
                 "),
                     'c.name as class_name',
                     's.name as section_name',
+                    DB::raw("
+                    COALESCE(ctn.classteachername, '') as classteachername
+                "),
                     DB::raw('
-                    COALESCE(
-                        ss.students_count,
-                        0
-                    ) as total_students
+                    COALESCE(ss.students_count, 0) as total_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        sa.present_count,
-                        0
-                    ) as present_students
+                    COALESCE(sa.present_count, 0) as present_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        sa.absent_count,
-                        0
-                    ) as absent_students
+                    COALESCE(sa.absent_count, 0) as absent_students
                 '),
                     DB::raw('
                     GREATEST(
                         COALESCE(ss.students_count, 0)
-                        -
-                        (
+                        - (
                             COALESCE(sa.present_count, 0)
-                            +
-                            COALESCE(sa.absent_count, 0)
+                            + COALESCE(sa.absent_count, 0)
                         ),
                         0
                     ) as attendance_not_marked
                 ')
                 )
-                ->where(
-                    'c.academic_yr',
-                    $academicYr
-                )
-                ->orderBy(
-                    'c.class_id'
-                )
-                ->orderBy(
-                    's.name'
-                )
+                ->where('c.academic_yr', $academicYr)
+                ->orderBy('c.class_id')
+                ->orderBy('s.name')
                 ->get();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Class wise summary
-             * |--------------------------------------------------------------------------
-             */
+            // Class-wise summary.
             $classSummary = DB::table('class as c')
-                ->leftJoinSub(
-                    $classStrength,
-                    'cs',
-                    function ($join) {
-                        $join->on(
-                            'cs.class_id',
-                            '=',
-                            'c.class_id'
-                        );
-                    }
-                )
-                ->leftJoinSub(
-                    $classAttendance,
-                    'ca',
-                    function ($join) {
-                        $join->on(
-                            'ca.class_id',
-                            '=',
-                            'c.class_id'
-                        );
-                    }
-                )
+                ->leftJoinSub($classStrength, 'cs', function ($join) {
+                    $join->on('cs.class_id', '=', 'c.class_id');
+                })
+                ->leftJoinSub($classAttendance, 'ca', function ($join) {
+                    $join->on('ca.class_id', '=', 'c.class_id');
+                })
                 ->select(
                     'c.class_id',
                     'c.name as class_name',
                     DB::raw('
-                    COALESCE(
-                        cs.class_total_students,
-                        0
-                    ) as class_total_students
+                    COALESCE(cs.class_total_students, 0)
+                    as class_total_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        ca.class_present_count,
-                        0
-                    ) as class_present_students
+                    COALESCE(ca.class_present_count, 0)
+                    as class_present_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        ca.class_absent_count,
-                        0
-                    ) as class_absent_students
+                    COALESCE(ca.class_absent_count, 0)
+                    as class_absent_students
                 '),
                     DB::raw('
                     GREATEST(
                         COALESCE(cs.class_total_students, 0)
-                        -
-                        (
+                        - (
                             COALESCE(ca.class_present_count, 0)
-                            +
-                            COALESCE(ca.class_absent_count, 0)
+                            + COALESCE(ca.class_absent_count, 0)
                         ),
                         0
                     ) as class_attendance_not_marked
                 ')
                 )
-                ->where(
-                    'c.academic_yr',
-                    $academicYr
-                )
-                ->orderBy(
-                    'c.class_id'
-                )
+                ->where('c.academic_yr', $academicYr)
+                ->orderBy('c.class_id')
                 ->get();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Final response
-             * |--------------------------------------------------------------------------
-             */
             return response()->json([
                 'status' => 200,
                 'date' => $onlyDate,

@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 
 class Class3To5BulkReportCardDataBuilder
 {
+    protected string $firstTermAttendanceEnd = '-09-30';
+
     public function build($classId, $sectionId, $academicYr, $studCount = null): array
     {
         $students = collect(get_students($classId, $sectionId, $academicYr))->map(function ($student) {
@@ -133,7 +135,7 @@ class Class3To5BulkReportCardDataBuilder
         $dateTo = null;
         if ($dateFrom) {
             if (count($termList) == 1) {
-                $dateTo = date_format(date_create(substr($dateFrom, 0, 4) . '-09-30'), 'Y-m-d');
+                $dateTo = date_format(date_create(substr($dateFrom, 0, 4) . $this->firstTermAttendanceEnd), 'Y-m-d');
             } elseif (count($termList) >= 2) {
                 $dateTo = $settings->academic_yr_to ?? null;
             }
