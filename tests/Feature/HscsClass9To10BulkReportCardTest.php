@@ -160,6 +160,43 @@ class HscsClass9To10BulkReportCardTest extends TestCase
         $this->assertStringContainsString('/Subtype /Image', $pdf);
     }
 
+    public function test_bulk_table_layout_and_styles_match_the_single_report_for_both_classes(): void
+    {
+        foreach ($this->classIds as $class) {
+            $ids = $this->students($class, 1);
+            // Compare the blank-mark layout independently of the legacy single view's marks fields.
+            DB::table('student_marks')->where('student_id', $ids[0])->delete();
+            $single = view($this->singleView, [
+                'student_id' => $ids[0], 'class_id' => $class, 'academic_yr' => '2026-2027',
+            ])->render();
+            $bulk = view($this->bulkView, ['reportCardData' => $this->build($class)])->render();
+
+            $tableLayout = static function (string $html): array {
+                $document = new \DOMDocument();
+                $previous = libxml_use_internal_errors(true);
+                $document->loadHTML($html);
+                libxml_clear_errors();
+                libxml_use_internal_errors($previous);
+                $layout = [];
+                foreach ((new \DOMXPath($document))->query('//table | //td | //th') as $node) {
+                    $attributes = [];
+                    foreach ($node->attributes as $attribute) {
+                        $attributes[$attribute->name] = preg_replace('/\s+/', '', $attribute->value);
+                    }
+                    ksort($attributes);
+                    $layout[] = [$node->nodeName, $node->parentNode->nodeName, $attributes];
+                }
+                return $layout;
+            };
+            $this->assertSame($tableLayout($single), $tableLayout($bulk));
+            preg_match('/<style[^>]*>(.*?)<\/style>/s', $single, $singleStyles);
+            preg_match('/<style[^>]*>(.*?)<\/style>/s', $bulk, $bulkStyles);
+            $normalizeStyles = static fn ($css) => preg_replace('/\s+/', '',
+                preg_replace('/background-image:.*?;/', '', $css));
+            $this->assertSame($normalizeStyles($singleStyles[1]), $normalizeStyles($bulkStyles[1]));
+        }
+    }
+
     public function test_only_published_exams_and_marks_for_the_requested_year_are_used(): void
     {
         $ids = $this->students(110, 1);
