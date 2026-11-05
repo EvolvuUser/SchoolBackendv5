@@ -44,12 +44,16 @@ class HscsClass9To10BulkReportCardDataBuilder
                 ->whereIn('exam_id', $exams->pluck('exam_id'))
                 ->whereIn('subject_id', $subjects->pluck('sub_rc_master_id'))
                 ->where('academic_yr', $academicYr)->where('publish', 'Y')
-                ->select('student_id', 'exam_id', 'subject_id', 'reportcard_marks')->get();
+                ->select('student_id', 'exam_id', 'subject_id', 'mark_obtained')->get();
             foreach ($marks as $mark) {
-                $values = json_decode($mark->reportcard_marks ?? '', true);
-                // Match the single HSCS report: display the last report-card heading, including Ab and zero.
+                // get_marks() in the single report uses the first matching published row.
+                if (array_key_exists($mark->subject_id, $marksByStudent[$mark->student_id][$mark->exam_id] ?? [])) {
+                    continue;
+                }
+                $values = json_decode($mark->mark_obtained ?? '', true);
+                // The single HSCS report displays the last raw heading, not the converted reportcard_marks.
                 $marksByStudent[$mark->student_id][$mark->exam_id][$mark->subject_id] =
-                    is_array($values) && $values !== [] ? end($values) : '';
+                    is_array($values) && $values !== [] ? end($values) : 0;
             }
         }
 

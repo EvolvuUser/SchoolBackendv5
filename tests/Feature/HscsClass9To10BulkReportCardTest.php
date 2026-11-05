@@ -34,7 +34,7 @@ class HscsClass9To10BulkReportCardTest extends TestCase
             'CREATE TABLE marks_headings (marks_headings_id INTEGER, name TEXT, sequence INTEGER)',
             'CREATE TABLE subjects_on_report_card (class_id INTEGER, sub_rc_master_id INTEGER, subject_type TEXT, academic_yr TEXT)',
             'CREATE TABLE subjects_on_report_card_master (sub_rc_master_id INTEGER, name TEXT, sequence INTEGER)',
-            'CREATE TABLE student_marks (student_id INTEGER, exam_id INTEGER, subject_id INTEGER, academic_yr TEXT, publish TEXT, reportcard_marks TEXT, reportcard_highest_marks TEXT, total_marks INTEGER, highest_total_marks INTEGER)',
+            'CREATE TABLE student_marks (student_id INTEGER, exam_id INTEGER, subject_id INTEGER, academic_yr TEXT, publish TEXT, mark_obtained TEXT, highest_marks TEXT, reportcard_marks TEXT, reportcard_highest_marks TEXT, total_marks INTEGER, highest_total_marks INTEGER)',
             'CREATE TABLE report_card_remarks (student_id INTEGER, term_id INTEGER, remark TEXT, promot TEXT)',
             'CREATE TABLE settings (academic_yr TEXT, academic_yr_from TEXT, academic_yr_to TEXT)',
             'CREATE TABLE grade (class_id INTEGER, subject_type TEXT, name TEXT, mark_from INTEGER, mark_upto INTEGER)',
@@ -85,7 +85,8 @@ class HscsClass9To10BulkReportCardTest extends TestCase
                 $mark = $roll === 1 ? '75.5' : 'Ab';
                 DB::table('student_marks')->insert([
                     'student_id' => $id, 'exam_id' => $exam, 'subject_id' => 1, 'academic_yr' => '2026-2027', 'publish' => 'Y',
-                    'reportcard_marks' => json_encode(['Term' => $mark]), 'reportcard_highest_marks' => '{"Term":100}',
+                    'mark_obtained' => json_encode(['Term' => $mark]), 'highest_marks' => '{"Term":100}',
+                    'reportcard_marks' => '{"Term":99}', 'reportcard_highest_marks' => '{"Term":100}',
                     'total_marks' => $roll === 1 ? 76 : 0, 'highest_total_marks' => 100,
                 ]);
             }
@@ -140,7 +141,7 @@ class HscsClass9To10BulkReportCardTest extends TestCase
     public function test_render_preserves_hscs_format_marks_and_signatures_without_queries(): void
     {
         $ids = $this->students(109, 3);
-        DB::table('student_marks')->where('student_id', $ids[2])->update(['reportcard_marks' => '{"Term":0}']);
+        DB::table('student_marks')->where('student_id', $ids[2])->update(['mark_obtained' => '{"Term":0}']);
         $data = $this->build();
         $this->assertSame(0, $data['marks_by_student'][$ids[2]][1][1]);
         DB::enableQueryLog();
@@ -194,6 +195,55 @@ class HscsClass9To10BulkReportCardTest extends TestCase
             $normalizeStyles = static fn ($css) => preg_replace('/\s+/', '',
                 preg_replace('/background-image:.*?;/', '', $css));
             $this->assertSame($normalizeStyles($singleStyles[1]), $normalizeStyles($bulkStyles[1]));
+        }
+    }
+
+    public function test_rendered_marks_match_single_reports_when_raw_and_reportcard_marks_differ(): void
+    {
+        $scholasticCells = static function (string $html): array {
+            $document = new \DOMDocument();
+            $previous = libxml_use_internal_errors(true);
+            $document->loadHTML($html);
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+            $cells = [];
+            foreach ((new \DOMXPath($document))->query('//th[contains(., "SCHOLASTIC AREAS")]/ancestor::table[1]//td') as $cell) {
+                $cells[] = trim(preg_replace('/\s+/', ' ', $cell->textContent));
+            }
+            return $cells;
+        };
+        foreach ($this->classIds as $class) {
+            $ids = $this->students($class, 4);
+            $rawMarks = [
+                ['Internal' => 12, 'Exam' => 64.5],
+                ['Internal' => 10, 'Exam' => 'Ab'],
+                ['Internal' => 10, 'Exam' => 0],
+                [],
+            ];
+            foreach ($ids as $index => $id) {
+                DB::table('student_marks')->where('student_id', $id)->where('exam_id', 1)->update([
+                    'mark_obtained' => json_encode((object) $rawMarks[$index]),
+                    'highest_marks' => '{"Internal":20,"Exam":80}',
+                ]);
+                // Missing and unpublished marks must both remain blank.
+                if ($index % 2 === 0) {
+                    DB::table('student_marks')->where('student_id', $id)->where('exam_id', 2)->delete();
+                } else {
+                    DB::table('student_marks')->where('student_id', $id)->where('exam_id', 2)->update(['publish' => 'N']);
+                }
+            }
+            $data = $this->build($class);
+            foreach ($ids as $index => $id) {
+                $single = view($this->singleView, [
+                    'student_id' => $id, 'class_id' => $class, 'academic_yr' => '2026-2027',
+                ])->render();
+                $studentData = $data;
+                $studentData['students'] = array_values(array_filter($data['students'], fn ($student) => $student['student_id'] === $id));
+                $bulk = view($this->bulkView, ['reportCardData' => $studentData])->render();
+                $this->assertSame(['64.5', 'Ab', '0', '0'][$index], (string) $data['marks_by_student'][$id][1][1]);
+                $this->assertSame($scholasticCells($single), $scholasticCells($bulk));
+                $this->assertNotEmpty($scholasticCells($single));
+            }
         }
     }
 
