@@ -71,6 +71,7 @@
     }
     
     .pdfdiv {
+   page: LC;
    page-break-after: always;
 }
 .pdfdiv:last-child{
@@ -149,23 +150,29 @@ foreach ($reportCardData['students'] as $row1):
             </tr>
 		</table>
      <br>
-        <table border="1" style="width:90%;margin-left:5%;border-spacing:0;background-color:white;" cellpadding="0" cellspacing="0">
-            <tr><th colspan="{{ count($exam_list) + 1 }}" style="text-align:center;height:55px;">SCHOLASTIC AREAS</th></tr>
+		<table style="width:90%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+			<tr>
+				<td style="text-align:center;" cellpadding="0" cellspacing="0">
+					<table border="1" style="width:100%;margin-left: auto;margin-right: 1%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
+            <tr><th class="col-md-12" colspan="{{ count($exam_list) + 1 }}" style="text-align:center;height:55px;">SCHOLASTIC AREAS</th></tr>
             <tr>
                 <th style="text-align:center;height:50px;">SUBJECT</th>
                 @foreach ($exam_list as $exam)
-                    <td style="text-align:center;height:50px;">{{ trim(explode('(', $exam->name)[0]) }}<br/>({{ $reportCardData['highest_marks_by_exam'][$exam->exam_id] ?? '' }})</td>
+                    <td class="col-md-1" style="text-align:center;height:50px;">{{ strpos($exam->name, '(') > 0 ? substr($exam->name, 0, strpos($exam->name, '(')) : $exam->name }}<br/>({{ $reportCardData['highest_marks_by_exam'][$exam->exam_id] ?? '' }})</td>
                 @endforeach
             </tr>
             @foreach ($reportCardData['scholastic_subjects'] as $subject)
                 <tr>
-                    <td style="text-align:center;height:40px;width:150px;">{{ $subject->name }}</td>
+                    <td style="text-align:center;height:40px;width:150px">{{ $subject->name }}</td>
                     @foreach ($exam_list as $exam)
-                        <td style="text-align:center;height:40px;">{{ $reportCardData['marks_by_student'][$row1['student_id']][$exam->exam_id][$subject->sub_rc_master_id] ?? '' }}</td>
+                        <td class="col-md-1" style="text-align:center;height:40px;">{{ $reportCardData['marks_by_student'][$row1['student_id']][$exam->exam_id][$subject->sub_rc_master_id] ?? '' }}</td>
                     @endforeach
                 </tr>
             @endforeach
         </table>
+				</td>
+			</tr>
+		</table>
         <br/>
 		<!--table border="0"  class="table-responsive" style="width:80%;margin-left: 6%;margin-right: auto;margin-top: 66%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0"-->
 		<table style="width:90%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
