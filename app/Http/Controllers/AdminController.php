@@ -931,6 +931,43 @@ class AdminController extends Controller
                 ->orderBy('s.name')
                 ->get();
 
+            $results = $results->map(function ($row) {
+                $teachers = collect(explode(',', (string) $row->classteachername))
+                    ->map(function ($name) {
+                        $name = preg_replace('/\s+/u', ' ', trim($name));
+
+                        if ($name === '') {
+                            return null;
+                        }
+
+                        $parts = preg_split('/\s+/u', $name);
+
+                        $firstName = mb_convert_case(
+                            $parts[0],
+                            MB_CASE_TITLE,
+                            'UTF-8'
+                        );
+
+                        $lastName = count($parts) > 1
+                            ? mb_convert_case(end($parts), MB_CASE_TITLE, 'UTF-8')
+                            : '';
+
+                        return [
+                            'first_name' => $firstName,
+                            'last_name' => $lastName,
+                            'name' => trim($firstName . ' ' . $lastName),
+                        ];
+                    })
+                    ->filter()
+                    ->values();
+
+                $row->classteachername = $teachers->pluck('name')->implode(', ');
+                $row->first_name = $teachers->pluck('first_name')->implode(', ');
+                $row->last_name = $teachers->pluck('last_name')->filter()->implode(', ');
+
+                return $row;
+            });
+
             // Class-wise summary.
             $classSummary = DB::table('class as c')
                 ->leftJoinSub($classStrength, 'cs', function ($join) {

@@ -22,6 +22,7 @@ use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\HscsClass3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\HscsClass6To8BulkReportCardDataBuilder;
+use App\Services\ReportCard\HscsClass9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
@@ -11077,23 +11078,29 @@ class AssessmentController extends Controller
                 ->download($fileName);
         }
 
-        if ($short_name == 'HSCS' && in_array($class_name, ['3', '4', '5', '6', '7', '8'], true)) {
+        if ($short_name == 'HSCS' && in_array($class_name, ['3', '4', '5', '6', '7', '8', '9', '10'], true)) {
             $request->validate([
                 'class_id' => 'required|integer|min:1',
                 'section_id' => 'required|integer|min:1',
                 'academic_yr' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
                 'stud_count' => 'nullable|integer|min:1',
             ]);
-            $builder = in_array($class_name, ['6', '7', '8'], true)
-                ? HscsClass6To8BulkReportCardDataBuilder::class : HscsClass3To5BulkReportCardDataBuilder::class;
+            $builder = match ($class_name) {
+                '9', '10' => HscsClass9To10BulkReportCardDataBuilder::class,
+                '6', '7', '8' => HscsClass6To8BulkReportCardDataBuilder::class,
+                default => HscsClass3To5BulkReportCardDataBuilder::class,
+            };
             $reportCardData = app($builder)->build($class_id, $section_id, $academic_yr, $stud_count);
             if ($reportCardData['students'] === []) {
                 return response()->json(['message' => 'No students found for the selected report card batch.'], 404);
             }
             $fileName = preg_replace('/[^A-Za-z0-9_-]/', '', $class_name . $reportCardData['section_name']) . '_All_Report_Cards.pdf';
 
-            $view = in_array($class_name, ['6', '7', '8'], true)
-                ? 'reportcard.HSCS.class6to8_report_card_pdf_all' : 'reportcard.HSCS.class3to5_report_card_pdf_all';
+            $view = match ($class_name) {
+                '9', '10' => 'reportcard.HSCS.class9to10_report_card_pdf_all',
+                '6', '7', '8' => 'reportcard.HSCS.class6to8_report_card_pdf_all',
+                default => 'reportcard.HSCS.class3to5_report_card_pdf_all',
+            };
 
             return PDF::loadView($view, compact('reportCardData'))
                 ->download($fileName);
