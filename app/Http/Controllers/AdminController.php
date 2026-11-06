@@ -470,6 +470,11 @@ class AdminController extends Controller
             // =====================================================
             // EVENTS QUERY
             // =====================================================
+            $totalClasses = DB::table('class')
+                ->where('academic_yr', $academicYr)
+                ->distinct()
+                ->count('class_id');
+
             $events = DB::table('events')
                 ->join(
                     'class',
@@ -492,14 +497,19 @@ class AdminController extends Controller
 
                 events.end_time AS end_time,
 
-                GROUP_CONCAT(
-                    DISTINCT class.name
-                    ORDER BY class.name
-                    SEPARATOR ', '
-                ) AS class_name,
+                CASE
+                    WHEN ? > 0 AND COUNT(DISTINCT CASE
+                        WHEN class.academic_yr = ? THEN class.class_id
+                    END) = ? THEN 'All'
+                    ELSE GROUP_CONCAT(
+                        DISTINCT class.name
+                        ORDER BY class.name
+                        SEPARATOR ', '
+                    )
+                END AS class_name,
 
                 'event' AS type
-            ")
+            ", [$totalClasses, $academicYr, $totalClasses])
                 ->where(
                     'events.isDelete',
                     'N'
@@ -512,14 +522,20 @@ class AdminController extends Controller
                     'events.academic_yr',
                     $academicYr
                 )
-                ->whereMonth(
-                    'events.start_date',
-                    $month
-                )
-                ->whereYear(
-                    'events.start_date',
-                    $year
-                )
+                ->whereRaw("
+                    CASE
+                        WHEN events.end_date IS NULL
+                             OR events.end_date = '0000-00-00'
+                        THEN events.start_date
+                        ELSE events.end_date
+                    END >= ?
+                ", [Carbon::today()->toDateString()])
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('events.start_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('events.start_date', $year);
+                })
                 ->groupBy(
                     'events.unq_id',
                     'events.title',
@@ -572,14 +588,18 @@ class AdminController extends Controller
                     'academic_yr',
                     $academicYr
                 )
-                ->whereMonth(
-                    'holiday_date',
-                    $month
-                )
-                ->whereYear(
-                    'holiday_date',
-                    $year
-                );
+                ->whereRaw("
+                COALESCE(
+                    NULLIF(to_date, '0000-00-00'),
+                    holiday_date
+                ) >= ?
+            ", [Carbon::today()->toDateString()])
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('holiday_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('holiday_date', $year);
+                });
 
             // =====================================================
             // Combine Events + Holidays
@@ -614,6 +634,50 @@ class AdminController extends Controller
                     'start_time'
                 )
                 ->get();
+
+            $data->transform(function ($item) {
+                if ($item->type !== 'event' || $item->class_name === 'All') {
+                    return $item;
+                }
+
+                $classNames = array_unique(array_map('trim', explode(',', $item->class_name ?? '')));
+                natsort($classNames);
+                $labels = [];
+                $rangeStart = null;
+                $rangeEnd = null;
+
+                $appendRange = function () use (&$labels, &$rangeStart, &$rangeEnd) {
+                    if ($rangeStart !== null) {
+                        $labels[] = $rangeStart === $rangeEnd
+                            ? (string) $rangeStart
+                            : $rangeStart . '-' . $rangeEnd;
+                        $rangeStart = null;
+                        $rangeEnd = null;
+                    }
+                };
+
+                foreach ($classNames as $className) {
+                    if (ctype_digit($className)) {
+                        $number = (int) $className;
+                        if ($rangeEnd !== null && $number === $rangeEnd + 1) {
+                            $rangeEnd = $number;
+                        } else {
+                            $appendRange();
+                            $rangeStart = $rangeEnd = $number;
+                        }
+                    } else {
+                        $appendRange();
+                        if ($className !== '') {
+                            $labels[] = $className;
+                        }
+                    }
+                }
+
+                $appendRange();
+                $item->class_name = implode(', ', $labels);
+
+                return $item;
+            });
 
             // =====================================================
             // Response
@@ -714,11 +778,7 @@ class AdminController extends Controller
 
             $onlyDate = Carbon::today()->toDateString();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Section wise total strength
-             * |--------------------------------------------------------------------------
-             */
+            // Section-wise total strength.
             $sectionStrength = DB::table('student')
                 ->select(
                     'class_id',
@@ -726,62 +786,37 @@ class AdminController extends Controller
                     DB::raw('COUNT(student_id) as students_count')
                 )
                 ->where('academic_yr', $academicYr)
-                ->where('isDelete', 'N')
+                ->where('isDelete', '!=', 'Y')
                 ->where('parent_id', '!=', '0')
-                ->groupBy(
-                    'class_id',
-                    'section_id'
-                );
+                ->groupBy('class_id', 'section_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Section wise attendance
-             * |
-             * | attendance_status = 0 => Present
-             * | attendance_status = 1 => Absent
-             * |--------------------------------------------------------------------------
-             */
+            // Section-wise attendance:
+            // 0 = Present, 1 = Absent.
             $sectionAttendance = DB::table('attendance as a')
-                ->join(
-                    'student as stu',
-                    'stu.student_id',
-                    '=',
-                    'a.student_id'
-                )
+                ->join('student as stu', 'stu.student_id', '=', 'a.student_id')
                 ->select(
                     'a.class_id',
                     'a.section_id',
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '0'
-                            THEN a.student_id
-                        END
-                    ) as present_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '0'
+                        THEN a.student_id
+                    END) as present_count
                 "),
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '1'
-                            THEN a.student_id
-                        END
-                    ) as absent_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '1'
+                        THEN a.student_id
+                    END) as absent_count
                 ")
                 )
                 ->whereDate('a.only_date', $onlyDate)
                 ->where('stu.academic_yr', $academicYr)
                 ->where('stu.isDelete', 'N')
                 ->where('stu.parent_id', '!=', '0')
-                ->groupBy(
-                    'a.class_id',
-                    'a.section_id'
-                );
+                ->groupBy('a.class_id', 'a.section_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Overall class strength
-             * |--------------------------------------------------------------------------
-             */
+            // Overall class strength.
             $classStrength = DB::table('student')
                 ->select(
                     'class_id',
@@ -792,35 +827,22 @@ class AdminController extends Controller
                 ->where('parent_id', '!=', '0')
                 ->groupBy('class_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Overall class attendance
-             * |--------------------------------------------------------------------------
-             */
+            // Overall class attendance.
             $classAttendance = DB::table('attendance as a')
-                ->join(
-                    'student as stu',
-                    'stu.student_id',
-                    '=',
-                    'a.student_id'
-                )
+                ->join('student as stu', 'stu.student_id', '=', 'a.student_id')
                 ->select(
                     'a.class_id',
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '0'
-                            THEN a.student_id
-                        END
-                    ) as class_present_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '0'
+                        THEN a.student_id
+                    END) as class_present_count
                 "),
                     DB::raw("
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN a.attendance_status = '1'
-                            THEN a.student_id
-                        END
-                    ) as class_absent_count
+                    COUNT(DISTINCT CASE
+                        WHEN a.attendance_status = '1'
+                        THEN a.student_id
+                    END) as class_absent_count
                 ")
                 )
                 ->whereDate('a.only_date', $onlyDate)
@@ -829,59 +851,46 @@ class AdminController extends Controller
                 ->where('stu.parent_id', '!=', '0')
                 ->groupBy('a.class_id');
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Division wise data
-             * |--------------------------------------------------------------------------
-             */
+            // Class teacher names for the academic year.
+            // Grouping prevents duplicate class/division rows.
+            $classTeachers = DB::table('class_teachers as ct')
+                ->join('teacher as t', 't.teacher_id', '=', 'ct.teacher_id')
+                ->where('ct.academic_yr', $academicYr)
+                ->select(
+                    'ct.class_id',
+                    'ct.section_id',
+                    DB::raw("
+                    GROUP_CONCAT(
+                        DISTINCT t.name
+                        ORDER BY t.name
+                        SEPARATOR ', '
+                    ) as classteachername
+                ")
+                )
+                ->groupBy('ct.class_id', 'ct.section_id');
+
+            // Division-wise data.
             $results = DB::table('class as c')
                 ->leftJoin('section as s', function ($join) use ($academicYr) {
                     $join
-                        ->on(
-                            'c.class_id',
-                            '=',
-                            's.class_id'
-                        )
-                        ->where(
-                            's.academic_yr',
-                            '=',
-                            $academicYr
-                        );
+                        ->on('c.class_id', '=', 's.class_id')
+                        ->where('s.academic_yr', '=', $academicYr);
                 })
-                ->leftJoinSub(
-                    $sectionStrength,
-                    'ss',
-                    function ($join) {
-                        $join
-                            ->on(
-                                'ss.class_id',
-                                '=',
-                                'c.class_id'
-                            )
-                            ->on(
-                                'ss.section_id',
-                                '=',
-                                's.section_id'
-                            );
-                    }
-                )
-                ->leftJoinSub(
-                    $sectionAttendance,
-                    'sa',
-                    function ($join) {
-                        $join
-                            ->on(
-                                'sa.class_id',
-                                '=',
-                                'c.class_id'
-                            )
-                            ->on(
-                                'sa.section_id',
-                                '=',
-                                's.section_id'
-                            );
-                    }
-                )
+                ->leftJoinSub($sectionStrength, 'ss', function ($join) {
+                    $join
+                        ->on('ss.class_id', '=', 'c.class_id')
+                        ->on('ss.section_id', '=', 's.section_id');
+                })
+                ->leftJoinSub($sectionAttendance, 'sa', function ($join) {
+                    $join
+                        ->on('sa.class_id', '=', 'c.class_id')
+                        ->on('sa.section_id', '=', 's.section_id');
+                })
+                ->leftJoinSub($classTeachers, 'ctn', function ($join) {
+                    $join
+                        ->on('ctn.class_id', '=', 'c.class_id')
+                        ->on('ctn.section_id', '=', 's.section_id');
+                })
                 ->select(
                     'c.class_id',
                     's.section_id',
@@ -889,133 +898,114 @@ class AdminController extends Controller
                     CONCAT(
                         c.name,
                         ' ',
-                        COALESCE(
-                            s.name,
-                            'No division assigned'
-                        )
+                        COALESCE(s.name, 'No division assigned')
                     ) as class_division
                 "),
                     'c.name as class_name',
                     's.name as section_name',
+                    DB::raw("
+                    COALESCE(ctn.classteachername, '') as classteachername
+                "),
                     DB::raw('
-                    COALESCE(
-                        ss.students_count,
-                        0
-                    ) as total_students
+                    COALESCE(ss.students_count, 0) as total_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        sa.present_count,
-                        0
-                    ) as present_students
+                    COALESCE(sa.present_count, 0) as present_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        sa.absent_count,
-                        0
-                    ) as absent_students
+                    COALESCE(sa.absent_count, 0) as absent_students
                 '),
                     DB::raw('
                     GREATEST(
                         COALESCE(ss.students_count, 0)
-                        -
-                        (
+                        - (
                             COALESCE(sa.present_count, 0)
-                            +
-                            COALESCE(sa.absent_count, 0)
+                            + COALESCE(sa.absent_count, 0)
                         ),
                         0
                     ) as attendance_not_marked
                 ')
                 )
-                ->where(
-                    'c.academic_yr',
-                    $academicYr
-                )
-                ->orderBy(
-                    'c.class_id'
-                )
-                ->orderBy(
-                    's.name'
-                )
+                ->where('c.academic_yr', $academicYr)
+                ->orderBy('c.class_id')
+                ->orderBy('s.name')
                 ->get();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Class wise summary
-             * |--------------------------------------------------------------------------
-             */
+            $results = $results->map(function ($row) {
+                $teachers = collect(explode(',', (string) $row->classteachername))
+                    ->map(function ($name) {
+                        $name = preg_replace('/\s+/u', ' ', trim($name));
+
+                        if ($name === '') {
+                            return null;
+                        }
+
+                        $parts = preg_split('/\s+/u', $name);
+
+                        $firstName = mb_convert_case(
+                            $parts[0],
+                            MB_CASE_TITLE,
+                            'UTF-8'
+                        );
+
+                        $lastName = count($parts) > 1
+                            ? mb_convert_case(end($parts), MB_CASE_TITLE, 'UTF-8')
+                            : '';
+
+                        return [
+                            'first_name' => $firstName,
+                            'last_name' => $lastName,
+                            'name' => trim($firstName . ' ' . $lastName),
+                        ];
+                    })
+                    ->filter()
+                    ->values();
+
+                $row->classteachername = $teachers->pluck('name')->implode(', ');
+                $row->first_name = $teachers->pluck('first_name')->implode(', ');
+                $row->last_name = $teachers->pluck('last_name')->filter()->implode(', ');
+
+                return $row;
+            });
+
+            // Class-wise summary.
             $classSummary = DB::table('class as c')
-                ->leftJoinSub(
-                    $classStrength,
-                    'cs',
-                    function ($join) {
-                        $join->on(
-                            'cs.class_id',
-                            '=',
-                            'c.class_id'
-                        );
-                    }
-                )
-                ->leftJoinSub(
-                    $classAttendance,
-                    'ca',
-                    function ($join) {
-                        $join->on(
-                            'ca.class_id',
-                            '=',
-                            'c.class_id'
-                        );
-                    }
-                )
+                ->leftJoinSub($classStrength, 'cs', function ($join) {
+                    $join->on('cs.class_id', '=', 'c.class_id');
+                })
+                ->leftJoinSub($classAttendance, 'ca', function ($join) {
+                    $join->on('ca.class_id', '=', 'c.class_id');
+                })
                 ->select(
                     'c.class_id',
                     'c.name as class_name',
                     DB::raw('
-                    COALESCE(
-                        cs.class_total_students,
-                        0
-                    ) as class_total_students
+                    COALESCE(cs.class_total_students, 0)
+                    as class_total_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        ca.class_present_count,
-                        0
-                    ) as class_present_students
+                    COALESCE(ca.class_present_count, 0)
+                    as class_present_students
                 '),
                     DB::raw('
-                    COALESCE(
-                        ca.class_absent_count,
-                        0
-                    ) as class_absent_students
+                    COALESCE(ca.class_absent_count, 0)
+                    as class_absent_students
                 '),
                     DB::raw('
                     GREATEST(
                         COALESCE(cs.class_total_students, 0)
-                        -
-                        (
+                        - (
                             COALESCE(ca.class_present_count, 0)
-                            +
-                            COALESCE(ca.class_absent_count, 0)
+                            + COALESCE(ca.class_absent_count, 0)
                         ),
                         0
                     ) as class_attendance_not_marked
                 ')
                 )
-                ->where(
-                    'c.academic_yr',
-                    $academicYr
-                )
-                ->orderBy(
-                    'c.class_id'
-                )
+                ->where('c.academic_yr', $academicYr)
+                ->orderBy('c.class_id')
                 ->get();
 
-            /*
-             * |--------------------------------------------------------------------------
-             * | Final response
-             * |--------------------------------------------------------------------------
-             */
             return response()->json([
                 'status' => 200,
                 'date' => $onlyDate,
@@ -1812,7 +1802,14 @@ class AdminController extends Controller
         $academicYr = $payload->get('academic_year');
 
         $classes = Classes::with('getDepartment')
-            ->withCount('students')
+            ->withCount([
+                'students' => function ($query) use ($academicYr) {
+                    $query
+                        ->where('academic_yr', $academicYr)
+                        ->where('isDelete', '!=', 'Y')
+                        ->where('parent_id', '!=', '0');
+                }
+            ])
             ->where('academic_yr', $academicYr)
             ->orderBy('class_id')
             ->get();
@@ -20161,63 +20158,62 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             // =====================================================
-            // Query parameter: current / upcoming
-            // =====================================================
-            $weekType = $request->query('week', 'current');
+            // Select the week supplied by the frontend.
+            // Accept d-m-Y, Y-m-d, or a Monday / Sunday range in either format.
+            $weekDate = $request->input('week_date');
 
-            if (!in_array($weekType, ['current', 'upcoming'])) {
+            if (!is_string($weekDate) || trim($weekDate) === '') {
+                $weekDate = now()
+                    ->startOfWeek(Carbon::MONDAY)
+                    ->format('d-m-Y');
+            }
+
+            $dateParts = array_map('trim', explode('/', trim($weekDate)));
+            $selectedDates = [];
+
+            foreach ($dateParts as $datePart) {
+                $parsedDate = null;
+                foreach (['d-m-Y', 'Y-m-d'] as $format) {
+                    $date = \DateTimeImmutable::createFromFormat('!' . $format, $datePart);
+                    if ($date !== false && $date->format($format) === $datePart) {
+                        $parsedDate = Carbon::instance($date);
+                        break;
+                    }
+                }
+
+                if ($parsedDate === null) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid week_date. Use valid dates in d-m-Y or Y-m-d format.'
+                    ], 422);
+                }
+
+                $selectedDates[] = $parsedDate;
+            }
+
+            if (count($selectedDates) > 2) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                    'message' => 'week_date must be a single date or a Monday / Sunday date range.'
                 ], 422);
             }
 
-            $today = now();
+            $weekStart = $selectedDates[0]->copy()->startOfWeek(Carbon::MONDAY);
 
-            $currentWeekStart = $today
-                ->copy()
-                ->startOfWeek(\Carbon\Carbon::MONDAY);
-
-            // =====================================================
-            // Week selection
-            // =====================================================
-            if ($weekType === 'current') {
-                $weekStart = $currentWeekStart->copy();
-            } else {
-                // Upcoming week visible only from Friday
-                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
-                    $nextWeekStart = $currentWeekStart
-                        ->copy()
-                        ->addWeek();
-
-                    $nextWeekEnd = $nextWeekStart
-                        ->copy()
-                        ->addDays(6);
-
-                    return response()->json([
-                        'status' => true,
-                        'week_type' => 'upcoming',
-                        'message' =>
-                            'Upcoming week lesson plan list will be available from Friday.',
-                        'week' => [
-                            'start_date' =>
-                                $nextWeekStart->format('d-m-Y'),
-                            'end_date' =>
-                                $nextWeekEnd->format('d-m-Y'),
-                            'display' =>
-                                $nextWeekStart->format('d-m-Y')
-                                . ' / '
-                                . $nextWeekEnd->format('d-m-Y'),
-                        ],
-                        'data' => []
-                    ], 200);
-                }
-
-                // Friday onwards show next week
-                $weekStart = $currentWeekStart
-                    ->copy()
-                    ->addWeek();
+            if (count($selectedDates) === 2 && (
+                !$selectedDates[0]->equalTo($weekStart) ||
+                !$selectedDates[1]->equalTo($weekStart->copy()->addDays(6))
+            )) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The week_date range must run from Monday to Sunday of the same week.'
+                ], 422);
             }
+
+            $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+            $weekType = $weekStart->equalTo($currentWeekStart)
+                ? 'current'
+                : ($weekStart->equalTo($currentWeekStart->copy()->addWeek()) ? 'upcoming' : 'custom');
 
             // =====================================================
             // Week dates
@@ -20673,60 +20669,66 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
             $academic_year = JWTAuth::getPayload()->get('academic_year');
 
             // =====================================================
-            // Query parameter: current / upcoming
-            // =====================================================
-            $weekType = $request->query('week', 'current');
+            // Select the week supplied by the frontend.
+            // Accept d-m-Y, Y-m-d, or a Monday / Sunday range in either format.
+            $weekDate = $request->input('week_date');
 
-            if (!in_array($weekType, ['current', 'upcoming'])) {
+            $weekDate = $request->input('week_date');
+
+            // If week_date is missing, null, or empty,
+            // automatically select current week's Monday.
+            if (!is_string($weekDate) || trim($weekDate) === '') {
+                $weekDate = now()
+                    ->startOfWeek(Carbon::MONDAY)
+                    ->format('d-m-Y');
+            }
+
+            $dateParts = array_map('trim', explode('/', trim($weekDate)));
+            $selectedDates = [];
+
+            foreach ($dateParts as $datePart) {
+                $parsedDate = null;
+                foreach (['d-m-Y', 'Y-m-d'] as $format) {
+                    $date = \DateTimeImmutable::createFromFormat('!' . $format, $datePart);
+                    if ($date !== false && $date->format($format) === $datePart) {
+                        $parsedDate = Carbon::instance($date);
+                        break;
+                    }
+                }
+
+                if ($parsedDate === null) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Invalid week_date. Use valid dates in d-m-Y or Y-m-d format.'
+                    ], 422);
+                }
+
+                $selectedDates[] = $parsedDate;
+            }
+
+            if (count($selectedDates) > 2) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Invalid week parameter. Use current or upcoming.'
+                    'message' => 'week_date must be a single date or a Monday / Sunday date range.'
                 ], 422);
             }
 
-            $today = now();
+            $weekStart = $selectedDates[0]->copy()->startOfWeek(Carbon::MONDAY);
 
-            $currentWeekStart = $today
-                ->copy()
-                ->startOfWeek(\Carbon\Carbon::MONDAY);
-
-            // =====================================================
-            // Week selection
-            // =====================================================
-            if ($weekType === 'current') {
-                $weekStart = $currentWeekStart->copy();
-            } else {
-                // Upcoming week visible only from Friday
-                if ($today->dayOfWeek < \Carbon\Carbon::FRIDAY) {
-                    $nextWeekStart = $currentWeekStart
-                        ->copy()
-                        ->addWeek();
-
-                    $nextWeekEnd = $nextWeekStart
-                        ->copy()
-                        ->addDays(6);
-
-                    return response()->json([
-                        'status' => true,
-                        'week_type' => 'upcoming',
-                        'message' => 'Upcoming week lesson plan list will be available from Friday.',
-                        'week' => [
-                            'start_date' => $nextWeekStart->format('d-m-Y'),
-                            'end_date' => $nextWeekEnd->format('d-m-Y'),
-                            'display' =>
-                                $nextWeekStart->format('d-m-Y')
-                                . ' / '
-                                . $nextWeekEnd->format('d-m-Y'),
-                        ],
-                        'data' => []
-                    ], 200);
-                }
-
-                // Friday onwards -> next week
-                $weekStart = $currentWeekStart
-                    ->copy()
-                    ->addWeek();
+            if (count($selectedDates) === 2 && (
+                !$selectedDates[0]->equalTo($weekStart) ||
+                !$selectedDates[1]->equalTo($weekStart->copy()->addDays(6))
+            )) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The week_date range must run from Monday to Sunday of the same week.'
+                ], 422);
             }
+
+            $currentWeekStart = now()->startOfWeek(Carbon::MONDAY);
+            $weekType = $weekStart->equalTo($currentWeekStart)
+                ? 'current'
+                : ($weekStart->equalTo($currentWeekStart->copy()->addWeek()) ? 'upcoming' : 'custom');
 
             // =====================================================
             // Week dates
@@ -20812,7 +20814,7 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                     WHERE lp2.reg_id = s.teacher_id
                       AND lp2.academic_yr = ?
                       AND SUBSTRING_INDEX(lp2.week_date, ' /', 1) = ?
-                      AND lp2.approve != 'Y'
+                      AND (lp2.approve != 'Y' OR lp2.approve IS NULL)
                 ) AS pending_for_approval,
 
                 (
@@ -20920,7 +20922,11 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
                         ')
                             ->from('lesson_plan')
                             ->where('academic_yr', $academic_year)
-                            ->where('approve', '!=', 'Y')
+                            ->where(function ($q) {
+                                $q
+                                    ->where('approve', '!=', 'Y')
+                                    ->orWhereNull('approve');
+                            })
                             ->whereRaw(
                                 "SUBSTRING_INDEX(week_date, ' /', 1) = ?",
                                 [$mondayDate]

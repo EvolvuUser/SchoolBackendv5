@@ -289,18 +289,157 @@ class TeacherDashboardController extends Controller
         }
     }
 
+    // public function eventsList(Request $request, $teacher_id)
+    // {
+    //     try {
+    //         // Authenticate user
+    //         $user = $this->authenticateUser();
+
+    //         // Validate teacher_id
+    //         if (!is_numeric($teacher_id)) {
+    //             return response()->json([
+    //                 'status' => 422,
+    //                 'success' => false,
+    //                 'message' => 'Invalid teacher id.',
+    //                 'data' => []
+    //             ], 422);
+    //         }
+
+    //         $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+    //         if (!$academicYr) {
+    //             return response()->json([
+    //                 'status' => 400,
+    //                 'success' => false,
+    //                 'message' => 'Academic year not found. Please logout and login again.',
+    //                 'data' => []
+    //             ], 400);
+    //         }
+
+    //         $currentDate = Carbon::now();
+    //         $month = $request->input('month', $currentDate->month);
+    //         $year = $request->input('year', $currentDate->year);
+
+    //         // Common conditions
+    //         $commonConditions = function ($query) use ($academicYr, $month, $year) {
+    //             $query
+    //                 ->where('events.isDelete', 'N')
+    //                 ->where('events.publish', 'Y')
+    //                 ->where('events.academic_yr', $academicYr)
+    //                 ->whereMonth('events.start_date', $month)
+    //                 ->whereYear('events.start_date', $year);
+    //         };
+
+    //         // Get classes taught by teacher
+    //         $classesTaught = DB::table('subject')
+    //             ->where('teacher_id', $teacher_id)
+    //             ->where('academic_yr', $academicYr)
+    //             ->distinct()
+    //             ->pluck('class_id')
+    //             ->toArray();
+
+    //         // Events for teacher login
+    //         $eventsForTeacherLogin = Event::select(
+    //             'events.unq_id',
+    //             'events.title',
+    //             'events.event_desc',
+    //             'events.class_id',
+    //             'events.login_type',
+    //             'events.start_date',
+    //             'events.start_time',
+    //             'events.end_date',
+    //             'events.end_time',
+    //             'class.name as class_name',
+    //         )
+    //             ->where('events.login_type', 'T')
+    //             ->where($commonConditions)
+    //             ->orderBy('events.start_date')
+    //             ->orderByDesc('events.start_time')
+    //             ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+    //             ->get();
+
+    //         // Events for classes taught
+    //         $eventsForClasses = Event::select(
+    //             'events.unq_id',
+    //             'events.title',
+    //             'events.event_desc',
+    //             'events.class_id',
+    //             'events.login_type',
+    //             'class.name as class_name',
+    //             'events.start_date',
+    //             'events.start_time',
+    //             'events.end_date',
+    //             'events.end_time'
+    //         )
+    //             ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+    //             ->where($commonConditions)
+    //             ->whereIn('events.class_id', $classesTaught)
+    //             ->orderBy('events.start_date')
+    //             ->orderByDesc('events.start_time')
+    //             ->get();
+
+    //         // Add category to teacher login events
+    //         $eventsForTeacherLogin = $eventsForTeacherLogin->map(function ($event) {
+    //             $event->category = 'teacher_login';
+    //             return $event;
+    //         });
+
+    //         // Add category to class events
+    //         $eventsForClasses = $eventsForClasses->map(function ($event) {
+    //             $event->category = 'class';
+    //             return $event;
+    //         });
+
+    //         // dd($eventsForClasses , $eventsForTeacherLogin);
+
+    //         // Merge both arrays
+    //         $allEvents = $eventsForTeacherLogin
+    //             ->concat($eventsForClasses)
+    //             ->values();
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'success' => true,
+    //             'message' => 'Events fetched successfully.',
+    //             'data' => $allEvents
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 500,
+    //             'success' => false,
+    //             'message' => 'Something went wrong while fetching events.',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
     public function eventsList(Request $request, $teacher_id)
     {
         try {
-            // Authenticate user
             $user = $this->authenticateUser();
 
-            // Validate teacher_id
             if (!is_numeric($teacher_id)) {
                 return response()->json([
                     'status' => 422,
                     'success' => false,
                     'message' => 'Invalid teacher id.',
+                    'data' => []
+                ], 422);
+            }
+
+            $validator = \Illuminate\Support\Facades\Validator::make(
+                $request->all(),
+                [
+                    'month' => 'nullable|integer|between:1,12',
+                    'year' => 'nullable|integer|between:1000,9999'
+                ]
+            );
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'message' => 'Invalid month or year.',
+                    'errors' => $validator->errors(),
                     'data' => []
                 ], 422);
             }
@@ -316,21 +455,11 @@ class TeacherDashboardController extends Controller
                 ], 400);
             }
 
-            $currentDate = Carbon::now();
-            $month = $request->input('month', $currentDate->month);
-            $year = $request->input('year', $currentDate->year);
+            // No default month/year: return the entire academic year.
+            $month = $request->input('month');
+            $year = $request->input('year');
 
-            // Common conditions
-            $commonConditions = function ($query) use ($academicYr, $month, $year) {
-                $query
-                    ->where('events.isDelete', 'N')
-                    ->where('events.publish', 'Y')
-                    ->where('events.academic_yr', $academicYr)
-                    ->whereMonth('events.start_date', $month)
-                    ->whereYear('events.start_date', $year);
-            };
-
-            // Get classes taught by teacher
+            // Classes taught by this teacher.
             $classesTaught = DB::table('subject')
                 ->where('teacher_id', $teacher_id)
                 ->where('academic_yr', $academicYr)
@@ -338,70 +467,199 @@ class TeacherDashboardController extends Controller
                 ->pluck('class_id')
                 ->toArray();
 
-            // Events for teacher login
-            $eventsForTeacherLogin = Event::select(
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.class_id',
-                'events.login_type',
-                'events.start_date',
-                'events.start_time',
-                'events.end_date',
-                'events.end_time',
-                'class.name as class_name',
-            )
-                ->where('events.login_type', 'T')
-                ->where($commonConditions)
-                ->orderBy('events.start_date')
-                ->orderByDesc('events.start_time')
-                ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
+            $totalClasses = DB::table('class')
+                ->where('academic_yr', $academicYr)
+                ->distinct()
+                ->count('class_id');
+
+            // One query prevents the same event appearing in both categories.
+            $events = DB::table('events')
+                ->leftJoin(
+                    'class',
+                    'events.class_id',
+                    '=',
+                    'class.class_id'
+                )
+                ->selectRaw("
+                events.unq_id AS unq_id,
+                events.title AS title,
+                events.event_desc AS event_desc,
+                events.start_date AS start_date,
+
+                CASE
+                    WHEN events.end_date IS NULL
+                         OR events.end_date = '0000-00-00'
+                    THEN events.start_date
+                    ELSE events.end_date
+                END AS end_date,
+
+                events.start_time AS start_time,
+                events.end_time AS end_time,
+
+                CASE
+                    WHEN ? > 0
+                         AND COUNT(DISTINCT CASE
+                             WHEN class.academic_yr = ?
+                             THEN class.class_id
+                         END) = ?
+                    THEN 'All'
+                    ELSE GROUP_CONCAT(
+                        DISTINCT class.name
+                        ORDER BY class.name
+                        SEPARATOR ', '
+                    )
+                END AS class_name,
+
+                'event' AS type,
+
+                CASE
+                    WHEN MAX(
+                        CASE
+                            WHEN events.login_type = 'T' THEN 1
+                            ELSE 0
+                        END
+                    ) = 1
+                    THEN 'teacher_login'
+                    ELSE 'class'
+                END AS category
+            ", [$totalClasses, $academicYr, $totalClasses])
+                ->where('events.isDelete', 'N')
+                ->where('events.publish', 'Y')
+                ->where('events.academic_yr', $academicYr)
+                ->where(function ($query) use ($classesTaught) {
+                    $query
+                        ->where('events.login_type', 'T')
+                        ->orWhereIn('events.class_id', $classesTaught);
+                })
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('events.start_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('events.start_date', $year);
+                })
+                ->groupBy(
+                    'events.unq_id',
+                    'events.title',
+                    'events.event_desc',
+                    'events.start_date',
+                    'events.end_date',
+                    'events.start_time',
+                    'events.end_time'
+                );
+
+            // Same column order as the events query.
+            $holidays = DB::table('holidaylist')
+                ->selectRaw("
+                CONCAT('HOLIDAY_', holiday_id) AS unq_id,
+                title AS title,
+                title AS event_desc,
+                holiday_date AS start_date,
+
+                CASE
+                    WHEN to_date IS NULL
+                         OR to_date = '0000-00-00'
+                    THEN holiday_date
+                    ELSE to_date
+                END AS end_date,
+
+                NULL AS start_time,
+                NULL AS end_time,
+                'All' AS class_name,
+                'holiday' AS type,
+                'holiday' AS category
+            ")
+                ->where('isDelete', 'N')
+                ->where('publish', 'Y')
+                ->where('academic_yr', $academicYr)
+                ->when($request->filled('month'), function ($query) use ($month) {
+                    $query->whereMonth('holiday_date', $month);
+                })
+                ->when($request->filled('year'), function ($query) use ($year) {
+                    $query->whereYear('holiday_date', $year);
+                });
+
+            $combinedQuery = $events->unionAll($holidays);
+
+            $data = DB::query()
+                ->fromSub($combinedQuery, 'calendar_data')
+                ->select([
+                    'unq_id',
+                    'title',
+                    'event_desc',
+                    'start_date',
+                    'end_date',
+                    'start_time',
+                    'end_time',
+                    'class_name',
+                    'type',
+                    'category'
+                ])
+                ->orderBy('start_date', 'asc')
+                ->orderByDesc('start_time')
                 ->get();
 
-            // Events for classes taught
-            $eventsForClasses = Event::select(
-                'events.unq_id',
-                'events.title',
-                'events.event_desc',
-                'events.class_id',
-                'events.login_type',
-                'class.name as class_name',
-                'events.start_date',
-                'events.start_time',
-                'events.end_date',
-                'events.end_time'
-            )
-                ->leftJoin('class', 'events.class_id', '=', 'class.class_id')
-                ->where($commonConditions)
-                ->whereIn('events.class_id', $classesTaught)
-                ->orderBy('events.start_date')
-                ->orderByDesc('events.start_time')
-                ->get();
+            // Convert consecutive numeric classes into ranges.
+            $data->transform(function ($item) {
+                if ($item->type !== 'event' || $item->class_name === 'All') {
+                    return $item;
+                }
 
-            // Add category to teacher login events
-            $eventsForTeacherLogin = $eventsForTeacherLogin->map(function ($event) {
-                $event->category = 'teacher_login';
-                return $event;
+                $classNames = array_unique(
+                    array_map('trim', explode(',', $item->class_name ?? ''))
+                );
+
+                natsort($classNames);
+
+                $labels = [];
+                $rangeStart = null;
+                $rangeEnd = null;
+
+                $appendRange = function () use (
+                    &$labels,
+                    &$rangeStart,
+                    &$rangeEnd
+                ) {
+                    if ($rangeStart !== null) {
+                        $labels[] = $rangeStart === $rangeEnd
+                            ? (string) $rangeStart
+                            : $rangeStart . '-' . $rangeEnd;
+
+                        $rangeStart = null;
+                        $rangeEnd = null;
+                    }
+                };
+
+                foreach ($classNames as $className) {
+                    if (ctype_digit($className)) {
+                        $number = (int) $className;
+
+                        if ($rangeEnd !== null && $number === $rangeEnd + 1) {
+                            $rangeEnd = $number;
+                        } else {
+                            $appendRange();
+                            $rangeStart = $rangeEnd = $number;
+                        }
+                    } else {
+                        $appendRange();
+
+                        if ($className !== '') {
+                            $labels[] = $className;
+                        }
+                    }
+                }
+
+                $appendRange();
+
+                $item->class_name = implode(', ', $labels);
+
+                return $item;
             });
-
-            // Add category to class events
-            $eventsForClasses = $eventsForClasses->map(function ($event) {
-                $event->category = 'class';
-                return $event;
-            });
-
-            // dd($eventsForClasses , $eventsForTeacherLogin);
-
-            // Merge both arrays
-            $allEvents = $eventsForTeacherLogin
-                ->concat($eventsForClasses)
-                ->values();
 
             return response()->json([
                 'status' => 200,
                 'success' => true,
-                'message' => 'Events fetched successfully.',
-                'data' => $allEvents
+                'message' => 'Events and holidays fetched successfully.',
+                'data' => $data
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

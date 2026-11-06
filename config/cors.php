@@ -31,11 +31,15 @@ return [
         'https://holyspiritconvent.evolvu.in/test/hscs_test/',
         'https://edsstage.evolvu.in',
         'https://eds.evolvu.in',
-        'https://hscstestlx.evolvu.in'
+        'https://hscstestlx.evolvu.in',
+        'https://jps.evolvu.in/test/index.php',
+        'https://jps.evolvu.in/test',
+        'https://jps.evolvu.in',
     ],
     'allowed_origins_patterns' => ['*'],
     'allowed_headers' => ['*'],
-    'exposed_headers' => ['*'],
+    // Explicitly expose download filenames for credentialed browser requests.
+    'exposed_headers' => ['*', 'Content-Disposition'],
     'max_age' => 0,
     'supports_credentials' => true,
 ];

@@ -19,6 +19,103 @@ class StudentAchievementController extends Controller
         }
     }
 
+    public function erpIndex(Request $req)
+    {
+        $user = $this->authenticateUser();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $payload = JWTAuth::getPayload();
+        if (in_array($payload->get('role_id'), ['P', 'S'], true)) {
+            return response()->json(['message' => 'ERP access required.'], 403);
+        }
+
+        $filters = $req->validate([
+            'class_id' => 'required|integer|min:1',
+            'section_id' => 'required|integer|min:1',
+            'student_id' => 'nullable|integer|min:1',
+            'academic_year' => 'nullable|string|max:11',
+        ]);
+
+        $academicYear = $filters['academic_year'] ?? $payload->get('academic_year');
+        if (!$academicYear) {
+            return response()->json([
+                'message' => 'An academic year is required in the request or token.',
+                'errors' => ['academic_year' => ['The academic year field is required.']],
+            ], 422);
+        }
+
+        $query = DB::table('student_achievements as a')
+            ->join('student as s', 'a.student_id', '=', 's.student_id')
+            ->leftJoin('class as c', 's.class_id', '=', 'c.class_id')
+            ->leftJoin('section as sec', 's.section_id', '=', 'sec.section_id')
+            ->where('s.class_id', $filters['class_id'])
+            ->where('s.section_id', $filters['section_id'])
+            ->where('s.academic_yr', $academicYear)
+            ->where('a.academic_year', $academicYear)
+            ->select(
+                'a.*',
+                's.first_name',
+                's.mid_name',
+                's.last_name',
+                's.roll_no',
+                's.class_id',
+                's.section_id',
+                'c.name as class_name',
+                'sec.name as section_name'
+            );
+
+        if (isset($filters['student_id'])) {
+            $query->where('a.student_id', $filters['student_id']);
+        }
+
+        $achievements = $query
+            ->orderBy('s.class_id')
+            ->orderBy('s.section_id')
+            ->orderBy('s.student_id')
+            ->orderByDesc('a.achievement_date')
+            ->orderByDesc('a.id')
+            ->get();
+
+        // Fetch attachments together to avoid one query per achievement.
+        $files = DB::table('achievement_files')
+            ->whereIn('achievement_id', $achievements->pluck('id'))
+            ->orderBy('id')
+            ->get()
+            ->map(function ($file) {
+                $file->file_url = asset('storage/' . $file->file_url);
+                return $file;
+            })
+            ->groupBy('achievement_id');
+
+        $achievements->transform(function ($achievement) use ($files) {
+            $achievement->student_name = collect([
+                $achievement->first_name,
+                $achievement->mid_name,
+                $achievement->last_name,
+            ])->filter(fn($name) => $name !== null && trim($name) !== '')->implode(' ');
+            $achievement->is_verified = (bool) $achievement->is_verified;
+            $achievement->is_external = (bool) $achievement->is_external;
+            $achievement->files = $files->get($achievement->id, collect())->values();
+            $achievement->files_count = $achievement->files->count();
+            return $achievement;
+        });
+
+        return response()->json([
+            'data' => $achievements,
+            'filters' => [
+                'class_id' => (int) $filters['class_id'],
+                'section_id' => (int) $filters['section_id'],
+                'student_id' => isset($filters['student_id']) ? (int) $filters['student_id'] : null,
+                'academic_year' => $academicYear,
+            ],
+            'meta' => [
+                'total' => $achievements->count(),
+            ],
+        ]);
+    }
+
     // DONE
     public function childrens(Request $req)
     {
