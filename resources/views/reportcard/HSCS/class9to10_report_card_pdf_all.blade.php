@@ -87,7 +87,7 @@
 <?php
 $exam_list = $reportCardData['exam_list'];
 foreach ($reportCardData['students'] as $row1):
-?>
+	?>
     <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8  table-responsive bgimg" style="text-align:center;">
@@ -96,12 +96,12 @@ foreach ($reportCardData['students'] as $row1):
 				<td style="width:30%;text-align: left;font-size:14px;" >
 					UDISE No. - 27251501213
 				</td>
-				<td style="width:40%;text-align: center;">
-					<h4 >ACADEMIC SESSION <?php echo e($row1['academic_yr']);?></h4>
+				<td style="width:35%;text-align: center;">
+					<h4 >ACADEMIC SESSION <?php echo e($row1['academic_yr']); ?></h4>
 					<h3><font color="#000000">REPORT CARD</font></h3>
 				</td>
-				<td style="width:30%;text-align: left;font-size:14px;margin-left: 30px;" >
-					Student ID - <?php echo e($row1['stud_id_no']);?>
+				<td style="width:35%;text-align: left;font-size:14px;margin-left: 30px;" >
+					Student ID - <?php echo e($row1['stud_id_no']); ?>
 				</td>
 			</tr>
 		</table>
@@ -111,16 +111,16 @@ foreach ($reportCardData['students'] as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 						<td style="font-size:16px;width: 25%; padding-top: 6px; padding-bottom:6px;	word-wrap:break-word;">Student's Name : </td>
-						<td style="font-size:16px;text-align: center;width: auto"><div class="statistics_line"><?php echo e(trim($row1['first_name']." ".$row1['mid_name']." ".$row1['last_name']));?></div> </td>
+						<td style="font-size:16px;text-align: center;width: auto"><div class="statistics_line"><?php echo e(trim($row1['first_name'] . ' ' . $row1['mid_name'] . ' ' . $row1['last_name'])); ?></div> </td>
 						<td style="font-size:16px;width: 1%;"></td>
 						<td style="font-size:16px;width: 15%;margin-left: 10px;padding-top: 8px; padding-bottom:8px;	word-wrap:break-word;">Roll No. : </td>
 						<?php
-						$roll_no="&nbsp;";
-						if($row1['roll_no']<>null){
-						    $roll_no=$row1['roll_no'];
+						$roll_no = '&nbsp;';
+						if ($row1['roll_no'] <> null) {
+							$roll_no = $row1['roll_no'];
 						}
 						?>
-						<td style="font-size:18px;width: 8%;text-align: center;"><div class="statistics_line"> <?php echo $roll_no;?></div></td>
+						<td style="font-size:18px;width: 8%;text-align: center;"><div class="statistics_line"> <?php echo $roll_no; ?></div></td>
                     </table>
                 </td>
 			</tr>
@@ -128,10 +128,10 @@ foreach ($reportCardData['students'] as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 40%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Gaurdian's Name : </td>
-                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo e($row1['father_name'] ?? '');?></div></td>
+                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo e($row1['father_name'] ?? ''); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
-						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo e($row1['reg_no']);?></div></td>
+						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo e($row1['reg_no']); ?></div></td>
                     </table>
                  </td>
             </tr>
@@ -139,10 +139,10 @@ foreach ($reportCardData['students'] as $row1):
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 17%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Date of Birth : </td>
-                        <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo $row1['dob'] ? e(date('d-m-Y', strtotime($row1['dob']))) : '';?></div></td>
+                        <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo $row1['dob'] ? e(date('d-m-Y', strtotime($row1['dob']))) : ''; ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo e($row1['class_name']." ".$row1['section_name']);?></div></td>
+						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo e($row1['class_name'] . ' ' . $row1['section_name']); ?></div></td>
                     </table>
                     
                 </td>
@@ -182,31 +182,31 @@ foreach ($reportCardData['students'] as $row1):
 			<tr>
 				<td class="col-md-1" style="text-align:center;height:40px;width:126px">Class Teacher</td>
 				<?php
-				foreach($exam_list as $exam){
-				?>
+				foreach ($exam_list as $exam) {
+					?>
 					<td  class="col-md-1"style="width:100px">&nbsp;</td>
 				<?php
-					}
+				}
 				?>
 				</tr>
 				<tr>
 					<td class="col-md-1" style="text-align:center;height:40px;">Parent</td>
 					<?php
-					foreach($exam_list as $exam){
-					?>
+					foreach ($exam_list as $exam) {
+						?>
 						<td class="col-md-1" style="width:100px">&nbsp;</td>
 					<?php
-						}
+					}
 					?>
 				</tr>
 				<tr>
 					<td class="col-md-1" style="text-align:center;height:40px;">Principal</td>
 					<?php
-					foreach($exam_list as $exam){
-					?>
+					foreach ($exam_list as $exam) {
+						?>
 						<td class="col-md-1" style="width:100px">&nbsp;</td>
 					<?php
-						}
+					}
 					?>
 				</tr>
 		</table>

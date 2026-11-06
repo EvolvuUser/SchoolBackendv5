@@ -129,22 +129,22 @@
 <body>
 <?php
 $gradeFor = static function ($mark, $type) use ($reportCardData) {
-    if (!is_numeric($mark)) {
-        return '';
-    }
-    foreach ($reportCardData['grade_scale'][$type] ?? [] as $range) {
-        if ($mark >= $range['mark_from'] && $mark <= $range['mark_upto']) {
-            return $range['name'];
-        }
-    }
-    return '';
+	if (!is_numeric($mark)) {
+		return '';
+	}
+	foreach ($reportCardData['grade_scale'][$type] ?? [] as $range) {
+		if ($mark >= $range['mark_from'] && $mark <= $range['mark_upto']) {
+			return $range['name'];
+		}
+	}
+	return '';
 };
 foreach ($reportCardData['students'] as $row1):
-    $term_list = $reportCardData['term_list'];
-    $student_marks = $reportCardData['marks_by_student'][$row1['student_id']] ?? [];
-    $student_remarks = $reportCardData['remarks_by_student'][$row1['student_id']] ?? [];
-    $student_attendance = $reportCardData['attendance_by_student'][$row1['student_id']] ?? ['present' => '', 'working' => ''];
-?>
+	$term_list = $reportCardData['term_list'];
+	$student_marks = $reportCardData['marks_by_student'][$row1['student_id']] ?? [];
+	$student_remarks = $reportCardData['remarks_by_student'][$row1['student_id']] ?? [];
+	$student_attendance = $reportCardData['attendance_by_student'][$row1['student_id']] ?? ['present' => '', 'working' => ''];
+	?>
 <div class="col-md-12 pdfdiv">
 <div class="col-md-2"></div>
 	<div class="col-md-8 table-responsive bgimg" style="text-align:center;">
@@ -177,7 +177,7 @@ foreach ($reportCardData['students'] as $row1):
             <tr>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Gaurdian's Name : </td>
+                        <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's/ Father's/ Gaurdian's Name : </td>
                         <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo ($row1['father_name'] ?? ''); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
@@ -215,12 +215,12 @@ foreach ($reportCardData['students'] as $row1):
 							<?php
 							//	$count_of_mark_headings=0;
 							foreach ($term_list as $term) {
-                                $metadata = $reportCardData['term_metadata'][$term->term_id];
-                                ${'general_highest_marks_array_' . $term->term_id} = $metadata['general_highest_marks_array'];
-                                ${'count_of_mark_headings_' . $term->term_id} = count($metadata['general_highest_marks_array']);
-                                foreach ($metadata['count_of_mark_headings_by_exam'] as $examId => $headingCount) {
-                                    ${'count_of_mark_headings_' . $examId} = $headingCount;
-                                }
+								$metadata = $reportCardData['term_metadata'][$term->term_id];
+								${'general_highest_marks_array_' . $term->term_id} = $metadata['general_highest_marks_array'];
+								${'count_of_mark_headings_' . $term->term_id} = count($metadata['general_highest_marks_array']);
+								foreach ($metadata['count_of_mark_headings_by_exam'] as $examId => $headingCount) {
+									${'count_of_mark_headings_' . $examId} = $headingCount;
+								}
 								?>
 							 <th class="col-md-1 th1" style="text-align:center;height:30px;" colspan="<?php echo ${'count_of_mark_headings_' . $term->term_id} + 2; ?>"><?php echo $term->name; ?></th>
                          <?php
@@ -547,7 +547,7 @@ foreach ($reportCardData['students'] as $row1):
 	?>
 			       <table width="<?php echo $width; ?>" style="border: 0px solid green">
                         <tr>
-            				<td style="font-size:14px;width: 24%;"><b>Class Teacher's Remark :</b></td>
+            				<td style="font-size:14px;width: 30%;"><b>Class Teacher's Remark :</b></td>
             				<td style="font-size:12px;">
 								<div class="statistics_line">
 								<?php
@@ -564,8 +564,8 @@ foreach ($reportCardData['students'] as $row1):
         		</td>
         </tr>
 		<?php
-        $date_from = $reportCardData['date_from'];
-        $date_to = $reportCardData['date_to'];
+		$date_from = $reportCardData['date_from'];
+		$date_to = $reportCardData['date_to'];
 		?>
         <tr> 
             <td>
@@ -612,7 +612,7 @@ foreach ($reportCardData['students'] as $row1):
         </tr>
 		</table>
         <br>
-	    <table class="table-responsive" style="width:95%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
+	    <table class="table-responsive" style="width:90%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
 			<tr>
 				<td style="width:33%;">
 					<table class="table-responsive" width="90%" cellspacing="0">

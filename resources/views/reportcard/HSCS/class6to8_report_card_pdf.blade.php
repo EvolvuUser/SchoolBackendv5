@@ -189,7 +189,7 @@ foreach ($student_info as $row1):
             <tr>
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
-                        <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Gaurdian's Name : </td>
+                        <td style="font-size:16px;padding:5px;width: 38%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's/ Father's/ Gaurdian's Name : </td>
                         <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
@@ -571,7 +571,7 @@ foreach ($student_info as $row1):
 	?>
 			       <table width="<?php echo $width; ?>" style="border: 0px solid green">
                         <tr>
-            				<td style="font-size:14px;width: 24%;"><b>Class Teacher's Remark :</b></td>
+            				<td style="font-size:14px;width: 30%;"><b>Class Teacher's Remark :</b></td>
             				<td style="font-size:12px;">
 								<div class="statistics_line">
 								<?php
@@ -640,7 +640,7 @@ foreach ($student_info as $row1):
         </tr>
 		</table>
         <br>
-	    <table class="table-responsive" style="width:95%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
+	    <table class="table-responsive" style="width:90%;margin-left:4%;margin-right: auto;border-spacing: 0px;background-color:white;overflow: visible !important;" cellpadding="1" cellspacing="10">
 			<tr>
 				<td style="width:33%;">
 					<table class="table-responsive" width="90%" cellspacing="0">
