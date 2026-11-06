@@ -82,39 +82,34 @@
 
     
 </style> 
-<?php 
+<?php
 $student_info1 = [];
-if(isset($class_id) && isset($section_id)){
-   
- $student_info1 = get_students($class_id,$section_id,$academic_yr); 
- 
-}else {
-    $student_info	=	get_student_info($student_id,$academic_yr);
+if (isset($class_id) && isset($section_id)) {
+	$student_info1 = get_students($class_id, $section_id, $academic_yr);
+} else {
+	$student_info = get_student_info($student_id, $academic_yr);
 }
 
-
-$slot = count($student_info1)/10;
-$slot_no = intval($slot); // 12
+$slot = count($student_info1) / 10;
+$slot_no = intval($slot);  // 12
 $last_slot = explode('.', number_format($slot, 1))[1];
-$c= count($student_info1) - $last_slot;
+$c = count($student_info1) - $last_slot;
 
-//print_r($student_info1[0]);
-if(isset($stud_count)){
-    if($last_slot!=$stud_count){
-        for($i=$stud_count-10;$i<$stud_count;$i++){
-        $student_info[$i] =  $student_info1[$i];
-        }
-    }else{
-        for($i=$c;$i<count($student_info1);$i++){
-        $student_info[$i] =  $student_info1[$i];
-        }
-       
-   }
-   
+// print_r($student_info1[0]);
+if (isset($stud_count)) {
+	if ($last_slot != $stud_count) {
+		for ($i = $stud_count - 10; $i < $stud_count; $i++) {
+			$student_info[$i] = $student_info1[$i];
+		}
+	} else {
+		for ($i = $c; $i < count($student_info1); $i++) {
+			$student_info[$i] = $student_info1[$i];
+		}
+	}
 }
 
-
-		foreach($student_info as $row1):?>
+foreach ($student_info as $row1):
+	?>
 <html>
     <head>
         <meta charset="utf-16" />
@@ -127,12 +122,12 @@ if(isset($stud_count)){
 				<td style="width:30%;text-align: left;font-size:14px;" >
 					UDISE No. - 27251501213
 				</td>
-				<td style="width:40%;text-align: center;">
-					<h4 >ACADEMIC SESSION <?php echo $row1['academic_yr'];?></h4>
+				<td style="width:35%;text-align: center;">
+					<h4 >ACADEMIC SESSION <?php echo $row1['academic_yr']; ?></h4>
 					<h3><font color="#000000">REPORT CARD</font></h3>
 				</td>
-				<td style="width:30%;text-align: left;font-size:14px;margin-left: 30px;" >
-					Student ID - <?php echo $row1['stud_id_no'];?>
+				<td style="width:35%;text-align: left;font-size:14px;margin-left: 30px;" >
+					Student ID - <?php echo $row1['stud_id_no']; ?>
 				</td>
 			</tr>
 		</table>
@@ -142,16 +137,16 @@ if(isset($stud_count)){
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 						<td style="font-size:16px;width: 25%; padding-top: 6px; padding-bottom:6px;	word-wrap:break-word;">Student's Name : </td>
-						<td style="font-size:16px;text-align: center;width: auto"><div class="statistics_line"><?php echo $row1['first_name']." ".$row1['mid_name']." ".$row1['last_name'];?></div> </td>
+						<td style="font-size:16px;text-align: center;width: auto"><div class="statistics_line"><?php echo $row1['first_name'] . ' ' . $row1['mid_name'] . ' ' . $row1['last_name']; ?></div> </td>
 						<td style="font-size:16px;width: 1%;"></td>
 						<td style="font-size:16px;width: 15%;margin-left: 10px;padding-top: 8px; padding-bottom:8px;	word-wrap:break-word;">Roll No. : </td>
 						<?php
-						$roll_no="&nbsp;";
-						if($row1['roll_no']<>null){
-						    $roll_no=$row1['roll_no'];
+						$roll_no = '&nbsp;';
+						if ($row1['roll_no'] <> null) {
+							$roll_no = $row1['roll_no'];
 						}
 						?>
-						<td style="font-size:18px;width: 8%;text-align: center;"><div class="statistics_line"> <?php echo $roll_no;?></div></td>
+						<td style="font-size:18px;width: 8%;text-align: center;"><div class="statistics_line"> <?php echo $roll_no; ?></div></td>
                     </table>
                 </td>
 			</tr>
@@ -159,10 +154,10 @@ if(isset($stud_count)){
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 40%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Mother's / Father's / Gaurdian's Name : </td>
-                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']);?></div></td>
+                        <td style="font-size:16px;padding:5px;width: 42%;text-align: center;"><div class="statistics_line"><?php echo get_parent_name($row1['parent_id']); ?></div></td>
 						<td style="width: 1%;"></td>
 						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:10%">GR No. : </td>
-						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1['reg_no'];?></div></td>
+						<td style="font-size:16px;margin-left: 10px;word-wrap:break-word;width:auto;text-align: center;width:auto"><div class="statistics_line"> <?php echo $row1['reg_no']; ?></div></td>
                     </table>
                  </td>
             </tr>
@@ -170,10 +165,10 @@ if(isset($stud_count)){
                 <td>
                     <table class="table-responsive" style="width:100%;margin-left: auto;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <td style="font-size:16px;padding:5px;width: 17%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Date of Birth : </td>
-                        <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']),'d-m-Y');?></div></td>
+                        <td style="width:25%;text-align: center;"><div class="statistics_line"><?php echo date_format(date_create($row1['dob']), 'd-m-Y'); ?></div></td>
 						<td style="width: 5%;"></td>
                         <td style="font-size:16px;padding:5px;width: 20%;padding-top: 8px; padding-bottom:8px;  word-wrap:break-word;">Class / Section : </td>
-						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id'])." ".get_section_name($row1['section_id']);?></div></td>
+						<td style="width: auto;text-align: center;"><div class="statistics_line"><?php echo get_class_name($row1['class_id']) . ' ' . get_section_name($row1['section_id']); ?></div></td>
                     </table>
                     
                 </td>
@@ -184,82 +179,82 @@ if(isset($stud_count)){
 		<table style="width:90%;margin-left: 5%;margin-right: auto;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
 			 <tr>
 				 <td style="text-align:center;" cellpadding="0" cellspacing="0">
-					<?php 
-						$exam_list	=	get_published_exams_class9n10($row1['class_id'],$row1['section_id'],$row1['academic_yr']);
-						$count_of_exams=count($exam_list);
+					<?php
+					$exam_list = get_published_exams_class9n10($row1['class_id'], $row1['section_id'], $row1['academic_yr']);
+					$count_of_exams = count($exam_list);
 					?>
 					
 					<table border="1" style="width:100%;margin-left: auto;margin-right: 1%;border-spacing: 0px;background-color:white;" cellpadding="0" cellspacing="0">
                         <tr>
-							<th class="col-md-12" colspan="<?php echo ($count_of_exams+1)?>" style="text-align:center;height:55px;">SCHOLASTIC AREAS</th>
+							<th class="col-md-12" colspan="<?php echo ($count_of_exams + 1) ?>" style="text-align:center;height:55px;">SCHOLASTIC AREAS</th>
 						</tr>		
 						<tr>
 							<th style="text-align:center;height:50px;">SUBJECT</th>
-							<?php 
-								foreach($exam_list as $exam){	
-									${'total_marks_'.$exam->exam_id}=0;
-									${'highest_total_marks_'.$exam->exam_id}=0;	// Lija 14-12-20
-									$exam_name=(strpos( $exam->name, '(')>0?substr($exam->name, 0, strpos( $exam->name, '(')):$exam->name);
-							?> 
-										<td class="col-md-1" style="text-align:center;height:50px;"><?php echo $exam_name."<br/>(".get_highestmarks_of_subject_exam_class($exam->exam_id,$row1['class_id'],1,$row1['academic_yr']).")";  ?></td>
-							 <?php 		
-								}
-							 ?>
+							<?php
+							foreach ($exam_list as $exam) {
+								${'total_marks_' . $exam->exam_id} = 0;
+								${'highest_total_marks_' . $exam->exam_id} = 0;  // Lija 14-12-20
+								$exam_name = (strpos($exam->name, '(') > 0 ? substr($exam->name, 0, strpos($exam->name, '(')) : $exam->name);
+								?> 
+										<td class="col-md-1" style="text-align:center;height:50px;"><?php echo $exam_name . '<br/>(' . get_highestmarks_of_subject_exam_class($exam->exam_id, $row1['class_id'], 1, $row1['academic_yr']) . ')'; ?></td>
+							 <?php
+							}
+							?>
 										
 						</tr>
 
-						<?php 
-						
-						$sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'],$row1['academic_yr']);
-						foreach($sub_list as $sub_row){?>
+						<?php
+
+						$sub_list = get_scholastic_subject_alloted_to_class($row1['class_id'], $row1['academic_yr']);
+						foreach ($sub_list as $sub_row) {
+							?>
 						<tr>
                              <td style="text-align:center;height:40px;width:150px"> 
 								<?php
-										echo $sub_row->name;
+								echo $sub_row->name;
 								?>
 							</td>
-							<?php 
-								foreach($exam_list as $exam){
-									${'mark_obtained_array_'.$exam->exam_id}=array();
-									${'highest_marks_array_'.$exam->exam_id}=array();
-									$marks_obtained=0;
-									$highest_marks=0;
-									$highest_total_marks=0;
-									$total_marks_obtained=0;
-									
-									${'marks_resultarray_'.$exam->exam_id}	=	get_marks($exam->exam_id,$row1['class_id'],$row1['section_id'],$sub_row->sub_rc_master_id,$row1['student_id'],$row1['academic_yr']);
-									//var_dump (${'marks_resultarray_'.$exam->exam_id})."<br/>";
-									if(isset(${'marks_resultarray_'.$exam->exam_id}[0])){
-										${'marks_obtained_json_'.$exam->exam_id}=${'marks_resultarray_'.$exam->exam_id}[0]['mark_obtained'];
-										//echo (${'marks_obtained_json_'.$exam->exam_id}."<br/>");
-										${'mark_obtained_array_'.$exam->exam_id}=json_decode(${'marks_obtained_json_'.$exam->exam_id},true);
-										//var_dump (${'mark_obtained_array_'.$exam->exam_id});
-										${'highest_marks_json_'.$exam->exam_id}=${'marks_resultarray_'.$exam->exam_id}[0]['highest_marks'];
-										${'highest_marks_array_'.$exam->exam_id}=json_decode(${'highest_marks_json_'.$exam->exam_id},true);
-										foreach (${'mark_obtained_array_'.$exam->exam_id} as $key => $value){
-											$marks_obtained=$value;
-											$highest_marks=$highest_marks+${'highest_marks_array_'.$exam->exam_id}[$key];
-										}
-										${'total_marks_'.$exam->exam_id}=${'total_marks_'.$exam->exam_id}+(float)$marks_obtained;
-										${'highest_total_marks_'.$exam->exam_id}=${'highest_total_marks_'.$exam->exam_id}+(float)$highest_marks;
-										
-							?>
-											<td class="col-md-1" style="text-align:center;height:40px;"><?php echo $marks_obtained;?>
+							<?php
+							foreach ($exam_list as $exam) {
+								${'mark_obtained_array_' . $exam->exam_id} = array();
+								${'highest_marks_array_' . $exam->exam_id} = array();
+								$marks_obtained = 0;
+								$highest_marks = 0;
+								$highest_total_marks = 0;
+								$total_marks_obtained = 0;
+
+								${'marks_resultarray_' . $exam->exam_id} = get_marks($exam->exam_id, $row1['class_id'], $row1['section_id'], $sub_row->sub_rc_master_id, $row1['student_id'], $row1['academic_yr']);
+								// var_dump (${'marks_resultarray_'.$exam->exam_id})."<br/>";
+								if (isset(${'marks_resultarray_' . $exam->exam_id}[0])) {
+									${'marks_obtained_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['mark_obtained'];
+									// echo (${'marks_obtained_json_'.$exam->exam_id}."<br/>");
+									${'mark_obtained_array_' . $exam->exam_id} = json_decode(${'marks_obtained_json_' . $exam->exam_id}, true);
+									// var_dump (${'mark_obtained_array_'.$exam->exam_id});
+									${'highest_marks_json_' . $exam->exam_id} = ${'marks_resultarray_' . $exam->exam_id}[0]['highest_marks'];
+									${'highest_marks_array_' . $exam->exam_id} = json_decode(${'highest_marks_json_' . $exam->exam_id}, true);
+									foreach (${'mark_obtained_array_' . $exam->exam_id} as $key => $value) {
+										$marks_obtained = $value;
+										$highest_marks = $highest_marks + ${'highest_marks_array_' . $exam->exam_id}[$key];
+									}
+									${'total_marks_' . $exam->exam_id} = ${'total_marks_' . $exam->exam_id} + (float) $marks_obtained;
+									${'highest_total_marks_' . $exam->exam_id} = ${'highest_total_marks_' . $exam->exam_id} + (float) $highest_marks;
+
+									?>
+											<td class="col-md-1" style="text-align:center;height:40px;"><?php echo $marks_obtained; ?>
 								<?php
-									}else{
-										
+								} else {
 									?>
 										<td class="col-md-1" style="text-align:center;height:40px;"></td>
 									<?php
-
-									}
 								}
-							
-					?>
+							}
+
+							?>
 				
                         </tr>
-                        <?php 
-						}?>
+                        <?php
+						}
+						?>
 						
 						
 				</table>
@@ -276,31 +271,31 @@ if(isset($stud_count)){
 			<tr>
 				<td class="col-md-1" style="text-align:center;height:40px;width:126px">Class Teacher</td>
 				<?php
-				foreach($exam_list as $exam){
-				?>
+				foreach ($exam_list as $exam) {
+					?>
 					<td  class="col-md-1"style="width:100px">&nbsp;</td>
 				<?php
-					}
+				}
 				?>
 				</tr>
 				<tr>
 					<td class="col-md-1" style="text-align:center;height:40px;">Parent</td>
 					<?php
-					foreach($exam_list as $exam){
-					?>
+					foreach ($exam_list as $exam) {
+						?>
 						<td class="col-md-1" style="width:100px">&nbsp;</td>
 					<?php
-						}
+					}
 					?>
 				</tr>
 				<tr>
 					<td class="col-md-1" style="text-align:center;height:40px;">Principal</td>
 					<?php
-					foreach($exam_list as $exam){
-					?>
+					foreach ($exam_list as $exam) {
+						?>
 						<td class="col-md-1" style="width:100px">&nbsp;</td>
 					<?php
-						}
+					}
 					?>
 				</tr>
 		</table>
@@ -309,6 +304,6 @@ if(isset($stud_count)){
     </div>
 </div>
 </html> 
-<?php endforeach;?>
+<?php endforeach; ?>
 </head>
 <body>
