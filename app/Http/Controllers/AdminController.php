@@ -21063,69 +21063,157 @@ SELECT t.teacher_id, t.name, t.designation, t.phone,tc.name as category_name, 'L
 
     public function attendanceNotMarkedList(Request $request)
     {
-        $user = $this->authenticateUser();
-
-        // ---------- Inputs ----------
-        $academicYear = JWTAuth::getPayload()->get('academic_year');
-        $date = $request->query('date', now()->toDateString());
-
-        $notMarkedSub = DB::table('class as c')
-            ->join('section as s', 's.class_id', '=', 'c.class_id')
-            ->leftJoin('attendance as a', function ($join) use ($date) {
-                $join
-                    ->on('a.class_id', '=', 'c.class_id')
-                    ->on('a.section_id', '=', 's.section_id')
-                    ->whereBetween('a.only_date', [
-                        $date . ' 00:00:00',
-                        $date . ' 23:59:59'
-                    ]);
-            })
-            ->where('c.academic_yr', $academicYear)
-            ->whereNull('a.class_id')
-            ->select('c.class_id', 's.section_id');
-        $list = DB::table('class_teachers as ct')
-            ->joinSub($notMarkedSub, 'nm', function ($join) {
-                $join
-                    ->on('nm.class_id', '=', 'ct.class_id')
-                    ->on('nm.section_id', '=', 'ct.section_id');
-            })
-            ->join('teacher as t', 't.teacher_id', '=', 'ct.teacher_id')
-            ->join('class as c', 'c.class_id', '=', 'ct.class_id')
-            ->join('section as s', 's.section_id', '=', 'ct.section_id')
-            ->leftJoin('redington_webhook_details as rwd', function ($join) use ($date) {
-                $join
-                    ->on('rwd.stu_teacher_id', '=', 't.teacher_id')
-                    ->where('rwd.message_type', 'attendance_not_marked')
-                    ->whereBetween('rwd.created_at', [
-                        $date . ' 00:00:00',
-                        $date . ' 23:59:59'
-                    ]);
-            })
-            ->select(
-                't.teacher_id',
-                't.name as teacher_name',
-                't.employee_id',
-                'c.name as class_name',
-                's.name as section_name',
-                DB::raw("COALESCE(MAX(rwd.sms_sent), '') as sms_sent"),
-                DB::raw("COALESCE(MAX(rwd.status), '') as whatsapp_status")
-            )
-            ->groupBy(
-                't.teacher_id',
-                't.name',
-                't.employee_id',
-                'c.name',
-                's.name'
-            )
-            ->orderBy('c.class_id')
-            ->orderBy('s.section_id')
-            ->get();
-        return response()->json([
-            'status' => true,
-            'date' => $date,
-            'AttendanceNotMarkedList' => $list,
-            'AttendanceNotMarkedCount' => count($list),
+        $request->validate([
+            'date' => 'nullable|date_format:Y-m-d',
         ]);
+
+        try {
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized user',
+                ], 401);
+            }
+
+            $academicYear = JWTAuth::getPayload()->get('academic_year');
+
+            if (!$academicYear) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Academic year is missing',
+                ], 400);
+            }
+
+            $selectedDate = Carbon::parse(
+                $request->query('date') ?: Carbon::today()->toDateString()
+            )->startOfDay();
+
+            $date = $selectedDate->toDateString();
+            $nextDate = $selectedDate->copy()->addDay()->toDateString();
+
+            // Match the attendanceReminder working-day rules.
+            $skipReason = null;
+
+            if ($selectedDate->greaterThan(Carbon::today())) {
+                $skipReason = 'Attendance is not due for a future date.';
+            } elseif ($selectedDate->isSunday()) {
+                $skipReason = 'Attendance is not required on Sunday.';
+            } else {
+                $isHoliday = DB::table('holidaylist')
+                    ->where('publish', 'Y')
+                    ->where('isDelete', 'N')
+                    ->where('academic_yr', $academicYear)
+                    ->whereDate('holiday_date', '<=', $date)
+                    ->whereRaw(
+                        'DATE(COALESCE(to_date, holiday_date)) >= ?',
+                        [$date]
+                    )
+                    ->exists();
+
+                if ($isHoliday) {
+                    $skipReason = 'Attendance is not required on a holiday.';
+                }
+            }
+
+            if ($skipReason !== null) {
+                return response()->json([
+                    'status' => true,
+                    'date' => $date,
+                    'AttendanceNotMarkedList' => [],
+                    'AttendanceNotMarkedCount' => 0,
+                    'message' => $skipReason,
+                ]);
+            }
+
+            /*
+             * Latest message per teacher on the selected date.
+             * Order by created_at, then webhook_id to break ties.
+             */
+            $list = DB::table('class_teachers as ct')
+                ->join('teacher as t', 't.teacher_id', '=', 'ct.teacher_id')
+                ->join('class as c', 'c.class_id', '=', 'ct.class_id')
+                ->join('section as s', function ($join) {
+                    $join
+                        ->on('s.section_id', '=', 'ct.section_id')
+                        ->on('s.class_id', '=', 'ct.class_id');
+                })
+                ->where('ct.academic_yr', $academicYear)
+                ->where('c.academic_yr', $academicYear)
+                ->where('s.academic_yr', $academicYear)
+                // No attendance record exists for this class/division/date.
+                ->whereNotExists(function ($query) use ($date, $nextDate) {
+                    $query
+                        ->selectRaw('1')
+                        ->from('attendance as a')
+                        ->whereColumn('a.class_id', 'ct.class_id')
+                        ->whereColumn('a.section_id', 'ct.section_id')
+                        ->where('a.only_date', '>=', $date)
+                        ->where('a.only_date', '<', $nextDate);
+                })
+                ->select(
+                    't.teacher_id',
+                    't.name as teacher_name',
+                    't.employee_id',
+                    'ct.class_id',
+                    'ct.section_id',
+                    'c.name as class_name',
+                    's.name as section_name'
+                )
+                ->selectSub(function ($query) use ($date, $nextDate) {
+                    $query
+                        ->from('redington_webhook_details as rwd')
+                        ->select('rwd.sms_sent')
+                        ->whereColumn('rwd.stu_teacher_id', 't.teacher_id')
+                        ->where('rwd.message_type', 'attendance_not_marked')
+                        ->where('rwd.created_at', '>=', $date)
+                        ->where('rwd.created_at', '<', $nextDate)
+                        ->orderByDesc('rwd.created_at')
+                        ->orderByDesc('rwd.webhook_id')
+                        ->limit(1);
+                }, 'sms_sent')
+                ->selectSub(function ($query) use ($date, $nextDate) {
+                    $query
+                        ->from('redington_webhook_details as rwd')
+                        ->select('rwd.status')
+                        ->whereColumn('rwd.stu_teacher_id', 't.teacher_id')
+                        ->where('rwd.message_type', 'attendance_not_marked')
+                        ->where('rwd.created_at', '>=', $date)
+                        ->where('rwd.created_at', '<', $nextDate)
+                        ->orderByDesc('rwd.created_at')
+                        ->orderByDesc('rwd.webhook_id')
+                        ->limit(1);
+                }, 'whatsapp_status')
+                ->distinct()
+                ->orderBy('ct.class_id')
+                ->orderBy('ct.section_id')
+                ->orderBy('t.teacher_id')
+                ->get()
+                ->map(function ($row) {
+                    $row->sms_sent = $row->sms_sent ?? '';
+                    $row->whatsapp_status = $row->whatsapp_status ?? '';
+
+                    return $row;
+                });
+
+            return response()->json([
+                'status' => true,
+                'date' => $date,
+                'AttendanceNotMarkedList' => $list,
+                'AttendanceNotMarkedCount' => $list->count(),
+                'message' => 'Attendance not marked list fetched successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Attendance not marked list failed', [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch attendance not marked list.',
+            ], 500);
+        }
     }
 
     private function studentCard(Request $request, $academicYr)

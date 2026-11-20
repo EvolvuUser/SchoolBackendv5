@@ -285,6 +285,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/getStudentListBySectionData', [AdminController::class, 'getStudentListBySectionData']);
         Route::get('/getStudentListBySectionDataMultipleClass', [AdminController::class, 'getStudentListBySectionDataMultipleClass']);
         Route::get('/getStudentListByClassSectionData', [AdminController::class, 'getStudentListByClassSectionData']);
+        Route::get('/students/accounts', [StudentController::class, 'getStudentAccounts']);
         Route::get('/students/{studentId}', [AdminController::class, 'getStudentById']);  // Edit Student , for the view Student. and single student select for the list.
         Route::get('/student_by_reg_no/{reg_no}', [AdminController::class, 'getStudentByGRN']);  // Student By GRN .
         Route::delete('/students/{studentId}', [AdminController::class, 'deleteStudent']);
@@ -1775,6 +1776,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
         Route::get('/get_hpcreportcard', [AssessmentController::class, 'gethpcreportcard']);
+        Route::get('/attendanceMarkingReport', [ReportController::class, 'getAttendanceMarkingReport']);
     });
 
     // Impersonate

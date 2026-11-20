@@ -788,6 +788,40 @@ class StudentController extends Controller
     }
 
     // Student List with Class name Dev name-Manish Kumar Sharma 09-04-2025
+    public function getStudentAccounts(Request $request)
+    {
+        abort_unless(in_array($request->user()?->role_id, ['A', 'M', 'U'], true), 403);
+
+        $academicYear = JWTAuth::getPayload()->get('academic_year');
+        abort_if(!$academicYear, 422, 'An academic year is required in the token.');
+
+        $students = DB::table('student as s')
+            ->join('user_master as account', 'account.reg_id', '=', 's.parent_id')
+            ->join('class as c', 'c.class_id', '=', 's.class_id')
+            ->join('section as sec', 'sec.section_id', '=', 's.section_id')
+            ->where('account.role_id', 'P')
+            ->where('account.IsDelete', 'N')
+            ->where('s.IsDelete', 'N')
+            ->where('s.academic_yr', $academicYear)
+            ->orderBy('s.class_id')
+            ->orderBy('s.section_id')
+            ->orderBy('s.student_id')
+            ->orderBy('account.user_id')
+            ->get([
+                's.student_name',
+                's.first_name',
+                's.mid_name',
+                's.last_name',
+                's.roll_no',
+                'c.name as classname',
+                'sec.name as sectionname',
+                'account.name as parent_name',
+                'account.user_id',
+            ]);
+
+        return response()->json(['data' => $students]);
+    }
+
     public function getallStudentWithClass()
     {
         try {

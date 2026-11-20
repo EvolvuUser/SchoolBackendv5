@@ -6197,4 +6197,287 @@ class ReportController extends Controller
             ], 500);
         }
     }
+
+    public function getAttendanceMarkingReport(Request $request)
+    {
+        $request->validate([
+            'month' => 'nullable|date_format:Y-m',
+            'class_id' => 'nullable|integer|min:1',
+            'section_id' => 'nullable|integer|min:1',
+        ]);
+
+        try {
+            $user = $this->authenticateUser();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized user',
+                ], 401);
+            }
+
+            $academicYr = JWTAuth::getPayload()->get('academic_year');
+
+            if (!$academicYr) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Academic year is missing',
+                ], 400);
+            }
+
+            $today = Carbon::today();
+
+            $month = $request->input('month')
+                ?: $today->format('Y-m');
+
+            $startDate = Carbon::createFromFormat('!Y-m', $month)
+                ->startOfMonth();
+
+            $endDate = $startDate->copy()->endOfMonth();
+
+            // Evaluate only dates up to today.
+            $reportEnd = $endDate->greaterThan($today)
+                ? $today->copy()
+                : $endDate->copy();
+
+            /*
+             * All class/divisions for the academic year.
+             * No teacher filter or role-based restriction.
+             */
+            $classQuery = DB::table('section as s')
+                ->join('class as c', 'c.class_id', '=', 's.class_id')
+                ->where('c.academic_yr', $academicYr)
+                ->where('s.academic_yr', $academicYr);
+
+            if ($request->filled('class_id')) {
+                $classQuery->where(
+                    'c.class_id',
+                    $request->input('class_id')
+                );
+            }
+
+            if ($request->filled('section_id')) {
+                $classQuery->where(
+                    's.section_id',
+                    $request->input('section_id')
+                );
+            }
+
+            $classes = $classQuery
+                ->select(
+                    'c.class_id',
+                    's.section_id',
+                    'c.name as class_name',
+                    's.name as section_name'
+                )
+                ->distinct()
+                ->orderBy('c.class_id')
+                ->orderBy('s.name')
+                ->get();
+
+            /*
+             * Prepare eligible working dates.
+             * Exclude Sundays, published holidays and future dates.
+             */
+            $workingDates = [];
+            $holidayDates = [];
+
+            if ($startDate->lessThanOrEqualTo($reportEnd)) {
+                $holidays = DB::table('holidaylist')
+                    ->where('publish', 'Y')
+                    ->where('isDelete', 'N')
+                    ->where('academic_yr', $academicYr)
+                    ->whereDate(
+                        'holiday_date',
+                        '<=',
+                        $reportEnd->toDateString()
+                    )
+                    ->whereRaw(
+                        'DATE(COALESCE(to_date, holiday_date)) >= ?',
+                        [$startDate->toDateString()]
+                    )
+                    ->get([
+                        'holiday_date',
+                        'to_date',
+                    ]);
+
+                foreach ($holidays as $holiday) {
+                    $holidayStart = Carbon::parse($holiday->holiday_date)
+                        ->startOfDay();
+
+                    $holidayEnd = Carbon::parse(
+                        $holiday->to_date ?: $holiday->holiday_date
+                    )->startOfDay();
+
+                    // Limit each holiday range to the report period.
+                    if ($holidayStart->lessThan($startDate)) {
+                        $holidayStart = $startDate->copy();
+                    }
+
+                    if ($holidayEnd->greaterThan($reportEnd)) {
+                        $holidayEnd = $reportEnd->copy();
+                    }
+
+                    if ($holidayStart->greaterThan($holidayEnd)) {
+                        continue;
+                    }
+
+                    foreach (
+                        CarbonPeriod::create($holidayStart, $holidayEnd) as $date
+                    ) {
+                        $holidayDates[$date->toDateString()] = true;
+                    }
+                }
+
+                foreach (
+                    CarbonPeriod::create($startDate, $reportEnd) as $date
+                ) {
+                    $dateString = $date->toDateString();
+
+                    if ($date->isSunday()) {
+                        continue;
+                    }
+
+                    if (isset($holidayDates[$dateString])) {
+                        continue;
+                    }
+
+                    $workingDates[] = [
+                        'date' => $dateString,
+                        'day' => $date->format('l'),
+                    ];
+                }
+            }
+
+            /*
+             * Fetch distinct attendance dates for matching divisions.
+             * A date counts as marked when at least one record exists.
+             */
+            $markedDates = [];
+
+            if ($classes->isNotEmpty() && !empty($workingDates)) {
+                $attendance = DB::table('attendance as a')
+                    ->where(function ($query) use ($classes) {
+                        foreach ($classes as $class) {
+                            $query->orWhere(function ($pair) use ($class) {
+                                $pair->where(
+                                    'a.class_id',
+                                    $class->class_id
+                                )->where(
+                                    'a.section_id',
+                                    $class->section_id
+                                );
+                            });
+                        }
+                    })
+                    ->whereDate(
+                        'a.only_date',
+                        '>=',
+                        $startDate->toDateString()
+                    )
+                    ->whereDate(
+                        'a.only_date',
+                        '<=',
+                        $reportEnd->toDateString()
+                    )
+                    ->select(
+                        'a.class_id',
+                        'a.section_id',
+                        DB::raw('DATE(a.only_date) as attendance_date')
+                    )
+                    ->distinct()
+                    ->get();
+
+                foreach ($attendance as $row) {
+                    $key = $row->class_id . ':' . $row->section_id;
+
+                    $markedDates[$key][$row->attendance_date] = true;
+                }
+            }
+
+            // Prepare class/division-wise report.
+            $data = [];
+            $totalMarked = 0;
+            $totalPending = 0;
+            $workingDayCount = count($workingDates);
+
+            foreach ($classes as $class) {
+                $key = $class->class_id . ':' . $class->section_id;
+
+                $details = [];
+                $pendingDates = [];
+                $markedCount = 0;
+
+                foreach ($workingDates as $workingDate) {
+                    $isMarked = isset(
+                        $markedDates[$key][$workingDate['date']]
+                    );
+
+                    $details[] = [
+                        'date' => $workingDate['date'],
+                        'day' => $workingDate['day'],
+                        'is_marked' => $isMarked,
+                        'status' => $isMarked ? 'Marked' : 'Not Marked',
+                    ];
+
+                    if ($isMarked) {
+                        $markedCount++;
+                    } else {
+                        $pendingDates[] = $workingDate['date'];
+                    }
+                }
+
+                $pendingCount = count($pendingDates);
+
+                $totalMarked += $markedCount;
+                $totalPending += $pendingCount;
+
+                $data[] = [
+                    'class_id' => $class->class_id,
+                    'section_id' => $class->section_id,
+                    'class_name' => $class->class_name,
+                    'section_name' => $class->section_name,
+                    'class_division' => trim(
+                        $class->class_name . ' ' . $class->section_name
+                    ),
+                    'total_working_days' => $workingDayCount,
+                    'attendance_marked_days' => $markedCount,
+                    'attendance_pending_days' => $pendingCount,
+                    'pending_dates' => $pendingDates,
+                    'details' => $details,
+                ];
+            }
+
+            return response()->json([
+                'status' => true,
+                'academic_yr' => $academicYr,
+                'month' => $month,
+                'from_date' => $startDate->toDateString(),
+                'to_date' => $endDate->toDateString(),
+                'evaluated_through' => $startDate->lessThanOrEqualTo($reportEnd)
+                    ? $reportEnd->toDateString()
+                    : null,
+                'summary' => [
+                    'total_class_divisions' => $classes->count(),
+                    'working_days_per_division' => $workingDayCount,
+                    // One entry = one class/division on one working date.
+                    'total_expected_entries' =>
+                        $classes->count() * $workingDayCount,
+                    'total_marked_entries' => $totalMarked,
+                    'total_pending_entries' => $totalPending,
+                ],
+                'data' => $data,
+                'message' => 'Attendance marking report fetched successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Attendance marking report failed', [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch the attendance marking report.',
+            ], 500);
+        }
+    }
 }
