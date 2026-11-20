@@ -812,6 +812,7 @@ class StudentController extends Controller
                 's.first_name',
                 's.mid_name',
                 's.last_name',
+                's.roll_no',
                 'c.name as classname',
                 'sec.name as sectionname',
                 'account.name as parent_name',
