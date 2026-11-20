@@ -1775,6 +1775,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // Parent feedback Data Dev Name-Manish Kumar Sharma 18-09-2025
         Route::get('/get_hpcreportcard', [AssessmentController::class, 'gethpcreportcard']);
+        Route::get('/attendanceMarkingReport', [ReportController::class, 'getAttendanceMarkingReport']);
     });
 
     // Impersonate

@@ -165,8 +165,10 @@ class TeacherDashboardController extends Controller
                     ->where('only_date', $today)
                     ->exists();
 
-                $startDate = Carbon::now()->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
+                $month = $request->input('month') ?: Carbon::now()->format('Y-m');
+
+                $startDate = Carbon::createFromFormat('!Y-m', $month)->startOfMonth();
+                $endDate = $startDate->copy()->endOfMonth();
 
                 // Get all attendance dates for this month
                 $attendanceDates = DB::table('attendance')
