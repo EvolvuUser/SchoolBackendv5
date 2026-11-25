@@ -20,11 +20,11 @@ use App\Models\User;
 use App\Services\ReportCard\Class11To12BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class1To2BulkReportCardDataBuilder;
 use App\Services\ReportCard\Class3To5BulkReportCardDataBuilder;
+use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
+use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\HscsClass3To5BulkReportCardDataBuilder;
 use App\Services\ReportCard\HscsClass6To8BulkReportCardDataBuilder;
 use App\Services\ReportCard\HscsClass9To10BulkReportCardDataBuilder;
-use App\Services\ReportCard\Class6To8BulkReportCardDataBuilder;
-use App\Services\ReportCard\Class9To10BulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsBulkReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass10ReportCardDataBuilder;
 use App\Services\ReportCard\JpsClass9ReportCardDataBuilder;
@@ -8322,13 +8322,17 @@ class AssessmentController extends Controller
             ->where('subject_id', $subject_id)
             ->where('publish', 'Y')
             ->where('isDelete', 'N')
-            ->get();
+            ->get()
+            ->transform(function ($chapter) {
+                $chapter->chapter_no = (int) $chapter->chapter_no;
+                return $chapter;
+            });
 
         return response()->json([
             'success' => true,
             'data' => $chapters,
-            'message' => 'Chatper according to class and subject.',
-            'status' => 200
+            'message' => 'Chapters according to class and subject.',
+            'status' => 200,
         ]);
     }
 
@@ -8991,7 +8995,11 @@ class AssessmentController extends Controller
                 $query->where('chapters.sub_subject', 'like', '%' . $sub_subject . '%');
             }
 
-            return $query->get();
+            return $query->get()->each(function ($plan) {
+                if ($plan->chapter_no !== null) {
+                    $plan->chapter_no = (int) $plan->chapter_no;
+                }
+            });
         } else {
             // otherwise call second query
             $query = DB::select("select lesson_plan.*,lesson_plan_details.*,class.class_id,class.name as c_name,chapters.chapter_id,chapters.name,subject_master.name as sub_name from lesson_plan,lesson_plan_details,class,chapters,subject_master where lesson_plan.lesson_plan_id = lesson_plan_details.lesson_plan_id and lesson_plan.class_id=class.class_id and lesson_plan.chapter_id = chapters.chapter_id and chapters.isDelete!='Y' and lesson_plan.subject_id = subject_master.sm_id  and lesson_plan.reg_id='" . $user->reg_id . "' and lesson_plan.academic_yr='" . $academic_yr . "' group by lesson_plan.unq_id order by lesson_plan.lesson_plan_id DESC");

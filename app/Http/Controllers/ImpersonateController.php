@@ -34,11 +34,11 @@ class ImpersonateController extends Controller
             $shortName = $payload->get('short_name');
             $super_admin_id = $payload->get('reg_id');
 
-            // 1️⃣ Only Super Admin (U)
-            if ($payload->get('role_id') !== 'U') {
+            // Allow Super Admin (U) and Management (M) to impersonate.
+            if (!in_array($payload->get('role_id'), ['U', 'M'], true)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized'
+                    'message' => 'Unauthorized',
                 ], 403);
             }
 
