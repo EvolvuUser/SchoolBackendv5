@@ -10,6 +10,7 @@ use App\Http\Controllers\DailyTodoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DropdownController;
 use App\Http\Controllers\DropdownOptionController;
+use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\HscController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\LibraryController;
@@ -1716,6 +1717,8 @@ Route::middleware(['school.db'])->group(function () {
         // --------------------------------- Routes
 
         // New Admissions Users
+        Route::get('enquiries', [EnquiryController::class, 'index']);
+        Route::patch('enquiries/{id}/status', [EnquiryController::class, 'updateStatus'])->whereNumber('id');
         Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
         Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);
 

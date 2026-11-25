@@ -287,24 +287,26 @@ class DashboardController extends Controller
 
     public function getDashboards(Request $request)
     {
-        $query = DB::table('dashboards as d')
+        $dashboards = DB::table('dashboards as d')
+            ->leftJoin('role_master as rm', 'd.role', '=', 'rm.role_id')
             ->leftJoin('dashboard_sections as ds', 'd.dashboard_id', '=', 'ds.dashboard_id')
             ->leftJoin('dashboard_widgets as dw', 'd.dashboard_id', '=', 'dw.dashboard_id')
             ->select(
                 'd.dashboard_id',
                 'd.name',
                 'd.role',
+                'rm.name as role_name',
                 'd.is_active',
                 DB::raw('COUNT(DISTINCT ds.dashboard_section_id) as total_sections'),
                 DB::raw('COUNT(DISTINCT dw.widget_id) as total_widgets')
             )
-            ->groupBy('d.dashboard_id', 'd.name', 'd.role', 'd.is_active');
-
-        $dashboards = $query->orderBy('d.dashboard_id', 'desc')->get();
+            ->groupBy('d.dashboard_id', 'd.name', 'd.role', 'rm.name', 'd.is_active')
+            ->orderByDesc('d.dashboard_id')
+            ->get();
 
         return response()->json([
             'status' => true,
-            'data' => $dashboards
+            'data' => $dashboards,
         ]);
     }
 }
