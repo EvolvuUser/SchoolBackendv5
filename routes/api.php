@@ -1718,6 +1718,7 @@ Route::middleware(['school.db'])->group(function () {
 
         // New Admissions Users
         Route::get('enquiries', [EnquiryController::class, 'index']);
+        Route::get('enquiries/classes', [EnquiryController::class, 'classOptions']);
         Route::patch('enquiries/{id}/status', [EnquiryController::class, 'updateStatus'])->whereNumber('id');
         Route::get('get_admission_users', [AdminController::class, 'getAdmissionUsers']);
         Route::post('update_special_user', [AdminController::class, 'updateSpecialUser']);

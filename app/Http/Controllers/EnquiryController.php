@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classes;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,15 +18,7 @@ class EnquiryController extends Controller
     {
         $this->authorizeAccess($request);
 
-        $currentYear = Setting::where('active', 'Y')->orderByDesc('academic_yr_from')->value('academic_yr');
-        abort_unless(
-            is_string($currentYear) && preg_match('/^\d{4}-(\d{4})$/D', $currentYear, $years),
-            409,
-            'Configure the active academic year in YYYY-YYYY format.'
-        );
-
-        $nextStartYear = (int) $years[1];
-        $academicYears = [$currentYear, $nextStartYear.'-'.($nextStartYear + 1)];
+        $academicYears = $this->enquiryAcademicYears();
 
         $this->normalizeStatus($request);
         $filters = $request->validate([
@@ -95,6 +88,18 @@ class EnquiryController extends Controller
         ]);
     }
 
+    public function classOptions(Request $request): JsonResponse
+    {
+        $this->authorizeAccess($request);
+
+        $classes = Classes::whereIn('academic_yr', $this->enquiryAcademicYears())
+            ->groupBy('name', 'academic_yr')
+            ->orderByRaw('MIN(class_id)')
+            ->get(['name as class_name', 'academic_yr']);
+
+        return response()->json(['data' => $classes]);
+    }
+
     public function updateStatus(Request $request, string $id): JsonResponse
     {
         $this->authorizeAccess($request);
@@ -117,6 +122,20 @@ class EnquiryController extends Controller
         });
 
         return response()->json(['data' => $enquiry]);
+    }
+
+    private function enquiryAcademicYears(): array
+    {
+        $currentYear = Setting::where('active', 'Y')->orderByDesc('academic_yr_from')->value('academic_yr');
+        abort_unless(
+            is_string($currentYear) && preg_match('/^\d{4}-(\d{4})$/D', $currentYear, $years),
+            409,
+            'Configure the active academic year in YYYY-YYYY format.'
+        );
+
+        $nextStartYear = (int) $years[1];
+
+        return [$currentYear, $nextStartYear.'-'.($nextStartYear + 1)];
     }
 
     private function authorizeAccess(Request $request): void
