@@ -5882,6 +5882,21 @@ class AdminController extends Controller
         return response()->json($teacherList);
     }
 
+    public function getTeacherAccounts(): JsonResponse
+    {
+        $teachers = DB::table('teacher as t')
+            ->join('user_master as u', 'u.reg_id', '=', 't.teacher_id')
+            ->where('u.role_id', 'T')
+            ->where('u.IsDelete', 'N')
+            ->where('t.isDelete', 'N')
+            ->distinct()
+            ->orderBy('t.name')
+            ->orderBy('t.teacher_id')
+            ->get(['t.teacher_id', 't.name', 'u.role_id']);
+
+        return response()->json(['data' => $teachers]);
+    }
+
     // Get the divisions list base on the selected Class
     public function getDivisionsbyClass(Request $request, $classId)
     {

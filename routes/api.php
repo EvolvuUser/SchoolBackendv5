@@ -266,6 +266,7 @@ Route::middleware(['school.db'])->group(function () {
         Route::get('/get_presubjects/{classId}', [AdminController::class, 'getPresignSubjectByDivision']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.
         Route::get('/get_presubjectss/{sectionId}', [AdminController::class, 'getSubjectsByDivisionWithAssigned']);  // Done   Allot teacher tab list the subject(Presign Subjects )  for the selected Division.
         Route::get('/get_teacher_list', [AdminController::class, 'getTeacherNames']);  // Done  Get the teacher list
+        Route::get('/teacher-accounts', [AdminController::class, 'getTeacherAccounts']);
         Route::get('/get_presign_subject_by_teacher/{classID}/{sectionId}/{teacherID}', [AdminController::class, 'getPresignSubjectByTeacher']);  // get the list of the preasign subject base on the selected clss_id,section_id,teacher_id .
         Route::post('/allot-teacher-for-subject/{class_id}/{section_id}', [AdminController::class, 'updateOrCreateSubjectAllotments']);
 
